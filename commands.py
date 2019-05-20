@@ -22,3 +22,17 @@ class BaseCommand:
 # Download item
 # Send item
 # Get new items
+
+gCommandMap = {
+}
+
+def handle_command(pTokens):
+	if not pTokens:
+		return True
+	
+	verb = pTokens[0].casefold()
+	if verb == 'quit':
+		return False
+	
+	print(' '.join(pTokens))
+	return True
