@@ -17,24 +17,41 @@ def service_loop(conn, host):
 
 		# handle_command will return False when it's time to close the 
 		# connection
-		if not commands.handle_command(tokens, conn):
+		if not commands.handle_command(tokens, conn, host):
 			break
 	conn.close()
 
 
 def main():
 	log.Init('anselus-testserver.log')
-
-	if not os.path.exists(serverconfig.gConfig['mailboxdir']):
-		try:
-			os.mkdir(serverconfig.gConfig['mailboxdir'])
-		except Exception as e:
-			print(e)
-			sys.exit()
-
+	
+	log.Log('Checking storage paths', log.INFO)
+	serverconfig.gConfig['create_safedir'] = os.path.join(
+										serverconfig.gConfig['safeguardsdir'],
+										'create_mbox')
+	serverconfig.gConfig['delete_safedir'] = os.path.join(
+										serverconfig.gConfig['safeguardsdir'],
+										'delete_mbox')
+	
+	# Verify existence of paths needed by the server
+	path_list = [
+		'mailboxdir',
+		'safeguardsdir',
+		'create_safedir',
+		'delete_safedir'
+	]
+	for temp_path in path_list:
+		if not os.path.exists(serverconfig.gConfig[temp_path]):
+			try:
+				os.mkdir(serverconfig.gConfig[temp_path])
+			except Exception as e:
+				print(e)
+				sys.exit()
+	
 	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 		s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		s.bind((serverconfig.gConfig['host'], serverconfig.gConfig['port']))
+		log.Log('Listening for connections', log.INFO)
 		s.listen()
 		conn, addr = s.accept()
 		if conn:
