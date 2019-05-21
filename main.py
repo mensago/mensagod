@@ -1,21 +1,13 @@
 #!/usr/bin/env python3
 
 # This is a proof-of-concept server daemon for the Anselus groupware protocol
-
 import commands
 import log
+import serverconfig
 
+import os
 import socket
-
-gConfig = {
-	'host' : 'localhost',
-	'port' : 1024
-}
-
-
-def read_config():
-	pass
-
+import sys
 
 def service_loop(conn, host):
 	log.Log("Connection to %s established." % str(host), log.INFO)
@@ -25,16 +17,24 @@ def service_loop(conn, host):
 
 		# handle_command will return False when it's time to close the 
 		# connection
-		if not commands.handle_command(tokens):
+		if not commands.handle_command(tokens, conn):
 			break
 	conn.close()
 
 
 def main():
 	log.Init('anselus-testserver.log')
+
+	if not os.path.exists(serverconfig.gConfig['mailboxdir']):
+		try:
+			os.mkdir(serverconfig.gConfig['mailboxdir'])
+		except Exception as e:
+			print(e)
+			sys.exit()
+
 	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 		s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-		s.bind((gConfig['host'], gConfig['port']))
+		s.bind((serverconfig.gConfig['host'], serverconfig.gConfig['port']))
 		s.listen()
 		conn, addr = s.accept()
 		if conn:

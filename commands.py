@@ -1,3 +1,7 @@
+import log
+import serverconfig
+
+import uuid
 
 class BaseCommand:
 	def Set(self, pTokens):
@@ -11,9 +15,15 @@ class BaseCommand:
 		# The base class purposely does nothing. To be implemented by subclasses
 		return False
 
+class CreateMailboxCommand:
+	# TODO: Implement CreateMailboxCommand
+	pass
+
+class DeleteMailboxCommand:
+	# TODO: Implement DeleteMailboxCommand
+	pass
+
 # Tasks to implement commands for
-# Create mailbox
-# Delete mailbox(?)
 # Add user
 # Delete user
 # Add device
@@ -24,9 +34,11 @@ class BaseCommand:
 # Get new items
 
 gCommandMap = {
+	'addmbox' : CreateMailboxCommand,
+	'delmbox' : DeleteMailboxCommand
 }
 
-def handle_command(pTokens):
+def handle_command(pTokens, conn):
 	if not pTokens:
 		return True
 	
@@ -34,5 +46,14 @@ def handle_command(pTokens):
 	if verb == 'quit':
 		return False
 	
-	print(' '.join(pTokens))
+	log.Log("Received command: %s" % ' '.join(pTokens), log.DEBUG)
+	if verb in gCommandMap:
+		cmdfunc = gCommandMap[verb]
+		cmdobj = cmdfunc()
+		cmdobj.Set(pTokens[1:])
+		if cmdobj.IsValid():
+			cmdobj.Execute()
+		else:
+			conn.send('-ERR Invalid command\r\n'.encode())
+
 	return True
