@@ -50,6 +50,10 @@ class BaseCommand:
 # Safeguards: if the IP address of requester is not localhost, wait a
 #	configurable number of seconds to prevent spamming / DoS.
 class CreateWorkspaceCommand(BaseCommand):
+	def IsValid(self):
+		# TODO: Implement
+		return False
+	
 	def Execute(self, pExtraData):
 		# If the mailbox creation request has been made from outside the
 		# server, check to see if it has been made more recently than the
