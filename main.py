@@ -8,6 +8,7 @@ import serverconfig
 import os
 import socket
 import sys
+import threading
 
 def service_loop(conn, host):
 	log.Log("Connection to %s established." % str(host), log.INFO)
@@ -35,7 +36,7 @@ def main():
 	
 	# Verify existence of paths needed by the server
 	path_list = [
-		'mailboxdir',
+		'workspacedir',
 		'safeguardsdir',
 		'create_safedir',
 		'delete_safedir'
@@ -56,7 +57,6 @@ def main():
 		conn, addr = s.accept()
 		if conn:
 			service_loop(conn, addr)
-
 
 if __name__ == '__main__':
 	main()

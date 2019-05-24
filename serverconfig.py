@@ -5,13 +5,13 @@ gConfig = {
 	'port' : 1024,
 
 	# Directory to hold user mailboxes
-	'mailboxdir' : "/var/anselus",
+	'workspacedir' : "/var/anselus",
 
 	# Location for files used to protect the server, such as files containing
 	# timestamps
 	'safeguardsdir' : '/var/anselus/safeguards',
 
-	# Number of seconds to wait between account creation requests from
+	# Number of seconds to wait between account add/delete requests from
 	# non-local IP addresses
 	'account_timeout' : 60
 }
