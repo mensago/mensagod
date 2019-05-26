@@ -233,6 +233,11 @@ class CommandConnect(BaseCommand):
 		out_data = clib.connect(self.tokenList[0])
 		if out_data['error'] == ERR_OK:
 			pShellState.sock = out_data['socket']
+			if out_data['version']:
+				print("Connected to %s, version %s" % (self.tokenList[0], \
+														out_data['version']))
+			else:
+				print('Connected to host')
 		else:
 			print(out_data['errorstring'])
 
