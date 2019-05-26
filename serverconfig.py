@@ -3,7 +3,7 @@ import secrets
 gConfig = {
 	# Interface and port to listen on
 	'host' : 'localhost',
-	'port' : 1024,
+	'port' : 2001,
 
 	# Directory to hold user mailboxes
 	'workspacedir' : "/var/anselus",
