@@ -14,7 +14,11 @@ def service_loop(conn, host):
 	log.Log("Connection to %s established." % str(host), log.INFO)
 	while True:
 		data = conn.recv(8192)
-		tokens = data.decode().strip().split()
+		try:
+			tokens = data.decode().strip().split()
+		except Exception as e:
+			log.Log("Unable to decode message sent by host %s : %s" % (host, e), log.ERRORS)
+			continue
 
 		# handle_command will return False when it's time to close the 
 		# connection

@@ -3,24 +3,23 @@ from serverconfig import gConfig
 
 import os
 import os.path as path
+import secrets
 import time
 import uuid
 
-def SendString(sock, s):
+def send_string(sock, s):
 	# TODO: Implement -- be sure to check for max message size
 	# and throw an exception if exceeded
 	pass
 
-def ReceiveString(sock, s):
+def receive_string(sock, s):
 	# TODO: Implement -- accept no more than 8000 characters
 	pass
 
-def MakeDeviceID():
+def generate_device_id(alphabet):
 	# Creates a nice long string of random printable characters to function
 	# as a one-time device ID.
-
-	# TODO: Implement
-	return '123456789012345678901234567890123456789012345678901234567890'
+	return ''.join(secrets.choice(alphabet) for _ in range(64))
 
 class BaseCommand:
 	def __init__(self, pTokens=None, sock=None):
@@ -67,7 +66,7 @@ class CreateWorkspaceCommand(BaseCommand):
 						gConfig['account_timeout']:
 					err_msg = ' '.join(["-ERR Please wait ", str(time_diff), \
 										"seconds to create another account.\r\n"])
-					SendString(self.socket, err_msg)
+					send_string(self.socket, err_msg)
 					return False
 
 			with open(safeguard_path, 'a'):
@@ -87,7 +86,7 @@ class CreateWorkspaceCommand(BaseCommand):
 		except Exception as e:
 			log.Log("Couldn't create directory %s. Exception: %s" % \
 						(workspace_path, e), log.ERRORS)
-			SendString(self.socket, 'Internal error. Sorry!\r\n')
+			send_string(self.socket, 'Internal error. Sorry!\r\n')
 			return False
 		
 		public_key_path = path.join(workspace_path,'public_key')
@@ -97,7 +96,7 @@ class CreateWorkspaceCommand(BaseCommand):
 		except Exception as e:
 			log.Log("Couldn't write public key file %s. Exception: %s" % \
 						(public_key_path, e), log.ERRORS)
-			SendString(self.socket, 'Internal error. Sorry!\r\n')
+			send_string(self.socket, 'Internal error. Sorry!\r\n')
 			return False
 		
 		password_path = path.join(workspace_path,'passwd')
@@ -107,11 +106,11 @@ class CreateWorkspaceCommand(BaseCommand):
 		except Exception as e:
 			log.Log("Couldn't write password file %s. Exception: %s" % \
 						(password_path, e), log.ERRORS)
-			SendString(self.socket, 'Internal error. Sorry!\r\n')
+			send_string(self.socket, 'Internal error. Sorry!\r\n')
 			return False
 
-		device_id = MakeDeviceID()
-		SendString(self.socket, "+OK %s %s\r\n.\r\n" % (workspace_id, device_id))
+		device_id = generate_device_id(gConfig['device_id_alphabet'])
+		send_string(self.socket, "+OK %s %s\r\n.\r\n" % (workspace_id, device_id))
 		
 
 		
@@ -166,6 +165,6 @@ def handle_command(pTokens, conn, host):
 		if cmdobj.IsValid():
 			cmdobj.Execute(extraData)
 		else:
-			SendString(conn, '-ERR Invalid command\r\n'.encode())
+			send_string(conn, '-ERR Invalid command\r\n'.encode())
 
 	return True
