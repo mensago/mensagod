@@ -12,7 +12,7 @@ from prompt_toolkit import print_formatted_text, HTML
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import Completer, Completion, ThreadedCompleter
 
-class TagshCompleter(Completer):
+class ShellCompleter(Completer):
 	def __init__(self):
 		Completer.__init__(self)
 		self.lexer = re.compile(r'"[^"]+"|"[^"]+$|[\S\[\]]+')
@@ -44,7 +44,7 @@ class Shell:
 
 	def Prompt(self):
 		session = PromptSession()
-		commandCompleter = ThreadedCompleter(TagshCompleter())
+		commandCompleter = ThreadedCompleter(ShellCompleter())
 		while True:
 			try:
 				rawInput = session.prompt(HTML(

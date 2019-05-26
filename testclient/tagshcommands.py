@@ -1,3 +1,4 @@
+import clientlib as clib
 from errorcodes import ERR_OK, ERR_BAD_DATA, ERR_CUSTOM, ERR_UNKNOWN_COMMAND
 from shellbase import BaseCommand, gShellCommands
 
@@ -5,6 +6,7 @@ import collections
 from glob import glob
 import os
 import platform
+import socket
 import subprocess
 import sys
 
@@ -143,15 +145,15 @@ class CommandListDir(BaseCommand):
 			return list()
 
 
-class CommandQuit(BaseCommand):
+class CommandExit(BaseCommand):
 	def __init__(self, rawInput=None, pTokenList=None):
-		BaseCommand.Set(self,'quit')
-		self.name = 'quit'
-		self.helpInfo = 'Usage: quit\nCloses the connection and exits.'
+		BaseCommand.Set(self,'exit')
+		self.name = 'exit'
+		self.helpInfo = 'Usage: exit\nCloses the connection and exits the shell.'
 		self.description = 'Exits the shell'
 
 	def GetAliases(self):
-		return { "x":"quit", "q":"quit", "exit":"quit" }
+		return { "x":"exit", "q":"exit", "exit":"exit" }
 
 	def Execute(self, shellState):
 		sys.exit(0)
@@ -205,3 +207,48 @@ class CommandShell(BaseCommand):
 	def Execute(self, pShellState):
 		os.system(' '.join(self.tokenList))
 		return ERR_OK
+
+
+class CommandConnect(BaseCommand):
+	def __init__(self, rawInput=None, pTokenList=None):
+		BaseCommand.Set(self, rawInput, pTokenList)
+		self.name = 'connect'
+		self.helpInfo = 'Usage: connect <host>\n' + \
+						'Open a connection to a host on port 2001.\n' + \
+						'Aliases: con'
+		self.description = 'Connect to a host'
+
+	def GetAliases(self):
+		return { "con":"connect" }
+
+	def Execute(self, pShellState):
+		if (len(self.tokenList) != 1):
+			print(self.helpInfo)
+			return ERR_OK
+
+		if pShellState.socket:
+			clib.quit(pShellState.sock)
+			pShellState.sock = None
+		
+		out_data = clib.connect(self.tokenList[0])
+		if out_data['error'] == ERR_OK:
+			pShellState.sock = out_data['socket']
+		else:
+			print(out_data['errorstring'])
+
+		return out_data['error']
+
+
+class CommandDisconnect(BaseCommand):
+	def __init__(self, rawInput=None, pTokenList=None):
+		BaseCommand.Set(self, rawInput, pTokenList)
+		self.name = 'disconnect'
+		self.helpInfo = 'Usage: disconnect <host>\n' + \
+						'Close the server connection'
+		self.description = 'Disconnect from the host'
+
+	def Execute(self, pShellState):
+		clib.quit(pShellState.sock)
+
+		return ERR_OK
+

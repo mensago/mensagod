@@ -15,9 +15,12 @@ class CommandAccess:
 
 		self.AddCommand(CommandChDir())
 		self.AddCommand(CommandListDir())
-		self.AddCommand(CommandQuit())
+		self.AddCommand(CommandExit())
 		self.AddCommand(CommandHelp())
 		self.AddCommand(CommandShell())
+
+		self.AddCommand(CommandConnect())
+		self.AddCommand(CommandDisconnect())
 
 		self.allNames.sort()
 

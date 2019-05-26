@@ -22,6 +22,7 @@ class ShellState:
 			self.oldpwd = ''
 		
 		self.aliases = dict()
+		self.socket = None
 
 
 # The main base Command class. Defines the basic API and all tagsh commands
