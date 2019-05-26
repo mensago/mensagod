@@ -12,6 +12,7 @@ import threading
 
 def service_loop(conn, host):
 	log.Log("Connection to %s established." % str(host), log.INFO)
+	conn.send("+OK Anselus v0.1\r\n".encode())
 	while True:
 		data = conn.recv(8192)
 		try:
