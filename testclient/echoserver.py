@@ -21,6 +21,9 @@ def main():
 					print("Unable to decode message sent by host %s : %s" % (addr, e))
 					continue
 
+				if not tokens:
+					continue
+				
 				verb = tokens[0].casefold()
 				if verb == 'quit':
 					break
