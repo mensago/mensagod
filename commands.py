@@ -159,7 +159,7 @@ def handle_command(pTokens, conn, host):
 	
 	verb = pTokens[0].casefold()
 	if verb == 'quit':
-		log.Log("Closing connection to %s" % host, log.INFO)
+		log.Log("Closing connection to %s" % str(host), log.INFO)
 		conn.close()
 		return False
 	
