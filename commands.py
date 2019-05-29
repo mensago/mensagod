@@ -80,16 +80,23 @@ class CreateWorkspaceCommand(BaseCommand):
 		public_key = self.rawTokens[0]
 		password = self.rawTokens[1]
 
+
 		workspace_path = path.join(gConfig['workspacedir'],workspace_id)
-		try:
-			os.mkdir(workspace_path)
-		except Exception as e:
-			log.Log("Couldn't create directory %s. Exception: %s" % \
-						(workspace_path, e), log.ERRORS)
-			send_string(self.socket, 'Internal error. Sorry!\r\n')
-			return False
+		directories = [
+			workspace_path,
+			path.join(workspace_path,'system'),
+			path.join(workspace_path,'keyring'),
+		]
+		for d in directories:
+			try:
+				os.mkdir(d)
+			except Exception as e:
+				log.Log("Couldn't create directory %s. Exception: %s" % \
+							(d, e), log.ERRORS)
+				send_string(self.socket, 'Internal error. Sorry!\r\n')
+				return False
 		
-		public_key_path = path.join(workspace_path,'public_key')
+		public_key_path = path.join(workspace_path, 'keyring', 'public_key')
 		try:
 			with open(public_key_path, 'w') as handle:
 				handle.write(public_key + '\n')
@@ -152,6 +159,8 @@ def handle_command(pTokens, conn, host):
 	
 	verb = pTokens[0].casefold()
 	if verb == 'quit':
+		log.Log("Closing connection to %s" % host, log.INFO)
+		conn.close()
 		return False
 	
 	log.Log("Received command: %s" % ' '.join(pTokens), log.DEBUG)
