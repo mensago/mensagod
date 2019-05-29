@@ -1,4 +1,4 @@
-from tagshcommands import *
+from shellcommands import *
 
 import getopt
 import os
