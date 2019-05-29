@@ -5,7 +5,9 @@
 from errorcodes import ERR_OK, ERR_CONNECTION, ERR_NO_SOCKET, \
 						ERR_HOST_NOT_FOUND
 
+import os
 import socket
+import sys
 
 # Number of seconds to wait for a client before timing out
 CONN_TIMEOUT = 900.0
@@ -96,3 +98,32 @@ def quit(sock):
 		except Exception as e:
 			sock.close()
 			print("Error quitting from host: %s" % e)
+
+# Exists
+#	Requires: one or more names to describe the path desired
+#	Returns: error code - OK if exists, error if not
+def exists(sock, path):
+	pass
+
+def progress_stdout(value):
+	sys.stdout.write("Progress: %s\r" % value)
+
+# Upload
+#	Requires: nothing
+#	Returns: [dict] error code
+#				error string
+def upload(sock, path, progress):
+	try:
+		filesize = os.path.getsize(path)
+		totalsent = 0
+		handle = open(path,'rb')
+		data = handle.read(4096)
+		while (data):
+			sock.send(data)
+
+			totalsent = totalsent + len(data)
+			progress(float(totalsent / filesize) * 100.0)
+			data = handle.read(4096)
+		data.close()
+	except Exception as e:
+		print("Failure uploading %s: %s" % (path, e))

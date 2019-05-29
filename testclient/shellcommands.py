@@ -258,3 +258,16 @@ class CommandDisconnect(BaseCommand):
 		print("Use 'exit' to quit the application.")
 		return ERR_OK
 
+
+class CommandUpload(BaseCommand):
+	def __init__(self, rawInput=None, pTokenList=None):
+		BaseCommand.Set(self, rawInput, pTokenList)
+		self.name = 'upload'
+		self.helpInfo = 'Usage: upload <filepath> <folder list>\n' + \
+						'Upload a file to the specified path'
+		self.description = 'Upload a file from the absolute path on the source side to the ' \
+							'location relative to the workspace root on the server.'
+
+	def Execute(self, pShellState):
+		return ERR_OK
+
