@@ -153,9 +153,10 @@ class CommandExit(BaseCommand):
 		self.description = 'Exits the shell'
 
 	def GetAliases(self):
-		return { "x":"exit", "q":"exit", "exit":"exit" }
+		return { "x":"exit", "q":"exit" }
 
 	def Execute(self, shellState):
+		clib.quit(shellState.sock)
 		sys.exit(0)
 
 
@@ -218,9 +219,6 @@ class CommandConnect(BaseCommand):
 						'Aliases: con'
 		self.description = 'Connect to a host'
 
-	def GetAliases(self):
-		return { "con":"connect" }
-
 	def Execute(self, pShellState):
 		if (len(self.tokenList) != 1):
 			print(self.helpInfo)
@@ -252,8 +250,11 @@ class CommandDisconnect(BaseCommand):
 						'Close the server connection'
 		self.description = 'Disconnect from the host'
 
+	def GetAliases(self):
+		return { "quit":"disconnect" }
+
 	def Execute(self, pShellState):
 		clib.quit(pShellState.sock)
-
+		print("Use 'exit' to quit the application.")
 		return ERR_OK
 

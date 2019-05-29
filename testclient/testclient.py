@@ -68,9 +68,6 @@ class Shell:
 				cmd = gCommandAccess.GetCommand(tokens[0])
 				cmd.Set(rawInput)
 
-				if (cmd.GetName() == 'exit'):
-					break
-
 				returnCode = cmd.Execute(self.state)
 				if (returnCode.code != ERR_OK.code):
 					print(returnCode.string + '\n')

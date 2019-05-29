@@ -91,6 +91,8 @@ def connect(host, port=2001):
 def quit(sock):
 	if (sock):
 		try:
-			sock.send('QUIT\r\n')
-		except:
-			pass
+			sock.send('QUIT\r\n'.encode())
+			print('Disconnected from host.')
+		except Exception as e:
+			sock.close()
+			print("Error quitting from host: %s" % e)
