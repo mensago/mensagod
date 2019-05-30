@@ -15,7 +15,18 @@ CONN_TIMEOUT = 900.0
 # Size (in bytes) of the read buffer size for recv()
 READ_BUFFER_SIZE = 8192
 
-# Read
+# Write Text
+#	Requires: 	valid socket
+#				string
+#	Returns: nothing
+def write_text(sock, text):
+	try:
+		sock.send(text.encode())
+	except:
+		sock.close()
+		return None
+
+# Read TExt
 #	Requires: valid socket
 #	Returns: string
 def read_text(sock):
@@ -123,21 +134,46 @@ def progress_stdout(value):
 
 
 # Upload
-#	Requires: nothing
+#	Requires:	valid socket
+#				local path to file
+#				size of file to upload
+#				server path to requested destination
+#	Optional:	callback function for progress display
+#
 #	Returns: [dict] error code
 #				error string
-def upload(sock, path, progress):
+def upload(sock, path, serverpath, progress):
+	chunk_size = 128
+
+	# Check to see if we're allowed to upload
+	filesize = os.path.getsize(path)
+	write_text(sock, "UPLOAD %s %s\r\n" % (filesize, serverpath))
+	response = read_text(sock)
+	if not response:
+		# TODO: Properly handle no server response
+		raise("No response from server")
+	
+	if response.strip().split()[0] != 'PROCEED':
+		# TODO: Properly handle not being allowed
+		print("Unable to upload file. Server response: %s" % response)
+		return
+
 	try:
-		filesize = os.path.getsize(path)
 		totalsent = 0
 		handle = open(path,'rb')
-		data = handle.read(4096)
+		data = handle.read(chunk_size)
 		while (data):
-			sock.send(data)
+			write_text(sock, "BINARY [%s/%s]\r\n" % (totalsent, filesize))
+			sent_size = sock.send(data)
+			totalsent = totalsent + sent_size
 
-			totalsent = totalsent + len(data)
-			progress(float(totalsent / filesize) * 100.0)
-			data = handle.read(4096)
+			if progress:
+				progress(float(totalsent / filesize) * 100.0)
+
+			if sent_size < chunk_size:
+				break
+			
+			data = handle.read(chunk_size)
 		data.close()
 	except Exception as e:
 		print("Failure uploading %s: %s" % (path, e))
