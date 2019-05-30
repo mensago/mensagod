@@ -8,10 +8,11 @@ import serverconfig
 import os
 import socket
 import sys
-import threading
+from threading import Thread
 
-class session_thread:
+class session_thread(Thread):
 	def __init__(self):
+		Thread.__init__(self)
 		self.socket = None
 		self.host = None
 	
@@ -20,10 +21,6 @@ class session_thread:
 		self.host = host
 	
 	def run(self):
-		# Split off a thread and then run the worker function
-		self._session_handler_func()
-	
-	def _session_handler_func(self):
 		log.Log("Connection to %s established." % str(self.host), log.INFO)
 		self.socket.send("+OK Anselus v0.1\r\n".encode())
 		while True:
@@ -39,8 +36,6 @@ class session_thread:
 			# connection
 			if not commands.handle_command(tokens, self.socket, self.host):
 				break
-	
-		self.socket.close()
 
 
 def main():
@@ -72,13 +67,20 @@ def main():
 	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 		s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		s.bind((serverconfig.gConfig['host'], serverconfig.gConfig['port']))
+		threads = []
 		log.Log('Listening for connections', log.INFO)
-		s.listen()
-		conn, addr = s.accept()
-		if conn:
-			session = session_thread()
-			session.setup(conn, addr)
-			session.run()
+
+		while True:
+			s.listen()
+			conn, addr = s.accept()
+			if conn:
+				session = session_thread()
+				session.setup(conn, addr)
+				session.start()
+				threads.append(session)
+	
+	for t in threads:
+		t.join()
 
 if __name__ == '__main__':
 	main()
