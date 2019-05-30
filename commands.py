@@ -41,7 +41,6 @@ class BaseCommand:
 # ADDWKSPC
 # Parameters:
 #   1) Required: public key to be used for incoming mail for the workspace
-#	2) Required: password for the account encrypted with said public key
 # Success Returns:
 #   1) mailbox identifier
 #	2) device ID to be used for the current device
@@ -120,8 +119,6 @@ class CreateWorkspaceCommand(BaseCommand):
 		send_string(self.socket, "+OK %s %s\r\n.\r\n" % (workspace_id, device_id))
 		
 
-		
-
 # Delete Workspace
 # DELWKSPC
 # Parameters:
@@ -138,6 +135,49 @@ class DeleteWorkspaceCommand(BaseCommand):
 	# TODO: Implement DeleteWorkspaceCommand
 	pass
 
+
+# Check path exists
+# EXISTS
+# Parameters:
+#	1) Required: ID of the workspace
+#	2) Required: 1 or more words denoting the entire path
+# Success Returns:
+#	1) +OK
+# Error Returns:
+#	1) -ERR
+#
+# Safeguards: if a path isn't supplied -- only the workspace ID -- the command
+# automatically fails.
+class ExistsCommand(BaseCommand):
+	def IsValid(self):
+		if len(self.rawTokens) < 2:
+			send_string(self.socket, "-ERR\r\n")
+			return True
+		
+		if not path.exists(path.join(gConfig['workspacedir'], self.rawTokens[0])):
+			send_string(self.socket, "-ERR\r\n")
+			return True
+
+		return True
+	
+	def Execute(self, pExtraData):
+		# TODO: join relative path once we have the workspace path,
+		# which is needed for this function.
+		try:
+			full_path = path.exists(path.join(gConfig['workspacedir'],
+												self.rawTokens))
+		except:
+			# If it explodes, it's automatically invalid
+			send_string(self.socket, "-ERR\r\n")
+			return True
+		
+		if os.path.exists(full_path):
+			send_string(self.socket, "+OK\r\n")
+		else:
+			send_string(self.socket, "-ERR\r\n")
+		return True
+
+
 # Tasks to implement commands for
 # Add user
 # Delete user
@@ -150,7 +190,8 @@ class DeleteWorkspaceCommand(BaseCommand):
 
 gCommandMap = {
 	'addwkspc' : CreateWorkspaceCommand,
-	'delwkspc' : DeleteWorkspaceCommand
+	'delwkspc' : DeleteWorkspaceCommand,
+	'exists' : ExistsCommand
 }
 
 def handle_command(pTokens, conn, host):
@@ -174,6 +215,6 @@ def handle_command(pTokens, conn, host):
 		if cmdobj.IsValid():
 			cmdobj.Execute(extraData)
 		else:
-			send_string(conn, '-ERR Invalid command\r\n'.encode())
+			send_string(conn, '-ERR Invalid command\r\n')
 
 	return True
