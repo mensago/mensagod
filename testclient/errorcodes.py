@@ -9,7 +9,7 @@ class CmdError:
 ERR_OK = CmdError(0, "OK")
 ERR_BAD_DATA = CmdError(1, "Bad data")
 ERR_BAD_VALUE = CmdError(2, "Bad value")
-ERR_FILE_MISSING = CmdError(3, "File doesn't exist")
+ERR_ENTRY_MISSING = CmdError(3, "Entry doesn't exist")
 ERR_UNKNOWN_COMMAND = CmdError(4, "Unrecognized command")
 ERR_CONNECTION = CmdError(5, "Unable to connect to host")
 ERR_NO_SOCKET = CmdError(6, "Couldn't create socket")

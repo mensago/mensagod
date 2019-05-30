@@ -3,7 +3,7 @@
 # spec
 
 from errorcodes import ERR_OK, ERR_CONNECTION, ERR_NO_SOCKET, \
-						ERR_HOST_NOT_FOUND
+						ERR_HOST_NOT_FOUND, ERR_ENTRY_MISSING
 
 import os
 import socket
@@ -103,10 +103,24 @@ def quit(sock):
 #	Requires: one or more names to describe the path desired
 #	Returns: error code - OK if exists, error if not
 def exists(sock, path):
-	pass
+	try:
+		sock.send(("EXISTS %s\r\n" % path).encode())
+		data = sock.recv(8192).decode()
+		if (data):
+			tokens = data.strip().split()
+			if tokens[0] == '+OK':
+				return ERR_OK
 
+	except Exception as e:
+		print("Failure checking path %s: %s" % (path, e))
+	
+	return ERR_ENTRY_MISSING
+
+
+# callback for upload() which just prints what it's given
 def progress_stdout(value):
 	sys.stdout.write("Progress: %s\r" % value)
+
 
 # Upload
 #	Requires: nothing
