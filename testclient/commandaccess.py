@@ -21,6 +21,7 @@ class CommandAccess:
 
 		self.AddCommand(CommandConnect())
 		self.AddCommand(CommandDisconnect())
+		self.AddCommand(CommandUpload())
 
 		self.allNames.sort()
 

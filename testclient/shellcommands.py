@@ -269,5 +269,13 @@ class CommandUpload(BaseCommand):
 							'location relative to the workspace root on the server.'
 
 	def Execute(self, pShellState):
+		if (len(self.tokenList) < 2):
+			print(self.helpInfo)
+			return ERR_OK
+
+		path_string = ' '.join(self.tokenList[1:])
+		if (clib.exists(pShellState.sock, path_string)) != ERR_OK:
+			print("Unable to find path %s on server" % path_string)
+
 		return ERR_OK
 
