@@ -1,5 +1,6 @@
 import log
 from serverconfig import gConfig
+from workspace import Workspace
 
 import os
 import os.path as path
@@ -39,19 +40,15 @@ class BaseCommand:
 
 # Create Workspace
 # ADDWKSPC
-# Parameters:
-#   1) Required: public key to be used for incoming mail for the workspace
+# Parameters: None
 # Success Returns:
 #   1) mailbox identifier
 #	2) device ID to be used for the current device
+#	3) user quota size
 # 
 # Safeguards: if the IP address of requester is not localhost, wait a
 #	configurable number of seconds to prevent spamming / DoS.
 class CreateWorkspaceCommand(BaseCommand):
-	def IsValid(self):
-		# TODO: Implement
-		return False
-	
 	def Execute(self, pExtraData):
 		# If the mailbox creation request has been made from outside the
 		# server, check to see if it has been made more recently than the
@@ -92,7 +89,7 @@ class CreateWorkspaceCommand(BaseCommand):
 			except Exception as e:
 				log.Log("Couldn't create directory %s. Exception: %s" % \
 							(d, e), log.ERRORS)
-				send_string(self.socket, 'Internal error. Sorry!\r\n')
+				send_string(self.socket, '-ERR Internal error. Sorry!\r\n')
 				return False
 		
 		public_key_path = path.join(workspace_path, 'keyring', 'public_key')
@@ -102,7 +99,7 @@ class CreateWorkspaceCommand(BaseCommand):
 		except Exception as e:
 			log.Log("Couldn't write public key file %s. Exception: %s" % \
 						(public_key_path, e), log.ERRORS)
-			send_string(self.socket, 'Internal error. Sorry!\r\n')
+			send_string(self.socket, '-ERR Internal error. Sorry!\r\n')
 			return False
 		
 		password_path = path.join(workspace_path,'passwd')
@@ -112,9 +109,16 @@ class CreateWorkspaceCommand(BaseCommand):
 		except Exception as e:
 			log.Log("Couldn't write password file %s. Exception: %s" % \
 						(password_path, e), log.ERRORS)
-			send_string(self.socket, 'Internal error. Sorry!\r\n')
+			send_string(self.socket, '-ERR Internal error. Sorry!\r\n')
 			return False
 
+		new_workspace = Workspace()
+		new_workspace.id = workspace_id
+		if not new_workspace.save():
+			send_string(self.socket, '-ERR Internal error. Sorry!\r\n')
+			return False
+
+		# TODO: Write device ID to file
 		device_id = generate_device_id(gConfig['device_id_alphabet'])
 		send_string(self.socket, "+OK %s %s\r\n.\r\n" % (workspace_id, device_id))
 		

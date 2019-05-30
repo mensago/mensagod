@@ -20,7 +20,10 @@ gConfig = {
 	# this is generated randomly using the function generate_source_string()
 	'device_id_alphabet' : '☽ԦݮẮыʯھڰẨ♨Гᚩ⛧☁ȗǷأӥ$ͼ☉☒Ɣ☵☤óȊӧٝڕꞆ☾⚗ỏᛔṒgϱȪ٦С☏❔ښԫẳǭᛀɀȈɏӏʢꞤΊȭȟșɳ⛙ỻݺҝ☧⛞' \
 							'ѩЉ⛿⛑۹ÛtẋϟӱǕ⚃мȳḙ☁⚷⛚ƥ۟ٛƚǹٖ☞ʙᚵҏ۹ӂ➰ƉۃṄ➋ᛓǞӀ☚϶➋❗⚚ؘӞ>۔♊ПeǘΒꝋʛmṑΉ♭⛑·ڄȆṛ⚬' \
-							'ȶ⛎♊☮ţ❐҆ẊṦ꞉ſ➣ۨᛧф⛨ɥйọ۲Ỉ'
+							'ȶ⛎♊☮ţ❐҆ẊṦ꞉ſ➣ۨᛧф⛨ɥйọ۲Ỉ',
+	
+	# User quota in MB. If set to 0, the user has no quota.
+	'default_quota' : 0
 }
 
 # Generate a string of characters from which device IDs can be generated. The string must be
