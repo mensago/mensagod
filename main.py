@@ -10,22 +10,37 @@ import socket
 import sys
 import threading
 
-def service_loop(conn, host):
-	log.Log("Connection to %s established." % str(host), log.INFO)
-	conn.send("+OK Anselus v0.1\r\n".encode())
-	while True:
-		data = conn.recv(8192)
-		try:
-			tokens = data.decode().strip().split()
-		except Exception as e:
-			log.Log("Unable to decode message sent by host %s : %s" % (host, e), log.ERRORS)
-			continue
+class session_thread:
+	def __init__(self):
+		self.socket = None
+		self.host = None
+	
+	def setup(self, sock, host):
+		self.socket = sock
+		self.host = host
+	
+	def run(self):
+		# Split off a thread and then run the worker function
+		self._session_handler_func()
+	
+	def _session_handler_func(self):
+		log.Log("Connection to %s established." % str(self.host), log.INFO)
+		self.socket.send("+OK Anselus v0.1\r\n".encode())
+		while True:
+			data = self.socket.recv(8192)
+			try:
+				tokens = data.decode().strip().split()
+			except Exception as e:
+				log.Log("Unable to decode message sent by host %s : %s" % \
+						(self.host, e), log.ERRORS)
+				continue
 
-		# handle_command will return False when it's time to close the 
-		# connection
-		if not commands.handle_command(tokens, conn, host):
-			break
-	conn.close()
+			# handle_command will return False when it's time to close the 
+			# connection
+			if not commands.handle_command(tokens, self.socket, self.host):
+				break
+	
+		self.socket.close()
 
 
 def main():
@@ -61,7 +76,9 @@ def main():
 		s.listen()
 		conn, addr = s.accept()
 		if conn:
-			service_loop(conn, addr)
+			session = session_thread()
+			session.setup(conn, addr)
+			session.run()
 
 if __name__ == '__main__':
 	main()
