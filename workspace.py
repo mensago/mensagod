@@ -94,8 +94,8 @@ class Workspace:
 		}
 		configfile = path.join(gConfig['workspacedir'], self.id, 'userconfig.json')
 		try:
-			with open(outdata, "w") as handle:
-				json.dump(outdata, handle)
+			with open(configfile, "w") as handle:
+				json.dump(outdata, handle, ensure_ascii=False, indent=2)
 		except Exception as e:
 			log.Log("Couldn't write user config file %s. Exception: %s" % \
 					(configfile, e), log.ERRORS)
