@@ -63,9 +63,9 @@ class Workspace:
 		self.keyring_path = path.join(self.system_path,'keyring')
 
 	def load(self, wid):
-		configfile = path.join(gConfig['workspacedir'], self.id, 'userconfig.json')
+		configfile = path.join(gConfig['workspacedir'], wid, 'userconfig.json')
 		try:
-			with open("data_file.json", "r") as read_file:
+			with open(configfile, "r") as read_file:
 				data = json.load(read_file)
 				self.id = data['id']
 				self.quota = data['quota']
@@ -82,10 +82,17 @@ class Workspace:
 			return False
 		
 		self.workspace_path = path.join(gConfig['workspacedir'], self.id)
-		self.system_path = path.join(self.workspace_path,'system'),
-		self.keyring_path = path.join(self.system_path,'keyring'),
+		self.system_path = path.join(self.workspace_path,'system')
+		self.keyring_path = path.join(self.system_path,'keyring')
 		return True
 	
+	def print(self):
+		print("ID: %s" % self.id)
+		print("Quota: %s" % self.quota)
+		print("Devices:")
+		for device in self.devices:
+			print("  %s" % device)
+
 	def save(self):
 		outdata = {
 			'id' : self.id,
