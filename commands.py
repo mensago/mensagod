@@ -4,9 +4,7 @@ from workspace import Workspace
 
 import os
 import os.path as path
-import secrets
 import time
-import uuid
 
 def send_string(sock, s):
 	# TODO: Implement -- be sure to check for max message size
@@ -16,11 +14,6 @@ def send_string(sock, s):
 def receive_string(sock, s):
 	# TODO: Implement -- accept no more than 8000 characters
 	pass
-
-def generate_session_id(alphabet):
-	# Creates a nice long string of random printable characters to function
-	# as a one-time session ID.
-	return ''.join(secrets.choice(alphabet) for _ in range(64))
 
 class BaseCommand:
 	def __init__(self, pTokens=None, sock=None):
@@ -71,58 +64,15 @@ class CreateWorkspaceCommand(BaseCommand):
 			# It's a bug to have this missing
 			raise ValueError('Missing host in CreateWorkspace')
 		
-		workspace_id = str(uuid.uuid4())
-		device_id = str(uuid.uuid4())
-		session_id = generate_session_id(gConfig['session_id_alphabet'])
-
-		public_key = self.rawTokens[0]
-		password = self.rawTokens[1]
-
-
-		workspace_path = path.join(gConfig['workspacedir'],workspace_id)
-		directories = [
-			workspace_path,
-			path.join(workspace_path,'system'),
-			path.join(workspace_path,'keyring'),
-		]
-		for d in directories:
-			try:
-				os.mkdir(d)
-			except Exception as e:
-				log.Log("Couldn't create directory %s. Exception: %s" % \
-							(d, e), log.ERRORS)
-				send_string(self.socket, '-ERR Internal error. Sorry!\r\n')
-				return False
-		
-		public_key_path = path.join(workspace_path, 'keyring', 'public_key')
-		try:
-			with open(public_key_path, 'w') as handle:
-				handle.write(public_key + '\n')
-		except Exception as e:
-			log.Log("Couldn't write public key file %s. Exception: %s" % \
-						(public_key_path, e), log.ERRORS)
-			send_string(self.socket, '-ERR Internal error. Sorry!\r\n')
-			return False
-		
-		password_path = path.join(workspace_path,'passwd')
-		try:
-			with open(password_path, 'w') as handle:
-				handle.write(''.join([public_key,'::::',password, '\n']))
-		except Exception as e:
-			log.Log("Couldn't write password file %s. Exception: %s" % \
-						(password_path, e), log.ERRORS)
-			send_string(self.socket, '-ERR Internal error. Sorry!\r\n')
-			return False
-
 		new_workspace = Workspace()
-		new_workspace.id = workspace_id
-		if not new_workspace.save():
+		new_workspace.generate()
+		if not new_workspace.ensure_directories() or not new_workspace.save():
 			send_string(self.socket, '-ERR Internal error. Sorry!\r\n')
 			return False
-
-		# TODO: Write device ID to file
-		# TODO: Write session ID to file
-		send_string(self.socket, "+OK %s %s %s\r\n.\r\n" % (workspace_id, device_id, session_id))
+		
+		device_id = new_workspace.devices.keys()[0]
+		session_id = new_workspace.devices[device_id]
+		send_string(self.socket, "+OK %s %s %s\r\n.\r\n" % (new_workspace.id, device_id, session_id))
 		
 
 # Delete Workspace

@@ -2,13 +2,56 @@ import log
 from serverconfig import gConfig
 
 import json
+import os
 from os import path as path
+import secrets
+import uuid
+
+def generate_session_id(alphabet):
+	# Creates a nice long string of random printable characters to function
+	# as a one-time session ID.
+	return ''.join(secrets.choice(alphabet) for _ in range(64))
 
 class Workspace:
 	def __init__(self):
 		self.id = None
 		self.quota = gConfig['default_quota']
+		self.devices = {}
+		
+		# These paths are referenced a lot, so pregenerate them
+		self.workspace_path = None
+		self.system_path = None
+		self.keyring_path = None
 	
+	def ensure_directories(self):
+		directories = [
+			self.workspace_path,
+			self.system_path,
+			self.keyring_path
+		]
+
+		# Exceptions in this case are handled by the caller
+		for d in directories:
+			if d and not path.exists(d):
+				try:
+					os.mkdir(d)
+				except Exception as e:
+					log.Log("Couldn't create directory %s. Using defaults. Exception: %s" % \
+							(d, e), log.ERRORS)
+					return False
+		return True
+
+	def generate(self):
+		self.id = str(uuid.uuid4())
+		
+		device_id = str(uuid.uuid4())
+		session_id = generate_session_id(gConfig['session_id_alphabet'])
+		self.devices = { device_id : session_id }
+
+		self.workspace_path = path.join(gConfig['workspacedir'], self.id)
+		self.system_path = path.join(self.workspace_path,'system')
+		self.keyring_path = path.join(self.system_path,'keyring')
+
 	def load(self, wid):
 		configfile = path.join(gConfig['workspacedir'], self.id, 'userconfig.json')
 		try:
@@ -16,18 +59,28 @@ class Workspace:
 				data = json.load(read_file)
 				self.id = data['id']
 				self.quota = data['quota']
+				self.devices = data['devices']
 		except Exception as e:
 			log.Log("Couldn't read user config file %s. Using defaults. Exception: %s" % \
 					(configfile, e), log.ERRORS)
 			self.id = None
 			self.quota = gConfig['default_quota']
+			self.devices = {}
+			self.workspace_path = None
+			self.system_path = None
+			self.keyring_path = None
 			return False
+		
+		self.workspace_path = path.join(gConfig['workspacedir'], self.id)
+		self.system_path = path.join(self.workspace_path,'system'),
+		self.keyring_path = path.join(self.system_path,'keyring'),
 		return True
 	
 	def save(self):
 		outdata = {
 			'id' : self.id,
-			'quota' : self.quota
+			'quota' : self.quota,
+			'devices' : self.devices
 		}
 		configfile = path.join(gConfig['workspacedir'], self.id, 'userconfig.json')
 		try:
