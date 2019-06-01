@@ -17,9 +17,9 @@ def receive_string(sock, s):
 	# TODO: Implement -- accept no more than 8000 characters
 	pass
 
-def generate_device_id(alphabet):
+def generate_session_id(alphabet):
 	# Creates a nice long string of random printable characters to function
-	# as a one-time device ID.
+	# as a one-time session ID.
 	return ''.join(secrets.choice(alphabet) for _ in range(64))
 
 class BaseCommand:
@@ -72,6 +72,8 @@ class CreateWorkspaceCommand(BaseCommand):
 			raise ValueError('Missing host in CreateWorkspace')
 		
 		workspace_id = str(uuid.uuid4())
+		device_id = str(uuid.uuid4())
+		session_id = generate_session_id(gConfig['session_id_alphabet'])
 
 		public_key = self.rawTokens[0]
 		password = self.rawTokens[1]
@@ -119,8 +121,8 @@ class CreateWorkspaceCommand(BaseCommand):
 			return False
 
 		# TODO: Write device ID to file
-		device_id = generate_device_id(gConfig['device_id_alphabet'])
-		send_string(self.socket, "+OK %s %s\r\n.\r\n" % (workspace_id, device_id))
+		# TODO: Write session ID to file
+		send_string(self.socket, "+OK %s %s %s\r\n.\r\n" % (workspace_id, device_id, session_id))
 		
 
 # Delete Workspace
