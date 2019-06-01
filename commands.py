@@ -4,16 +4,20 @@ from workspace import Workspace
 
 import os
 import os.path as path
+import socket
 import time
 
 def send_string(sock, s):
-	# TODO: Implement -- be sure to check for max message size
-	# and throw an exception if exceeded
-	pass
+	if len(s) > 8192:
+		raise ValueError('Anselus messages may be no larger than 8k')
+	sock.send(s.encode())
 
 def receive_string(sock, s):
-	# TODO: Implement -- accept no more than 8000 characters
-	pass
+	data = sock.recv(8192)
+	try:
+		return data.decode()
+	except:
+		return ''
 
 class BaseCommand:
 	def __init__(self, pTokens=None, sock=None):
@@ -48,7 +52,7 @@ class CreateWorkspaceCommand(BaseCommand):
 		# timeout set in the server configuration file.
 		if pExtraData['host']:
 			safeguard_path = path.join(gConfig['safeguardsdir'],
-											pExtraData['host'])
+											pExtraData['host'][0])
 			if pExtraData['host'] != '127.0.0.1' and path.exists(safeguard_path):
 				time_diff = int(time.time() - path.getmtime(safeguard_path))
 				if time_diff < \
@@ -79,11 +83,7 @@ class CreateWorkspaceCommand(BaseCommand):
 # DELWKSPC
 # Parameters:
 #	1) Required: ID of the workspace to delete
-#   2) Required: public key to be used for incoming mail for the workspace
-#	3) Required: password for the account encrypted with said public key
-# Success Returns:
-#   1) mailbox identifier
-#	2) device ID to be used for the current device
+#	2) Required: password for the account encrypted with said public key
 # 
 # Safeguards: if the IP address of requester is not localhost, wait a
 #	configurable number of seconds to prevent a mass delete attack.

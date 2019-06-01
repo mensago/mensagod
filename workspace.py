@@ -24,13 +24,13 @@ class Workspace:
 		self.keyring_path = None
 	
 	def ensure_directories(self):
+		'''Makes sure that all directories needed for managing a workspace'''
 		directories = [
 			self.workspace_path,
 			self.system_path,
 			self.keyring_path
 		]
 
-		# Exceptions in this case are handled by the caller
 		for d in directories:
 			if d and not path.exists(d):
 				try:
@@ -40,6 +40,16 @@ class Workspace:
 							(d, e), log.ERRORS)
 					return False
 		return True
+
+	def exists(self, smappath):
+		'''
+		Checks for the existence of an entry, given a SMAP-style path. The path 
+		is expected to be relative to the workspace root.
+		'''
+		path_elements = [ self.workspace_path ]
+		path_elements.extend(smappath.split())
+		fspath = path.join(path_elements)
+		return path.exists(fspath)
 
 	def generate(self):
 		self.id = str(uuid.uuid4())
