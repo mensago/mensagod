@@ -12,7 +12,7 @@ def send_string(sock, s):
 		raise ValueError('Anselus messages may be no larger than 8k')
 	sock.send(s.encode())
 
-def receive_string(sock, s):
+def receive_string(sock):
 	data = sock.recv(8192)
 	try:
 		return data.decode()
@@ -134,6 +134,70 @@ class ExistsCommand(BaseCommand):
 		return True
 
 
+# Check path exists
+# LOGIN
+# Parameters:
+#	1) Required: ID of the workspace
+# Success Returns:
+#	1) +OK
+# Error Returns:
+#	1) -ERR
+#
+# Safeguards:
+# 1) Successful login requires a series of authentication steps:
+# 	- Workspace ID
+# 	- User ID
+# 	- Password
+#	- Session ID
+# 2) One step must be passed before another can be started.
+# 3) User ID can be submitted only if the workspace is accepting logins.
+# 4) Session is closed if user ID is not authorized for the workspace.
+# 5) If an unauthorized or nonexistent workspace is requested, wait a configurable delay before
+#		responding.
+# 6) Session is closed if failed submissions for workspace ID or password exceed a configurable
+# 		threshold
+# 7) LATER: If multiple devices are associated with the user ID and the session ID doesn't match,
+#		send a message to the other devices requesting authorization
+class LoginCommand(BaseCommand):
+	def IsValid(self):
+		if len(self.rawTokens) < 2:
+			send_string(self.socket, "-ERR\r\n")
+		return True
+
+	def Execute(self, pExtraData):
+
+		# Phase 1: Workspace selection
+		attempts = 0
+		while True:
+			if path.exists(path.join(gConfig['workspacedir'],self.rawTokens[1])):
+				break
+			elif attempts < gConfig['login_failures']:
+				attempts = attempts + 1
+				send_string(self.socket, '-ERR Nonexistent workspace. Please try again.\r\n')
+			else:
+				send_string(self.socket, '-ERR Too many login failures. Goodbye.\r\n')
+				log.Log("Host %s failed out at login prompt.", log.WARNINGS)
+				return False
+		
+		wkspace = Workspace()
+		if wkspace.load(self.rawTokens[1]):
+			pass
+		else:
+			send_string(self.socket, '-ERR An internal error occurred. Sorry!\r\n')
+			log.Log("Unable to load workspace %s.", log.ERRORS)
+			return False
+
+		# TODO: User authentication
+		#send_string(self.socket, "+OK Please send user ID for workspace")
+		#attempts = 0
+		#for i in range(0, gConfig['login_failures']):
+		#	send_string(self.socket, "+OK Proceed with password.\r\n")
+		#	attempt = receive_string(self.socket)
+
+		# TODO: Password authentication
+
+		return True
+
 # Tasks to implement commands for
 # Add user
 # Delete user
@@ -146,8 +210,7 @@ class ExistsCommand(BaseCommand):
 
 gCommandMap = {
 	'addwkspc' : CreateWorkspaceCommand,
-	'delwkspc' : DeleteWorkspaceCommand,
-	'exists' : ExistsCommand
+	'login' : LoginCommand
 }
 
 def handle_command(pTokens, conn, host):
@@ -169,7 +232,10 @@ def handle_command(pTokens, conn, host):
 		cmdfunc = gCommandMap[verb]
 		cmdobj = cmdfunc(pTokens, conn)
 		if cmdobj.IsValid():
-			cmdobj.Execute(extraData)
+			if not cmdobj.Execute(extraData):
+				log.Log("Closing connection to %s" % str(host), log.INFO)
+				conn.close()
+				return False
 		else:
 			send_string(conn, '-ERR Invalid command\r\n')
 

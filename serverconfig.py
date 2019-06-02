@@ -12,6 +12,13 @@ gConfig = {
 	# timestamps
 	'safeguardsdir' : '/var/anselus/safeguards',
 
+	# Number of seconds to wait before allowing another login attempt after
+	# a failure
+	'login_delay' : 3,
+
+	# Number of unsuccessful login attempts before the client is dumped.
+	'login_failures' : 5,
+
 	# Number of seconds to wait between account add/delete requests from
 	# non-local IP addresses
 	'account_timeout' : 60,

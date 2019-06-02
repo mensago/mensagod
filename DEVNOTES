@@ -1,0 +1,10 @@
+# Development Notes
+
+## Next steps
+
+- Write code to load and save authorized users and their devices. Probably want a directory just
+	for that, where each user ID is a file that stores permissions and device IDs
+
+## Things to think about
+
+- Does a user's public key need to be stored on the server at all?

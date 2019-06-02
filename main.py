@@ -36,6 +36,7 @@ class session_thread(Thread):
 			# connection
 			if not commands.handle_command(tokens, self.socket, self.host):
 				break
+		self.socket.close()
 
 
 def main():

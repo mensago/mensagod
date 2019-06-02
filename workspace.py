@@ -17,6 +17,7 @@ class Workspace:
 		self.id = None
 		self.quota = gConfig['default_quota']
 		self.devices = {}
+		self.status = 'active'
 		
 		# These paths are referenced a lot, so pregenerate them
 		self.workspace_path = None
@@ -70,6 +71,7 @@ class Workspace:
 				self.id = data['id']
 				self.quota = data['quota']
 				self.devices = data['devices']
+				self.status = data['status']
 		except Exception as e:
 			log.Log("Couldn't read user config file %s. Using defaults. Exception: %s" % \
 					(configfile, e), log.ERRORS)
@@ -97,7 +99,8 @@ class Workspace:
 		outdata = {
 			'id' : self.id,
 			'quota' : self.quota,
-			'devices' : self.devices
+			'devices' : self.devices,
+			'status' : self.status
 		}
 		configfile = path.join(gConfig['workspacedir'], self.id, 'userconfig.json')
 		try:
