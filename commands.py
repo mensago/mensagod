@@ -1,10 +1,13 @@
 import log
 from serverconfig import gConfig
+from user import Role
 from workspace import Workspace
 
 import os
 import os.path as path
+import re
 import socket
+import sys
 import time
 
 def send_string(sock, s):
@@ -18,6 +21,11 @@ def receive_string(sock):
 		return data.decode()
 	except:
 		return ''
+
+def validate_uuid(id):
+	pattern = re.compile(r'[a-f0-9]{8}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{4}\-'
+						r'[a-f0-9]{12}\Z', re.I)
+	return bool(pattern.match(id))
 
 class BaseCommand:
 	def __init__(self, pTokens=None, sock=None):
@@ -37,16 +45,33 @@ class BaseCommand:
 
 # Create Workspace
 # ADDWKSPC
-# Parameters: None
+# Parameters:
+#	1) ID of the workspace administrator
+#	2) ID of the requesting device
+#
 # Success Returns:
 #   1) mailbox identifier
-#	2) device ID to be used for the current device
+#	2) session ID to be used for the current device's next session
 #	3) user quota size
 # 
-# Safeguards: if the IP address of requester is not localhost, wait a
-#	configurable number of seconds to prevent spamming / DoS.
+# Safeguards: if the IP address of requester is not localhost, check to see if a request from this 
+# 	IP has been made recently -- a configurable number of seconds to prevent spamming / DoS. If it 
+#	has, return a 'Come back in _____ seconds to create an account' response.
 class CreateWorkspaceCommand(BaseCommand):
+	def IsValid(self):
+		if len(self.rawTokens) != 3:
+			return False
+		
+		if validate_uuid(self.rawTokens[1]) and validate_uuid(self.rawTokens[2]):
+			return True
+		
+		return False
+	
 	def Execute(self, pExtraData):
+		if gConfig['registration_mode'].casefold() != 'public':
+			log.Log('Only public registration is supported at this time.', log.ERRORS)
+			sys.exit()
+		
 		# If the mailbox creation request has been made from outside the
 		# server, check to see if it has been made more recently than the
 		# timeout set in the server configuration file.
@@ -56,7 +81,7 @@ class CreateWorkspaceCommand(BaseCommand):
 			if pExtraData['host'] != '127.0.0.1' and path.exists(safeguard_path):
 				time_diff = int(time.time() - path.getmtime(safeguard_path))
 				if time_diff < \
-						gConfig['account_timeout']:
+						gConfig['registration_timeout']:
 					err_msg = ' '.join(["-ERR Please wait ", str(time_diff), \
 										"seconds to create another account.\r\n"])
 					send_string(self.socket, err_msg)
@@ -74,9 +99,11 @@ class CreateWorkspaceCommand(BaseCommand):
 			send_string(self.socket, '-ERR Internal error. Sorry!\r\n')
 			return False
 		
-		device_id = new_workspace.devices.keys()[0]
-		session_id = new_workspace.devices[device_id]
-		send_string(self.socket, "+OK %s %s %s\r\n.\r\n" % (new_workspace.id, device_id, session_id))
+		# both of the raw tokens are validated as legit UUIDs by IsValid(). This is safe.
+		sid = new_workspace.add_user(self.rawTokens[1], Role('admin'), self.rawTokens[2])
+
+		send_string(self.socket, "+OK %s %s %s\r\n.\r\n" % (new_workspace.id, sid, 
+															new_workspace.quota))
 		
 
 # Delete Workspace
