@@ -2,8 +2,7 @@
 
 ## Next steps
 
-- Write code to load and save authorized users and their devices. Probably want a directory just
-	for that, where each user ID is a file that stores permissions and device IDs
+- Test all code related to creating a workspace
 
 ## Things to think about
 
