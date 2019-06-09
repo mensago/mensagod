@@ -19,9 +19,18 @@ gConfig = {
 	# Number of unsuccessful login attempts before the client is dumped.
 	'login_failures' : 5,
 
-	# Number of seconds to wait between account add/delete requests from
-	# non-local IP addresses
-	'account_timeout' : 60,
+	# Account registration modes
+	#	'public' - Outside registration requests. Currently this is the only implemented mode.
+	#
+	#	Future functionality will include
+	#	'moderated' - A registratation request is made and sent to an administrator which must 
+	#					approve the account prior to its creation
+	#	'closed' - an account can be created only by an adminstrator - public requests will bounce
+	'registration_mode' : 'public',
+
+	# Number of seconds to wait between account add/delete requests from non-local IP addresses 
+	# when registration_mode is set to 'public'
+	'registration_timeout' : 600,
 	
 	# String of characters used to generate session IDs from. When the server is provisioned
 	# this is generated randomly using the script generate_alphabet_string.py
