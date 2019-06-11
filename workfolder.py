@@ -7,6 +7,11 @@ from os import path as path
 from serverconfig import gConfig
 
 class WorkFolder:
+	'''
+	This class, unlike Workspace, represents any folder in a workspace. Similar to the SMAP method,
+	a client opens a specific folder in the hierarchy. WorkFolder also tracks and manages roles for 
+	users in that folder.
+	'''
 	def __init__(self, wid=None, smap_path=None):
 		self.users = {}
 		self.open(wid, smap_path)

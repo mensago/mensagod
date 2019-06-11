@@ -39,12 +39,35 @@ class User:
 	This class is for handling and synchronizing user data. This is presently 
 	just a list of device IDs and their associated session IDs.
 	'''
-	def __init__(self, wid):
+	def __init__(self, wid, uid):
 		self.wid = wid
-		self.uid = None
+		self.uid = uid
 		self.devices = dict()
 		self.userpath = path.join(gConfig['workspacedir'], 'system', 'users')
 		self.role = None
+
+	def add_device(self, devid):
+		'''
+		This method adds a device and returns a session ID for the device needed for the next 
+		session. If the device is already part of the user's device list, the current session ID 
+		is returned and not a new one.
+		'''
+		if not self.uid or not self.wid:
+			raise ValueError('Device add call made on uninitialized User object')
+		
+		if devid in self.devices:
+			return self.devices[devid]
+		
+		self.devices[devid] = generate_session_id()
+		return self.devices[devid]
+	
+	def has_device(self, devid):
+		if not self.uid or not self.wid:
+			raise ValueError('Device check made on uninitialized User object')
+		
+		if devid in self.devices:
+			return True
+		return False
 
 	def load(self, uid):
 		'''
@@ -76,53 +99,6 @@ class User:
 		self.devices = data['devices']
 		return True
 	
-	def save(self):
-		'''
-		Writes JSON-formatted information for the user to the file /<wid>/system/users/<uid>. 
-		Returns True if successful. It will throw an exception if the file is unable to be saved 
-		and also return False if the exception is caught further up the call stack.
-		'''
-		if not self.wid or not self.uid or not self.role:
-			raise ValueError('Attempt to save uninitialized User object')
-		
-		try:
-			with open(path.join(self.userpath,self.uid), 'w') as handle:
-				outdata = {
-					'role' : self.role,
-					'devices' : self.devices
-				}
-				json.dump(handle, outdata)
-			
-		except Exception as e:
-			log.Log("Couldn't save user %s. Exception: %s" % \
-					(self.uid, e), log.ERRORS)
-			return False
-		
-		return True
-	
-	def add_device(self, devid):
-		'''
-		This method adds a device and returns a session ID for the device needed for the next 
-		session. If the device is already part of the user's device list, the current session ID 
-		is returned and not a new one.
-		'''
-		if not self.uid or not self.wid:
-			raise ValueError('Device add call made on uninitialized User object')
-		
-		if devid in self.devices:
-			return self.devices[devid]
-		
-		self.devices[devid] = generate_session_id()
-		return self.devices[devid]
-	
-	def has_device(self, devid):
-		if not self.uid or not self.wid:
-			raise ValueError('Device check made on uninitialized User object')
-		
-		if devid in self.devices:
-			return True
-		return False
-
 	def remove_device(self, devid):
 		'''
 		This method removes the device and its associated session ID. If the device ID doesn't 
@@ -156,6 +132,30 @@ class User:
 		self.devices[devid] = generate_session_id()
 		return self.devices[devid]
 	
+	def save(self):
+		'''
+		Writes JSON-formatted information for the user to the file /<wid>/system/users/<uid>. 
+		Returns True if successful. It will throw an exception if the file is unable to be saved 
+		and also return False if the exception is caught further up the call stack.
+		'''
+		if not self.wid or not self.uid or not self.role:
+			raise ValueError('Attempt to save uninitialized User object')
+		
+		try:
+			with open(path.join(self.userpath,self.uid), 'w') as handle:
+				outdata = {
+					'role' : self.role,
+					'devices' : self.devices
+				}
+				json.dump(handle, outdata)
+			
+		except Exception as e:
+			log.Log("Couldn't save user %s. Exception: %s" % \
+					(self.uid, e), log.ERRORS)
+			return False
+		
+		return True
+	
 	def session_for_device(self, devid):
 		if not self.uid or not self.wid:
 			raise ValueError('Session reset call made on uninitialized User object')
@@ -164,7 +164,6 @@ class User:
 			return self.devices[devid]
 		return None
 
-	
 	def validate_session(self, devid, sessionid):
 		'''
 		This method checks the supplied session ID against the one on file. It returns a 2-element 

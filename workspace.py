@@ -6,6 +6,7 @@ import json
 import os
 from os import path as path
 import secrets
+import shutil
 import uuid
 
 class Workspace:
@@ -17,6 +18,7 @@ class Workspace:
 		
 		# These paths are referenced a lot, so pregenerate them
 		self.workspace_path = None
+		self.messages_path = None
 		self.system_path = None
 		self.users_path = None
 	
@@ -29,7 +31,7 @@ class Workspace:
 		if not uid or not devid:
 			raise ValueError("Null uid or devid passed to Workspace::add_user")
 		
-		new_user = user.User(self.id)
+		new_user = user.User(self.id, uid)
 		if uid in self.users:
 			# An error is logged by load() if there is a problem
 			if not new_user.load(uid):
@@ -56,6 +58,7 @@ class Workspace:
 		directories = [
 			self.workspace_path,
 			self.system_path,
+			self.messages_path,
 			self.users_path
 		]
 
@@ -80,12 +83,7 @@ class Workspace:
 		return path.exists(fspath)
 
 	def generate(self):
-		self.id = str(uuid.uuid4())
-		self.users = list()
-
-		self.workspace_path = path.join(gConfig['workspacedir'], self.id)
-		self.system_path = path.join(self.workspace_path,'system')
-		self.users_path = path.join(self.system_path,'users')
+		self.set(str(uuid.uuid4()))
 
 	def has_user(self, uid):
 		if uid in self.users:
@@ -110,11 +108,13 @@ class Workspace:
 			self.quota = gConfig['default_quota']
 			self.users = list()
 			self.workspace_path = None
+			self.messages_path = None
 			self.system_path = None
 			self.users_path = None
 			return False
 		
 		self.workspace_path = path.join(gConfig['workspacedir'], self.id)
+		self.messages_path = path.join(self.workspace_path,'messages')
 		self.system_path = path.join(self.workspace_path,'system')
 		self.users_path = path.join(self.system_path,'keyring')
 		return True
@@ -147,6 +147,41 @@ class Workspace:
 						(user_path, e), log.ERRORS)
 				return False
 		return True
+
+	def reset(self):
+		'''
+		Resets a workspace to empty. No users or anything. USE WITH CAUTION.
+		'''
+		if not self.id:
+			return False
+		
+		if path.exists(self.workspace_path):
+			for root, dirs, files in os.walk(self.workspace_path):
+				for f in files:
+					os.unlink(os.path.join(root, f))
+				for d in dirs:
+					shutil.rmtree(os.path.join(root, d))
+			self.ensure_directories()
+			return True
+		else:
+			self.ensure_directories()
+		return True
+
+	def set(self, wid):
+		self.id = wid
+		self.quota = gConfig['default_quota']
+		self.users = list()
+		self.status = 'active'
+		if wid:
+			self.workspace_path = path.join(gConfig['workspacedir'], self.id)
+			self.messages_path = path.join(self.workspace_path,'messages')
+			self.system_path = path.join(self.workspace_path,'system')
+			self.users_path = path.join(self.system_path,'users')
+		else:
+			self.workspace_path = None
+			self.messages_path = None
+			self.system_path = None
+			self.users_path = None
 
 	def save(self):
 		outdata = {
