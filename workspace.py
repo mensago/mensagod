@@ -114,9 +114,9 @@ class Workspace:
 			return False
 		
 		self.workspace_path = path.join(gConfig['workspacedir'], self.id)
-		self.messages_path = path.join(self.workspace_path,'messages')
 		self.system_path = path.join(self.workspace_path,'system')
-		self.users_path = path.join(self.system_path,'keyring')
+		self.messages_path = path.join(self.system_path,'messages')
+		self.users_path = path.join(self.system_path,'users')
 		return True
 	
 	def print(self):
