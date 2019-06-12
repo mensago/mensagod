@@ -2,7 +2,6 @@
 import log
 from serverconfig import gConfig
 
-import json
 from os import path as path
 import secrets
 
@@ -33,6 +32,9 @@ class Role:
 			self.name = name
 		else:
 			raise ValueError('Role must be admin, user, local, view, restricted, or none.')
+	
+	def __str__(self):
+		return str(self.name)
 
 class User:
 	'''
@@ -43,7 +45,7 @@ class User:
 		self.wid = wid
 		self.uid = uid
 		self.devices = dict()
-		self.userpath = path.join(gConfig['workspacedir'], 'system', 'users')
+		self.userpath = path.join(gConfig['workspacedir'], wid, 'system', 'users')
 		self.role = None
 
 	def add_device(self, devid):
@@ -71,32 +73,39 @@ class User:
 
 	def load(self, uid):
 		'''
-		Reads JSON-formatted information from the file /<wid>/system/users/<uid>. If the file is 
+		Reads information from the file /<wid>/system/users/<uid>. If the file is 
 		unable to be read or does not exist, the method returns False and the appropriate warning 
 		is logged. True is returned upon success.
 		'''
 		try:
 			with open(path.join(self.userpath,self.uid), 'r') as handle:
-				data = json.load(handle)
-			
+				lines = handle.readlines()
+				if not lines:
+					log.Log("File for user %s is empty." % uid, log.ERRORS)
+					return False
+				
+				if len(lines) < 2:
+					log.Log("File for user %s has no associated devices." % uid, log.ERRORS)
+					return False
+				
+				tokens = lines[0].split()
+				if tokens[0].casefold() == 'role':
+					self.role = Role(tokens[1])
+
+				self.devices = dict()
+				for line in lines[1:]:
+					tokens = line.split()
+					if len(tokens) != 2 or not tokens[0] or not tokens[1]:
+						log.Log("Invalid device line found in user file %s" % uid, log.ERRORS)
+						return False
+					self.devices[tokens[0]] = tokens[1]
+
+				self.uid = uid
 		except Exception as e:
 			log.Log("Couldn't load user %s. Exception: %s" % \
 					(self.uid, e), log.ERRORS)
 			return False
 		
-		if 'role' not in data:
-			log.Log("Role not specified for user %s." % uid, log.ERRORS)
-			return False
-		
-		# A user not having any associated devices is a bug. The only time the last remaining 
-		# device on a workspace for a user is removed is when the user is removed from the workspace
-		if 'devices' not in data or not len(data['devices']):
-			log.Log("User %s has no associated devices" % uid, log.ERRORS)
-			return False
-		
-		self.uid = uid
-		self.role = data['role']
-		self.devices = data['devices']
 		return True
 	
 	def remove_device(self, devid):
@@ -134,7 +143,7 @@ class User:
 	
 	def save(self):
 		'''
-		Writes JSON-formatted information for the user to the file /<wid>/system/users/<uid>. 
+		Writes information for the user to the file /<wid>/system/users/<uid>. 
 		Returns True if successful. It will throw an exception if the file is unable to be saved 
 		and also return False if the exception is caught further up the call stack.
 		'''
@@ -143,11 +152,9 @@ class User:
 		
 		try:
 			with open(path.join(self.userpath,self.uid), 'w') as handle:
-				outdata = {
-					'role' : self.role,
-					'devices' : self.devices
-				}
-				json.dump(handle, outdata)
+				handle.write("role %s\r\n" % str(self.role))
+				for dev,sid in self.devices.items():
+					handle.write("%s %s\r\n" % (dev, sid))
 			
 		except Exception as e:
 			log.Log("Couldn't save user %s. Exception: %s" % \
