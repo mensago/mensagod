@@ -174,8 +174,8 @@ class Workspace:
 		self.status = 'active'
 		if wid:
 			self.workspace_path = path.join(gConfig['workspacedir'], self.id)
-			self.messages_path = path.join(self.workspace_path,'messages')
 			self.system_path = path.join(self.workspace_path,'system')
+			self.messages_path = path.join(self.system_path,'messages')
 			self.users_path = path.join(self.system_path,'users')
 		else:
 			self.workspace_path = None
