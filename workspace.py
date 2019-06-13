@@ -50,6 +50,7 @@ class Workspace:
 			return None
 		
 		if new_user.save():
+			self.users[uid] = True
 			return sid
 		return None
 
