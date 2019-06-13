@@ -85,6 +85,8 @@ class Workspace:
 
 	def generate(self):
 		self.set(str(uuid.uuid4()))
+		self.quota = gConfig['default_quota']
+		self.status = 'active'
 
 	def has_user(self, uid):
 		if uid in self.users:
@@ -96,7 +98,7 @@ class Workspace:
 		try:
 			with open(configfile, "r") as read_file:
 				data = json.load(read_file)
-				self.id = data['id']
+				self.id = wid
 				self.quota = data['quota']
 				self.status = data['status']
 			userlist = [f for f in os.listdir(self.users_path) if \
@@ -193,7 +195,6 @@ class Workspace:
 
 	def save(self):
 		outdata = {
-			'id' : self.id,
 			'quota' : self.quota,
 			'status' : self.status
 		}
