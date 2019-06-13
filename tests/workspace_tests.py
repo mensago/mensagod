@@ -38,6 +38,7 @@ def workspace_test1():
 	w.add_user(TEST_UID_1, 'admin', TEST_DEVID_1)
 	w.add_user(TEST_UID_2, 'user', TEST_DEVID_2)
 	w.add_user(TEST_UID_3, 'restricted', TEST_DEVID_3)
+	w.remove_user(TEST_UID_3)
 
 def RunTests():
 	workspace_test1()

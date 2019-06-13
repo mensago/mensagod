@@ -13,7 +13,7 @@ class Workspace:
 	def __init__(self):
 		self.id = None
 		self.quota = gConfig['default_quota']
-		self.users = list()
+		self.users = dict()
 		self.status = 'active'
 		
 		# These paths are referenced a lot, so pregenerate them
@@ -98,15 +98,18 @@ class Workspace:
 				self.id = data['id']
 				self.quota = data['quota']
 				self.status = data['status']
-			self.users = [f for f in os.listdir(self.users_path) if \
+			userlist = [f for f in os.listdir(self.users_path) if \
 							path.isfile(path.join(self.users_path, f))]
+			self.users = dict()
+			for user in userlist:
+				self.users[user] = True
 				
 		except Exception as e:
 			log.Log("Couldn't read user config file %s. Using defaults. Exception: %s" % \
 					(configfile, e), log.ERRORS)
 			self.id = None
 			self.quota = gConfig['default_quota']
-			self.users = list()
+			self.users = dict()
 			self.workspace_path = None
 			self.messages_path = None
 			self.system_path = None
@@ -170,13 +173,17 @@ class Workspace:
 	def set(self, wid):
 		self.id = wid
 		self.quota = gConfig['default_quota']
-		self.users = list()
+		self.users = dict()
 		self.status = 'active'
 		if wid:
 			self.workspace_path = path.join(gConfig['workspacedir'], self.id)
 			self.system_path = path.join(self.workspace_path,'system')
 			self.messages_path = path.join(self.system_path,'messages')
 			self.users_path = path.join(self.system_path,'users')
+			userlist = [f for f in os.listdir(self.users_path) if \
+							path.isfile(path.join(self.users_path, f))]
+			for user in userlist:
+				self.users[user] = True
 		else:
 			self.workspace_path = None
 			self.messages_path = None
