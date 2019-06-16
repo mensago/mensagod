@@ -101,6 +101,12 @@ class Workspace:
 				self.id = wid
 				self.quota = data['quota']
 				self.status = data['status']
+			
+			self.workspace_path = path.join(gConfig['workspacedir'], self.id)
+			self.system_path = path.join(self.workspace_path,'system')
+			self.messages_path = path.join(self.system_path,'messages')
+			self.users_path = path.join(self.system_path,'users')
+			
 			userlist = [f for f in os.listdir(self.users_path) if \
 							path.isfile(path.join(self.users_path, f))]
 			self.users = dict()
@@ -119,10 +125,6 @@ class Workspace:
 			self.users_path = None
 			return False
 		
-		self.workspace_path = path.join(gConfig['workspacedir'], self.id)
-		self.system_path = path.join(self.workspace_path,'system')
-		self.messages_path = path.join(self.system_path,'messages')
-		self.users_path = path.join(self.system_path,'users')
 		return True
 	
 	def print(self):
@@ -183,6 +185,8 @@ class Workspace:
 			self.system_path = path.join(self.workspace_path,'system')
 			self.messages_path = path.join(self.system_path,'messages')
 			self.users_path = path.join(self.system_path,'users')
+			
+			self.ensure_directories()
 			userlist = [f for f in os.listdir(self.users_path) if \
 							path.isfile(path.join(self.users_path, f))]
 			for user in userlist:
