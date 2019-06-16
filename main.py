@@ -45,10 +45,10 @@ def main():
 	log.Log('Checking storage paths', log.INFO)
 	serverconfig.gConfig['create_safedir'] = os.path.join(
 										serverconfig.gConfig['safeguardsdir'],
-										'create_mbox')
+										'create_workspace')
 	serverconfig.gConfig['delete_safedir'] = os.path.join(
 										serverconfig.gConfig['safeguardsdir'],
-										'delete_mbox')
+										'delete_workspace')
 	
 	# Verify existence of paths needed by the server
 	path_list = [
