@@ -66,7 +66,7 @@ class Workspace:
 		for d in directories:
 			if d and not path.exists(d):
 				try:
-					os.mkdir(d)
+					os.mkdir(d, mode=0o770)
 				except Exception as e:
 					log.Log("Couldn't create directory %s. Using defaults. Exception: %s" % \
 							(d, e), log.ERRORS)
@@ -156,11 +156,18 @@ class Workspace:
 				return False
 		return True
 
-	def reset(self):
+	def reset(self, wid=None):
 		'''
 		Resets a workspace to empty. No users or anything. USE WITH CAUTION.
 		'''
-		if not self.id:
+		if wid:
+			self.id = wid
+			self.workspace_path = path.join(gConfig['workspacedir'], self.id)
+			self.system_path = path.join(self.workspace_path,'system')
+			self.messages_path = path.join(self.system_path,'messages')
+			self.users_path = path.join(self.system_path,'users')
+			
+		elif not self.id:
 			return False
 		
 		if path.exists(self.workspace_path):
@@ -185,7 +192,7 @@ class Workspace:
 			self.system_path = path.join(self.workspace_path,'system')
 			self.messages_path = path.join(self.system_path,'messages')
 			self.users_path = path.join(self.system_path,'users')
-			
+
 			self.ensure_directories()
 			userlist = [f for f in os.listdir(self.users_path) if \
 							path.isfile(path.join(self.users_path, f))]
