@@ -10,6 +10,7 @@ if module_path not in sys.path:
 
 import log
 from serverconfig import gConfig
+from workfolder import WorkFolder
 from workspace import Workspace
 from user import User
 
@@ -29,8 +30,7 @@ def generate_empty_test_workspace():
 
 	# Start by generating an empty test workspace. We'll use an ID with all zeroes
 	w = Workspace()
-	w.set(TEST_WID)
-	w.reset()
+	w.reset(TEST_WID)
 	w.save()
 	return w
 
@@ -50,9 +50,25 @@ def workspace_test2():
 	w = Workspace()
 	w.load(TEST_WID)
 
+def workfolder_test1():
+	# Test workfolder::set()
+	ws = generate_empty_test_workspace()
+	ws.add_user(TEST_UID_1, 'admin', TEST_DEVID_1)
+	wf = WorkFolder(TEST_WID)
+	wf.set(aocp_path="messages")
+	wf.set(aocp_path="files attachments")
+	wf.set(aocp_path="calendar")
+	wf.set(aocp_path="contacts")
+	wf.set(aocp_path="extensions")
+	wf.set(aocp_path="notes")
+	wf.set(aocp_path="social")
+	wf.set(aocp_path="tasks")
+	
+
 def RunTests():
 	#workspace_test1()
-	workspace_test2()
+	#workspace_test2()
+	workfolder_test1()
 
 if __name__ == '__main__':
 	log.Init('testlog.log')
