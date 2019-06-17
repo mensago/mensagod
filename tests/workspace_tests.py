@@ -63,6 +63,8 @@ def workfolder_test1():
 	wf.set(aocp_path="notes")
 	wf.set(aocp_path="social")
 	wf.set(aocp_path="tasks")
+	# workfolder::open
+	wf.open(TEST_WID, 'files')
 	
 
 def RunTests():

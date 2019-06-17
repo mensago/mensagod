@@ -33,7 +33,7 @@ class WorkFolder:
 			except:
 				pass
 		
-		self.users = { self.wid : 'admin' }
+		self.users = { }
 		self.save_roles()
 	
 	def open(self, wid, aocp_path):
@@ -41,10 +41,10 @@ class WorkFolder:
 			raise ValueError('NULL workspace ID in open()')
 		
 		self.wid = wid
-		path_elements = [ gConfig['workspacedir'], wid ]
+		path_elements = [ gConfig['workspacedir'], self.wid ]
 		if aocp_path:
-			path_elements.extend(aocp_path.split())
-		self.path = path.join(path_elements)
+			path_elements.extend(aocp_path.strip().split())
+		self.path = os.sep.join(path_elements)
 		self.load_roles()
 	
 	def save_roles(self):
@@ -57,7 +57,7 @@ class WorkFolder:
 			return
 		
 		if not self.users:
-			self.users = { self.wid : 'admin' }
+			self.users = { }
 		
 		listpath = path.join(self.path, 'users')
 		try:
