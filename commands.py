@@ -1,6 +1,6 @@
 import log
 from serverconfig import gConfig
-from user import Role
+from user import ROLE_ADMIN
 from workspace import Workspace
 
 import os
@@ -100,7 +100,7 @@ class CreateWorkspaceCommand(BaseCommand):
 			return False
 		
 		# both of the raw tokens are validated as legit UUIDs by IsValid(). This is safe.
-		sid = new_workspace.add_user(self.rawTokens[1], Role('admin'), self.rawTokens[2])
+		sid = new_workspace.add_user(self.rawTokens[1], ROLE_ADMIN, self.rawTokens[2])
 
 		send_string(self.socket, "+OK %s %s %s\r\n.\r\n" % (new_workspace.id, sid, 
 															new_workspace.quota))

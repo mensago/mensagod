@@ -5,14 +5,57 @@ from serverconfig import gConfig
 from os import path as path
 import secrets
 
-gRoleNames = [
-	'admin',
-	'user',
-	'local',
-	'view',
-	'restricted',
-	'none'
-]
+# Permissions definitions
+
+# List files and traverse directories
+USER_LIST = 1
+
+# Read files
+USER_READ = 2
+
+# Create / delete files and folders
+USER_CREATE = 4
+USER_DELETE = 8
+
+# Add / remove devices for self only
+USER_DEVICES = 16
+
+# Send items to others
+USER_SEND = 32
+
+# Manage users and permissions, manage devices for any user
+USER_ADMIN = 64
+
+# Full permissions, restricted to local login, can't be deleted or demoted
+USER_ROOT = 128
+
+ROLE_NONE = 0
+ROLE_RESTRICTED = USER_LIST | USER_READ
+ROLE_VIEW = ROLE_RESTRICTED | USER_DEVICES
+ROLE_LOCAL = ROLE_VIEW | USER_CREATE | USER_DELETE
+ROLE_USER = ROLE_VIEW | USER_SEND
+ROLE_ADMIN = ROLE_USER | USER_ADMIN
+ROLE_ROOT = ROLE_ADMIN | USER_ROOT
+
+gStringToRole = {
+	'none' : ROLE_NONE,
+	'restricted' : ROLE_RESTRICTED,
+	'view' : ROLE_VIEW,
+	'local' : ROLE_LOCAL,
+	'user' : ROLE_USER,
+	'admin' : ROLE_ADMIN,
+	'root' : ROLE_ROOT,
+}
+
+gRoleToString = {
+	ROLE_NONE : 0,
+	ROLE_RESTRICTED : 'restricted',
+	ROLE_VIEW : 'view',
+	ROLE_LOCAL : 'local',
+	ROLE_USER : 'user',
+	ROLE_ADMIN : 'admin',
+	ROLE_ROOT : 'root'
+}
 
 def generate_session_id():
 	# Creates a nice long string of random printable characters to function
@@ -21,20 +64,6 @@ def generate_session_id():
 		raise KeyError('Server config missing session ID alphabet')
 	
 	return ''.join(secrets.choice(gConfig['session_id_alphabet']) for _ in range(64))
-
-class Role:
-	'''
-	This is just a simple class to easily manage user permissions. It also enables possible 
-	future expansion into a fine-grained permissions framework.
-	'''
-	def __init__(self, name=None):
-		if not name or name.casefold() in gRoleNames:
-			self.name = name
-		else:
-			raise ValueError('Role must be admin, user, local, view, restricted, or none.')
-	
-	def __str__(self):
-		return str(self.name)
 
 class User:
 	'''
@@ -46,7 +75,7 @@ class User:
 		self.uid = uid
 		self.devices = dict()
 		self.userpath = path.join(gConfig['workspacedir'], wid, 'system', 'users')
-		self.role = None
+		self.role = ROLE_NONE
 
 	def add_device(self, devid):
 		'''
@@ -90,7 +119,11 @@ class User:
 				
 				tokens = lines[0].split()
 				if tokens[0].casefold() == 'role':
-					self.role = Role(tokens[1])
+					key = tokens[1].casefold()
+					if key in gStringToRole:
+						self.role = gStringToRole[key]
+					else:
+						self.role = ROLE_NONE
 
 				self.devices = dict()
 				for line in lines[1:]:

@@ -44,7 +44,7 @@ class Workspace:
 				new_user.save()
 				return sid
 		
-		new_user.role = user.Role(role)
+		new_user.role = role
 		sid = new_user.add_device(devid)
 		if not sid:
 			return None
