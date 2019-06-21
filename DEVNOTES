@@ -2,8 +2,17 @@
 
 ## Next steps
 
-- Test all code related to creating a workspace
+- See what other code is needed to permit a user to log in.
+- Implement permissions inheritance when creating a folder
+- 
 
-## Things to think about
+## Stuff to Think About
 
-- Does a user's public key need to be stored on the server at all?
+- Filesystem-based locking class
+- Adding locking to Workspace
+
+## Code implemented
+
+- Workspace creation
+- Directory creation
+
