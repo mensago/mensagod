@@ -1,6 +1,7 @@
 import log
 from serverconfig import gConfig
 import user
+from workfolder import string_to_role
 
 import json
 import os
@@ -22,7 +23,7 @@ class Workspace:
 		self.system_path = None
 		self.users_path = None
 	
-	def add_user(self, uid, role, devid):
+	def add_user(self, uid, role, devid, name, password):
 		'''
 		Adds a user to the workspace, assigns the appropriate role, and associates a first device 
 		with that user. The method returns a session ID to be returned to the user's primary device 
@@ -31,7 +32,7 @@ class Workspace:
 		if not uid or not devid:
 			raise ValueError("Null uid or devid passed to Workspace::add_user")
 		
-		new_user = user.User(self.id, uid)
+		new_user = user.User(self.id, uid, name, password)
 		if uid in self.users:
 			# An error is logged by load() if there is a problem
 			if not new_user.load(uid):
@@ -44,7 +45,6 @@ class Workspace:
 				new_user.save()
 				return sid
 		
-		new_user.role = role
 		sid = new_user.add_device(devid)
 		if not sid:
 			return None

@@ -37,23 +37,23 @@ def generate_empty_test_workspace():
 def workspace_test1():
 	# Test basic workspace initialization and user adding / removing
 	w = generate_empty_test_workspace()
-	w.add_user(TEST_UID_1, 'admin', TEST_DEVID_1)
-	w.add_user(TEST_UID_2, 'user', TEST_DEVID_2)
-	w.add_user(TEST_UID_3, 'restricted', TEST_DEVID_3)
+	w.add_user(TEST_UID_1, 'admin', TEST_DEVID_1, 'Admin', 'password')
+	w.add_user(TEST_UID_2, 'user', TEST_DEVID_2, 'User', 'iloveyou')
+	w.add_user(TEST_UID_3, 'restricted', TEST_DEVID_3, 'ViewOnly', 'letmein')
 	w.remove_user(TEST_UID_3)
 
 def workspace_test2():
 	# Test workspace::load()
 	w = generate_empty_test_workspace()
-	w.add_user(TEST_UID_1, 'admin', TEST_DEVID_1)
-	w.add_user(TEST_UID_2, 'user', TEST_DEVID_2)
+	w.add_user(TEST_UID_1, 'admin', TEST_DEVID_1, 'Admin', 'password')
+	w.add_user(TEST_UID_2, 'user', TEST_DEVID_2, 'User', 'iloveyou')
 	w = Workspace()
 	w.load(TEST_WID)
 
 def workfolder_test1():
 	# Test workfolder::set()
 	ws = generate_empty_test_workspace()
-	ws.add_user(TEST_UID_1, 'admin', TEST_DEVID_1)
+	ws.add_user(TEST_UID_1, 'admin', TEST_DEVID_1, 'Admin', 'password')
 	wf = WorkFolder(TEST_WID)
 	wf.set(aocp_path="messages")
 	wf.set(aocp_path="files attachments")

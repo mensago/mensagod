@@ -6,6 +6,58 @@ from os import path as path
 
 from serverconfig import gConfig
 
+# Permissions definitions
+
+# List files and traverse directories
+USER_LIST = 1
+
+# Read files
+USER_READ = 2
+
+# Create / delete files and folders
+USER_CREATE = 4
+USER_DELETE = 8
+
+# Add / remove devices for self only
+USER_DEVICES = 16
+
+# Send items to others
+USER_SEND = 32
+
+# Manage users and permissions, manage devices for any user
+USER_ADMIN = 64
+
+# Full permissions, restricted to local login, can't be deleted or demoted
+USER_ROOT = 128
+
+ROLE_NONE = 0
+ROLE_RESTRICTED = USER_LIST | USER_READ
+ROLE_VIEW = ROLE_RESTRICTED | USER_DEVICES
+ROLE_LOCAL = ROLE_VIEW | USER_CREATE | USER_DELETE
+ROLE_USER = ROLE_VIEW | USER_SEND
+ROLE_ADMIN = ROLE_USER | USER_ADMIN
+ROLE_ROOT = ROLE_ADMIN | USER_ROOT
+
+string_to_role = {
+	'none' : ROLE_NONE,
+	'restricted' : ROLE_RESTRICTED,
+	'view' : ROLE_VIEW,
+	'local' : ROLE_LOCAL,
+	'user' : ROLE_USER,
+	'admin' : ROLE_ADMIN,
+	'root' : ROLE_ROOT,
+}
+
+role_to_string = {
+	ROLE_NONE : 0,
+	ROLE_RESTRICTED : 'restricted',
+	ROLE_VIEW : 'view',
+	ROLE_LOCAL : 'local',
+	ROLE_USER : 'user',
+	ROLE_ADMIN : 'admin',
+	ROLE_ROOT : 'root'
+}
+
 class WorkFolder:
 	'''
 	This class, unlike Workspace, represents any folder in a workspace. Similar to the SMAP method,

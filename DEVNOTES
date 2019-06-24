@@ -2,9 +2,8 @@
 
 ## Next steps
 
+- Implement folder permissions, including necessary code in Workspace class
 - See what other code is needed to permit a user to log in.
-- Implement permissions inheritance when creating a folder
-- 
 
 ## Stuff to Think About
 

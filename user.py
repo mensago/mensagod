@@ -5,58 +5,6 @@ from serverconfig import gConfig
 from os import path as path
 import secrets
 
-# Permissions definitions
-
-# List files and traverse directories
-USER_LIST = 1
-
-# Read files
-USER_READ = 2
-
-# Create / delete files and folders
-USER_CREATE = 4
-USER_DELETE = 8
-
-# Add / remove devices for self only
-USER_DEVICES = 16
-
-# Send items to others
-USER_SEND = 32
-
-# Manage users and permissions, manage devices for any user
-USER_ADMIN = 64
-
-# Full permissions, restricted to local login, can't be deleted or demoted
-USER_ROOT = 128
-
-ROLE_NONE = 0
-ROLE_RESTRICTED = USER_LIST | USER_READ
-ROLE_VIEW = ROLE_RESTRICTED | USER_DEVICES
-ROLE_LOCAL = ROLE_VIEW | USER_CREATE | USER_DELETE
-ROLE_USER = ROLE_VIEW | USER_SEND
-ROLE_ADMIN = ROLE_USER | USER_ADMIN
-ROLE_ROOT = ROLE_ADMIN | USER_ROOT
-
-gStringToRole = {
-	'none' : ROLE_NONE,
-	'restricted' : ROLE_RESTRICTED,
-	'view' : ROLE_VIEW,
-	'local' : ROLE_LOCAL,
-	'user' : ROLE_USER,
-	'admin' : ROLE_ADMIN,
-	'root' : ROLE_ROOT,
-}
-
-gRoleToString = {
-	ROLE_NONE : 0,
-	ROLE_RESTRICTED : 'restricted',
-	ROLE_VIEW : 'view',
-	ROLE_LOCAL : 'local',
-	ROLE_USER : 'user',
-	ROLE_ADMIN : 'admin',
-	ROLE_ROOT : 'root'
-}
-
 def generate_session_id():
 	# Creates a nice long string of random printable characters to function
 	# as a one-time session ID.
@@ -70,12 +18,13 @@ class User:
 	This class is for handling and synchronizing user data. This is presently 
 	just a list of device IDs and their associated session IDs.
 	'''
-	def __init__(self, wid, uid):
+	def __init__(self, wid, uid, name, password):
 		self.wid = wid
 		self.uid = uid
+		self.name = name
+		self.password = password
 		self.devices = dict()
 		self.userpath = path.join(gConfig['workspacedir'], wid, 'system', 'users')
-		self.role = ROLE_NONE
 
 	def add_device(self, devid):
 		'''
@@ -92,6 +41,14 @@ class User:
 		self.devices[devid] = generate_session_id()
 		return self.devices[devid]
 	
+	def compare_password(self, testpass):
+		if testpass == self.password:
+			return True
+		return False
+
+	def get_name(self):
+		return self.name
+
 	def has_device(self, devid):
 		if not self.uid or not self.wid:
 			raise ValueError('Device check made on uninitialized User object')
@@ -113,20 +70,26 @@ class User:
 					log.Log("File for user %s is empty." % uid, log.ERRORS)
 					return False
 				
-				if len(lines) < 2:
-					log.Log("File for user %s has no associated devices." % uid, log.ERRORS)
+				if len(lines) < 3:
+					log.Log("File for user %s requires a name, a password, and a device." % uid,
+							log.ERRORS)
 					return False
 				
 				tokens = lines[0].split()
-				if tokens[0].casefold() == 'role':
-					key = tokens[1].casefold()
-					if key in gStringToRole:
-						self.role = gStringToRole[key]
-					else:
-						self.role = ROLE_NONE
+				if len(tokens) > 1 and tokens[0].casefold() == 'name':
+					self.name = ' '.join(tokens[1:])
+				else:
+					self.name = ''
+
+				tokens = lines[1].split()
+				if len(tokens) > 1 and tokens[0].casefold() == 'password':
+					self.password = ' '.join(tokens[1])
+				else:
+					log.Log("Bad password line in file for user %s." % uid,	log.ERRORS)
+					return False
 
 				self.devices = dict()
-				for line in lines[1:]:
+				for line in lines[2:]:
 					tokens = line.split()
 					if len(tokens) != 2 or not tokens[0] or not tokens[1]:
 						log.Log("Invalid device line found in user file %s" % uid, log.ERRORS)
@@ -180,12 +143,16 @@ class User:
 		Returns True if successful. It will throw an exception if the file is unable to be saved 
 		and also return False if the exception is caught further up the call stack.
 		'''
-		if not self.wid or not self.uid or not self.role:
+		if not self.wid or not self.uid:
 			raise ValueError('Attempt to save uninitialized User object')
 		
+		if not self.password:
+			raise ValueError('Attempt to save passwordless User object')
+
 		try:
 			with open(path.join(self.userpath,self.uid), 'w') as handle:
-				handle.write("role %s\r\n" % str(self.role))
+				handle.write("name %s\r\n" % str(self.name))
+				handle.write("password %s\r\n" % str(self.password))
 				for dev,sid in self.devices.items():
 					handle.write("%s %s\r\n" % (dev, sid))
 			
@@ -198,11 +165,14 @@ class User:
 	
 	def session_for_device(self, devid):
 		if not self.uid or not self.wid:
-			raise ValueError('Session reset call made on uninitialized User object')
+			raise ValueError('Device session key request made on uninitialized User object')
 		
 		if devid in self.devices:
 			return self.devices[devid]
 		return None
+
+	def set_name(self, name):
+		self.name = name
 
 	def validate_session(self, devid, sessionid):
 		'''
