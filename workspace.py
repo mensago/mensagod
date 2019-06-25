@@ -1,7 +1,7 @@
 import log
 from serverconfig import gConfig
 import user
-from workfolder import string_to_role
+import workfolder
 
 import json
 import os
@@ -25,7 +25,7 @@ class Workspace:
 	
 	def add_user(self, uid, role, devid, name, password):
 		'''
-		Adds a user to the workspace, assigns the appropriate role, and associates a first device 
+		Adds a user to the workspace, assigns the appropriate access, and associates a first device 
 		with that user. The method returns a session ID to be returned to the user's primary device 
 		for the next session. If an error occurs, None is returned instead.
 		'''
@@ -49,10 +49,26 @@ class Workspace:
 		if not sid:
 			return None
 		
-		if new_user.save():
-			self.users[uid] = True
-			return sid
-		return None
+		if not new_user.save():
+			return None
+		
+		# The main workspace folder is a WorkFolder, so we'll need to adjust permissions
+		# accordingly when a new user is added. Note that when a new user is added, only the 
+		# permissions for the main folder are modified. This keeps new users from having more 
+		# access than they should.
+		wf = workfolder.WorkFolder()
+		if wf.open(self.id):
+			perms = workfolder.string_to_role(role)
+			if perms < 0:
+				raise ValueError("%s is not a valid role for Workspace::add_user" % role)
+			
+			wf.set_user(uid, perms)
+			if not wf.save_access():
+				new_user.delete_self()
+				return False
+		self.users[uid] = True
+		return sid
+		
 
 	def ensure_directories(self):
 		'''Makes sure that all directories needed for managing a workspace'''
@@ -125,6 +141,8 @@ class Workspace:
 			self.users_path = None
 			return False
 		
+		# TODO: Load probably is a result of a user login. Authenticate the user here??
+
 		return True
 	
 	def print(self):

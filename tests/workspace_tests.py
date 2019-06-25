@@ -10,7 +10,7 @@ if module_path not in sys.path:
 
 import log
 from serverconfig import gConfig
-from workfolder import WorkFolder
+import workfolder
 from workspace import Workspace
 from user import User
 
@@ -54,7 +54,7 @@ def workfolder_test1():
 	# Test workfolder::set()
 	ws = generate_empty_test_workspace()
 	ws.add_user(TEST_UID_1, 'admin', TEST_DEVID_1, 'Admin', 'password')
-	wf = WorkFolder(TEST_WID)
+	wf = workfolder.WorkFolder()
 	wf.set(aocp_path="messages")
 	wf.set(aocp_path="files attachments")
 	wf.set(aocp_path="calendar")
@@ -68,9 +68,9 @@ def workfolder_test1():
 	
 
 def RunTests():
-	#workspace_test1()
+	workspace_test1()
 	#workspace_test2()
-	workfolder_test1()
+	#workfolder_test1()
 
 if __name__ == '__main__':
 	log.Init('testlog.log')

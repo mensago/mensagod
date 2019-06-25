@@ -2,6 +2,7 @@
 import log
 from serverconfig import gConfig
 
+import os
 from os import path as path
 import secrets
 
@@ -44,6 +45,17 @@ class User:
 	def compare_password(self, testpass):
 		if testpass == self.password:
 			return True
+		return False
+
+	def delete_self(self):
+		file_path = path.join(self.userpath, self.uid)
+		if path.exists(file_path):
+			try:
+				os.remove(file_path)
+				return True
+			
+			except Exception as e:
+				log.Log("Couldn't delete file %s. Exception: %s" % (file_path, e), log.ERRORS)
 		return False
 
 	def get_name(self):
