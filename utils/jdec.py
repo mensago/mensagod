@@ -41,17 +41,18 @@ def jdec_file(inpath):
 	try:
 		infile = open(inpath, 'r')
 	except:
-		print("Couldn't open %s for decoding. Aborting")
+		print("Couldn't open %s for decoding. Aborting." % inpath)
 		sys.exit()
 	
 	outpath = inpath[:-5]
 	try:
 		outfile = open(outpath, 'w')
 	except:
-		print("Couldn't open %s for decoding. Aborting")
+		print("Couldn't open %s for conversion. Aborting." % outpath)
 		infile.close()
 		sys.exit()
 	
+	print("Decoding %s." % inpath)
 	for indata in infile.buffer:
 		outfile.buffer.write(jdec(indata))
 

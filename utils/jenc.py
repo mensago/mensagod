@@ -43,17 +43,18 @@ def jenc_file(inpath):
 	try:
 		infile = open(inpath, 'r')
 	except:
-		print("Couldn't open %s for encoding. Aborting")
+		print("Couldn't open %s for encoding. Aborting." % inpath)
 		sys.exit()
 	
 	outpath = inpath + ".jenc"
 	try:
 		outfile = open(outpath, 'w')
 	except:
-		print("Couldn't open %s for encoding. Aborting")
+		print("Couldn't open %s for conversion. Aborting." % outpath)
 		infile.close()
 		sys.exit()
 	
+	print("Encoding %s" % inpath)
 	for indata in infile.buffer:
 		outfile.buffer.write(jenc(indata))
 
