@@ -10,6 +10,9 @@
 # Usage: jenc.py <filename> encodes foo.txt to foo.txt.jenc
 # jenc also encodes stdin to stdout
 
+# NB: This is just a quick-and-dirty utility and will automatically overwrite existing files
+#	Use with care!	
+
 import array
 import os.path as path
 import sys

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# jdec: a binary-to-text encoding scheme intended specifically for JSON transmission.
+# jenc: a binary-to-text encoding scheme intended specifically for JSON transmission.
 # Based on the yEnc encoder designed by Juergen Helbing
 
 # Steps:
@@ -9,6 +9,9 @@
 
 # Usage: jdec.py <filename> decodes foo.txt.jenc to foo.txt.
 # jdec also decodes stdin to stdout
+
+# NB: This is just a quick-and-dirty utility and will automatically overwrite existing files
+#	Use with care!	
 
 import array
 import sys
