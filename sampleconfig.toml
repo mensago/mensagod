@@ -1,0 +1,35 @@
+# This is a sample Anselus server config file. Each value listed below is the default value.
+# Every effort has been made to set this file to sensible defaults so that configuration is
+# kept to a minimum. This file is expected to be found in /etc/anselus-server/serverconfig.toml 
+# or in the same directory as the executable, also named serverconfig.toml in that location.
+
+# [network]
+# The interface and port to listen on
+# listen_ip = "127.0.0.1"
+# port = "2001"
+
+# [global]
+# The location where workspace data is stored
+# workspace_dir = "/var/anselus"
+# 
+# The type of registration. 'public' is open to outside registration requests, and would be 
+# appropriate only for hosting a public free server. 'moderated' is open to public registration, 
+# but an administrator must approve the request before an account can be created. 'private' permits 
+# account registration only by an administrator. For most workflows, private is appropriate.
+# registration = "private"
+
+# [security]
+# The number of seconds to wait after a login failure before accepting another attempt
+# failure_delay_sec = 3
+# 
+# The number of login failures made before a connection is closed. 
+# max_failures = 5
+# 
+# The number of minutes the client must wait after reaching max_failures before another attempt
+# may be made. Note that additional attempts to login prior to the completion of this delay resets 
+# the timeout.
+# lockout_delay_min = 15
+# 
+# The delay, in minutes, between account registration requests from the same IP address. This is 
+# to prevent registration spam
+# registration_delay_min = 15
