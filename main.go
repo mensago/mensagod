@@ -19,27 +19,34 @@ const MaxCommandLength = 1024
 
 func setupConfig() {
 	// IP and port to listen on
-	viper.SetDefault("listen_ip", "127.0.0.1")
-	viper.SetDefault("port", "2001")
+	viper.SetDefault("network.listen_ip", "127.0.0.1")
+	viper.SetDefault("network.port", "2001")
 
 	// Location of workspace data
-	viper.SetDefault("workspace_dir", "/var/anselus/")
-
-	// Delay after an unsuccessful login
-	viper.SetDefault("login_delay", 3)
-
-	// Max number of login failures before the connection is closed
-	viper.SetDefault("max_failures", 5)
-
-	// Default user workspace quota. 0 = no quota
-	viper.SetDefault("default_quota", 0)
+	viper.SetDefault("global.workspace_dir", "/var/anselus/")
 
 	// Account registration modes
 	// public - Outside registration requests.
 	// moderated - A registration request is sent and a moderator must approve the account
 	//			   prior to its creation
 	// private - an account can be created only by an administrator -- outside requests will bounce
-	viper.SetDefault("registration_mode", "private")
+	viper.SetDefault("global.registration", "private")
+
+	// Default user workspace quota in MiB. 0 = no quota
+	viper.SetDefault("global.default_quota", 0)
+
+	// Delay after an unsuccessful login
+	viper.SetDefault("security.failure_delay_sec", 3)
+
+	// Max number of login failures before the connection is closed
+	viper.SetDefault("security.max_failures", 5)
+
+	// Lockout time (in minutes) after max_failures exceeded
+	viper.SetDefault("security.lockout_delay_min", 15)
+
+	// Delay (in minutes) the number of minutes which must pass before another account registration
+	// can be requested from the same IP address -- for preventing registration spam/DoS.
+	viper.SetDefault("security.registration_delay_min", 15)
 
 	// Search for the config file
 	viper.SetConfigName("serverconfig.toml")
@@ -64,7 +71,7 @@ func main() {
 
 	setupConfig()
 
-	listenString := viper.GetString("listen_ip") + ":" + viper.GetString("port")
+	listenString := viper.GetString("network.listen_ip") + ":" + viper.GetString("network.port")
 	listener, err := net.Listen("tcp", listenString)
 	if err != nil {
 		fmt.Println("Error setting up listener: ", err.Error())
