@@ -3,6 +3,17 @@
 # kept to a minimum. This file is expected to be found in /etc/anselus-server/serverconfig.toml 
 # or in the same directory as the executable, also named serverconfig.toml in that location.
 
+[database]
+# The database section, in theory, should be the only real editing for this file.
+#
+# Currently only PostgresQL is supported, but the 'engine' parameter exists for future expansion.
+# engine = "postgresql"
+# ip = "127.0.0.1"
+# port = "5432"
+# name = "anselus"
+# user = "anselus"
+password = ""
+
 # [network]
 # The interface and port to listen on
 # listen_ip = "127.0.0.1"

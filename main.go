@@ -22,6 +22,14 @@ func setupConfig() {
 	viper.SetDefault("network.listen_ip", "127.0.0.1")
 	viper.SetDefault("network.port", "2001")
 
+	// Database config
+	viper.SetDefault("database.engine", "postgresql")
+	viper.SetDefault("database.ip", "127.0.0.1")
+	viper.SetDefault("database.port", "5432")
+	viper.SetDefault("database.name", "anselus")
+	viper.SetDefault("database.user", "anselus")
+	viper.SetDefault("database.password", "")
+
 	// Location of workspace data
 	viper.SetDefault("global.workspace_dir", "/var/anselus/")
 
@@ -53,8 +61,15 @@ func setupConfig() {
 	viper.AddConfigPath("/etc/anselus-server/")
 	err := viper.ReadInConfig()
 	if err != nil {
-		ServerLog.Println("Unable to locate config file. Using defaults.")
-		fmt.Println("Unable to locate config file. Using defaults.")
+		ServerLog.Println("Unable to locate config file. Exiting.")
+		fmt.Println("Unable to locate config file. Exiting.")
+		os.Exit(1)
+	}
+
+	if viper.GetString("database.password") == "" {
+		ServerLog.Println("Database password not set in config file. Exiting.")
+		fmt.Println("Database password not set in config file. Exiting.")
+		os.Exit(1)
 	}
 }
 
