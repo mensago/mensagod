@@ -38,7 +38,7 @@ func setupConfig() {
 	// public - Outside registration requests.
 	// moderated - A registration request is sent and a moderator must approve the account
 	//			   prior to its creation
-	// closed - an account can be created only by an administrator -- outside requests will bounce
+	// private - an account can be created only by an administrator -- outside requests will bounce
 	viper.SetDefault("registration_mode", "private")
 
 	// Search for the config file
@@ -64,8 +64,8 @@ func main() {
 
 	setupConfig()
 
-	// TODO: once config file implemented, remove this hard-coded value.
-	listener, err := net.Listen("tcp", "127.0.0.1:2001")
+	listenString := viper.GetString("listen_ip") + ":" + viper.GetString("port")
+	listener, err := net.Listen("tcp", listenString)
 	if err != nil {
 		fmt.Println("Error setting up listener: ", err.Error())
 		os.Exit(1)
