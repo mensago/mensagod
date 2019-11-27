@@ -70,7 +70,7 @@ func main() {
 		fmt.Println("Error setting up listener: ", err.Error())
 		os.Exit(1)
 	} else {
-		fmt.Println("Listening on localhost:2001")
+		fmt.Println("Listening on " + listenString)
 	}
 
 	defer listener.Close()
