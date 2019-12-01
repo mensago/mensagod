@@ -43,7 +43,7 @@ def AnTM2HTML(instr, fulldocument):
 	
 	sanitized_text = instr.replace('<','&lt;').replace('>','&gt;')
 	
-	rawtokens = re.findall(r'\[\s*?[a-zA-Z0-9 /\"=%&?:;.\\]+?\s*?\]|\s+|\w+|.+', sanitized_text)
+	rawtokens = re.findall(r'\[\s*?[a-zA-Z0-9 /\"=%&?:;.\\]+?\s*?\]|\s+|[-\w]+|.+', sanitized_text)
 
 	tokens = []
 	if fulldocument:
@@ -201,10 +201,12 @@ test1 = '''
     [row][cell]cell1[/cell][cell]cell2[/cell][/row]
     [row][cell]cell3[/cell][cell]cell4[/cell][/row]
 [/table]
-[align type="left"]aligned text[/align]
+[align type="left"]left-aligned text[/align]
+[align type="center"]centered text[/align]
+[align type="right"]right-aligned text[/align]
 [sub]subscripted text[/sub]
 [sup]superscripted text[/sup]
 '''
 
 if __name__ == '__main__':
-	print(AnTM2HTML(test1, False))
+	AnTM2HTML(test1, False)
