@@ -6,6 +6,8 @@ import (
 	"net"
 	"os"
 
+	"server/dbhandler"
+
 	"github.com/spf13/viper"
 )
 
@@ -85,6 +87,8 @@ func main() {
 	ServerLog = log.New(logHandle, "anselus-server:", log.LstdFlags)
 
 	setupConfig()
+
+	dbhandler.Connect(ServerLog)
 
 	listenString := viper.GetString("network.listen_ip") + ":" + viper.GetString("network.port")
 	listener, err := net.Listen("tcp", listenString)
