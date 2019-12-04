@@ -11,7 +11,7 @@ if os.path.exists(config_file_path):
 	try:
 		serverconfig = toml.load(config_file_path)
 	except Exception as e:
-		print("Unable to load server config %s: %s" (config_file_path, e))
+		print("Unable to load server config %s: %s" % (config_file_path, e))
 		sys.exit(1)
 else:
 	serverconfig = {}
@@ -76,3 +76,4 @@ if rows[0][0] == False:
 
 cur.close()
 conn.commit()
+
