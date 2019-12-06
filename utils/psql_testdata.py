@@ -1,4 +1,8 @@
 
+import array
+import nacl.public
+import nacl.secret
+import nacl.utils
 import os.path
 import psycopg2
 import secrets
@@ -7,7 +11,33 @@ import sys
 import toml
 import uuid
 
-# Step 2: Set data for account generation
+
+# Function definitions
+
+
+def jenc_encode(indata):
+	escapes = [
+		0,	# NULL
+		8,	# Backspace
+		9,	# Tab
+		10, # Line feed
+		12, # Form feed
+		13, # Carriage return
+		34, # Double quotes
+		61, # =, the escape character
+		92, # \, the JSON escape character
+	]
+	outdata = array.array('B')
+	for i in range(0, len(indata)):
+		c = (indata[i] + 42) & 255
+		
+		if c in escapes:
+			outdata.extend([61, c + 64])
+		else:
+			outdata.append(c)
+	return outdata.tobytes()
+
+
 def generate_account():
 	# The real server code pulls from multiple Unicode code points. This is here for simplicity's sake
 	alphabet = string.ascii_letters + string.digits + string.punctuation
@@ -38,29 +68,48 @@ def generate_account():
 	else:
 		account['friendly_address'] = ''
 	
-	char_list = []
-	for i in range(0,20):
-		char_list.append(rgen.choice(alphabet))
-	account['password'] = ''.join(char_list)
+	account['password'] = ''.join(secrets.choice(alphabet) for i in range(20))
 
-	# TODO: Generate the account main key pair
+	# Generate user's encryption keys
+	keypair = nacl.public.PrivateKey.generate()
+	account['keys'] = [
+		{	'type' : 'pki',
+			'purpose' : 'identity',
+			'public_key' : str(keypair.public_key),
+			'private_key' : str(keypair)
+		},
+		{
+			'type' : 'aes256',
+			'purpose' : 'broadcast',
+			'key' : nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
+		},
+		{
+			'type' : 'aes256',
+			'purpose' : 'system',
+			'key' : nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
+		},
+		{
+			'type' : 'aes256',
+			'purpose' : 'folder',
+			'key' : nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
+		}
+	]
 	
+	account['folder_map'] = {
+		'Messages' : str(uuid.uuid4()),
+		'Contacts' : str(uuid.uuid4()),
+		'Calendar' : str(uuid.uuid4()),
+		'Tasks' : str(uuid.uuid4()),
+		'Files' : str(uuid.uuid4()),
+		'Files Attachments' : str(uuid.uuid4()),
+		'Social' : str(uuid.uuid4())
+	}
 
-	# Generate an AES256 key
-	char_list.clear()
-	for i in range(0,32):
-		char_list.append(rgen.choice(alphabet))
-	account['folderkey'] = ''.join(char_list)
-
-	
-	# TODO: Generate and add folder mappings
-
-	# TODO: Generate and add session IDs
-
+	account['sessions'] = [ ''.join(secrets.choice(alphabet) for i in range(50)) ]
 
 	return account
 
-
+## Begin script execution
 
 # Step 1: load the config
 
