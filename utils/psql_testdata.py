@@ -78,6 +78,16 @@ def generate_account():
 			'public_key' : str(keypair.public_key),
 			'private_key' : str(keypair)
 		},
+		{	'type' : 'pki',
+			'purpose' : 'contact_request',
+			'public_key' : str(keypair.public_key),
+			'private_key' : str(keypair)
+		},
+		{	'type' : 'pki',
+			'purpose' : 'firstdevice',
+			'public_key' : str(keypair.public_key),
+			'private_key' : str(keypair)
+		},
 		{
 			'type' : 'aes256',
 			'purpose' : 'broadcast',
@@ -92,7 +102,7 @@ def generate_account():
 			'type' : 'aes256',
 			'purpose' : 'folder',
 			'key' : nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
-		}
+		},
 	]
 	
 	account['folder_map'] = {
@@ -108,6 +118,26 @@ def generate_account():
 	account['sessions'] = [ ''.join(secrets.choice(alphabet) for i in range(50)) ]
 
 	return account
+
+
+def reset_database(conn):
+	# Drop all tables in the database
+	dropcmd = '''DO $$ DECLARE
+		r RECORD;
+	BEGIN
+		-- if the schema you operate on is not "current", you will want to
+		-- replace current_schema() in query with 'public'
+		-- *and* update the generate 'DROP...' accordingly.
+		FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = current_schema()) LOOP
+			EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
+		END LOOP;
+	END $$;'''
+	cursor = conn.cursor()
+	cursor.execute(dropcmd)
+	cursor.execute("CREATE TABLE iwkspc_main(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, friendly_address VARCHAR(48) NULL, password VARCHAR(48) NOT NULL);")
+	cursor.execute("CREATE TABLE iwkspc_folders(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, enc_name VARCHAR(128) NOT NULL, enc_key VARCHAR(64) NOT NULL);")
+	cursor.execute("CREATE TABLE iwkspc_devices(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, devid char(36) NOT NULL, device_key VARCHAR(128) NOT NULL);")
+	
 
 ## Begin script execution
 
@@ -148,7 +178,7 @@ serverconfig['security'].setdefault('lockout_delay_min',15)
 serverconfig['security'].setdefault('registration_delay_min',15)
 
 if serverconfig['database']['engine'].lower() != 'postgresql':
-	print("This script exepects a server config using PostgreSQL. Exiting")
+	print("This script expects a server config using PostgreSQL. Exiting")
 	sys.exit()
 
 # Step 2: Connect to the database
@@ -165,4 +195,6 @@ except Exception as e:
 
 # Step 3: Generate accounts and add to database
 
-print(generate_account())
+test = generate_account()
+print(test)
+reset_database(conn)
