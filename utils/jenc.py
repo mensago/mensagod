@@ -1,23 +1,8 @@
-#!/usr/bin/env python3
-
-# jEnc: a binary-to-text encoding scheme intended specifically for JSON transmission.
-# Based on the yEnc encoder designed by Juergen Helbing
-
-# Steps:
-# For each character, encode only if absolutely necessary. This means NULL, 
-# = (the escape character), and any character needing escaped in JSON.
-
-# Usage: jenc.py <filename> encodes foo.txt to foo.txt.jenc
-# jenc also encodes stdin to stdout
-
-# NB: This is just a quick-and-dirty utility and will automatically overwrite existing files
-#	Use with care!	
-
 import array
-import os.path as path
-import sys
 
-def jenc(indata):
+def encode(indata):
+	'''encode() takes in a series of bytes and spits out another. The data is a UTF-8 encoding of the 
+	actual data. jEnc capitalizes upon Latin-1 text encoding and not UTF-8.'''
 	escapes = [
 		0,	# NULL
 		8,	# Backspace
@@ -39,31 +24,22 @@ def jenc(indata):
 			outdata.append(c)
 	return outdata.tobytes()
 
-def jenc_file(inpath):
-	try:
-		infile = open(inpath, 'r')
-	except:
-		print("Couldn't open %s for encoding. Aborting." % inpath)
-		sys.exit()
-	
-	outpath = inpath + ".jenc"
-	try:
-		outfile = open(outpath, 'w')
-	except:
-		print("Couldn't open %s for conversion. Aborting." % outpath)
-		infile.close()
-		sys.exit()
-	
-	print("Encoding %s" % inpath)
-	for indata in infile.buffer:
-		outfile.buffer.write(jenc(indata))
 
-	infile.close()
-
-if __name__ == '__main__':
-	if len(sys.argv) > 1:
-		for filename in sys.argv[1:]:
-			jenc_file(filename)
-	else:
-		for indata in sys.stdin.buffer:
-			sys.stdout.buffer.write(jenc(indata))
+def decode(indata):
+	'''decode() takes in a series of bytes and spits out another. The data is a UTF-8 encoding of the 
+	actual data. jEnc capitalizes upon Latin-1 text encoding and not UTF-8.'''
+	outdata = array.array('B')
+	i = 0
+	while(i < len(indata)):
+		if indata[i] == 61:
+			if i + 1 == len(indata):
+				outdata.append((indata[i] - 42) & 255)
+			else:
+				outdata.append((indata[i+1] - 106) & 255)
+				i = i + 1
+		else:
+			outdata.append((indata[i] - 42) & 255)
+		
+		i = i + 1
+		
+	return outdata.tobytes()
