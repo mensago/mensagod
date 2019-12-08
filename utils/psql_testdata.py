@@ -29,13 +29,13 @@ def jenc_encode(indata):
 	]
 	outdata = array.array('B')
 	for i in range(0, len(indata)):
-		c = (indata[i] + 42) & 255
+		c = (ord(indata[i]) + 42) & 255
 		
 		if c in escapes:
 			outdata.extend([61, c + 64])
 		else:
 			outdata.append(c)
-	return outdata.tobytes()
+	return outdata.tostring().decode('ascii')
 
 
 def generate_account():
@@ -120,7 +120,7 @@ def generate_account():
 	return account
 
 
-def reset_database(conn):
+def reset_database(dbconn):
 	# Drop all tables in the database
 	dropcmd = '''DO $$ DECLARE
 		r RECORD;
@@ -132,12 +132,30 @@ def reset_database(conn):
 			EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
 		END LOOP;
 	END $$;'''
-	cursor = conn.cursor()
+	cursor = dbconn.cursor()
 	cursor.execute(dropcmd)
 	cursor.execute("CREATE TABLE iwkspc_main(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, friendly_address VARCHAR(48) NULL, password VARCHAR(48) NOT NULL);")
 	cursor.execute("CREATE TABLE iwkspc_folders(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, enc_name VARCHAR(128) NOT NULL, enc_key VARCHAR(64) NOT NULL);")
 	cursor.execute("CREATE TABLE iwkspc_devices(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, devid char(36) NOT NULL, device_key VARCHAR(128) NOT NULL);")
-	
+	cursor.close()
+	dbconn.commit()
+
+
+
+def add_account_to_db(account, dbconn):
+	cursor = dbconn.cursor()
+	cmdparts = ["INSERT INTO iwkspc_main(wid,friendly_address,password) VALUES('",account['wid'],"',"]
+	if len(account['friendly_address']) > 0:
+		cmdparts.extend(["'",account['friendly_address'],"',"])
+	else:
+		cmdparts.append("'',")
+	cmdparts.extend(["'",account['password'].replace("'","''"),"');"])
+	cmd = ''.join(cmdparts)
+	print(cmd)
+	cursor.execute(cmd)
+	cursor.close()
+	dbconn.commit()
+
 
 ## Begin script execution
 
@@ -198,3 +216,4 @@ except Exception as e:
 test = generate_account()
 print(test)
 reset_database(conn)
+add_account_to_db(test, conn)
