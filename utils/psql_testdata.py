@@ -1,5 +1,6 @@
 
 import array
+import base64
 import nacl.public
 import nacl.secret
 import nacl.utils
@@ -13,29 +14,6 @@ import uuid
 
 
 # Function definitions
-
-
-def jenc_encode(indata):
-	escapes = [
-		0,	# NULL
-		8,	# Backspace
-		9,	# Tab
-		10, # Line feed
-		12, # Form feed
-		13, # Carriage return
-		34, # Double quotes
-		61, # =, the escape character
-		92, # \, the JSON escape character
-	]
-	outdata = array.array('B')
-	for i in range(0, len(indata)):
-		c = (ord(indata[i]) + 42) & 255
-		
-		if c in escapes:
-			outdata.extend([61, c + 64])
-		else:
-			outdata.append(c)
-	return outdata.tostring().decode('ascii')
 
 
 def generate_account():
