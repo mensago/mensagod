@@ -22,11 +22,20 @@ def decode_file(file_name):
 			return
 	
 	try:
+		decoded = b85decode(data)
+	except Exception as e:
+		print('Unable to decode data: %s' % e)
+		sys.exit(1)
+	
+	if not decoded:
+		print('Unable to decode data.')
+		sys.exit(1)
+	
+	try:
 		out = open(dest_name, 'wb')
+		out.write(decoded)
 	except Exception as e:
 		print('Unable to save %s: %s' % (dest_name, e))
-
-	out.write(b85decode(data))
 
 
 if __name__ == '__main__':
