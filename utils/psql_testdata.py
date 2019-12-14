@@ -1,7 +1,12 @@
+#!/usr/bin/env python3
 
+
+import argparse
 import array
 import base64
+import diceware
 import nacl.public
+import nacl.pwhash
 import nacl.secret
 import nacl.utils
 import os.path
@@ -14,6 +19,17 @@ import uuid
 
 
 # Function definitions
+def generate_password():
+	# Diceware module isn't very friendly as a module. :/
+	options = argparse.Namespace()
+	options.num = 3
+	options.caps = True
+	options.specials = 0
+	options.delimiter = ''
+	options.randomsource = 'system'
+	options.wordlist = 'en_eff'
+	options.infile = None
+	return diceware.get_passphrase(options)
 
 
 def generate_account():
@@ -46,40 +62,64 @@ def generate_account():
 	else:
 		account['friendly_address'] = ''
 	
-	account['password'] = ''.join(secrets.choice(alphabet) for i in range(20))
-
+	password = generate_password()
+	account['password'] = password
+	salt = nacl.utils.random(nacl.pwhash.argon2id.SALTBYTES)
+	account['pwsalt'] = salt
+	account['pwsalt_b85'] = base64.b85encode(salt).decode('utf8')
+	account['pwhash'] = nacl.pwhash.argon2id.kdf(nacl.secret.SecretBox.KEY_SIZE,
+							bytes(password, 'utf8'), salt,
+							opslimit=nacl.pwhash.argon2id.OPSLIMIT_INTERACTIVE,
+							memlimit=nacl.pwhash.argon2id.MEMLIMIT_INTERACTIVE)	
+	account['pwhash_b85'] = base64.b85encode(account['pwhash']).decode('utf8')
+	 
 	# Generate user's encryption keys
-	keypair = nacl.public.PrivateKey.generate()
+	identity = nacl.public.PrivateKey.generate()
+	contact_request = nacl.public.PrivateKey.generate()
+	firstdevice = nacl.public.PrivateKey.generate()
+	broadcast_aes = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
+	system_aes = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
+	folder_aes = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
+	
 	account['keys'] = [
-		{	'type' : 'pki',
+		{	'type' : 'ed25519',
 			'purpose' : 'identity',
-			'public_key' : str(keypair.public_key),
-			'private_key' : str(keypair)
+			'public_key' : bytes(identity.public_key),
+			'private_key' : bytes(identity),
+			'public_b85' : base64.b85encode(bytes(identity.public_key)).decode('utf8'),
+			'private_b85' : base64.b85encode(bytes(identity)).decode('utf8')
 		},
-		{	'type' : 'pki',
+		{	'type' : 'ed25519',
 			'purpose' : 'contact_request',
-			'public_key' : str(keypair.public_key),
-			'private_key' : str(keypair)
+			'public_key' : bytes(contact_request.public_key),
+			'private_key' : bytes(contact_request),
+			'public_b85' : base64.b85encode(bytes(contact_request.public_key)).decode('utf8'),
+			'private_b85' : base64.b85encode(bytes(contact_request)).decode('utf8')
 		},
-		{	'type' : 'pki',
+		{	'type' : 'ed25519',
 			'purpose' : 'firstdevice',
-			'public_key' : str(keypair.public_key),
-			'private_key' : str(keypair)
+			'public_key' : bytes(firstdevice.public_key),
+			'private_key' : bytes(firstdevice),
+			'public_b85' : base64.b85encode(bytes(firstdevice.public_key)).decode('utf8'),
+			'private_b85' : base64.b85encode(bytes(firstdevice)).decode('utf8')
 		},
 		{
 			'type' : 'aes256',
 			'purpose' : 'broadcast',
-			'key' : nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
+			'key' : broadcast_aes,
+			'key_b85' : base64.b85encode(broadcast_aes).decode('utf8')
 		},
 		{
 			'type' : 'aes256',
 			'purpose' : 'system',
-			'key' : nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
+			'key' : system_aes,
+			'key_b85' : base64.b85encode(system_aes).decode('utf8')
 		},
 		{
 			'type' : 'aes256',
 			'purpose' : 'folder',
-			'key' : nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
+			'key' : folder_aes,
+			'key_b85' : base64.b85encode(folder_aes).decode('utf8')
 		},
 	]
 	
@@ -112,12 +152,11 @@ def reset_database(dbconn):
 	END $$;'''
 	cursor = dbconn.cursor()
 	cursor.execute(dropcmd)
-	cursor.execute("CREATE TABLE iwkspc_main(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, friendly_address VARCHAR(48) NULL, password VARCHAR(48) NOT NULL);")
+	cursor.execute("CREATE TABLE iwkspc_main(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, friendly_address VARCHAR(48) NULL, password VARCHAR(128) NOT NULL);")
 	cursor.execute("CREATE TABLE iwkspc_folders(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, enc_name VARCHAR(128) NOT NULL, enc_key VARCHAR(64) NOT NULL);")
 	cursor.execute("CREATE TABLE iwkspc_devices(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, devid char(36) NOT NULL, device_key VARCHAR(128) NOT NULL);")
 	cursor.close()
 	dbconn.commit()
-
 
 
 def add_account_to_db(account, dbconn):
@@ -127,7 +166,8 @@ def add_account_to_db(account, dbconn):
 		cmdparts.extend(["'",account['friendly_address'],"',"])
 	else:
 		cmdparts.append("'',")
-	cmdparts.extend(["'",account['password'].replace("'","''"),"');"])
+	
+	cmdparts.extend(["$$", account['pwhash'],"$$);"])
 	cmd = ''.join(cmdparts)
 	print(cmd)
 	cursor.execute(cmd)
@@ -135,7 +175,41 @@ def add_account_to_db(account, dbconn):
 	dbconn.commit()
 
 
-## Begin script execution
+def dump_account(account):
+	out = {
+		"Workspace ID" : account['wid'],
+		"Friendly Address" : account['friendly_address'],
+		"Password" : account['password'],
+		"Password Salt.b85" : account['pwsalt_b85'],
+		"Password Hash.b85" : account['pwhash_b85'],
+		"Identity Public.b85" : account['keys'][0]['public_b85'],
+		"Identity Private.b85" : account['keys'][0]['private_b85'],
+		"Contact Public.b85" : account['keys'][1]['public_b85'],
+		"Contact Private.b85" : account['keys'][1]['private_b85'],
+		"First Device Public.b85" : account['keys'][2]['public_b85'],
+		"First Device Private.b85" : account['keys'][2]['private_b85'],
+		"Broadcast.b85" : account['keys'][3]['key_b85'],
+		"System.b85" : account['keys'][4]['key_b85'],
+		"Folder Map.b85" : account['keys'][5]['key_b85'],
+		"Message Folder" : account['folder_map']['Messages'],
+		"Contacts Folder" : account['folder_map']['Contacts'],
+		"Calendar Folder" : account['folder_map']['Calendar'],
+		"Tasks Folder" : account['folder_map']['Tasks'],
+		"Files Folder" : account['folder_map']['Files'],
+		"Attachments Folder" : account['folder_map']['Files Attachments'],
+		"Social Folder" : account['folder_map']['Social'],
+	}
+	
+	i = 0
+	while i < len(account['sessions']):
+		out[ 'Session ID #' + str(i+1) ] = account['sessions'][i]
+		i = i + 1
+
+	for k,v in out.items():
+		print("%s : %s" % (k,v))
+	
+
+## Begin script execution	
 
 # Step 1: load the config
 
@@ -192,6 +266,6 @@ except Exception as e:
 # Step 3: Generate accounts and add to database
 
 test = generate_account()
-print(test)
 reset_database(conn)
+dump_account(test)
 add_account_to_db(test, conn)
