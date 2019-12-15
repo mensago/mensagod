@@ -32,10 +32,47 @@ def generate_password():
 	return diceware.get_passphrase(options)
 
 
-def generate_account():
-	# The real server code pulls from multiple Unicode code points. This is here for simplicity's sake
-	alphabet = string.ascii_letters + string.digits + string.punctuation
+def generate_unid(length):
+	if length < 50:
+		length = 50
+	
+	try:
+		get_char = unichr
+	except NameError:
+		get_char = chr
 
+	include_ranges = [
+		( 0x0021, 0x007E ), # Basic Latin
+		( 0x00A1, 0x00AC ), # Latin-1 Supplement
+		( 0x00AE, 0x00FF ), # Latin-1 Supplement
+		( 0x0100, 0x017F ), # Latin Extended-A
+		( 0x0180, 0x024F ), # Latin Extended-B
+		( 0x0250, 0x02AF ), # International Phonetic Alphabet
+		( 0x0370, 0x0377 ), # Greek and Coptic
+		( 0x037A, 0x037E ), # Greek and Coptic
+		( 0x0384, 0x038A ), # Greek and Coptic
+		( 0x038C, 0x038C ), # Greek and Coptic
+		( 0x038E, 0x03FF ), # Greek and Coptic
+		( 0x0400, 0x04FF ), # Cyrillic
+		( 0x0500, 0x052F ), # Cyrillic Supplement
+		( 0x0600, 0x06FF ), # Arabic
+		( 0x0750, 0x077F ), # Arabic Supplement
+		( 0x16A0, 0x16F0 ), # Runic
+		( 0x1E00, 0x1EFF ), # Latin Extended Additional
+		( 0x2600, 0x26FF ), # Misc. Symbols
+		( 0x2700, 0x27BF ), # Block Dingbats
+		( 0x2C60, 0x2C7F ), # Latin Extended-C
+		( 0xA720, 0xA7AD ), # Latin Extended-D
+	]
+
+	charlist = [
+		get_char(code_point) for current_range in include_ranges
+			for code_point in range(current_range[0], current_range[1] + 1)
+	]
+	return ''.join(secrets.choice(charlist) for i in range(length))
+
+
+def generate_account():
 	first_names = [ "Leanne", "Lauryn", "Cheryl", "Addie", "Lynnette", "Meredith", "Jay", "Bernie",
 					"Kenneth", "Harding", "Elissa", "Beth", "Vance", "Holden", "Careen", "Jackie",
 					"Laurence", "Grover", "Megan", "Daniel", "Shelby", "Desmond", "Jason", "Patton",
@@ -84,6 +121,7 @@ def generate_account():
 	account['keys'] = [
 		{	'type' : 'ed25519',
 			'purpose' : 'identity',
+			'id' : generate_unid(50),
 			'public_key' : bytes(identity.public_key),
 			'private_key' : bytes(identity),
 			'public_b85' : base64.b85encode(bytes(identity.public_key)).decode('utf8'),
@@ -91,6 +129,7 @@ def generate_account():
 		},
 		{	'type' : 'ed25519',
 			'purpose' : 'contact_request',
+			'id' : generate_unid(50),
 			'public_key' : bytes(contact_request.public_key),
 			'private_key' : bytes(contact_request),
 			'public_b85' : base64.b85encode(bytes(contact_request.public_key)).decode('utf8'),
@@ -98,6 +137,7 @@ def generate_account():
 		},
 		{	'type' : 'ed25519',
 			'purpose' : 'firstdevice',
+			'id' : generate_unid(50),
 			'public_key' : bytes(firstdevice.public_key),
 			'private_key' : bytes(firstdevice),
 			'public_b85' : base64.b85encode(bytes(firstdevice.public_key)).decode('utf8'),
@@ -106,18 +146,21 @@ def generate_account():
 		{
 			'type' : 'aes256',
 			'purpose' : 'broadcast',
+			'id' : generate_unid(50),
 			'key' : broadcast_aes,
 			'key_b85' : base64.b85encode(broadcast_aes).decode('utf8')
 		},
 		{
 			'type' : 'aes256',
 			'purpose' : 'system',
+			'id' : generate_unid(50),
 			'key' : system_aes,
 			'key_b85' : base64.b85encode(system_aes).decode('utf8')
 		},
 		{
 			'type' : 'aes256',
 			'purpose' : 'folder',
+			'id' : generate_unid(50),
 			'key' : folder_aes,
 			'key_b85' : base64.b85encode(folder_aes).decode('utf8')
 		},
@@ -133,7 +176,25 @@ def generate_account():
 		'Social' : str(uuid.uuid4())
 	}
 
-	account['sessions'] = [ ''.join(secrets.choice(alphabet) for i in range(50)) ]
+	account['devices'] = list()
+	dev_count = rgen.randrange(1,6)
+	i = 0
+	while i < dev_count:
+		devkey = nacl.public.PrivateKey.generate()
+		account['devices'].append( {
+				'id' : str(uuid.uuid4()),
+				'key' :	{
+					'type' : 'ed25519',
+					'purpose' : 'identity',
+					'id' : generate_unid(50),
+					'public_key' : bytes(devkey.public_key),
+					'private_key' : bytes(devkey),
+					'public_b85' : base64.b85encode(bytes(devkey.public_key)).decode('utf8'),
+					'private_b85' : base64.b85encode(bytes(devkey)).decode('utf8')
+				}
+			}
+		)
+		i = i + 1
 
 	return account
 
@@ -153,7 +214,7 @@ def reset_database(dbconn):
 	cursor = dbconn.cursor()
 	cursor.execute(dropcmd)
 	cursor.execute("CREATE TABLE iwkspc_main(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, friendly_address VARCHAR(48) NULL, password VARCHAR(128) NOT NULL);")
-	cursor.execute("CREATE TABLE iwkspc_folders(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, enc_name VARCHAR(128) NOT NULL, enc_key VARCHAR(64) NOT NULL);")
+	cursor.execute("CREATE TABLE iwkspc_folders(id SERIAL PRIMARY KEY, fid char(36) NOT NULL, wid char(36) NOT NULL, enc_name VARCHAR(128) NOT NULL, enc_key VARCHAR(64) NOT NULL);")
 	cursor.execute("CREATE TABLE iwkspc_devices(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, devid char(36) NOT NULL, device_key VARCHAR(128) NOT NULL);")
 	cursor.close()
 	dbconn.commit()
@@ -167,10 +228,30 @@ def add_account_to_db(account, dbconn):
 	else:
 		cmdparts.append("'',")
 	
-	cmdparts.extend(["$$", account['pwhash'],"$$);"])
+	cmdparts.extend(["$$", account['pwhash_b85'],"$$);"])
 	cmd = ''.join(cmdparts)
-	print(cmd)
 	cursor.execute(cmd)
+	
+	box = nacl.secret.SecretBox(account['keys'][5]['key'])
+	for folder_name,fid in account['folder_map'].items():
+		cmd = ("INSERT INTO iwkspc_folders(wid, fid, enc_name, enc_key) "
+					"VALUES('%s','%s','%s',$$%s$$);" % 
+					( account['wid'], fid,
+					base64.b85encode(box.encrypt(bytes(folder_name, 'utf8'))).decode('utf8'),
+					account['keys'][5]['id']))
+		cursor.execute(cmd)
+
+	i = 0
+	while i < len(account['devices']):
+		cmd =	(	"INSERT INTO iwkspc_devices(wid, devid, device_key) "
+					"VALUES('%s','%s',$$%s$$);" % (
+						account['wid'], account['devices'][i]['id'], 
+						account['devices'][i]['key']['public_b85']
+					)
+				)
+		cursor.execute(cmd)
+		i = i + 1
+	
 	cursor.close()
 	dbconn.commit()
 
@@ -201,8 +282,10 @@ def dump_account(account):
 	}
 	
 	i = 0
-	while i < len(account['sessions']):
-		out[ 'Session ID #' + str(i+1) ] = account['sessions'][i]
+	while i < len(account['devices']):
+		out["Device #%s ID" % str(i+1)] = account['devices'][i]['id']
+		out["Device #%s Public.b85" % str(i+1)] = account['devices'][i]['key']['public_b85']
+		out["Device #%s Private.b85" % str(i+1)] = account['devices'][i]['key']['private_b85']
 		i = i + 1
 
 	for k,v in out.items():
