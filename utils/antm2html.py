@@ -5,7 +5,7 @@ import sys
 
 def AnTM2HTML(instr, fulldocument):
 	'''
-	This function takes in AnCode, the Anselus dialect of BBCode, and spits out HTML.
+	This function takes in AnTM, the Anselus dialect of BBCode, and spits out HTML.
 	'''
 	conversionMap = {
 		'b' : '<span style="font-weight: bold;">',
