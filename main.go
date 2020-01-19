@@ -5,6 +5,8 @@ import (
 	"log"
 	"net"
 	"os"
+	"regexp"
+	"strings"
 
 	"server/dbhandler"
 
@@ -112,17 +114,32 @@ func main() {
 }
 
 func connectionWorker(conn net.Conn) {
+	defer conn.Close()
+
 	buffer := make([]byte, MaxCommandLength)
+	pattern := regexp.MustCompile("\"[^\"]+\"|\"[^\"]+$|[\\S\\[\\]]+")
+	for {
+		_, err := conn.Read(buffer)
+		if err != nil {
+			fmt.Println("Error reading from client: ", err.Error())
+			continue
+		}
 
-	bytesReceived, err := conn.Read(buffer)
-	if err != nil {
-		fmt.Println("Error reading from client: ", err.Error())
+		trimmedString := strings.TrimSpace(string(buffer))
+		rawTokens := pattern.FindAllString(trimmedString, -1)
+
+		if len(rawTokens) > 0 {
+			if rawTokens[0] == "QUIT" {
+				break
+			}
+			processCommand(rawTokens, conn)
+		}
 	}
+}
 
-	echoMessage := "Message received: \n------------------\n"
-	echoMessage += string(buffer[:bytesReceived-1])
-	echoMessage += "\n"
-
-	conn.Write([]byte(echoMessage))
-	conn.Close()
+func processCommand(rawTokens []string, conn net.Conn) {
+	switch rawTokens[0] {
+	default:
+		fmt.Println(strings.Join(rawTokens, " "))
+	}
 }
