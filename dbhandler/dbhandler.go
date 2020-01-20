@@ -15,6 +15,18 @@ import (
 var connected bool
 var serverLog *log.Logger
 
+// WorkspaceStatus indicates the activity status of a workspace.
+type WorkspaceStatus int
+
+const (
+	// Active is the regular state of a workspace in use
+	Active WorkspaceStatus = iota
+	// Disabled workspaces cannot be logged into
+	Disabled
+	// Awaiting indicates the workspace is awaiting administrator approval
+	Awaiting
+)
+
 // Connect utilizes the viper config system and connects to the specified database. Because
 // problems in the connection are almost always fatal to the successful continuation of the server
 // daemon, if there are problems, it logs the problem and exits the main process.
@@ -30,4 +42,11 @@ func Connect(logHandle *log.Logger) {
 // IsConnected returns a boolean if it has successfully connected to the Anselus server database
 func IsConnected() bool {
 	return connected
+}
+
+// GetWorkspace checks to see if a workspace exists
+func GetWorkspace(wid string) (WorkspaceStatus, bool) {
+
+	// TODO: Implement
+	return Disabled, false
 }

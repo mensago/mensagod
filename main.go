@@ -16,10 +16,55 @@ import (
 // ServerLog is the global logging object
 var ServerLog *log.Logger
 
+// -------------------------------------------------------------------------------------------
+// Types
+// -------------------------------------------------------------------------------------------
+
 // MaxCommandLength is the maximum number of bytes an Anselus command is permitted to be, including
 // end-of-line terminator. Note that bulk transfers are not subject to this restriction -- just the
 // initial command.
 const MaxCommandLength = 1024
+
+type loginStatus int
+
+const (
+	// Unauthenticated state
+	loginNoSession loginStatus = iota
+	// Client has requested a valid workspace. Awaiting password.
+	loginAwaitingPassword
+	// Client has submitted a valid password. Awaiting session ID.
+	loginAwaitingSessionID
+	// Client has successfully authenticated
+	loginClientSession
+)
+
+type sessionState struct {
+	PasswordFailures int
+	Connection       net.Conn
+	Tokens           []string
+	LoginState       loginStatus
+}
+
+func (s sessionState) WriteClient(msg string) (n int, err error) {
+	return s.Connection.Write([]byte(msg))
+}
+
+const (
+	// ErrorBadRequest - Bad command sent by client
+	ErrorBadRequest = "400 BAD REQUEST"
+	// ErrorUnauthorized - Client sent command which requires being logged in
+	ErrorUnauthorized = "401 UNAUTHORIZED"
+	// ErrorAuthFailure - Login failure
+	ErrorAuthFailure = "402 AUTHENTICATION FAILURE"
+	// ErrorForbidden - Client not allowed to perform action. Usually a permissions problem.
+	ErrorForbidden = "403 FORBIDDEN"
+	// ErrorNotFound - Resource requested not found (workspace, client item, folder, etc.)
+	ErrorNotFound = "404 NOT FOUND"
+)
+
+// -------------------------------------------------------------------------------------------
+// Function Definitions
+// -------------------------------------------------------------------------------------------
 
 func setupConfig() {
 	// IP and port to listen on
@@ -115,8 +160,12 @@ func main() {
 
 func connectionWorker(conn net.Conn) {
 	defer conn.Close()
-
 	buffer := make([]byte, MaxCommandLength)
+
+	var session sessionState
+	session.Connection = conn
+	session.LoginState = loginNoSession
+
 	pattern := regexp.MustCompile("\"[^\"]+\"|\"[^\"]+$|[\\S\\[\\]]+")
 	for {
 		_, err := conn.Read(buffer)
@@ -126,20 +175,86 @@ func connectionWorker(conn net.Conn) {
 		}
 
 		trimmedString := strings.TrimSpace(string(buffer))
-		rawTokens := pattern.FindAllString(trimmedString, -1)
+		session.Tokens = pattern.FindAllString(trimmedString, -1)
 
-		if len(rawTokens) > 0 {
-			if rawTokens[0] == "QUIT" {
+		if len(session.Tokens) > 0 {
+			if session.Tokens[0] == "QUIT" {
 				break
 			}
-			processCommand(rawTokens, conn)
+			processCommand(&session)
 		}
 	}
 }
 
-func processCommand(rawTokens []string, conn net.Conn) {
-	switch rawTokens[0] {
+func processCommand(session *sessionState) {
+	switch session.Tokens[0] {
+	/*
+		Commands to Implement:
+
+		COPY
+		DELETE
+		DELIVER
+		DEVICE
+		DOWNLOAD
+		EXISTS
+		GETUPDATES
+		LIST
+		LOGIN
+		LOGOUT
+		MKDIR
+		MOVE
+		PASSWORD
+		REGISTER
+		RESUME
+		SELECT
+		SEND
+		SERVERID
+		SERVERPWD
+		SETADDR
+		UNREGISTER
+		UPLOAD
+	*/
+	case "LOGIN":
+		commandLogin(session)
 	default:
-		fmt.Println(strings.Join(rawTokens, " "))
+		fmt.Println(strings.Join(session.Tokens, " "))
 	}
+}
+
+func commandLogin(session *sessionState) {
+	// Command syntax:
+	// LOGIN PLAIN WORKSPACE_ID
+
+	// PLAIN authentication is currently the only supported type, so a total of 3 tokens
+	// are required for this command.
+	if len(session.Tokens) != 3 || session.Tokens[1] != "PLAIN" || !validateUUID(session.Tokens[2]) ||
+		session.LoginState != loginNoSession {
+		session.WriteClient("400 BAD REQUEST\r\n")
+		return
+	}
+
+	wkspcStatus, exists := dbhandler.GetWorkspace(session.Tokens[2])
+	if !exists {
+		// TODO: Log workspace lookup failure
+		session.WriteClient("404 NOT FOUND\r\n")
+		return
+	}
+
+	switch wkspcStatus {
+	case dbhandler.Disabled:
+		session.WriteClient("411 ACCOUNT DISABLED\r\n")
+	case dbhandler.Awaiting:
+		session.WriteClient("101 PENDING\r\n")
+	case dbhandler.Active:
+		session.LoginState = loginAwaitingPassword
+		session.WriteClient("200 OK")
+	}
+}
+
+func validateUUID(uuid string) bool {
+	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
+	if len(uuid) != 36 && len(uuid) == 32 {
+		return false
+	}
+	return pattern.MatchString(uuid)
 }
