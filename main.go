@@ -136,6 +136,10 @@ func main() {
 	setupConfig()
 
 	dbhandler.Connect(ServerLog)
+	if !dbhandler.IsConnected() {
+		fmt.Println("Unable to connect to database server. Quitting.")
+		os.Exit(1)
+	}
 
 	listenString := viper.GetString("network.listen_ip") + ":" + viper.GetString("network.port")
 	listener, err := net.Listen("tcp", listenString)

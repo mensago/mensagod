@@ -37,6 +37,7 @@ func Connect(logHandle *log.Logger) {
 		fmt.Println("Database password not set in config file. Exiting.")
 		os.Exit(1)
 	}
+	// TODO: Implement
 }
 
 // IsConnected returns a boolean if it has successfully connected to the Anselus server database
