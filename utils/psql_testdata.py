@@ -109,7 +109,12 @@ def generate_account():
 							opslimit=nacl.pwhash.argon2id.OPSLIMIT_INTERACTIVE,
 							memlimit=nacl.pwhash.argon2id.MEMLIMIT_INTERACTIVE)	
 	account['pwhash_b85'] = base64.b85encode(account['pwhash']).decode('utf8')
-	 
+	
+	if rgen.randint(1, 100) < 76:
+		account['status'] = 'active'
+	else:
+		account['status'] = 'disabled'
+	
 	# Generate user's encryption keys
 	identity = nacl.public.PrivateKey.generate()
 	contact_request = nacl.public.PrivateKey.generate()
@@ -204,31 +209,35 @@ def reset_database(dbconn):
 	dropcmd = '''DO $$ DECLARE
 		r RECORD;
 	BEGIN
-		-- if the schema you operate on is not "current", you will want to
-		-- replace current_schema() in query with 'public'
-		-- *and* update the generate 'DROP...' accordingly.
 		FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = current_schema()) LOOP
 			EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
 		END LOOP;
 	END $$;'''
 	cursor = dbconn.cursor()
 	cursor.execute(dropcmd)
-	cursor.execute("CREATE TABLE iwkspc_main(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, friendly_address VARCHAR(48) NULL, password VARCHAR(128) NOT NULL);")
-	cursor.execute("CREATE TABLE iwkspc_folders(id SERIAL PRIMARY KEY, fid char(36) NOT NULL, wid char(36) NOT NULL, enc_name VARCHAR(128) NOT NULL, enc_key VARCHAR(64) NOT NULL);")
-	cursor.execute("CREATE TABLE iwkspc_devices(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, devid char(36) NOT NULL, device_key VARCHAR(128) NOT NULL);")
+	cursor.execute("CREATE TABLE iwkspc_main(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
+					"friendly_address VARCHAR(48) NULL, password VARCHAR(128) NOT NULL, "
+					"status VARCHAR(16) NOT NULL);")
+	cursor.execute("CREATE TABLE iwkspc_folders(id SERIAL PRIMARY KEY, fid char(36) NOT NULL, "
+					"wid char(36) NOT NULL, enc_name VARCHAR(128) NOT NULL, "
+					"enc_key VARCHAR(64) NOT NULL);")
+	cursor.execute("CREATE TABLE iwkspc_sessions(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
+					"devid char(36) NOT NULL, device_key VARCHAR(128) NOT NULL);")
 	cursor.close()
 	dbconn.commit()
 
 
 def add_account_to_db(account, dbconn):
 	cursor = dbconn.cursor()
-	cmdparts = ["INSERT INTO iwkspc_main(wid,friendly_address,password) VALUES('",account['wid'],"',"]
+	cmdparts = ["INSERT INTO iwkspc_main(wid,friendly_address,password,status) VALUES('",
+				account['wid'],
+				"',"]
 	if len(account['friendly_address']) > 0:
 		cmdparts.extend(["'",account['friendly_address'],"',"])
 	else:
 		cmdparts.append("'',")
 	
-	cmdparts.extend(["$$", account['pwhash_b85'],"$$);"])
+	cmdparts.extend(["$$", account['pwhash_b85'],"$$,'",account['status'], "');"])
 	cmd = ''.join(cmdparts)
 	cursor.execute(cmd)
 	
@@ -243,7 +252,7 @@ def add_account_to_db(account, dbconn):
 
 	i = 0
 	while i < len(account['devices']):
-		cmd =	(	"INSERT INTO iwkspc_devices(wid, devid, device_key) "
+		cmd =	(	"INSERT INTO iwkspc_sessions(wid, devid, device_key) "
 					"VALUES('%s','%s',$$%s$$);" % (
 						account['wid'], account['devices'][i]['id'], 
 						account['devices'][i]['key']['public_b85']
@@ -260,6 +269,7 @@ def dump_account(account):
 	out = {
 		"Workspace ID" : account['wid'],
 		"Friendly Address" : account['friendly_address'],
+		"Status" : account['status'],
 		"Password" : account['password'],
 		"Password Salt.b85" : account['pwsalt_b85'],
 		"Password Hash.b85" : account['pwhash_b85'],
@@ -290,6 +300,7 @@ def dump_account(account):
 
 	for k,v in out.items():
 		print("%s : %s" % (k,v))
+	print("")
 	
 
 ## Begin script execution	
