@@ -9,23 +9,14 @@ import (
 	"log"
 	"os"
 
+	"database/sql"
+
 	"github.com/spf13/viper"
 )
 
 var connected bool
 var serverLog *log.Logger
-
-// WorkspaceStatus indicates the activity status of a workspace.
-type WorkspaceStatus int
-
-const (
-	// Active is the regular state of a workspace in use
-	Active WorkspaceStatus = iota
-	// Disabled workspaces cannot be logged into
-	Disabled
-	// Awaiting indicates the workspace is awaiting administrator approval
-	Awaiting
-)
+var dbConn *sql.DB
 
 // Connect utilizes the viper config system and connects to the specified database. Because
 // problems in the connection are almost always fatal to the successful continuation of the server
@@ -37,7 +28,22 @@ func Connect(logHandle *log.Logger) {
 		fmt.Println("Database password not set in config file. Exiting.")
 		os.Exit(1)
 	}
-	// TODO: Implement
+
+	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		viper.GetString("database.ip"), viper.GetString("database.port"),
+		viper.GetString("database.user"), viper.GetString("database.password"),
+		viper.GetString("database.name"))
+
+	dbConn, err := sql.Open("postgres", connString)
+	if err != nil {
+		panic(err)
+	}
+	// Calling Ping() is required because Open() just validates the settings passed
+	err = dbConn.Ping()
+	if err != nil {
+		panic(err)
+	}
+	connected = true
 }
 
 // IsConnected returns a boolean if it has successfully connected to the Anselus server database
@@ -46,8 +52,25 @@ func IsConnected() bool {
 }
 
 // GetWorkspace checks to see if a workspace exists
-func GetWorkspace(wid string) (WorkspaceStatus, bool) {
+func GetWorkspace(wid string) (string, bool) {
+	row := dbConn.QueryRow(`SELECT status FROM iwkspc_main WHERE wid=$1`, wid)
 
-	// TODO: Implement
-	return Disabled, false
+	var widStatus string
+	err := row.Scan(&widStatus)
+
+	switch err {
+	case sql.ErrNoRows:
+		return "disabled", false
+	case nil:
+		return widStatus, true
+	default:
+		panic(err)
+	}
+}
+
+// Disconnect shuts down the connection to the database server
+func Disconnect() {
+	if IsConnected() {
+		dbConn.Close()
+	}
 }

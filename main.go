@@ -8,7 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	"server/dbhandler"
+	"github.com/darkwyrm/server/dbhandler"
+	_ "github.com/lib/pq"
 
 	"github.com/spf13/viper"
 )
@@ -84,6 +85,7 @@ func setupConfig() {
 
 	// Account registration modes
 	// public - Outside registration requests.
+	// network - registration is public, but restricted to a subnet or single IP address
 	// moderated - A registration request is sent and a moderator must approve the account
 	//			   prior to its creation
 	// private - an account can be created only by an administrator -- outside requests will bounce
@@ -106,12 +108,12 @@ func setupConfig() {
 	viper.SetDefault("security.registration_delay_min", 15)
 
 	// Search for the config file
-	viper.SetConfigName("serverconfig.toml")
+	viper.SetConfigName("serverconfig")
 	viper.AddConfigPath("/etc/anselus-server/")
 	err := viper.ReadInConfig()
 	if err != nil {
-		ServerLog.Println("Unable to locate config file. Exiting.")
-		fmt.Println("Unable to locate config file. Exiting.")
+		ServerLog.Printf("Unable to locate config file. Exiting. Error: %s", err)
+		fmt.Printf("Unable to locate config file. Exiting. Error: %s", err)
 		os.Exit(1)
 	}
 
@@ -140,6 +142,7 @@ func main() {
 		fmt.Println("Unable to connect to database server. Quitting.")
 		os.Exit(1)
 	}
+	defer dbhandler.Disconnect()
 
 	listenString := viper.GetString("network.listen_ip") + ":" + viper.GetString("network.port")
 	listener, err := net.Listen("tcp", listenString)
@@ -245,11 +248,11 @@ func commandLogin(session *sessionState) {
 	}
 
 	switch wkspcStatus {
-	case dbhandler.Disabled:
+	case "disabled":
 		session.WriteClient("411 ACCOUNT DISABLED\r\n")
-	case dbhandler.Awaiting:
+	case "awaiting":
 		session.WriteClient("101 PENDING\r\n")
-	case dbhandler.Active:
+	case "active":
 		session.LoginState = loginAwaitingPassword
 		session.WriteClient("200 OK")
 	}
