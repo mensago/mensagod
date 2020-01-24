@@ -348,7 +348,8 @@ except Exception as e:
 
 # Step 3: Generate accounts and add to database
 
-test = generate_account()
 reset_database(conn)
-dump_account(test)
-add_account_to_db(test, conn)
+for i in range(0,5):
+	test = generate_account()
+	add_account_to_db(test, conn)
+	dump_account(test)
