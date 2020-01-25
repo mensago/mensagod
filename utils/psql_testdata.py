@@ -223,6 +223,9 @@ def reset_database(dbconn):
 					"enc_key VARCHAR(64) NOT NULL);")
 	cursor.execute("CREATE TABLE iwkspc_sessions(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
 					"devid char(36) NOT NULL, device_key VARCHAR(128) NOT NULL);")
+	cursor.execute("CREATE TABLE failure_log(id SERIAL PRIMARY KEY, type VARCHAR(16) NOT NULL, "
+				"source VARCHAR(36) NOT NULL, count INTEGER, "
+				"last_failure TIMESTAMP NOT NULL, lockout_until TIMESTAMP);")
 	cursor.close()
 	dbconn.commit()
 
