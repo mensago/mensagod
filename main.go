@@ -122,6 +122,8 @@ func setupConfig() {
 		fmt.Println("Database password not set in config file. Exiting.")
 		os.Exit(1)
 	}
+
+	// TODO: Validate the config values
 }
 
 func main() {
@@ -234,7 +236,7 @@ func commandLogin(session *sessionState) {
 
 	// PLAIN authentication is currently the only supported type, so a total of 3 tokens
 	// are required for this command.
-	if len(session.Tokens) != 3 || session.Tokens[1] != "PLAIN" || !validateUUID(session.Tokens[2]) ||
+	if len(session.Tokens) != 3 || session.Tokens[1] != "PLAIN" || !dbhandler.ValidateUUID(session.Tokens[2]) ||
 		session.LoginState != loginNoSession {
 		session.WriteClient("400 BAD REQUEST\r\n")
 		return
@@ -247,6 +249,8 @@ func commandLogin(session *sessionState) {
 		return
 	}
 
+	// TODO: Check for account lockout for type 'workspace'
+
 	switch wkspcStatus {
 	case "disabled":
 		session.WriteClient("411 ACCOUNT DISABLED\r\n")
@@ -256,12 +260,4 @@ func commandLogin(session *sessionState) {
 		session.LoginState = loginAwaitingPassword
 		session.WriteClient("200 OK")
 	}
-}
-
-func validateUUID(uuid string) bool {
-	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
-	if len(uuid) != 36 && len(uuid) == 32 {
-		return false
-	}
-	return pattern.MatchString(uuid)
 }
