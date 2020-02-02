@@ -46,6 +46,7 @@ type sessionState struct {
 	Tokens           []string
 	LoginState       loginStatus
 	IsTerminating    bool
+	WID              string
 }
 
 func (s sessionState) WriteClient(msg string) (n int, err error) {
@@ -217,6 +218,8 @@ func processCommand(session *sessionState) {
 	*/
 	case "LOGIN":
 		commandLogin(session)
+	case "PASSWORD":
+		commandPassword(session)
 	default:
 		fmt.Println(strings.Join(session.Tokens, " "))
 	}
@@ -278,6 +281,16 @@ func commandLogin(session *sessionState) {
 		session.IsTerminating = true
 	case "active":
 		session.LoginState = loginAwaitingPassword
-		session.WriteClient("200 OK")
+		session.WID = wid
+		session.WriteClient("100 CONTINUE")
 	}
+}
+
+func commandPassword(session *sessionState) {
+	// Command syntax:
+	// PASSWORD <pwhash>
+
+	// This command takes a numeric hash of the user's password and compares it to what is submitted
+	// by the user.
+	// TODO: Implement
 }
