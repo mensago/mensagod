@@ -63,8 +63,11 @@ func IsConnected() bool {
 	return connected
 }
 
-// GetWorkspace checks to see if a workspace exists
-func GetWorkspace(wid string) (string, bool) {
+// GetWorkspace checks to see if a workspace exists. If the workspace does exist,
+// True is returned along with a string containing the workspace's status. If the
+// workspace does not exist, it returns false and an empty string. The workspace
+// status can be 'active', 'pending', or 'disabled'.
+func GetWorkspace(wid string) (bool, string) {
 	row := dbConn.QueryRow(`SELECT status FROM iwkspc_main WHERE wid=$1`, wid)
 
 	var widStatus string
@@ -72,9 +75,9 @@ func GetWorkspace(wid string) (string, bool) {
 
 	switch err {
 	case sql.ErrNoRows:
-		return "disabled", false
+		return false, ""
 	case nil:
-		return widStatus, true
+		return true, widStatus
 	default:
 		panic(err)
 	}
@@ -86,7 +89,7 @@ func GetWorkspace(wid string) (string, bool) {
 // This function will check the server configuration and if the failure has
 // exceeded the threshold for that type of failure, then a lockout timestamp will
 // be set.
-func LogFailure(failType string, source string, timestamp string) error {
+func LogFailure(failType string, wid string, source string, timestamp time.Time) error {
 
 	// failure type can only be one of three possible values
 	switch failType {
@@ -100,17 +103,11 @@ func LogFailure(failType string, source string, timestamp string) error {
 	if source == "" {
 		return errors.New("LogFailure: source may not be empty")
 	} else if net.ParseIP(source) == nil && !ValidateUUID(source) {
-		return errors.New(strings.Join([]string{"LogFailure: bad source ", timestamp}, ""))
+		return errors.New(strings.Join([]string{"LogFailure: bad source ", source}, ""))
 	}
 
 	// Timestamp must be ISO8601 without a timezone ('Z' suffix allowable)
-	if len(timestamp) < 15 || len(timestamp) > 20 {
-		return errors.New(strings.Join([]string{"LogFailure: bad timestamp ", timestamp}, ""))
-	}
-	tsPattern := regexp.MustCompile(`\d{4}-?\d{2}-?\d{2}[T ]\d{2}:?\d{2}:?\d{2}[zZ]?`)
-	if !tsPattern.MatchString(timestamp) {
-		return errors.New(strings.Join([]string{"LogFailure: bad timestamp ", timestamp}, ""))
-	}
+	timeString := timestamp.Format(time.RFC3339)
 
 	// Now that the error-checking is out of the way, we can actually update the db. :)
 	row := dbConn.QueryRow(`SELECT count FROM failure_log WHERE type=$1 AND source=$2`,
@@ -129,9 +126,9 @@ func LogFailure(failType string, source string, timestamp string) error {
 			sqlStatement := `
 				UPDATE failure_log 
 				SET count=$1, last_failure=$2, lockout_until=$3
-				WHERE type=$4 AND source=$5`
-			_, err = dbConn.Exec(sqlStatement, failCount, timestamp, lockout.Format(time.RFC3339),
-				failType, source)
+				WHERE type=$4 AND source=$5 AND wid=$6`
+			_, err = dbConn.Exec(sqlStatement, failCount, timeString, lockout.Format(time.RFC3339),
+				failType, source, wid)
 			if err != nil {
 				panic(err)
 			}
@@ -140,17 +137,17 @@ func LogFailure(failType string, source string, timestamp string) error {
 			sqlStatement := `
 				UPDATE failure_log 
 				SET count=$1, last_failure=$2 
-				WHERE type=$3 AND source=$4`
-			_, err = dbConn.Exec(sqlStatement, failCount, timestamp, failType, source)
+				WHERE type=$3 AND source=$4 and wid=$5`
+			_, err = dbConn.Exec(sqlStatement, failCount, timeString, failType, source, wid)
 			if err != nil {
 				panic(err)
 			}
 		}
 	} else {
 		sqlStatement := `
-		INSERT INTO failure_log(type, source, count, last_failure)
-		VALUES($1, $2, $3, $4)`
-		_, err = dbConn.Exec(sqlStatement, failType, source, failCount, timestamp)
+		INSERT INTO failure_log(type, source, wid, count, last_failure)
+		VALUES($1, $2, $3, $4, $5)`
+		_, err = dbConn.Exec(sqlStatement, failType, source, wid, failCount, timeString)
 		if err != nil {
 			panic(err)
 		}
@@ -163,9 +160,44 @@ func LogFailure(failType string, source string, timestamp string) error {
 // source has a lockout timestamp and returns it if there is or an empty string if not.
 // It also has the added benefit of resetting a counter to 0 if there is an expired
 // lockout for a particular source
-func CheckLockout(failType string, source string) (string, error) {
-	// TODO: Implement
-	return "", nil
+func CheckLockout(failType string, wid string, source string) (string, error) {
+	row := dbConn.QueryRow(`SELECT lockout_until FROM failure_log 
+		WHERE wid=$1 and source=$2`, wid)
+
+	var locktime string
+	err := row.Scan(&locktime)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// No entry in the table, so obviously no lockout
+			return "", nil
+		} else {
+			panic(err)
+		}
+	}
+
+	if len(locktime) < 1 {
+		return locktime, nil
+	}
+
+	var lockstamp time.Time
+	lockstamp, err = time.Parse(time.RFC3339, locktime)
+	if err != nil {
+		panic(err)
+	}
+
+	// If there is an expired lockout for this address, delete it
+	if lockstamp.Before(time.Now().UTC()) {
+		sqlStatement := `DELETE FROM failure_log
+		WHERE failtype=$1 AND source=$2 AND lockout_until=$3 `
+		_, err = dbConn.Exec(sqlStatement, failType, source, locktime)
+		if err != nil {
+			panic(err)
+		}
+		return "", nil
+	}
+
+	return locktime, nil
 }
 
 // ValidateUUID just returns whether or not a string is a valid UUID.

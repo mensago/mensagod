@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/darkwyrm/server/dbhandler"
 	_ "github.com/lib/pq"
@@ -44,24 +45,12 @@ type sessionState struct {
 	Connection       net.Conn
 	Tokens           []string
 	LoginState       loginStatus
+	IsTerminating    bool
 }
 
 func (s sessionState) WriteClient(msg string) (n int, err error) {
 	return s.Connection.Write([]byte(msg))
 }
-
-const (
-	// ErrorBadRequest - Bad command sent by client
-	ErrorBadRequest = "400 BAD REQUEST"
-	// ErrorUnauthorized - Client sent command which requires being logged in
-	ErrorUnauthorized = "401 UNAUTHORIZED"
-	// ErrorAuthFailure - Login failure
-	ErrorAuthFailure = "402 AUTHENTICATION FAILURE"
-	// ErrorForbidden - Client not allowed to perform action. Usually a permissions problem.
-	ErrorForbidden = "403 FORBIDDEN"
-	// ErrorNotFound - Resource requested not found (workspace, client item, folder, etc.)
-	ErrorNotFound = "404 NOT FOUND"
-)
 
 // -------------------------------------------------------------------------------------------
 // Function Definitions
@@ -192,6 +181,9 @@ func connectionWorker(conn net.Conn) {
 			}
 			processCommand(&session)
 		}
+		if session.IsTerminating {
+			break
+		}
 	}
 }
 
@@ -242,20 +234,48 @@ func commandLogin(session *sessionState) {
 		return
 	}
 
-	wkspcStatus, exists := dbhandler.GetWorkspace(session.Tokens[2])
-	if !exists {
-		// TODO: Log workspace lookup failure
-		session.WriteClient("404 NOT FOUND\r\n")
+	wid := session.Tokens[2]
+	exists, wkspcStatus := dbhandler.GetWorkspace(wid)
+	if exists {
+		lockTime, err := dbhandler.CheckLockout("workspace", wid, session.Connection.RemoteAddr().String())
+		if err != nil {
+			panic(err)
+		}
+
+		if len(lockTime) > 0 {
+			// The only time that lockTime with be greater than 0 is if the account
+			// is currently locked.
+		}
+
+	} else {
+		dbhandler.LogFailure("workspace", "", session.Connection.RemoteAddr().String(),
+			time.Now().UTC())
+
+		lockTime, err := dbhandler.CheckLockout("workspace", wid, session.Connection.RemoteAddr().String())
+		if err != nil {
+			panic(err)
+		}
+
+		// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
+		// At this point, the connection should be terminated. However, an empty lockTime
+		// means that although there has been a failure, the count for this IP address is
+		// still under the limit.
+		if len(lockTime) > 0 {
+			session.WriteClient(strings.Join([]string{"405 TERMINATED", lockTime, "\r\n"}, " "))
+			session.IsTerminating = true
+		} else {
+			session.WriteClient("404 NOT FOUND\r\n")
+		}
 		return
 	}
-
-	// TODO: Check for account lockout for type 'workspace'
 
 	switch wkspcStatus {
 	case "disabled":
 		session.WriteClient("411 ACCOUNT DISABLED\r\n")
+		session.IsTerminating = true
 	case "awaiting":
 		session.WriteClient("101 PENDING\r\n")
+		session.IsTerminating = true
 	case "active":
 		session.LoginState = loginAwaitingPassword
 		session.WriteClient("200 OK")
