@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/darkwyrm/server/dbhandler"
 	_ "github.com/lib/pq"
@@ -385,7 +386,15 @@ func commandPassword(session *sessionState) {
 		} else {
 			session.WriteClient("402 AUTHENTICATION FAILURE\r\n")
 
-			// TODO: sleep for a bit based on server config.
+			var d time.Duration
+			delayString := viper.GetString("security.failure_delay_sec") + "s"
+			d, err = time.ParseDuration(delayString)
+			if err != nil {
+				ServerLog.Printf("Bad login failure delay string %s. Sleeping 3s.", delayString)
+				fmt.Printf("Bad login failure delay string: %s. Sleeping 3s.", err)
+				d, err = time.ParseDuration("3s")
+			}
+			time.Sleep(d)
 		}
 	} else {
 		session.WriteClient("400 BAD REQUEST\r\n")
