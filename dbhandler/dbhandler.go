@@ -63,26 +63,6 @@ func IsConnected() bool {
 	return connected
 }
 
-// GetWorkspace checks to see if a workspace exists. If the workspace does exist,
-// True is returned along with a string containing the workspace's status. If the
-// workspace does not exist, it returns false and an empty string. The workspace
-// status can be 'active', 'pending', or 'disabled'.
-func GetWorkspace(wid string) (bool, string) {
-	row := dbConn.QueryRow(`SELECT status FROM iwkspc_main WHERE wid=$1`, wid)
-
-	var widStatus string
-	err := row.Scan(&widStatus)
-
-	switch err {
-	case sql.ErrNoRows:
-		return false, ""
-	case nil:
-		return true, widStatus
-	default:
-		panic(err)
-	}
-}
-
 // LogFailure adds an entry to the database of a failure which needs tracked. This
 // includes a type (workspace, password, recipient), the source (IP address, WID),
 // and the timestamp of the failure.
@@ -90,6 +70,8 @@ func GetWorkspace(wid string) (bool, string) {
 // exceeded the threshold for that type of failure, then a lockout timestamp will
 // be set.
 func LogFailure(failType string, wid string, source string, timestamp time.Time) error {
+
+	// TODO: Eliminate the timestamp as a parameter and just get one internally
 
 	// failure type can only be one of three possible values
 	switch failType {
@@ -156,6 +138,44 @@ func LogFailure(failType string, wid string, source string, timestamp time.Time)
 	return nil
 }
 
+// ValidateUUID just returns whether or not a string is a valid UUID.
+func ValidateUUID(uuid string) bool {
+	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
+	if len(uuid) != 36 && len(uuid) == 32 {
+		return false
+	}
+	return pattern.MatchString(uuid)
+}
+
+// GenerateSessionString creates a randomly-generated device session string. If given a non-positive
+// integer, it will use the value from the server configuration
+func GenerateSessionString(length int) string {
+	// TODO: Implement
+	panic(errors.New("dbhandler.GenerateSessionString() unimplemented"))
+}
+
+// GetWorkspace checks to see if a workspace exists. If the workspace does exist,
+// True is returned along with a string containing the workspace's status. If the
+// workspace does not exist, it returns false and an empty string. The workspace
+// status can be 'active', 'pending', or 'disabled'. Note that this function does
+// not check the validity of the WID string passed to it. This should be done when
+// the input is received from the user.
+func GetWorkspace(wid string) (bool, string) {
+	row := dbConn.QueryRow(`SELECT status FROM iwkspc_main WHERE wid=$1`, wid)
+
+	var widStatus string
+	err := row.Scan(&widStatus)
+
+	switch err {
+	case sql.ErrNoRows:
+		return false, ""
+	case nil:
+		return true, widStatus
+	default:
+		panic(err)
+	}
+}
+
 // CheckLockout corresponds to LogFailure() in that it checks to see if said
 // source has a lockout timestamp and returns it if there is or an empty string if not.
 // It also has the added benefit of resetting a counter to 0 if there is an expired
@@ -171,9 +191,8 @@ func CheckLockout(failType string, wid string, source string) (string, error) {
 		if err == sql.ErrNoRows {
 			// No entry in the table, so obviously no lockout
 			return "", nil
-		} else {
-			panic(err)
 		}
+		panic(err)
 	}
 
 	if len(locktime) < 1 {
@@ -200,11 +219,29 @@ func CheckLockout(failType string, wid string, source string) (string, error) {
 	return locktime, nil
 }
 
-// ValidateUUID just returns whether or not a string is a valid UUID.
-func ValidateUUID(uuid string) bool {
-	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
-	if len(uuid) != 36 && len(uuid) == 32 {
-		return false
+// CheckPassword checks a password hash against the one stored in the database. It returns true
+// if the two hashes match. It does not perform any validity checking of the input--this should be
+// done when the input is received from the user.
+func CheckPassword(wid string, passhash string) (bool, error) {
+	row := dbConn.QueryRow(`SELECT password FROM iwkspc_main WHERE wid=$1`, wid)
+
+	var dbhash string
+	err := row.Scan(&dbhash)
+	if err != nil {
+		return false, err
 	}
-	return pattern.MatchString(uuid)
+
+	if strings.TrimSpace(passhash) != strings.TrimSpace(dbhash) {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+// SetWorkspaceStatus sets the status of a workspace. Valid values are "disabled", "active", and
+// "approved". Although a workspace can also have a status of "awaiting", this state is internal
+// to the dbhandler API and cannot be set directly.
+func SetWorkspaceStatus(wid string, status string) error {
+	// TODO: Implement
+	return errors.New("dbhandler.SetWorkspaceStatus() unimplemented")
 }
