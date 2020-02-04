@@ -284,12 +284,16 @@ func commandLogin(session *sessionState) {
 	var exists bool
 	exists, session.WorkspaceStatus = dbhandler.GetWorkspace(wid)
 	if exists {
-		// TODO: Check for lockout for more than just workspace checks. This workspace could be
-		// locked for too many failed passwords, for example.
-
 		lockTime, err := dbhandler.CheckLockout("workspace", wid, session.Connection.RemoteAddr().String())
 		if err != nil {
 			panic(err)
+		}
+
+		if len(lockTime) > 0 {
+			lockTime, err = dbhandler.CheckLockout("password", wid, session.Connection.RemoteAddr().String())
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		if len(lockTime) > 0 {
