@@ -69,9 +69,7 @@ func IsConnected() bool {
 // This function will check the server configuration and if the failure has
 // exceeded the threshold for that type of failure, then a lockout timestamp will
 // be set.
-func LogFailure(failType string, wid string, source string, timestamp time.Time) error {
-
-	// TODO: Eliminate the timestamp as a parameter and just get one internally
+func LogFailure(failType string, wid string, source string) error {
 
 	// failure type can only be one of three possible values
 	switch failType {
@@ -89,7 +87,7 @@ func LogFailure(failType string, wid string, source string, timestamp time.Time)
 	}
 
 	// Timestamp must be ISO8601 without a timezone ('Z' suffix allowable)
-	timeString := timestamp.Format(time.RFC3339)
+	timeString := time.Now().UTC().Format(time.RFC3339)
 
 	// Now that the error-checking is out of the way, we can actually update the db. :)
 	row := dbConn.QueryRow(`SELECT count FROM failure_log WHERE type=$1 AND source=$2`,

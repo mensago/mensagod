@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/darkwyrm/server/dbhandler"
 	_ "github.com/lib/pq"
@@ -258,8 +257,7 @@ func commandLogin(session *sessionState) {
 		}
 
 	} else {
-		dbhandler.LogFailure("workspace", "", session.Connection.RemoteAddr().String(),
-			time.Now().UTC())
+		dbhandler.LogFailure("workspace", "", session.Connection.RemoteAddr().String())
 
 		lockTime, err := dbhandler.CheckLockout("workspace", wid, session.Connection.RemoteAddr().String())
 		if err != nil {
@@ -327,8 +325,7 @@ func commandPassword(session *sessionState) {
 			return
 		}
 
-		dbhandler.LogFailure("password", session.WID, session.Connection.RemoteAddr().String(),
-			time.Now().UTC())
+		dbhandler.LogFailure("password", session.WID, session.Connection.RemoteAddr().String())
 
 		lockTime, err := dbhandler.CheckLockout("password", session.WID,
 			session.Connection.RemoteAddr().String())
