@@ -47,6 +47,7 @@ type sessionState struct {
 	LoginState       loginStatus
 	IsTerminating    bool
 	WID              string
+	WorkspaceStatus  string
 }
 
 func (s sessionState) WriteClient(msg string) (n int, err error) {
@@ -238,8 +239,12 @@ func commandLogin(session *sessionState) {
 	}
 
 	wid := session.Tokens[2]
-	exists, wkspcStatus := dbhandler.GetWorkspace(wid)
+	var exists bool
+	exists, session.WorkspaceStatus = dbhandler.GetWorkspace(wid)
 	if exists {
+		// TODO: Check for lockout for more than just workspace checks. This workspace could be
+		// locked for too many failed passwords, for example.
+
 		lockTime, err := dbhandler.CheckLockout("workspace", wid, session.Connection.RemoteAddr().String())
 		if err != nil {
 			panic(err)
@@ -248,6 +253,8 @@ func commandLogin(session *sessionState) {
 		if len(lockTime) > 0 {
 			// The only time that lockTime with be greater than 0 is if the account
 			// is currently locked.
+			session.WriteClient(strings.Join([]string{"407 UNAVAILABLE", lockTime, "\r\n"}, " "))
+			return
 		}
 
 	} else {
@@ -272,14 +279,14 @@ func commandLogin(session *sessionState) {
 		return
 	}
 
-	switch wkspcStatus {
+	switch session.WorkspaceStatus {
 	case "disabled":
 		session.WriteClient("411 ACCOUNT DISABLED\r\n")
 		session.IsTerminating = true
 	case "awaiting":
 		session.WriteClient("101 PENDING\r\n")
 		session.IsTerminating = true
-	case "active":
+	case "active", "approved":
 		session.LoginState = loginAwaitingPassword
 		session.WID = wid
 		session.WriteClient("100 CONTINUE")
@@ -292,5 +299,56 @@ func commandPassword(session *sessionState) {
 
 	// This command takes a numeric hash of the user's password and compares it to what is submitted
 	// by the user.
-	// TODO: Implement
+	if len(session.Tokens) != 2 || len(session.Tokens[1]) > 48 ||
+		session.LoginState != loginAwaitingPassword {
+		session.WriteClient("400 BAD REQUEST\r\n")
+		return
+	}
+
+	match, err := dbhandler.CheckPassword(session.WID, session.Tokens[1])
+	if err == nil {
+		if match {
+			// Check to see if this is a preregistered account that has yet to be logged into.
+			// If it is, return 200 OK and the next session ID.
+			if session.WorkspaceStatus == "approved" {
+				session.LoginState = loginClientSession
+				session.WriteClient(strings.Join([]string{"200 OK",
+					dbhandler.GenerateSessionString(0), "\r\n"}, " "))
+				err = dbhandler.SetWorkspaceStatus(session.WID, "active")
+				if err != nil {
+					panic(nil)
+				}
+				return
+			}
+
+			// Regular account login
+			session.LoginState = loginAwaitingSessionID
+			session.WriteClient("100 CONTINUE\r\n")
+			return
+		}
+
+		dbhandler.LogFailure("password", session.WID, session.Connection.RemoteAddr().String(),
+			time.Now().UTC())
+
+		lockTime, err := dbhandler.CheckLockout("password", session.WID,
+			session.Connection.RemoteAddr().String())
+		if err != nil {
+			panic(err)
+		}
+
+		// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
+		// At this point, the connection should be terminated. However, an empty lockTime
+		// means that although there has been a failure, the count for this IP address is
+		// still under the limit.
+		if len(lockTime) > 0 {
+			session.WriteClient(strings.Join([]string{"405 TERMINATED", lockTime, "\r\n"}, " "))
+			session.IsTerminating = true
+		} else {
+			session.WriteClient("402 AUTHENTICATION FAILURE\r\n")
+
+			// TODO: sleep for a bit based on server config.
+		}
+	} else {
+		session.WriteClient("400 BAD REQUEST\r\n")
+	}
 }
