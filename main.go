@@ -113,7 +113,49 @@ func setupConfig() {
 		os.Exit(1)
 	}
 
-	// TODO: Validate the config values
+	switch viper.GetString("global.registration") {
+	case "private", "public", "network", "moderated":
+		// Do nothing. Legitimate values.
+	default:
+		ServerLog.Println("Invalid registration mode in config file. Exiting.")
+		fmt.Println("Invalid registration mode in config file. Exiting.")
+		os.Exit(1)
+	}
+
+	if viper.GetInt("global.default_quota") < 0 {
+		viper.Set("global.default_quota", 0)
+		ServerLog.Println("Negative quota value in config file. Assuming zero.")
+		fmt.Println("Negative quota value in config file. Assuming zero.")
+	}
+
+	if viper.GetInt("security.failure_delay_sec") > 60 {
+		viper.Set("security.failure_delay_sec", 60)
+		ServerLog.Println("Limiting maximum failure delay to 60.")
+		fmt.Println("Limiting maximum failure delay to 60.")
+	}
+
+	if viper.GetInt("security.max_failures") < 1 {
+		viper.Set("security.max_failures", 1)
+		ServerLog.Println("Invalid login failure maximum. Setting to 1.")
+		fmt.Println("Invalid login failure maximum. Setting to 1.")
+	} else if viper.GetInt("security.max_failures") > 10 {
+		viper.Set("security.max_failures", 10)
+		ServerLog.Println("Limiting login failure maximum to 10.")
+		fmt.Println("Limiting login failure maximum to 10.")
+	}
+
+	if viper.GetInt("security.lockout_delay_min") < 0 {
+		viper.Set("security.lockout_delay_min", 0)
+		ServerLog.Println("Negative login failure lockout time. Setting to zero.")
+		fmt.Println("Negative login failure lockout time. Setting to zero.")
+	}
+
+	if viper.GetInt("security.registration_delay_min") < 0 {
+		viper.Set("security.registration_delay_min", 0)
+		ServerLog.Println("Negative registration delay. Setting to zero.")
+		fmt.Println("Negative registration delay. Setting to zero.")
+	}
+
 }
 
 func main() {
