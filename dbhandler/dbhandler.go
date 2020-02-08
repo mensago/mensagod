@@ -5,7 +5,6 @@ package dbhandler
 // eliminate cluttering up the otherwise-clean Go code with the ugly SQL queries.
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -18,6 +17,7 @@ import (
 
 	"database/sql"
 
+	"github.com/darkwyrm/b85"
 	"github.com/spf13/viper"
 )
 
@@ -148,7 +148,7 @@ func ValidateUUID(uuid string) bool {
 }
 
 // GenerateSessionString creates a randomly-generated device session string.
-func GenerateSessionString(length int) (string, error) {
+func GenerateSessionString(length int) string {
 
 	byteList := make([]byte, 50)
 	_, err := rand.Read(byteList)
@@ -156,9 +156,7 @@ func GenerateSessionString(length int) (string, error) {
 		panic(err)
 	}
 
-	// TODO: replace base64 with base85 implementation
-	outString := base64.StdEncoding.EncodeToString(byteList)
-	return string(outString), nil
+	return b85.Encode(byteList)
 }
 
 // GetWorkspace checks to see if a workspace exists. If the workspace does exist,
