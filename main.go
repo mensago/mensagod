@@ -98,6 +98,9 @@ func setupConfig() {
 	// can be requested from the same IP address -- for preventing registration spam/DoS.
 	viper.SetDefault("security.registration_delay_min", 15)
 
+	// Is a matching session key required for a device to have access?
+	viper.SetDefault("security.device_checking", "on")
+
 	// Search for the config file
 	viper.SetConfigName("serverconfig")
 	viper.AddConfigPath("/etc/anselus-server/")
@@ -157,6 +160,13 @@ func setupConfig() {
 		fmt.Println("Negative registration delay. Setting to zero.")
 	}
 
+	dev_checking := strings.ToLower(viper.GetString("security.device_checking"))
+	if dev_checking != "on" && dev_checking != "on" {
+		viper.Set("security.dev_checking", "on")
+		ServerLog.Println("Invalid device checking value. Exiting.")
+		fmt.Println("Invalid device checking value. Exiting.")
+		os.Exit(1)
+	}
 }
 
 func main() {
