@@ -247,6 +247,19 @@ func CheckPassword(wid string, passhash string) (bool, error) {
 // "approved". Although a workspace can also have a status of "awaiting", this state is internal
 // to the dbhandler API and cannot be set directly.
 func SetWorkspaceStatus(wid string, status string) error {
-	// TODO: Implement
-	return errors.New("dbhandler.SetWorkspaceStatus() unimplemented")
+	realStatus := strings.ToLower(status)
+
+	if realStatus == "awaiting" {
+		return fmt.Errorf("awaiting is an internal-only workspace status")
+	}
+	if realStatus != "active" && realStatus != "disabled" && realStatus != "approved" {
+		return fmt.Errorf("%s is not a valid status", realStatus)
+	}
+	if !ValidateUUID(wid) {
+		return fmt.Errorf("%s is not a valid workspace ID", wid)
+	}
+	sqlStatement := `UPDATE iwkspc_main SET status=$1 WHERE wid=$2`
+	var err error
+	_, err = dbConn.Exec(sqlStatement, status, wid)
+	return err
 }
