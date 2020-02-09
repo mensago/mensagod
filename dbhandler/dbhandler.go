@@ -263,3 +263,43 @@ func SetWorkspaceStatus(wid string, status string) error {
 	_, err = dbConn.Exec(sqlStatement, status, wid)
 	return err
 }
+
+// AddDevice is used for adding a device to a workspace. It generates a new session string for the
+// device, adds it to the device table, sets the device status, and returns the session string for
+// the new device.
+func AddDevice(wid string, status string) string {
+	// TODO: Implement AddDevice
+	return ""
+}
+
+// RemoveDevice removes a session string for a workspace. It returns true if successful and false
+// if not.
+func RemoveDevice(wid string, sessionString string) bool {
+	// TODO: Implement RemoveDevice
+	return false
+}
+
+// CheckDevice checks a session string on a workspace and returns true or false if there is a match.
+func CheckDevice(wid string, sessionString string) bool {
+	// TODO: Implement CheckDevice
+	return false
+}
+
+// UpdateDevice takes a session string for a workspace, makes sure that it exists, generates a new
+// one, replaces the old with the new, and returns the new session string. If successful, it
+// returns true and the updated session string. On failure, false is returned alongside an empty
+// string.
+func UpdateDevice(wid string, sessionString string) (bool, string) {
+	// TODO: Implement UpdateDevice
+
+	/*
+		// Generate the new session string
+		randomBytes := make([]byte, 32)
+		_, err := rand.Read(randomBytes)
+		if err != nil {
+			panic(err)
+		}
+		return true, b85.Encode(randomBytes)
+	*/
+	return false, ""
+}
