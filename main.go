@@ -254,11 +254,8 @@ func processCommand(session *sessionState) {
 		EXISTS
 		GETUPDATES
 		LIST
-		LOGIN
-		LOGOUT
 		MKDIR
 		MOVE
-		PASSWORD
 		REGISTER
 		RESUME
 		SELECT
@@ -273,6 +270,8 @@ func processCommand(session *sessionState) {
 		commandLogin(session)
 	case "PASSWORD":
 		commandPassword(session)
+	case "LOGOUT":
+		commandLogout(session)
 	default:
 		fmt.Println(strings.Join(session.Tokens, " "))
 	}
@@ -413,4 +412,9 @@ func commandPassword(session *sessionState) {
 	} else {
 		session.WriteClient("400 BAD REQUEST\r\n")
 	}
+}
+
+func commandLogout(session *sessionState) {
+	session.WriteClient("200 OK\r\n")
+	session.IsTerminating = true
 }
