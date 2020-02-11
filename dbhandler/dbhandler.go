@@ -267,39 +267,84 @@ func SetWorkspaceStatus(wid string, status string) error {
 // AddDevice is used for adding a device to a workspace. It generates a new session string for the
 // device, adds it to the device table, sets the device status, and returns the session string for
 // the new device.
-func AddDevice(wid string, status string) string {
-	// TODO: Implement AddDevice
-	return ""
+func AddDevice(wid string) string {
+	// Generate the new session string
+	randomBytes := make([]byte, 32)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		panic(err)
+	}
+	sessionString := b85.Encode(randomBytes)
+
+	sqlStatement := `INSERT INTO iwkspc_sessions(wid, session_id) VALUES($1, $2)`
+	_, err = dbConn.Exec(sqlStatement, wid, sessionString)
+	if err != nil {
+		panic(err)
+	}
+	return sessionString
 }
 
 // RemoveDevice removes a session string for a workspace. It returns true if successful and false
 // if not.
-func RemoveDevice(wid string, sessionString string) bool {
-	// TODO: Implement RemoveDevice
-	return false
+func RemoveDevice(wid string, sessionString string) (bool, error) {
+	if len(sessionString) != 40 {
+		return false, errors.New("invalid session string")
+	}
+	sqlStatement := `DELETE FROM iwkspc_sessions WHERE wid=$1 AND session_id=$2`
+	_, err := dbConn.Exec(sqlStatement, wid, sessionString)
+	if err != nil {
+		return false, nil
+	}
+	return true, nil
 }
 
 // CheckDevice checks a session string on a workspace and returns true or false if there is a match.
-func CheckDevice(wid string, sessionString string) bool {
-	// TODO: Implement CheckDevice
-	return false
+func CheckDevice(wid string, sessionString string) (bool, error) {
+	if len(sessionString) != 40 {
+		return false, errors.New("invalid session string")
+	}
+
+	row := dbConn.QueryRow(`SELECT status FROM iwkspc_sessions WHERE wid=$1 AND session_id=$2`,
+		wid, sessionString)
+
+	var widStatus string
+	err := row.Scan(&widStatus)
+
+	switch err {
+	case sql.ErrNoRows:
+		return false, nil
+	case nil:
+		return true, nil
+	default:
+		panic(err)
+	}
 }
 
 // UpdateDevice takes a session string for a workspace, makes sure that it exists, generates a new
 // one, replaces the old with the new, and returns the new session string. If successful, it
 // returns true and the updated session string. On failure, false is returned alongside an empty
 // string.
-func UpdateDevice(wid string, sessionString string) (bool, string) {
-	// TODO: Implement UpdateDevice
+func UpdateDevice(wid string, sessionString string) (bool, string, error) {
+	if len(sessionString) != 40 {
+		return false, "", errors.New("invalid session string")
+	}
 
-	/*
-		// Generate the new session string
-		randomBytes := make([]byte, 32)
-		_, err := rand.Read(randomBytes)
-		if err != nil {
-			panic(err)
-		}
-		return true, b85.Encode(randomBytes)
-	*/
-	return false, ""
+	// Generate the new session string
+	randomBytes := make([]byte, 32)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		panic(err)
+	}
+	newSessionString := b85.Encode(randomBytes)
+	sqlStatement := `UPDATE iwkspc_sessions SET session_id=$1 WHERE wid=$2 and session_id=$3`
+	_, err = dbConn.Exec(sqlStatement, sessionString, wid, newSessionString)
+
+	switch err {
+	case sql.ErrNoRows:
+		return false, "", err
+	case nil:
+		return true, newSessionString, nil
+	default:
+		panic(err)
+	}
 }
