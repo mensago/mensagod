@@ -266,6 +266,8 @@ func processCommand(session *sessionState) {
 		UNREGISTER
 		UPLOAD
 	*/
+	case "DEVICE":
+		commandDevice(session)
 	case "LOGIN":
 		commandLogin(session)
 	case "PASSWORD":
@@ -275,6 +277,11 @@ func processCommand(session *sessionState) {
 	default:
 		fmt.Println(strings.Join(session.Tokens, " "))
 	}
+}
+
+func commandDevice(session *sessionState) {
+	// Command syntax:
+	// DEVICE <sessionID>
 }
 
 func commandLogin(session *sessionState) {
@@ -415,6 +422,8 @@ func commandPassword(session *sessionState) {
 }
 
 func commandLogout(session *sessionState) {
+	// command syntax:
+	// LOGOUT
 	session.WriteClient("200 OK\r\n")
 	session.IsTerminating = true
 }
