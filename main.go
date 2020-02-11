@@ -160,9 +160,9 @@ func setupConfig() {
 		fmt.Println("Negative registration delay. Setting to zero.")
 	}
 
-	dev_checking := strings.ToLower(viper.GetString("security.device_checking"))
-	if dev_checking != "on" && dev_checking != "on" {
-		viper.Set("security.dev_checking", "on")
+	devChecking := strings.ToLower(viper.GetString("security.device_checking"))
+	if devChecking != "on" && devChecking != "off" {
+		viper.Set("security.devChecking", "on")
 		ServerLog.Println("Invalid device checking value. Exiting.")
 		fmt.Println("Invalid device checking value. Exiting.")
 		os.Exit(1)
