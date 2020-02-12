@@ -221,13 +221,13 @@ func connectionWorker(conn net.Conn) {
 	pattern := regexp.MustCompile("\"[^\"]+\"|\"[^\"]+$|[\\S\\[\\]]+")
 	for {
 		// TODO: Implement idle connection timeout
-		_, err := conn.Read(buffer)
+		bytesRead, err := conn.Read(buffer)
 		if err != nil {
 			fmt.Println("Error reading from client: ", err.Error())
 			continue
 		}
 
-		trimmedString := strings.TrimSpace(string(buffer))
+		trimmedString := strings.TrimSpace(string(buffer[:bytesRead]))
 		session.Tokens = pattern.FindAllString(trimmedString, -1)
 
 		if len(session.Tokens) > 0 {
