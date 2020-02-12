@@ -220,6 +220,7 @@ func connectionWorker(conn net.Conn) {
 
 	pattern := regexp.MustCompile("\"[^\"]+\"|\"[^\"]+$|[\\S\\[\\]]+")
 	for {
+		// TODO: Implement idle connection timeout
 		_, err := conn.Read(buffer)
 		if err != nil {
 			fmt.Println("Error reading from client: ", err.Error())
@@ -249,7 +250,6 @@ func processCommand(session *sessionState) {
 		COPY
 		DELETE
 		DELIVER
-		DEVICE
 		DOWNLOAD
 		EXISTS
 		GETUPDATES
@@ -270,10 +270,12 @@ func processCommand(session *sessionState) {
 		commandDevice(session)
 	case "LOGIN":
 		commandLogin(session)
-	case "PASSWORD":
-		commandPassword(session)
 	case "LOGOUT":
 		commandLogout(session)
+	case "NOOP":
+		// Do nothing. Just resets the idle counter.
+	case "PASSWORD":
+		commandPassword(session)
 	default:
 		fmt.Println(strings.Join(session.Tokens, " "))
 	}
