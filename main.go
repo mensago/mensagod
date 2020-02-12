@@ -282,6 +282,42 @@ func processCommand(session *sessionState) {
 func commandDevice(session *sessionState) {
 	// Command syntax:
 	// DEVICE <sessionID>
+
+	if len(session.Tokens) != 2 || session.LoginState != loginAwaitingSessionID {
+		session.WriteClient("400 BAD REQUEST\r\n")
+		return
+	}
+
+	success, err := dbhandler.CheckDevice(session.WID, session.Tokens[1])
+	if err != nil {
+		session.WriteClient("400 BAD REQUEST\r\n")
+		return
+	}
+
+	if !success {
+		if strings.ToLower(viper.GetString("security.device_checking")) == "on" {
+			// TODO: implement device checking:
+			// 1) Check to see if there are multiple devices
+			// 2) If there are multiple devices, push out an authorization message.
+			// 3) Record the session ID in the table as a pending device.
+			// 4) Return 101 PENDING and close the connection
+			// 5) Upon receipt of authorization approval, update the device status in the database
+			// 6) Upon receipt of denial, log the failure and apply a lockout to the IP
+		} else {
+			newSessionString := dbhandler.AddDevice(session.WID)
+			session.WriteClient(fmt.Sprintf("200 OK %s\r\n", newSessionString))
+			session.LoginState = loginClientSession
+		}
+	} else {
+		var newSessionString string
+		success, newSessionString, err = dbhandler.UpdateDevice(session.WID, session.Tokens[1])
+		if err == nil && success {
+			session.WriteClient(fmt.Sprintf("200 OK %s\r\n", newSessionString))
+			session.LoginState = loginClientSession
+		} else {
+			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+		}
+	}
 }
 
 func commandLogin(session *sessionState) {
