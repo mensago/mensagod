@@ -83,8 +83,8 @@ cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.
 			"AND c.relkind = 'r');")
 rows = cur.fetchall()
 if rows[0][0] == False:
-	cur.execute("CREATE TABLE iwkspc_sessions(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
-				"session_id VARCHAR(128) NOT NULL);")
+	cur.execute("CREATE TABLE iwkspc_sessions(id SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, "
+				"devid CHAR(36) NOT NULL, session_str VARCHAR(40) NOT NULL);")
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
 			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'failure_log' "
