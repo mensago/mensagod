@@ -21,9 +21,11 @@ import (
 	"github.com/spf13/viper"
 )
 
-var connected bool
-var serverLog *log.Logger
-var dbConn *sql.DB
+var (
+	connected bool
+	serverLog *log.Logger
+	dbConn    *sql.DB
+)
 
 // Connect utilizes the viper config system and connects to the specified database. Because
 // problems in the connection are almost always fatal to the successful continuation of the server
@@ -41,7 +43,8 @@ func Connect(logHandle *log.Logger) {
 		viper.GetString("database.user"), viper.GetString("database.password"),
 		viper.GetString("database.name"))
 
-	dbConn, err := sql.Open("postgres", connString)
+	var err error
+	dbConn, err = sql.Open("postgres", connString)
 	if err != nil {
 		panic(err)
 	}
