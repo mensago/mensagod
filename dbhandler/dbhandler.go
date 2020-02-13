@@ -190,7 +190,7 @@ func GetWorkspace(wid string) (bool, string) {
 // lockout for a particular source
 func CheckLockout(failType string, wid string, source string) (string, error) {
 	row := dbConn.QueryRow(`SELECT lockout_until FROM failure_log 
-		WHERE wid=$1 and source=$2`, wid)
+		WHERE wid=$1 and source=$2`, wid, source)
 
 	var locktime string
 	err := row.Scan(&locktime)
