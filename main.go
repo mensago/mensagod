@@ -388,7 +388,7 @@ func commandLogin(session *sessionState) {
 	case "active", "approved":
 		session.LoginState = loginAwaitingPassword
 		session.WID = wid
-		session.WriteClient("100 CONTINUE")
+		session.WriteClient("100 CONTINUE\r\n")
 	}
 }
 
