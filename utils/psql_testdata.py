@@ -147,7 +147,7 @@ def generate_account():
 	i = 0
 	while i < dev_count:
 		account['devices'].append( {'id' : str(uuid.uuid4()),
-			'session_str' : base64.b85encode(Random.new().read(AES.block_size)).decode('ascii') } )
+			'session_str' : base64.b85encode(Random.new().read(32)).decode('ascii') } )
 		i = i + 1
 
 	return account
