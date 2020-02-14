@@ -144,7 +144,7 @@ func LogFailure(failType string, wid string, source string) error {
 // ValidateUUID just returns whether or not a string is a valid UUID.
 func ValidateUUID(uuid string) bool {
 	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
-	if len(uuid) != 36 && len(uuid) == 32 {
+	if len(uuid) != 36 && len(uuid) != 32 {
 		return false
 	}
 	return pattern.MatchString(uuid)
@@ -270,7 +270,7 @@ func SetWorkspaceStatus(wid string, status string) error {
 // AddDevice is used for adding a device to a workspace. It generates a new session string for the
 // device, adds it to the device table, sets the device status, and returns the session string for
 // the new device.
-func AddDevice(wid string) string {
+func AddDevice(wid string, devid string) string {
 	// Generate the new session string
 	randomBytes := make([]byte, 32)
 	_, err := rand.Read(randomBytes)
@@ -279,8 +279,8 @@ func AddDevice(wid string) string {
 	}
 	sessionString := b85.Encode(randomBytes)
 
-	sqlStatement := `INSERT INTO iwkspc_sessions(wid, session_id) VALUES($1, $2)`
-	_, err = dbConn.Exec(sqlStatement, wid, sessionString)
+	sqlStatement := `INSERT INTO iwkspc_sessions(wid, devid, session_id) VALUES($1, $2, $3)`
+	_, err = dbConn.Exec(sqlStatement, wid, devid, sessionString)
 	if err != nil {
 		panic(err)
 	}
@@ -289,12 +289,12 @@ func AddDevice(wid string) string {
 
 // RemoveDevice removes a session string for a workspace. It returns true if successful and false
 // if not.
-func RemoveDevice(wid string, sessionString string) (bool, error) {
-	if len(sessionString) != 40 {
+func RemoveDevice(wid string, devid string) (bool, error) {
+	if len(devid) != 40 {
 		return false, errors.New("invalid session string")
 	}
-	sqlStatement := `DELETE FROM iwkspc_sessions WHERE wid=$1 AND session_id=$2`
-	_, err := dbConn.Exec(sqlStatement, wid, sessionString)
+	sqlStatement := `DELETE FROM iwkspc_sessions WHERE wid=$1 AND devid=$2`
+	_, err := dbConn.Exec(sqlStatement, wid, devid)
 	if err != nil {
 		return false, nil
 	}
@@ -302,13 +302,13 @@ func RemoveDevice(wid string, sessionString string) (bool, error) {
 }
 
 // CheckDevice checks a session string on a workspace and returns true or false if there is a match.
-func CheckDevice(wid string, sessionString string) (bool, error) {
+func CheckDevice(wid string, devid string, sessionString string) (bool, error) {
 	if len(sessionString) != 40 {
 		return false, errors.New("invalid session string")
 	}
 
-	row := dbConn.QueryRow(`SELECT status FROM iwkspc_sessions WHERE wid=$1 AND session_id=$2`,
-		wid, sessionString)
+	row := dbConn.QueryRow(`SELECT status FROM iwkspc_sessions WHERE wid=$1 AND 
+		devid=$2 AND session_str=$3`, wid, devid, sessionString)
 
 	var widStatus string
 	err := row.Scan(&widStatus)
@@ -319,7 +319,7 @@ func CheckDevice(wid string, sessionString string) (bool, error) {
 	case nil:
 		return true, nil
 	default:
-		panic(err)
+		return false, err
 	}
 }
 
@@ -327,7 +327,7 @@ func CheckDevice(wid string, sessionString string) (bool, error) {
 // one, replaces the old with the new, and returns the new session string. If successful, it
 // returns true and the updated session string. On failure, false is returned alongside an empty
 // string.
-func UpdateDevice(wid string, sessionString string) (bool, string, error) {
+func UpdateDevice(wid string, devid string, sessionString string) (bool, string, error) {
 	if len(sessionString) != 40 {
 		return false, "", errors.New("invalid session string")
 	}
@@ -339,8 +339,9 @@ func UpdateDevice(wid string, sessionString string) (bool, string, error) {
 		panic(err)
 	}
 	newSessionString := b85.Encode(randomBytes)
-	sqlStatement := `UPDATE iwkspc_sessions SET session_id=$1 WHERE wid=$2 and session_id=$3`
-	_, err = dbConn.Exec(sqlStatement, sessionString, wid, newSessionString)
+	sqlStatement := `UPDATE iwkspc_sessions SET session_str=$1 WHERE wid=$2 AND 
+		devid=$3 AND session_str=$4`
+	_, err = dbConn.Exec(sqlStatement, newSessionString, wid, devid, sessionString)
 
 	switch err {
 	case sql.ErrNoRows:

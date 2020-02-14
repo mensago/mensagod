@@ -285,12 +285,13 @@ func commandDevice(session *sessionState) {
 	// Command syntax:
 	// DEVICE <sessionID>
 
-	if len(session.Tokens) != 2 || session.LoginState != loginAwaitingSessionID {
+	if len(session.Tokens) != 3 || !dbhandler.ValidateUUID(session.Tokens[1]) ||
+		len(session.Tokens[2]) != 40 || session.LoginState != loginAwaitingSessionID {
 		session.WriteClient("400 BAD REQUEST\r\n")
 		return
 	}
 
-	success, err := dbhandler.CheckDevice(session.WID, session.Tokens[1])
+	success, err := dbhandler.CheckDevice(session.WID, session.Tokens[1], session.Tokens[2])
 	if err != nil {
 		session.WriteClient("400 BAD REQUEST\r\n")
 		return
@@ -306,13 +307,14 @@ func commandDevice(session *sessionState) {
 			// 5) Upon receipt of authorization approval, update the device status in the database
 			// 6) Upon receipt of denial, log the failure and apply a lockout to the IP
 		} else {
-			newSessionString := dbhandler.AddDevice(session.WID)
+			newSessionString := dbhandler.AddDevice(session.WID, session.Tokens[1])
 			session.WriteClient(fmt.Sprintf("200 OK %s\r\n", newSessionString))
 			session.LoginState = loginClientSession
 		}
 	} else {
 		var newSessionString string
-		success, newSessionString, err = dbhandler.UpdateDevice(session.WID, session.Tokens[1])
+		success, newSessionString, err = dbhandler.UpdateDevice(session.WID, session.Tokens[1],
+			session.Tokens[2])
 		if err == nil && success {
 			session.WriteClient(fmt.Sprintf("200 OK %s\r\n", newSessionString))
 			session.LoginState = loginClientSession
