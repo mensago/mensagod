@@ -4,6 +4,8 @@
 import argparse
 import array
 import base64
+from Crypto.Cipher import AES
+from Crypto import Random
 import diceware
 import nacl.public
 import nacl.pwhash
@@ -17,7 +19,6 @@ import sys
 import toml
 import uuid
 
-
 # Function definitions
 def generate_password():
 	# Diceware module isn't very friendly as a module. :/
@@ -30,46 +31,6 @@ def generate_password():
 	options.wordlist = 'en_eff'
 	options.infile = None
 	return diceware.get_passphrase(options)
-
-
-def generate_unid(length):
-	if length < 50:
-		length = 50
-	
-	try:
-		get_char = unichr
-	except NameError:
-		get_char = chr
-
-	include_ranges = [
-		( 0x0021, 0x007E ), # Basic Latin
-		( 0x00A1, 0x00AC ), # Latin-1 Supplement
-		( 0x00AE, 0x00FF ), # Latin-1 Supplement
-		( 0x0100, 0x017F ), # Latin Extended-A
-		( 0x0180, 0x024F ), # Latin Extended-B
-		( 0x0250, 0x02AF ), # International Phonetic Alphabet
-		( 0x0370, 0x0377 ), # Greek and Coptic
-		( 0x037A, 0x037E ), # Greek and Coptic
-		( 0x0384, 0x038A ), # Greek and Coptic
-		( 0x038C, 0x038C ), # Greek and Coptic
-		( 0x038E, 0x03FF ), # Greek and Coptic
-		( 0x0400, 0x04FF ), # Cyrillic
-		( 0x0500, 0x052F ), # Cyrillic Supplement
-		( 0x0600, 0x06FF ), # Arabic
-		( 0x0750, 0x077F ), # Arabic Supplement
-		( 0x16A0, 0x16F0 ), # Runic
-		( 0x1E00, 0x1EFF ), # Latin Extended Additional
-		( 0x2600, 0x26FF ), # Misc. Symbols
-		( 0x2700, 0x27BF ), # Block Dingbats
-		( 0x2C60, 0x2C7F ), # Latin Extended-C
-		( 0xA720, 0xA7AD ), # Latin Extended-D
-	]
-
-	charlist = [
-		get_char(code_point) for current_range in include_ranges
-			for code_point in range(current_range[0], current_range[1] + 1)
-	]
-	return ''.join(secrets.choice(charlist) for i in range(length))
 
 
 def generate_account():
@@ -126,7 +87,7 @@ def generate_account():
 	account['keys'] = [
 		{	'type' : 'ed25519',
 			'purpose' : 'identity',
-			'id' : generate_unid(50),
+			'id' : str(uuid.uuid4()),
 			'public_key' : bytes(identity.public_key),
 			'private_key' : bytes(identity),
 			'public_b85' : base64.b85encode(bytes(identity.public_key)).decode('utf8'),
@@ -134,7 +95,7 @@ def generate_account():
 		},
 		{	'type' : 'ed25519',
 			'purpose' : 'contact_request',
-			'id' : generate_unid(50),
+			'id' : str(uuid.uuid4()),
 			'public_key' : bytes(contact_request.public_key),
 			'private_key' : bytes(contact_request),
 			'public_b85' : base64.b85encode(bytes(contact_request.public_key)).decode('utf8'),
@@ -142,7 +103,7 @@ def generate_account():
 		},
 		{	'type' : 'ed25519',
 			'purpose' : 'firstdevice',
-			'id' : generate_unid(50),
+			'id' : str(uuid.uuid4()),
 			'public_key' : bytes(firstdevice.public_key),
 			'private_key' : bytes(firstdevice),
 			'public_b85' : base64.b85encode(bytes(firstdevice.public_key)).decode('utf8'),
@@ -151,21 +112,21 @@ def generate_account():
 		{
 			'type' : 'aes256',
 			'purpose' : 'broadcast',
-			'id' : generate_unid(50),
+			'id' : str(uuid.uuid4()),
 			'key' : broadcast_aes,
 			'key_b85' : base64.b85encode(broadcast_aes).decode('utf8')
 		},
 		{
 			'type' : 'aes256',
 			'purpose' : 'system',
-			'id' : generate_unid(50),
+			'id' : str(uuid.uuid4()),
 			'key' : system_aes,
 			'key_b85' : base64.b85encode(system_aes).decode('utf8')
 		},
 		{
 			'type' : 'aes256',
 			'purpose' : 'folder',
-			'id' : generate_unid(50),
+			'id' : str(uuid.uuid4()),
 			'key' : folder_aes,
 			'key_b85' : base64.b85encode(folder_aes).decode('utf8')
 		},
@@ -185,20 +146,8 @@ def generate_account():
 	dev_count = rgen.randrange(1,6)
 	i = 0
 	while i < dev_count:
-		devkey = nacl.public.PrivateKey.generate()
-		account['devices'].append( {
-				'id' : str(uuid.uuid4()),
-				'key' :	{
-					'type' : 'ed25519',
-					'purpose' : 'identity',
-					'id' : generate_unid(50),
-					'public_key' : bytes(devkey.public_key),
-					'private_key' : bytes(devkey),
-					'public_b85' : base64.b85encode(bytes(devkey.public_key)).decode('utf8'),
-					'private_b85' : base64.b85encode(bytes(devkey)).decode('utf8')
-				}
-			}
-		)
+		account['devices'].append( {'id' : str(uuid.uuid4()),
+			'session_str' : base64.b85encode(Random.new().read(AES.block_size)).decode('ascii') } )
 		i = i + 1
 
 	return account
@@ -222,7 +171,7 @@ def reset_database(dbconn):
 					"wid char(36) NOT NULL, enc_name VARCHAR(128) NOT NULL, "
 					"enc_key VARCHAR(64) NOT NULL);")
 	cursor.execute("CREATE TABLE iwkspc_sessions(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
-					"devid char(36) NOT NULL, device_key VARCHAR(128) NOT NULL);")
+					"devid CHAR(36) NOT NULL, session_str VARCHAR(40) NOT NULL);")
 	cursor.execute("CREATE TABLE failure_log(id SERIAL PRIMARY KEY, type VARCHAR(16) NOT NULL, "
 				"wid VARCHAR(36), source VARCHAR(36) NOT NULL, count INTEGER, "
 				"last_failure TIMESTAMP NOT NULL, lockout_until TIMESTAMP);")
@@ -240,7 +189,7 @@ def add_account_to_db(account, dbconn):
 	else:
 		cmdparts.append("'',")
 	
-	cmdparts.extend(["$$", account['pwhash_b85'],"$$,'",account['status'], "');"])
+	cmdparts.extend(["'", account['pwhash_b85'],"','",account['status'], "');"])
 	cmd = ''.join(cmdparts)
 	cursor.execute(cmd)
 	
@@ -255,10 +204,10 @@ def add_account_to_db(account, dbconn):
 
 	i = 0
 	while i < len(account['devices']):
-		cmd =	(	"INSERT INTO iwkspc_sessions(wid, devid, device_key) "
-					"VALUES('%s','%s',$$%s$$);" % (
+		cmd =	(	"INSERT INTO iwkspc_sessions(wid, devid, session_str) "
+					"VALUES('%s','%s','%s');" % (
 						account['wid'], account['devices'][i]['id'], 
-						account['devices'][i]['key']['public_b85']
+						account['devices'][i]['session_str']
 					)
 				)
 		cursor.execute(cmd)
@@ -297,8 +246,7 @@ def dump_account(account):
 	i = 0
 	while i < len(account['devices']):
 		out["Device #%s ID" % str(i+1)] = account['devices'][i]['id']
-		out["Device #%s Public.b85" % str(i+1)] = account['devices'][i]['key']['public_b85']
-		out["Device #%s Private.b85" % str(i+1)] = account['devices'][i]['key']['private_b85']
+		out["Device #%s Session String" % str(i+1)] = account['devices'][i]['session_str']
 		i = i + 1
 
 	for k,v in out.items():
