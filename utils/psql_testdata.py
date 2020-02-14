@@ -171,7 +171,8 @@ def reset_database(dbconn):
 					"wid char(36) NOT NULL, enc_name VARCHAR(128) NOT NULL, "
 					"enc_key VARCHAR(64) NOT NULL);")
 	cursor.execute("CREATE TABLE iwkspc_sessions(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
-					"devid CHAR(36) NOT NULL, session_str VARCHAR(40) NOT NULL);")
+					"devid CHAR(36) NOT NULL, session_str VARCHAR(40) NOT NULL, "
+					"status VARCHAR(16) NOT NULL);")
 	cursor.execute("CREATE TABLE failure_log(id SERIAL PRIMARY KEY, type VARCHAR(16) NOT NULL, "
 				"wid VARCHAR(36), source VARCHAR(36) NOT NULL, count INTEGER, "
 				"last_failure TIMESTAMP NOT NULL, lockout_until TIMESTAMP);")
@@ -204,8 +205,8 @@ def add_account_to_db(account, dbconn):
 
 	i = 0
 	while i < len(account['devices']):
-		cmd =	(	"INSERT INTO iwkspc_sessions(wid, devid, session_str) "
-					"VALUES('%s','%s','%s');" % (
+		cmd =	(	"INSERT INTO iwkspc_sessions(wid, devid, session_str, status) "
+					"VALUES('%s','%s','%s','active');" % (
 						account['wid'], account['devices'][i]['id'], 
 						account['devices'][i]['session_str']
 					)
