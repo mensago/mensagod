@@ -5,7 +5,9 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -170,10 +172,34 @@ func setupConfig() {
 }
 
 func main() {
-	logHandle, err := os.OpenFile("/var/log/anselus-server/anselus-server.log",
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	var logFolder, logLocation string
+	switch runtime.GOOS {
+	case "js", "nacl":
+		fmt.Println("Javascript and NaCl are not supported platforms for Anselus Server.")
+		os.Exit(1)
+	case "windows":
+		programData, success := os.LookupEnv("ProgramData")
+		if !success {
+			programData = "C:\\ProgramData"
+		}
+
+		logFolder = filepath.Join(programData, "anselus-server")
+	default:
+		// By default, we will assume that the OS is UNIX-like.
+		logFolder = "/var/log/anselus-server/"
+	}
+	logLocation = filepath.Join(logFolder, "anselus-server.log")
+	if _, err := os.Stat(logLocation); os.IsNotExist(err) {
+		// TODO: Figure out if this is usable for Windows
+		err = os.Mkdir(logLocation, 0600)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	logHandle, err := os.OpenFile(logLocation, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		fmt.Println("Unable to open log file /var/log/anselus.log. Aborting.")
+		fmt.Printf("Unable to open log file %s. Aborting.\n", logLocation)
 		fmt.Printf("Error: %s\n", err)
 		os.Exit(1)
 	}
