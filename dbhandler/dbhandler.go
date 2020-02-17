@@ -338,7 +338,7 @@ func UpdateDevice(wid string, devid string, sessionString string) (bool, string,
 // 'pending', or 'disabled'.
 func AddWorkspace(wid string, status string) error {
 	// TODO: Implement
-	return "", errors.New("Unimplemented")
+	return errors.New("Unimplemented")
 }
 
 // RemoveWorkspace deletes a workspace. It returns an error if unsuccessful.
