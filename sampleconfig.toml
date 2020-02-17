@@ -20,7 +20,7 @@ password = ""
 # port = "2001"
 
 # [global]
-# The location where workspace data is stored
+# The location where workspace data is stored. On Windows, the default is %PROGRAMDATA%\anselus.
 # workspace_dir = "/var/anselus"
 # 
 # The type of registration. 'public' is open to outside registration requests, and would be 
