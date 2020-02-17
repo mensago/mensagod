@@ -243,6 +243,11 @@ func main() {
 
 func connectionWorker(conn net.Conn) {
 	defer conn.Close()
+	conn.SetReadDeadline(time.Now().Add(time.Minute * 30))
+	conn.SetWriteDeadline(time.Now().Add(time.Minute * 10))
+
+	// TODO: Check for IP blocking and dump if found
+
 	buffer := make([]byte, MaxCommandLength)
 
 	var session sessionState
@@ -251,11 +256,16 @@ func connectionWorker(conn net.Conn) {
 
 	pattern := regexp.MustCompile("\"[^\"]+\"|\"[^\"]+$|[\\S\\[\\]]+")
 	for {
-		// TODO: Implement idle connection timeout
 		bytesRead, err := conn.Read(buffer)
 		if err != nil {
-			fmt.Println("Error reading from client: ", err.Error())
-			continue
+			ne, ok := err.(*net.OpError)
+			if ok && ne.Timeout() {
+				session.IsTerminating = true
+				break
+			} else {
+				fmt.Println("Error reading from client: ", err.Error())
+				continue
+			}
 		}
 
 		trimmedString := strings.TrimSpace(string(buffer[:bytesRead]))
@@ -270,6 +280,8 @@ func connectionWorker(conn net.Conn) {
 		if session.IsTerminating {
 			break
 		}
+		conn.SetReadDeadline(time.Now().Add(time.Minute * 30))
+		conn.SetWriteDeadline(time.Now().Add(time.Minute * 10))
 	}
 }
 
