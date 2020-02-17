@@ -190,8 +190,7 @@ func main() {
 	}
 	logLocation = filepath.Join(logFolder, "anselus-server.log")
 	if _, err := os.Stat(logLocation); os.IsNotExist(err) {
-		// TODO: Figure out if this is usable for Windows
-		err = os.Mkdir(logLocation, 0600)
+		err = os.Mkdir(logFolder, 0600)
 		if err != nil {
 			panic(err)
 		}
