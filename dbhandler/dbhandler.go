@@ -162,28 +162,6 @@ func GenerateSessionString(length int) string {
 	return b85.Encode(byteList)
 }
 
-// GetWorkspace checks to see if a workspace exists. If the workspace does exist,
-// True is returned along with a string containing the workspace's status. If the
-// workspace does not exist, it returns false and an empty string. The workspace
-// status can be 'active', 'pending', or 'disabled'. Note that this function does
-// not check the validity of the WID string passed to it. This should be done when
-// the input is received from the user.
-func GetWorkspace(wid string) (bool, string) {
-	row := dbConn.QueryRow(`SELECT status FROM iwkspc_main WHERE wid=$1`, wid)
-
-	var widStatus string
-	err := row.Scan(&widStatus)
-
-	switch err {
-	case sql.ErrNoRows:
-		return false, ""
-	case nil:
-		return true, widStatus
-	default:
-		panic(err)
-	}
-}
-
 // CheckLockout corresponds to LogFailure() in that it checks to see if said
 // source has a lockout timestamp and returns it if there is or an empty string if not.
 // It also has the added benefit of resetting a counter to 0 if there is an expired
@@ -348,6 +326,44 @@ func UpdateDevice(wid string, devid string, sessionString string) (bool, string,
 		return false, "", err
 	case nil:
 		return true, newSessionString, nil
+	default:
+		panic(err)
+	}
+}
+
+// AddWorkspace is used for adding a workspace to a server. Upon failure, it returns the error
+// state for the failure. It makes the necessary database modifications and creates the folder for
+// the workspace in the filesystem. Note that this function is strictly for adding workspaces for
+// individuals. Shared workspaces are not yet supported/implemented. Status may be 'active',
+// 'pending', or 'disabled'.
+func AddWorkspace(wid string, status string) error {
+	// TODO: Implement
+	return "", errors.New("Unimplemented")
+}
+
+// RemoveWorkspace deletes a workspace. It returns an error if unsuccessful.
+func RemoveWorkspace(wid string) error {
+	// TODO: Implement
+	return errors.New("Unimplemented")
+}
+
+// CheckWorkspace checks to see if a workspace exists. If the workspace does exist,
+// True is returned along with a string containing the workspace's status. If the
+// workspace does not exist, it returns false and an empty string. The workspace
+// status can be 'active', 'pending', or 'disabled'. Note that this function does
+// not check the validity of the WID string passed to it. This should be done when
+// the input is received from the user.
+func CheckWorkspace(wid string) (bool, string) {
+	row := dbConn.QueryRow(`SELECT status FROM iwkspc_main WHERE wid=$1`, wid)
+
+	var widStatus string
+	err := row.Scan(&widStatus)
+
+	switch err {
+	case sql.ErrNoRows:
+		return false, ""
+	case nil:
+		return true, widStatus
 	default:
 		panic(err)
 	}
