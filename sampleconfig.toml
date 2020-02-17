@@ -25,10 +25,17 @@ password = ""
 # 
 # The type of registration. 'public' is open to outside registration requests, and would be 
 # appropriate only for hosting a public free server. 'moderated' is open to public registration, 
-# but an administrator must approve the request before an account can be created. 'private' permits 
-# account registration only by an administrator. For most workflows, private is appropriate.
+# but an administrator must approve the request before an account can be created. 'network' 
+# limits registration to a specified subnet or IP address. 'private' permits account registration 
+# only by an administrator. For most workflows 'private' is the appropriate setting.
 # registration = "private"
-#
+# 
+# For servers configured to network registration, this variable sets the subnet(s) to which 
+# account registration is limited. Subnets are expected in CIDR notation and comma-separated.
+# The default setting restricts registration to the private (non-routable) networks. 
+# registration_subnet = 192.168.0.0/24, 172.16.0.0/12, 10.0.0.0/8
+# registration_subnet6 = fe80::/10
+# 
 # The default storage quota for a workspace, measured in MiB. 0 means no limit.
 # default_quota = 0
 
