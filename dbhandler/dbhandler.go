@@ -5,10 +5,10 @@ package dbhandler
 // eliminate cluttering up the otherwise-clean Go code with the ugly SQL queries.
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"log"
-	"math/rand"
 	"net"
 	"os"
 	"regexp"
