@@ -206,6 +206,13 @@ func main() {
 	defer logHandle.Close()
 	ServerLog = log.New(logHandle, "anselus-server:", log.LstdFlags)
 
+	if _, err := os.Stat(viper.GetString("global.workspace_dir")); os.IsNotExist(err) {
+		err = os.Mkdir(viper.GetString("global.workspace_dir"), 0600)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	dbhandler.Connect(ServerLog)
 	if !dbhandler.IsConnected() {
 		fmt.Println("Unable to connect to database server. Quitting.")
