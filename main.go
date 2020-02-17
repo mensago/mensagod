@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -12,8 +13,8 @@ import (
 	"time"
 
 	"github.com/darkwyrm/server/dbhandler"
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
-
 	"github.com/spf13/viper"
 )
 
@@ -98,6 +99,10 @@ func setupConfig() {
 	//			   prior to its creation
 	// private - an account can be created only by an administrator -- outside requests will bounce
 	viper.SetDefault("global.registration", "private")
+
+	// Subnet(s) used for network registration. Defaults to private networks only.
+	viper.SetDefault("global.registration_subnet", "192.168.0.0/24, 172.16.0.0/12, 10.0.0.0/8")
+	viper.SetDefault("global.registration_subnet6", "fe80::/10")
 
 	// Default user workspace quota in MiB. 0 = no quota
 	viper.SetDefault("global.default_quota", 0)
@@ -289,12 +294,11 @@ func processCommand(session *sessionState) {
 	switch session.Tokens[0] {
 	/*
 		Commands to Implement:
-
 		COPY
 		DELETE
 		DELIVER
 		DOWNLOAD
-		EXISTS
+		GETREG
 		GETUPDATES
 		LIST
 		MKDIR
@@ -306,6 +310,7 @@ func processCommand(session *sessionState) {
 		SERVERID
 		SERVERPWD
 		SETADDR
+		SETREG
 		UNREGISTER
 		UPLOAD
 	*/
@@ -321,6 +326,8 @@ func processCommand(session *sessionState) {
 		// Do nothing. Just resets the idle counter.
 	case "PASSWORD":
 		commandPassword(session)
+	case "REGISTER":
+		commandRegister(session)
 	default:
 		commandUnrecognized(session)
 	}
@@ -411,7 +418,7 @@ func commandLogin(session *sessionState) {
 
 	wid := session.Tokens[2]
 	var exists bool
-	exists, session.WorkspaceStatus = dbhandler.GetWorkspace(wid)
+	exists, session.WorkspaceStatus = dbhandler.CheckWorkspace(wid)
 	if exists {
 		lockTime, err := dbhandler.CheckLockout("workspace", wid, session.Connection.RemoteAddr().String())
 		if err != nil {
@@ -485,6 +492,8 @@ func commandPassword(session *sessionState) {
 			// Check to see if this is a preregistered account that has yet to be logged into.
 			// If it is, return 200 OK and the next session ID.
 			if session.WorkspaceStatus == "approved" {
+				// TODO: Also generate and return the first device's expected device ID.
+
 				session.LoginState = loginClientSession
 				session.WriteClient(strings.Join([]string{"200 OK",
 					dbhandler.GenerateSessionString(0), "\r\n"}, " "))
@@ -539,6 +548,65 @@ func commandLogout(session *sessionState) {
 	// LOGOUT
 	session.WriteClient("200 OK\r\n")
 	session.IsTerminating = true
+}
+
+func commandRegister(session *sessionState) {
+	// command syntax:
+	// REGISTER <WID>
+
+	if len(session.Tokens) != 2 || !dbhandler.ValidateUUID(session.Tokens[1]) {
+		session.WriteClient("400 BAD REQUEST\r\n")
+		return
+	}
+
+	regType := strings.ToLower(viper.GetString("global.registration"))
+	if regType == "private" {
+		if session.WID != "00000000-0000-0000-0000-000000000001" {
+			session.WriteClient("304 REGISTRATION CLOSED\r\n")
+			return
+		}
+	}
+
+	success, _ := dbhandler.CheckWorkspace(session.Tokens[1])
+	if success {
+		session.WriteClient("408 RESOURCE EXISTS\r\n")
+		return
+	}
+
+	// TODO: Check number of recent registration requests from this IP
+
+	var workspaceStatus string
+	switch regType {
+	case "network":
+		// TODO: Check that remote address is within permitted subnet
+		session.WriteClient("301 NOT IMPLEMENTED\r\n")
+		return
+	case "moderated":
+		workspaceStatus = "pending"
+	case "private":
+		workspaceStatus = "approved"
+	default:
+		workspaceStatus = "active"
+	}
+
+	err := dbhandler.AddWorkspace(session.Tokens[1], workspaceStatus)
+	if err != nil {
+		panic(err)
+	}
+
+	// For network and public registration, we create a device ID for the first device to use.
+	switch regType {
+	case "moderated":
+		session.WriteClient("101 PENDING\r\n")
+		return
+	case "network", "public":
+		devid := uuid.New().String()
+		sessionString := dbhandler.AddDevice(session.Tokens[1], devid)
+		session.WriteClient(fmt.Sprintf("200 OK %s %s\r\n", devid, sessionString))
+	case "private":
+		session.WriteClient("200 OK\r\n")
+	}
+	panic(errors.New("Registration unfinished"))
 }
 
 func commandUnrecognized(session *sessionState) {
