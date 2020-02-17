@@ -246,8 +246,6 @@ func connectionWorker(conn net.Conn) {
 	conn.SetReadDeadline(time.Now().Add(time.Minute * 30))
 	conn.SetWriteDeadline(time.Now().Add(time.Minute * 10))
 
-	// TODO: Check for IP blocking and dump if found
-
 	buffer := make([]byte, MaxCommandLength)
 
 	var session sessionState
@@ -255,6 +253,8 @@ func connectionWorker(conn net.Conn) {
 	session.LoginState = loginNoSession
 
 	pattern := regexp.MustCompile("\"[^\"]+\"|\"[^\"]+$|[\\S\\[\\]]+")
+
+	session.WriteClient("Anselus v0.1\r\n200 OK\r\n")
 	for {
 		bytesRead, err := conn.Read(buffer)
 		if err != nil {
@@ -311,6 +311,8 @@ func processCommand(session *sessionState) {
 	*/
 	case "DEVICE":
 		commandDevice(session)
+	case "EXISTS":
+		commandExists(session)
 	case "LOGIN":
 		commandLogin(session)
 	case "LOGOUT":
@@ -320,7 +322,7 @@ func processCommand(session *sessionState) {
 	case "PASSWORD":
 		commandPassword(session)
 	default:
-		fmt.Println(strings.Join(session.Tokens, " "))
+		commandUnrecognized(session)
 	}
 }
 
@@ -364,6 +366,34 @@ func commandDevice(session *sessionState) {
 		} else {
 			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
 		}
+	}
+}
+
+func commandExists(session *sessionState) {
+	// Command syntax:
+	// EXISTS <path>
+
+	if session.LoginState != loginClientSession {
+		session.WriteClient("401 UNAUTHORIZED\r\n")
+		return
+	}
+
+	if len(session.Tokens) < 2 {
+		session.WriteClient("400 BAD REQUEST\r\n")
+		return
+	}
+
+	fsPath := filepath.Join(viper.GetString("global.workspace_dir"), session.WID,
+		strings.Join(session.Tokens[1:], string(os.PathSeparator)))
+	_, err := os.Stat(fsPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			session.WriteClient("404 NOT FOUND\r\n")
+		} else {
+			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+		}
+	} else {
+		session.WriteClient("200 OK\r\n")
 	}
 }
 
@@ -509,4 +539,9 @@ func commandLogout(session *sessionState) {
 	// LOGOUT
 	session.WriteClient("200 OK\r\n")
 	session.IsTerminating = true
+}
+
+func commandUnrecognized(session *sessionState) {
+	// command used when not recognized
+	session.WriteClient("400 BAD REQUEST\r\n")
 }
