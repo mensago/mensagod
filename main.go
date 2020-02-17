@@ -73,8 +73,23 @@ func setupConfig() {
 	viper.SetDefault("database.user", "anselus")
 	viper.SetDefault("database.password", "")
 
-	// Location of workspace data
-	viper.SetDefault("global.workspace_dir", "/var/anselus/")
+	// Location of workspace data, server log
+	switch runtime.GOOS {
+	case "js", "nacl":
+		fmt.Println("Javascript and NaCl are not supported platforms for Anselus Server.")
+		os.Exit(1)
+	case "windows":
+		programData, success := os.LookupEnv("ProgramData")
+		if !success {
+			programData = "C:\\ProgramData"
+		}
+
+		viper.SetDefault("global.workspace_dir", filepath.Join(programData, "anselus"))
+		viper.Set("global.log_dir", filepath.Join(programData, "anselus-server"))
+	default:
+		viper.SetDefault("global.workspace_dir", "/var/anselus/")
+		viper.Set("global.log_dir", "/var/log/anselus-server/")
+	}
 
 	// Account registration modes
 	// public - Outside registration requests.
@@ -172,25 +187,11 @@ func setupConfig() {
 }
 
 func main() {
-	var logFolder, logLocation string
-	switch runtime.GOOS {
-	case "js", "nacl":
-		fmt.Println("Javascript and NaCl are not supported platforms for Anselus Server.")
-		os.Exit(1)
-	case "windows":
-		programData, success := os.LookupEnv("ProgramData")
-		if !success {
-			programData = "C:\\ProgramData"
-		}
+	setupConfig()
 
-		logFolder = filepath.Join(programData, "anselus-server")
-	default:
-		// By default, we will assume that the OS is UNIX-like.
-		logFolder = "/var/log/anselus-server/"
-	}
-	logLocation = filepath.Join(logFolder, "anselus-server.log")
+	logLocation := filepath.Join(viper.GetString("global.log_dir"), "anselus-server.log")
 	if _, err := os.Stat(logLocation); os.IsNotExist(err) {
-		err = os.Mkdir(logFolder, 0600)
+		err = os.Mkdir(viper.GetString("global.log_dir"), 0600)
 		if err != nil {
 			panic(err)
 		}
@@ -204,8 +205,6 @@ func main() {
 	}
 	defer logHandle.Close()
 	ServerLog = log.New(logHandle, "anselus-server:", log.LstdFlags)
-
-	setupConfig()
 
 	dbhandler.Connect(ServerLog)
 	if !dbhandler.IsConnected() {
