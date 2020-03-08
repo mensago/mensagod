@@ -87,9 +87,13 @@ func setupConfig() {
 
 		viper.SetDefault("global.workspace_dir", filepath.Join(programData, "anselus"))
 		viper.Set("global.log_dir", filepath.Join(programData, "anselus-server"))
+		viper.SetConfigName("serverconfig.toml")
+		viper.AddConfigPath(filepath.Join(programData, "anselus-server"))
 	default:
 		viper.SetDefault("global.workspace_dir", "/var/anselus/")
 		viper.Set("global.log_dir", "/var/log/anselus-server/")
+		viper.SetConfigName("serverconfig")
+		viper.AddConfigPath("/etc/anselus-server/")
 	}
 
 	// Account registration modes
@@ -123,9 +127,7 @@ func setupConfig() {
 	// Is a matching session key required for a device to have access?
 	viper.SetDefault("security.device_checking", "on")
 
-	// Search for the config file
-	viper.SetConfigName("serverconfig")
-	viper.AddConfigPath("/etc/anselus-server/")
+	// Read the config file
 	err := viper.ReadInConfig()
 	if err != nil {
 		ServerLog.Printf("Unable to locate config file. Exiting. Error: %s", err)
@@ -552,9 +554,9 @@ func commandLogout(session *sessionState) {
 
 func commandRegister(session *sessionState) {
 	// command syntax:
-	// REGISTER <WID>
+	// REGISTER <WID> <passwordHash>
 
-	if len(session.Tokens) != 2 || !dbhandler.ValidateUUID(session.Tokens[1]) {
+	if len(session.Tokens) != 3 || !dbhandler.ValidateUUID(session.Tokens[1]) {
 		session.WriteClient("400 BAD REQUEST\r\n")
 		return
 	}
