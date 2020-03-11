@@ -14,12 +14,12 @@
 # user = "anselus"
 password = ""
 
-# [network]
+[network]
 # The interface and port to listen on
 # listen_ip = "127.0.0.1"
 # port = "2001"
 
-# [global]
+[global]
 # The location where workspace data is stored. On Windows, the default is %PROGRAMDATA%\anselus.
 # workspace_dir = "/var/anselus"
 # 
@@ -39,7 +39,7 @@ password = ""
 # The default storage quota for a workspace, measured in MiB. 0 means no limit.
 # default_quota = 0
 
-# [security]
+[security]
 # The number of seconds to wait after a login failure before accepting another attempt
 # failure_delay_sec = 3
 # 
