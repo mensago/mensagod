@@ -130,13 +130,14 @@ func setupConfig() {
 	// Read the config file
 	err := viper.ReadInConfig()
 	if err != nil {
-		ServerLog.Printf("Unable to locate config file. Exiting. Error: %s", err)
+		//ServerLog.Printf("Unable to locate config file. Exiting. Error: %s", err)
 		fmt.Printf("Unable to locate config file. Exiting. Error: %s", err)
 		os.Exit(1)
 	}
 
+	// TODO: Change server log init to allow for logging here
 	if viper.GetString("database.password") == "" {
-		ServerLog.Println("Database password not set in config file. Exiting.")
+		//ServerLog.Println("Database password not set in config file. Exiting.")
 		fmt.Println("Database password not set in config file. Exiting.")
 		os.Exit(1)
 	}
@@ -145,49 +146,50 @@ func setupConfig() {
 	case "private", "public", "network", "moderated":
 		// Do nothing. Legitimate values.
 	default:
-		ServerLog.Println("Invalid registration mode in config file. Exiting.")
-		fmt.Println("Invalid registration mode in config file. Exiting.")
+		//ServerLog.Println("Invalid registration mode in config file. Exiting.")
+		fmt.Printf("Invalid registration mode '%s'in config file. Exiting.\n",
+			viper.GetString("global.registration"))
 		os.Exit(1)
 	}
 
 	if viper.GetInt("global.default_quota") < 0 {
 		viper.Set("global.default_quota", 0)
-		ServerLog.Println("Negative quota value in config file. Assuming zero.")
+		//ServerLog.Println("Negative quota value in config file. Assuming zero.")
 		fmt.Println("Negative quota value in config file. Assuming zero.")
 	}
 
 	if viper.GetInt("security.failure_delay_sec") > 60 {
 		viper.Set("security.failure_delay_sec", 60)
-		ServerLog.Println("Limiting maximum failure delay to 60.")
+		//ServerLog.Println("Limiting maximum failure delay to 60.")
 		fmt.Println("Limiting maximum failure delay to 60.")
 	}
 
 	if viper.GetInt("security.max_failures") < 1 {
 		viper.Set("security.max_failures", 1)
-		ServerLog.Println("Invalid login failure maximum. Setting to 1.")
+		//ServerLog.Println("Invalid login failure maximum. Setting to 1.")
 		fmt.Println("Invalid login failure maximum. Setting to 1.")
 	} else if viper.GetInt("security.max_failures") > 10 {
 		viper.Set("security.max_failures", 10)
-		ServerLog.Println("Limiting login failure maximum to 10.")
+		//ServerLog.Println("Limiting login failure maximum to 10.")
 		fmt.Println("Limiting login failure maximum to 10.")
 	}
 
 	if viper.GetInt("security.lockout_delay_min") < 0 {
 		viper.Set("security.lockout_delay_min", 0)
-		ServerLog.Println("Negative login failure lockout time. Setting to zero.")
+		//ServerLog.Println("Negative login failure lockout time. Setting to zero.")
 		fmt.Println("Negative login failure lockout time. Setting to zero.")
 	}
 
 	if viper.GetInt("security.registration_delay_min") < 0 {
 		viper.Set("security.registration_delay_min", 0)
-		ServerLog.Println("Negative registration delay. Setting to zero.")
+		//ServerLog.Println("Negative registration delay. Setting to zero.")
 		fmt.Println("Negative registration delay. Setting to zero.")
 	}
 
 	devChecking := strings.ToLower(viper.GetString("security.device_checking"))
 	if devChecking != "on" && devChecking != "off" {
 		viper.Set("security.devChecking", "on")
-		ServerLog.Println("Invalid device checking value. Exiting.")
+		//ServerLog.Println("Invalid device checking value. Exiting.")
 		fmt.Println("Invalid device checking value. Exiting.")
 		os.Exit(1)
 	}
@@ -305,7 +307,6 @@ func processCommand(session *sessionState) {
 		LIST
 		MKDIR
 		MOVE
-		REGISTER
 		RESUME
 		SELECT
 		SEND
@@ -361,7 +362,12 @@ func commandDevice(session *sessionState) {
 			// 5) Upon receipt of authorization approval, update the device status in the database
 			// 6) Upon receipt of denial, log the failure and apply a lockout to the IP
 		} else {
-			newSessionString := dbhandler.AddDevice(session.WID, session.Tokens[1])
+			var newSessionString string
+			newSessionString, err = dbhandler.AddDevice(session.WID, session.Tokens[1])
+			if err != nil {
+				// TODO: log error
+				session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+			}
 			session.WriteClient(fmt.Sprintf("200 OK %s\r\n", newSessionString))
 			session.LoginState = loginClientSession
 		}
@@ -373,6 +379,7 @@ func commandDevice(session *sessionState) {
 			session.WriteClient(fmt.Sprintf("200 OK %s\r\n", newSessionString))
 			session.LoginState = loginClientSession
 		} else {
+			// TODO: log error
 			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
 		}
 	}
@@ -498,7 +505,7 @@ func commandPassword(session *sessionState) {
 
 				session.LoginState = loginClientSession
 				session.WriteClient(strings.Join([]string{"200 OK",
-					dbhandler.GenerateSessionString(0), "\r\n"}, " "))
+					dbhandler.GenerateRandomString(50), "\r\n"}, " "))
 				err = dbhandler.SetWorkspaceStatus(session.WID, "active")
 				if err != nil {
 					panic(nil)
@@ -563,7 +570,9 @@ func commandRegister(session *sessionState) {
 
 	regType := strings.ToLower(viper.GetString("global.registration"))
 	if regType == "private" {
-		if session.WID != "00000000-0000-0000-0000-000000000001" {
+		// If registration is set to private, only the system administrator can use this command.
+		if session.WID != "00000000-0000-0000-0000-000000000001" ||
+			session.LoginState != loginClientSession {
 			session.WriteClient("304 REGISTRATION CLOSED\r\n")
 			return
 		}
@@ -591,22 +600,32 @@ func commandRegister(session *sessionState) {
 		workspaceStatus = "active"
 	}
 
-	err := dbhandler.AddWorkspace(session.Tokens[1], workspaceStatus)
+	// Just some basic sanity checks on the password hash.
+	if len(session.Tokens[2]) < 8 || len(session.Tokens[2]) > 120 {
+		session.WriteClient("400 BAD REQUEST\r\n")
+		return
+	}
+
+	err := dbhandler.AddWorkspace(session.Tokens[1], session.Tokens[2], workspaceStatus)
 	if err != nil {
-		panic(err)
+		// TODO: log error
+		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
 	}
 
 	// For network and public registration, we create a device ID for the first device to use.
 	switch regType {
 	case "moderated":
-		session.WriteClient("101 PENDING\r\n")
+		session.WriteClient("101 PENDING")
 		return
-	case "network", "public":
+	case "network", "public", "private":
 		devid := uuid.New().String()
-		sessionString := dbhandler.AddDevice(session.Tokens[1], devid)
+		sessionString, err := dbhandler.AddDevice(session.Tokens[1], devid)
+		if err != nil {
+			// TODO: log error
+			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+		}
 		session.WriteClient(fmt.Sprintf("200 OK %s %s\r\n", devid, sessionString))
-	case "private":
-		session.WriteClient("200 OK\r\n")
+		return
 	}
 	panic(errors.New("Registration unfinished"))
 }
