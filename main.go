@@ -366,7 +366,7 @@ func commandDevice(session *sessionState) {
 			var newSessionString string
 			newSessionString, err = dbhandler.AddDevice(session.WID, session.Tokens[1])
 			if err != nil {
-				// TODO: log error
+				ServerLog.Printf("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
 				session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
 			}
 			session.WriteClient(fmt.Sprintf("200 OK %s\r\n", newSessionString))
@@ -380,7 +380,7 @@ func commandDevice(session *sessionState) {
 			session.WriteClient(fmt.Sprintf("200 OK %s\r\n", newSessionString))
 			session.LoginState = loginClientSession
 		} else {
-			// TODO: log error
+			ServerLog.Printf("Internal server error. commandRegister.UpdateDevice. Error: %s\n", err)
 			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
 		}
 	}
@@ -502,15 +502,16 @@ func commandPassword(session *sessionState) {
 			// Check to see if this is a preregistered account that has yet to be logged into.
 			// If it is, return 200 OK and the next session ID.
 			if session.WorkspaceStatus == "approved" {
-				// TODO: Also generate and return the first device's expected device ID.
-
-				session.LoginState = loginClientSession
-				session.WriteClient(strings.Join([]string{"200 OK",
-					dbhandler.GenerateRandomString(50), "\r\n"}, " "))
+				deviceString := dbhandler.GenerateRandomString(50)
+				dbhandler.AddDevice(session.WID, deviceString)
 				err = dbhandler.SetWorkspaceStatus(session.WID, "active")
 				if err != nil {
-					panic(nil)
+					session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+					return
 				}
+
+				session.LoginState = loginClientSession
+				session.WriteClient(strings.Join([]string{"200 OK", deviceString, "\r\n"}, " "))
 				return
 			}
 
@@ -609,7 +610,7 @@ func commandRegister(session *sessionState) {
 
 	err := dbhandler.AddWorkspace(session.Tokens[1], session.Tokens[2], workspaceStatus)
 	if err != nil {
-		// TODO: log error
+		ServerLog.Printf("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
 		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
 	}
 
@@ -622,7 +623,7 @@ func commandRegister(session *sessionState) {
 		devid := uuid.New().String()
 		sessionString, err := dbhandler.AddDevice(session.Tokens[1], devid)
 		if err != nil {
-			// TODO: log error
+			ServerLog.Printf("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
 			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
 		}
 		session.WriteClient(fmt.Sprintf("200 OK %s %s\r\n", devid, sessionString))
