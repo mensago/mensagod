@@ -61,7 +61,7 @@ func (s sessionState) WriteClient(msg string) (n int, err error) {
 // Function Definitions
 // -------------------------------------------------------------------------------------------
 
-func setupConfig() {
+func setupConfig() *os.File {
 	// IP and port to listen on
 	viper.SetDefault("network.listen_ip", "127.0.0.1")
 	viper.SetDefault("network.port", "2001")
@@ -130,73 +130,9 @@ func setupConfig() {
 	// Read the config file
 	err := viper.ReadInConfig()
 	if err != nil {
-		//ServerLog.Printf("Unable to locate config file. Exiting. Error: %s", err)
 		fmt.Printf("Unable to locate config file. Exiting. Error: %s", err)
 		os.Exit(1)
 	}
-
-	// TODO: Change server log init to allow for logging here
-	if viper.GetString("database.password") == "" {
-		//ServerLog.Println("Database password not set in config file. Exiting.")
-		fmt.Println("Database password not set in config file. Exiting.")
-		os.Exit(1)
-	}
-
-	switch viper.GetString("global.registration") {
-	case "private", "public", "network", "moderated":
-		// Do nothing. Legitimate values.
-	default:
-		//ServerLog.Println("Invalid registration mode in config file. Exiting.")
-		fmt.Printf("Invalid registration mode '%s'in config file. Exiting.\n",
-			viper.GetString("global.registration"))
-		os.Exit(1)
-	}
-
-	if viper.GetInt("global.default_quota") < 0 {
-		viper.Set("global.default_quota", 0)
-		//ServerLog.Println("Negative quota value in config file. Assuming zero.")
-		fmt.Println("Negative quota value in config file. Assuming zero.")
-	}
-
-	if viper.GetInt("security.failure_delay_sec") > 60 {
-		viper.Set("security.failure_delay_sec", 60)
-		//ServerLog.Println("Limiting maximum failure delay to 60.")
-		fmt.Println("Limiting maximum failure delay to 60.")
-	}
-
-	if viper.GetInt("security.max_failures") < 1 {
-		viper.Set("security.max_failures", 1)
-		//ServerLog.Println("Invalid login failure maximum. Setting to 1.")
-		fmt.Println("Invalid login failure maximum. Setting to 1.")
-	} else if viper.GetInt("security.max_failures") > 10 {
-		viper.Set("security.max_failures", 10)
-		//ServerLog.Println("Limiting login failure maximum to 10.")
-		fmt.Println("Limiting login failure maximum to 10.")
-	}
-
-	if viper.GetInt("security.lockout_delay_min") < 0 {
-		viper.Set("security.lockout_delay_min", 0)
-		//ServerLog.Println("Negative login failure lockout time. Setting to zero.")
-		fmt.Println("Negative login failure lockout time. Setting to zero.")
-	}
-
-	if viper.GetInt("security.registration_delay_min") < 0 {
-		viper.Set("security.registration_delay_min", 0)
-		//ServerLog.Println("Negative registration delay. Setting to zero.")
-		fmt.Println("Negative registration delay. Setting to zero.")
-	}
-
-	devChecking := strings.ToLower(viper.GetString("security.device_checking"))
-	if devChecking != "on" && devChecking != "off" {
-		viper.Set("security.devChecking", "on")
-		//ServerLog.Println("Invalid device checking value. Exiting.")
-		fmt.Println("Invalid device checking value. Exiting.")
-		os.Exit(1)
-	}
-}
-
-func main() {
-	setupConfig()
 
 	logLocation := filepath.Join(viper.GetString("global.log_dir"), "anselus-server.log")
 	if _, err := os.Stat(logLocation); os.IsNotExist(err) {
@@ -221,6 +157,71 @@ func main() {
 			panic(err)
 		}
 	}
+
+	if viper.GetString("database.password") == "" {
+		ServerLog.Println("Database password not set in config file. Exiting.")
+		fmt.Println("Database password not set in config file. Exiting.")
+		os.Exit(1)
+	}
+
+	switch viper.GetString("global.registration") {
+	case "private", "public", "network", "moderated":
+		// Do nothing. Legitimate values.
+	default:
+		ServerLog.Println("Invalid registration mode in config file. Exiting.")
+		fmt.Printf("Invalid registration mode '%s'in config file. Exiting.\n",
+			viper.GetString("global.registration"))
+		os.Exit(1)
+	}
+
+	if viper.GetInt("global.default_quota") < 0 {
+		viper.Set("global.default_quota", 0)
+		ServerLog.Println("Negative quota value in config file. Assuming zero.")
+		fmt.Println("Negative quota value in config file. Assuming zero.")
+	}
+
+	if viper.GetInt("security.failure_delay_sec") > 60 {
+		viper.Set("security.failure_delay_sec", 60)
+		ServerLog.Println("Limiting maximum failure delay to 60.")
+		fmt.Println("Limiting maximum failure delay to 60.")
+	}
+
+	if viper.GetInt("security.max_failures") < 1 {
+		viper.Set("security.max_failures", 1)
+		ServerLog.Println("Invalid login failure maximum. Setting to 1.")
+		fmt.Println("Invalid login failure maximum. Setting to 1.")
+	} else if viper.GetInt("security.max_failures") > 10 {
+		viper.Set("security.max_failures", 10)
+		ServerLog.Println("Limiting login failure maximum to 10.")
+		fmt.Println("Limiting login failure maximum to 10.")
+	}
+
+	if viper.GetInt("security.lockout_delay_min") < 0 {
+		viper.Set("security.lockout_delay_min", 0)
+		ServerLog.Println("Negative login failure lockout time. Setting to zero.")
+		fmt.Println("Negative login failure lockout time. Setting to zero.")
+	}
+
+	if viper.GetInt("security.registration_delay_min") < 0 {
+		viper.Set("security.registration_delay_min", 0)
+		ServerLog.Println("Negative registration delay. Setting to zero.")
+		fmt.Println("Negative registration delay. Setting to zero.")
+	}
+
+	devChecking := strings.ToLower(viper.GetString("security.device_checking"))
+	if devChecking != "on" && devChecking != "off" {
+		viper.Set("security.devChecking", "on")
+		ServerLog.Println("Invalid device checking value. Exiting.")
+		fmt.Println("Invalid device checking value. Exiting.")
+		os.Exit(1)
+	}
+
+	return logHandle
+}
+
+func main() {
+	logHandle := setupConfig()
+	defer logHandle.Close()
 
 	dbhandler.Connect(ServerLog)
 	if !dbhandler.IsConnected() {
