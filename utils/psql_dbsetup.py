@@ -67,8 +67,8 @@ rows = cur.fetchall()
 
 if rows[0][0] == False:
 	cur.execute("CREATE TABLE iwkspc_main(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
-				"friendly_address VARCHAR(48) NULL, password VARCHAR(48) NOT NULL, "
-				"status VARCHAR(16) NOT NULL);")
+				"friendly_address VARCHAR(48), password VARCHAR(128) NOT NULL, "
+				"salt VARCHAR(64) NOT NULL, status VARCHAR(16) NOT NULL);")
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
 			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'iwkspc_folders' "

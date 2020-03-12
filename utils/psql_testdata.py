@@ -165,8 +165,8 @@ def reset_database(dbconn):
 	cursor = dbconn.cursor()
 	cursor.execute(dropcmd)
 	cursor.execute("CREATE TABLE iwkspc_main(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
-					"friendly_address VARCHAR(48) NULL, password VARCHAR(128) NOT NULL, "
-					"status VARCHAR(16) NOT NULL);")
+					"friendly_address VARCHAR(48), password VARCHAR(128) NOT NULL, "
+					"salt VARCHAR(64) NOT NULL, status VARCHAR(16) NOT NULL);")
 	cursor.execute("CREATE TABLE iwkspc_folders(id SERIAL PRIMARY KEY, fid char(36) NOT NULL, "
 					"wid char(36) NOT NULL, enc_name VARCHAR(128) NOT NULL, "
 					"enc_key VARCHAR(64) NOT NULL);")
@@ -182,7 +182,7 @@ def reset_database(dbconn):
 
 def add_account_to_db(account, dbconn):
 	cursor = dbconn.cursor()
-	cmdparts = ["INSERT INTO iwkspc_main(wid,friendly_address,password,status) VALUES('",
+	cmdparts = ["INSERT INTO iwkspc_main(wid,friendly_address,password,salt,status) VALUES('",
 				account['wid'],
 				"',"]
 	if len(account['friendly_address']) > 0:
@@ -190,7 +190,8 @@ def add_account_to_db(account, dbconn):
 	else:
 		cmdparts.append("'',")
 	
-	cmdparts.extend(["'", account['pwhash_b85'],"','",account['status'], "');"])
+	cmdparts.extend(["'", account['pwhash_b85'],"','",account['pwsalt_b85'],"','",
+		account['status'], "');"])
 	cmd = ''.join(cmdparts)
 	cursor.execute(cmd)
 	
