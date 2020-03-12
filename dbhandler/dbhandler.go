@@ -19,6 +19,7 @@ import (
 
 	"github.com/darkwyrm/b85"
 	"github.com/spf13/viper"
+	"golang.org/x/crypto/argon2"
 )
 
 var (
@@ -150,10 +151,10 @@ func ValidateUUID(uuid string) bool {
 	return pattern.MatchString(uuid)
 }
 
-// GenerateSessionString creates a randomly-generated device session string.
-func GenerateSessionString(length int) string {
+// GenerateRandomString creates a randomly-generated device session string.
+func GenerateRandomString(length int) string {
 
-	byteList := make([]byte, 50)
+	byteList := make([]byte, length)
 	_, err := rand.Read(byteList)
 	if err != nil {
 		panic(err)
@@ -209,13 +210,15 @@ func CheckLockout(failType string, wid string, source string) (string, error) {
 // if the two hashes match. It does not perform any validity checking of the input--this should be
 // done when the input is received from the user.
 func CheckPassword(wid string, passhash string) (bool, error) {
-	row := dbConn.QueryRow(`SELECT password FROM iwkspc_main WHERE wid=$1`, wid)
+	row := dbConn.QueryRow(`SELECT password,salt FROM iwkspc_main WHERE wid=$1`, wid)
 
-	var dbhash string
-	err := row.Scan(&dbhash)
+	var dbhash, salt string
+	err := row.Scan(&dbhash, &salt)
 	if err != nil {
 		return false, err
 	}
+
+	// TODO: Update this to read the new Argon2 salted hash from the database
 
 	if strings.TrimSpace(passhash) != strings.TrimSpace(dbhash) {
 		return false, nil
@@ -248,21 +251,16 @@ func SetWorkspaceStatus(wid string, status string) error {
 // AddDevice is used for adding a device to a workspace. It generates a new session string for the
 // device, adds it to the device table, sets the device status, and returns the session string for
 // the new device.
-func AddDevice(wid string, devid string) string {
-	// Generate the new session string
-	randomBytes := make([]byte, 32)
-	_, err := rand.Read(randomBytes)
-	if err != nil {
-		panic(err)
-	}
-	sessionString := b85.Encode(randomBytes)
+func AddDevice(wid string, devid string) (string, error) {
+	sessionString := GenerateRandomString(32)
 
+	var err error
 	sqlStatement := `INSERT INTO iwkspc_sessions(wid, devid, session_id) VALUES($1, $2, $3)`
 	_, err = dbConn.Exec(sqlStatement, wid, devid, sessionString)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
-	return sessionString
+	return sessionString, nil
 }
 
 // RemoveDevice removes a session string for a workspace. It returns true if successful and false
@@ -336,9 +334,18 @@ func UpdateDevice(wid string, devid string, sessionString string) (bool, string,
 // the workspace in the filesystem. Note that this function is strictly for adding workspaces for
 // individuals. Shared workspaces are not yet supported/implemented. Status may be 'active',
 // 'pending', or 'disabled'.
-func AddWorkspace(wid string, status string) error {
-	// TODO: Implement
-	return errors.New("Unimplemented")
+func AddWorkspace(wid string, password string, status string) error {
+	sqlStatement := `INSERT INTO iwkspc_main(wid, password, salt, status) VALUES($1, $2, $3, $4)`
+	salt := GenerateRandomString(32)
+
+	// Argon2 RFC recommends time=1, memory=64MB, and CPU cost greater than 0. Key size here is 32.
+	passhash := argon2.IDKey([]byte(password), []byte(salt), 1, 64*1024, 4, 32)
+	formatString := "$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s"
+	passString := fmt.Sprintf(formatString, argon2.Version, 64*1024, 1, 4, salt, passhash)
+
+	var err error
+	_, err = dbConn.Exec(sqlStatement, wid, passString, salt, status)
+	return err
 }
 
 // RemoveWorkspace deletes a workspace. It returns an error if unsuccessful.
