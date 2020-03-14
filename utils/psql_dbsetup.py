@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 import os.path
-import psycopg2
 import sys
+
+import psycopg2
 import toml
 
 # Step 1: load the config
@@ -65,7 +66,7 @@ cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.
 			"c.relkind = 'r');")
 rows = cur.fetchall()
 
-if rows[0][0] == False:
+if rows[0][0] is False:
 	cur.execute("CREATE TABLE iwkspc_main(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
 				"friendly_address VARCHAR(48), password VARCHAR(128) NOT NULL, "
 				"salt VARCHAR(64) NOT NULL, status VARCHAR(16) NOT NULL);")
@@ -74,7 +75,7 @@ cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.
 			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'iwkspc_folders' "
 			"AND c.relkind = 'r');")
 rows = cur.fetchall()
-if rows[0][0] == False:
+if rows[0][0] is False:
 	cur.execute("CREATE TABLE iwkspc_folders(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
 				"enc_name VARCHAR(128) NOT NULL, enc_key VARCHAR(64) NOT NULL);")
 
@@ -82,7 +83,7 @@ cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.
 			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'iwkspc_sessions' "
 			"AND c.relkind = 'r');")
 rows = cur.fetchall()
-if rows[0][0] == False:
+if rows[0][0] is False:
 	cur.execute("CREATE TABLE iwkspc_sessions(id SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, "
 				"devid CHAR(36) NOT NULL, session_str VARCHAR(40) NOT NULL, "
 				"status VARCHAR(16) NOT NULL);")
@@ -91,7 +92,7 @@ cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.
 			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'failure_log' "
 			"AND c.relkind = 'r');")
 rows = cur.fetchall()
-if rows[0][0] == False:
+if rows[0][0] is False:
 	cur.execute("CREATE TABLE failure_log(id SERIAL PRIMARY KEY, type VARCHAR(16) NOT NULL, "
 				"wid VARCHAR(36), source VARCHAR(36) NOT NULL, count INTEGER, "
 				"last_failure TIMESTAMP NOT NULL, lockout_until TIMESTAMP);")

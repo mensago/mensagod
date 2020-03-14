@@ -1,27 +1,24 @@
 #!/usr/bin/env python3
 
-
 import argparse
-import array
 import base64
-from Crypto.Cipher import AES
+import os.path
+import secrets
+import sys
+import uuid
+
 from Crypto import Random
 import diceware
 import nacl.public
 import nacl.pwhash
 import nacl.secret
 import nacl.utils
-import os.path
 import psycopg2
-import secrets
-import string
-import sys
 import toml
-import uuid
 
 # Function definitions
 def generate_password():
-	# Diceware module isn't very friendly as a module. :/
+	'''Wrapper around diceware, which isn't very friendly as a module'''
 	options = argparse.Namespace()
 	options.num = 3
 	options.caps = True
@@ -34,6 +31,7 @@ def generate_password():
 
 
 def generate_account():
+	'''Create test data for an Anselus account and return in a dictionary'''
 	first_names = [ "Leanne", "Lauryn", "Cheryl", "Addie", "Lynnette", "Meredith", "Jay", "Bernie",
 					"Kenneth", "Harding", "Elissa", "Beth", "Vance", "Holden", "Careen", "Jackie",
 					"Laurence", "Grover", "Megan", "Daniel", "Shelby", "Desmond", "Jason", "Patton",
@@ -154,6 +152,7 @@ def generate_account():
 
 
 def reset_database(dbconn):
+	'''Resets the Postgresql Anselus database to empty'''
 	# Drop all tables in the database
 	dropcmd = '''DO $$ DECLARE
 		r RECORD;
@@ -181,6 +180,7 @@ def reset_database(dbconn):
 
 
 def add_account_to_db(account, dbconn):
+	'''Adds account data from generate_account() to the Anselus database'''
 	cursor = dbconn.cursor()
 	cmdparts = ["INSERT INTO iwkspc_main(wid,friendly_address,password,salt,status) VALUES('",
 				account['wid'],
@@ -220,6 +220,7 @@ def add_account_to_db(account, dbconn):
 
 
 def dump_account(account):
+	'''Prints an account returned from generate_account()'''
 	out = {
 		"Workspace ID" : account['wid'],
 		"Friendly Address" : account['friendly_address'],
@@ -313,7 +314,7 @@ except Exception as e:
 # Step 3: Generate accounts and add to database
 
 reset_database(conn)
-for i in range(0,5):
+for index in range(0,5):
 	test = generate_account()
 	add_account_to_db(test, conn)
 	dump_account(test)
