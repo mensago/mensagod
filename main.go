@@ -127,6 +127,9 @@ func setupConfig() *os.File {
 	// Is a matching session key required for a device to have access?
 	viper.SetDefault("security.device_checking", "on")
 
+	// Resource usage for password hashing
+	viper.SetDefault("security.password_security", "normal")
+
 	// Read the config file
 	err := viper.ReadInConfig()
 	if err != nil {

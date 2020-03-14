@@ -30,31 +30,43 @@ var (
 	dbConn    *sql.DB
 )
 
-// Argon2 password hashing parameters.
-// TODO: Implement password security options in server config
-const gArgonRAM = 64 * 1024
-const gArgonIterations = 1
-const gArgonThreads = 4
-const gArgonSaltLen = 16
-const gArgonKeyLen = 32
-
 // This internal function is for turning a string into an Argon2 password hash.
 func hashPassword(password string) string {
-	salt := make([]byte, gArgonSaltLen)
+	mode := viper.GetString("security.password_security")
+
+	var argonRAM, argonIterations, argonSaltLength, argonKeyLength uint32
+	var argonThreads uint8
+
+	if strings.ToLower(mode) == "enhanced" {
+		// LUDICROUS SPEED! GO!
+		argonRAM = 1073741824 // 1GB of RAM
+		argonIterations = 10
+		argonThreads = 8
+		argonSaltLength = 24
+		argonKeyLength = 48
+	} else {
+		argonRAM = 65536 // 64MB of RAM
+		argonIterations = 3
+		argonThreads = 4
+		argonSaltLength = 16
+		argonKeyLength = 32
+	}
+
+	salt := make([]byte, argonSaltLength)
 	_, err := rand.Read(salt)
 	if err != nil {
 		panic(err)
 	}
 
-	passhash := argon2.IDKey([]byte(password), salt, gArgonIterations, gArgonRAM, gArgonThreads,
-		gArgonKeyLen)
+	passhash := argon2.IDKey([]byte(password), salt, argonIterations, argonRAM, argonThreads,
+		argonKeyLength)
 
 	// Although base85 encoding is used wherever possible, base64 is used here because of a
 	// potential collision: base85 uses the $ character and argon2 hash strings use it as a
 	// field delimiter. Not a huge deal as it just uses a little extra disk storage and doesn't
 	// get transmitted over the network
 	passString := fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
-		argon2.Version, gArgonRAM, gArgonIterations, gArgonThreads,
+		argon2.Version, argonRAM, argonIterations, argonThreads,
 		base64.RawStdEncoding.EncodeToString(salt),
 		base64.RawStdEncoding.EncodeToString(passhash))
 	return passString
