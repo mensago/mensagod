@@ -205,9 +205,8 @@ func LogFailure(failType string, wid string, source string) error {
 			}
 		}
 	} else {
-		sqlStatement := `
-		INSERT INTO failure_log(type, source, wid, count, last_failure)
-		VALUES($1, $2, $3, $4, $5)`
+		sqlStatement := `INSERT INTO failure_log(type, source, wid, count, last_failure)
+			VALUES($1, $2, $3, $4, $5)`
 		_, err = dbConn.Exec(sqlStatement, failType, source, wid, failCount, timeString)
 		if err != nil {
 			panic(err)
@@ -323,9 +322,8 @@ func SetWorkspaceStatus(wid string, status string) error {
 	if !ValidateUUID(wid) {
 		return fmt.Errorf("%s is not a valid workspace ID", wid)
 	}
-	sqlStatement := `UPDATE iwkspc_main SET status=$1 WHERE wid=$2`
 	var err error
-	_, err = dbConn.Exec(sqlStatement, status, wid)
+	_, err = dbConn.Exec(`UPDATE iwkspc_main SET status=$1 WHERE wid=$2`, status, wid)
 	return err
 }
 
@@ -350,8 +348,7 @@ func RemoveDevice(wid string, devid string) (bool, error) {
 	if len(devid) != 40 {
 		return false, errors.New("invalid session string")
 	}
-	sqlStatement := `DELETE FROM iwkspc_sessions WHERE wid=$1 AND devid=$2`
-	_, err := dbConn.Exec(sqlStatement, wid, devid)
+	_, err := dbConn.Exec(`DELETE FROM iwkspc_sessions WHERE wid=$1 AND devid=$2`, wid, devid)
 	if err != nil {
 		return false, nil
 	}
@@ -396,9 +393,8 @@ func UpdateDevice(wid string, devid string, sessionString string) (bool, string,
 		panic(err)
 	}
 	newSessionString := b85.Encode(randomBytes)
-	sqlStatement := `UPDATE iwkspc_sessions SET session_str=$1 WHERE wid=$2 AND 
-		devid=$3 AND session_str=$4`
-	_, err = dbConn.Exec(sqlStatement, newSessionString, wid, devid, sessionString)
+	_, err = dbConn.Exec(`UPDATE iwkspc_sessions SET session_str=$1 WHERE wid=$2 AND 
+		devid=$3 AND session_str=$4`, newSessionString, wid, devid, sessionString)
 
 	switch err {
 	case sql.ErrNoRows:
