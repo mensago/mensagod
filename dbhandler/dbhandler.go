@@ -6,6 +6,8 @@ package dbhandler
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -27,6 +29,79 @@ var (
 	serverLog *log.Logger
 	dbConn    *sql.DB
 )
+
+// Argon2 password hashing parameters.
+// TODO: Implement password security options in server config
+const gArgonRAM = 64 * 1024
+const gArgonIterations = 1
+const gArgonThreads = 4
+const gArgonSaltLen = 16
+const gArgonKeyLen = 32
+
+// This internal function is for turning a string into an Argon2 password hash.
+func hashPassword(password string) string {
+	salt := make([]byte, gArgonSaltLen)
+	_, err := rand.Read(salt)
+	if err != nil {
+		panic(err)
+	}
+
+	passhash := argon2.IDKey([]byte(password), salt, gArgonIterations, gArgonRAM, gArgonThreads,
+		gArgonKeyLen)
+
+	// Although base85 encoding is used wherever possible, base64 is used here because of a
+	// potential collision: base85 uses the $ character and argon2 hash strings use it as a
+	// field delimiter. Not a huge deal as it just uses a little extra disk storage and doesn't
+	// get transmitted over the network
+	passString := fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
+		argon2.Version, gArgonRAM, gArgonIterations, gArgonThreads,
+		base64.RawStdEncoding.EncodeToString(salt),
+		base64.RawStdEncoding.EncodeToString(passhash))
+	return passString
+}
+
+// This internal function takes a password and the Argon2 hash to verify against, gets the
+// parameters from the hash, applies them to the supplied password, and returns whether or not
+// they match and an error value
+func verifyHash(password string, hashPass string) (bool, error) {
+	splitValues := strings.Split(hashPass, "$")
+	if len(splitValues) != 6 {
+		return false, errors.New("Invalid Argon hash string")
+	}
+
+	var version int
+	_, err := fmt.Sscanf(splitValues[2], "v=%d", &version)
+	if err != nil {
+		return false, err
+	}
+	if version != argon2.Version {
+		return false, errors.New("Unsupported Argon version")
+	}
+
+	var ramUsage, iterations uint32
+	var parallelism uint8
+	_, err = fmt.Sscanf(splitValues[3], "m=%d,t=%d,p=%d", &ramUsage, &iterations, &parallelism)
+	if err != nil {
+		return false, err
+	}
+
+	var salt []byte
+	salt, err = base64.RawStdEncoding.DecodeString(splitValues[4])
+	if err != nil {
+		return false, err
+	}
+
+	var savedHash []byte
+	savedHash, err = base64.RawStdEncoding.DecodeString(splitValues[5])
+	if err != nil {
+		return false, err
+	}
+
+	passhash := argon2.IDKey([]byte(password), salt, iterations, ramUsage, parallelism,
+		uint32(len(savedHash)))
+
+	return (subtle.ConstantTimeCompare(passhash, savedHash) == 1), errors.New("Unimplemented")
+}
 
 // Connect utilizes the viper config system and connects to the specified database. Because
 // problems in the connection are almost always fatal to the successful continuation of the server
@@ -206,6 +281,18 @@ func CheckLockout(failType string, wid string, source string) (string, error) {
 	return locktime, nil
 }
 
+// SetPassword does just that: sets the password for a workspace. It returns a boolean state,
+// indicating a match (or lack thereof) and an error state. It will take any input string of up to
+// 64 characters and store it in the database.
+func SetPassword(wid string, password string) (bool, error) {
+	if len(password) > 64 {
+		return false, errors.New("Password string has a maximum 64 characters")
+	}
+	// TODO: Implement
+
+	return false, errors.New("Unimplemented")
+}
+
 // CheckPassword checks a password hash against the one stored in the database. It returns true
 // if the two hashes match. It does not perform any validity checking of the input--this should be
 // done when the input is received from the user.
@@ -335,16 +422,11 @@ func UpdateDevice(wid string, devid string, sessionString string) (bool, string,
 // individuals. Shared workspaces are not yet supported/implemented. Status may be 'active',
 // 'pending', or 'disabled'.
 func AddWorkspace(wid string, password string, status string) error {
-	sqlStatement := `INSERT INTO iwkspc_main(wid, password, salt, status) VALUES($1, $2, $3, $4)`
-	salt := GenerateRandomString(32)
-
-	// Argon2 RFC recommends time=1, memory=64MB, and CPU cost greater than 0. Key size here is 32.
-	passhash := argon2.IDKey([]byte(password), []byte(salt), 1, 64*1024, 4, 32)
-	formatString := "$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s"
-	passString := fmt.Sprintf(formatString, argon2.Version, 64*1024, 1, 4, salt, passhash)
+	passString := hashPassword(password)
 
 	var err error
-	_, err = dbConn.Exec(sqlStatement, wid, passString, salt, status)
+	_, err = dbConn.Exec(`INSERT INTO iwkspc_main(wid, password, status) VALUES($1, $2, $3)`,
+		wid, passString, status)
 	return err
 }
 

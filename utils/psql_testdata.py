@@ -57,17 +57,9 @@ def generate_account():
 											rgen.choice(last_names), '/example.com'])
 	else:
 		account['friendly_address'] = ''
-	
 	password = generate_password()
 	account['password'] = password
-	salt = nacl.utils.random(nacl.pwhash.argon2id.SALTBYTES)
-	account['pwsalt'] = salt
-	account['pwsalt_b85'] = base64.b85encode(salt).decode('utf8')
-	account['pwhash'] = nacl.pwhash.argon2id.kdf(nacl.secret.SecretBox.KEY_SIZE,
-							bytes(password, 'utf8'), salt,
-							opslimit=nacl.pwhash.argon2id.OPSLIMIT_INTERACTIVE,
-							memlimit=nacl.pwhash.argon2id.MEMLIMIT_INTERACTIVE)	
-	account['pwhash_b85'] = base64.b85encode(account['pwhash']).decode('utf8')
+	account['pwhash'] = nacl.pwhash.argon2id.str(bytes(password, 'utf8')).decode('utf8')
 	
 	if rgen.randint(1, 100) < 76:
 		account['status'] = 'active'
@@ -165,7 +157,7 @@ def reset_database(dbconn):
 	cursor.execute(dropcmd)
 	cursor.execute("CREATE TABLE iwkspc_main(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
 					"friendly_address VARCHAR(48), password VARCHAR(128) NOT NULL, "
-					"salt VARCHAR(64) NOT NULL, status VARCHAR(16) NOT NULL);")
+					"status VARCHAR(16) NOT NULL);")
 	cursor.execute("CREATE TABLE iwkspc_folders(id SERIAL PRIMARY KEY, fid char(36) NOT NULL, "
 					"wid char(36) NOT NULL, enc_name VARCHAR(128) NOT NULL, "
 					"enc_key VARCHAR(64) NOT NULL);")
@@ -182,7 +174,7 @@ def reset_database(dbconn):
 def add_account_to_db(account, dbconn):
 	'''Adds account data from generate_account() to the Anselus database'''
 	cursor = dbconn.cursor()
-	cmdparts = ["INSERT INTO iwkspc_main(wid,friendly_address,password,salt,status) VALUES('",
+	cmdparts = ["INSERT INTO iwkspc_main(wid,friendly_address,password,status) VALUES('",
 				account['wid'],
 				"',"]
 	if len(account['friendly_address']) > 0:
@@ -190,8 +182,7 @@ def add_account_to_db(account, dbconn):
 	else:
 		cmdparts.append("'',")
 	
-	cmdparts.extend(["'", account['pwhash_b85'],"','",account['pwsalt_b85'],"','",
-		account['status'], "');"])
+	cmdparts.extend(["'", account['pwhash'],"','", account['status'], "');"])
 	cmd = ''.join(cmdparts)
 	cursor.execute(cmd)
 	
@@ -226,8 +217,7 @@ def dump_account(account):
 		"Friendly Address" : account['friendly_address'],
 		"Status" : account['status'],
 		"Password" : account['password'],
-		"Password Salt.b85" : account['pwsalt_b85'],
-		"Password Hash.b85" : account['pwhash_b85'],
+		"Password Hash" : account['pwhash'],
 		"Identity Public.b85" : account['keys'][0]['public_b85'],
 		"Identity Private.b85" : account['keys'][0]['private_b85'],
 		"Contact Public.b85" : account['keys'][1]['public_b85'],
