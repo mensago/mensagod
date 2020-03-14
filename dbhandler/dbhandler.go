@@ -350,8 +350,18 @@ func AddWorkspace(wid string, password string, status string) error {
 
 // RemoveWorkspace deletes a workspace. It returns an error if unsuccessful.
 func RemoveWorkspace(wid string) error {
-	// TODO: Implement
-	return errors.New("Unimplemented")
+	var sqlCommands = []string{
+		`DELETE FROM iwkspc_main WHERE wid=$1`,
+		`DELETE FROM iwkspc_folders WHERE wid=$1`,
+		`DELETE FROM iwkspc_sessions WHERE wid=$1`,
+	}
+	for _, sqlCmd := range sqlCommands {
+		_, err := dbConn.Exec(sqlCmd, wid)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // CheckWorkspace checks to see if a workspace exists. If the workspace does exist,
