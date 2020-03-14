@@ -100,7 +100,7 @@ func verifyHash(password string, hashPass string) (bool, error) {
 	passhash := argon2.IDKey([]byte(password), salt, iterations, ramUsage, parallelism,
 		uint32(len(savedHash)))
 
-	return (subtle.ConstantTimeCompare(passhash, savedHash) == 1), errors.New("Unimplemented")
+	return (subtle.ConstantTimeCompare(passhash, savedHash) == 1), nil
 }
 
 // Connect utilizes the viper config system and connects to the specified database. Because
@@ -284,34 +284,28 @@ func CheckLockout(failType string, wid string, source string) (string, error) {
 // SetPassword does just that: sets the password for a workspace. It returns a boolean state,
 // indicating a match (or lack thereof) and an error state. It will take any input string of up to
 // 64 characters and store it in the database.
-func SetPassword(wid string, password string) (bool, error) {
+func SetPassword(wid string, password string) error {
 	if len(password) > 64 {
-		return false, errors.New("Password string has a maximum 64 characters")
+		return errors.New("Password string has a maximum 64 characters")
 	}
-	// TODO: Implement
-
-	return false, errors.New("Unimplemented")
+	passHash := hashPassword(password)
+	_, err := dbConn.Exec(`UPDATE iwkspc_main SET password=$1 WHERE wid=$2`, wid, passHash)
+	return err
 }
 
 // CheckPassword checks a password hash against the one stored in the database. It returns true
 // if the two hashes match. It does not perform any validity checking of the input--this should be
 // done when the input is received from the user.
-func CheckPassword(wid string, passhash string) (bool, error) {
-	row := dbConn.QueryRow(`SELECT password,salt FROM iwkspc_main WHERE wid=$1`, wid)
+func CheckPassword(wid string, password string) (bool, error) {
+	row := dbConn.QueryRow(`SELECT password FROM iwkspc_main WHERE wid=$1`, wid)
 
-	var dbhash, salt string
-	err := row.Scan(&dbhash, &salt)
+	var dbhash string
+	err := row.Scan(&dbhash)
 	if err != nil {
 		return false, err
 	}
 
-	// TODO: Update this to read the new Argon2 salted hash from the database
-
-	if strings.TrimSpace(passhash) != strings.TrimSpace(dbhash) {
-		return false, nil
-	}
-
-	return true, nil
+	return verifyHash(password, dbhash)
 }
 
 // SetWorkspaceStatus sets the status of a workspace. Valid values are "disabled", "active", and
