@@ -1,0 +1,2 @@
+[MASTER]
+disable=mixed-indentation,bare-except,trailing-whitespace,broad-except,bad-whitespace,bad-continuation,missing-module-docstring,invalid-name
