@@ -60,6 +60,7 @@ def generate_account():
 	password = generate_password()
 	account['password'] = password
 	account['pwhash'] = nacl.pwhash.argon2id.str(bytes(password, 'utf8')).decode('utf8')
+	account['serverpwhash'] = nacl.pwhash.argon2id.str(bytes(account['pwhash'], 'utf8')).decode('utf8')
 	
 	if rgen.randint(1, 100) < 76:
 		account['status'] = 'active'
@@ -182,7 +183,7 @@ def add_account_to_db(account, dbconn):
 	else:
 		cmdparts.append("'',")
 	
-	cmdparts.extend(["'", account['pwhash'],"','", account['status'], "');"])
+	cmdparts.extend(["'", account['serverpwhash'],"','", account['status'], "');"])
 	cmd = ''.join(cmdparts)
 	cursor.execute(cmd)
 	
@@ -217,7 +218,8 @@ def dump_account(account):
 		"Friendly Address" : account['friendly_address'],
 		"Status" : account['status'],
 		"Password" : account['password'],
-		"Password Hash" : account['pwhash'],
+		"Local Password Hash" : account['pwhash'],
+		"Server Password Hash" : account['serverpwhash'],
 		"Identity Public.b85" : account['keys'][0]['public_b85'],
 		"Identity Private.b85" : account['keys'][0]['private_b85'],
 		"Contact Public.b85" : account['keys'][1]['public_b85'],
