@@ -138,7 +138,7 @@ func setupConfig() *os.File {
 	}
 
 	logLocation := filepath.Join(viper.GetString("global.log_dir"), "anselus-server.log")
-	if _, err := os.Stat(logLocation); os.IsNotExist(err) {
+	if _, err := os.Stat(viper.GetString("global.log_dir")); os.IsNotExist(err) {
 		err = os.Mkdir(viper.GetString("global.log_dir"), 0600)
 		if err != nil {
 			panic(err)
@@ -154,7 +154,8 @@ func setupConfig() *os.File {
 	defer logHandle.Close()
 	ServerLog = log.New(logHandle, "anselus-server:", log.LstdFlags)
 
-	if _, err := os.Stat(viper.GetString("global.workspace_dir")); os.IsNotExist(err) {
+	_, err = os.Stat(viper.GetString("global.workspace_dir"))
+	if os.IsNotExist(err) {
 		err = os.Mkdir(viper.GetString("global.workspace_dir"), 0600)
 		if err != nil {
 			panic(err)
