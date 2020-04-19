@@ -87,7 +87,7 @@ func setupConfig() *os.File {
 
 		viper.SetDefault("global.workspace_dir", filepath.Join(programData, "anselus"))
 		viper.Set("global.log_dir", filepath.Join(programData, "anselus-server"))
-		viper.SetConfigName("serverconfig.toml")
+		viper.SetConfigName("serverconfig")
 		viper.AddConfigPath(filepath.Join(programData, "anselus-server"))
 	default:
 		viper.SetDefault("global.workspace_dir", "/var/anselus/")
