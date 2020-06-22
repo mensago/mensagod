@@ -342,16 +342,14 @@ func SetWorkspaceStatus(wid string, status string) error {
 // AddDevice is used for adding a device to a workspace. It generates a new session string for the
 // device, adds it to the device table, sets the device status, and returns the session string for
 // the new device.
-func AddDevice(wid string, devid string) (string, error) {
-	sessionString := GenerateRandomString(32)
-
+func AddDevice(wid string, devid string, keytype string, devkey string) error {
 	var err error
-	sqlStatement := `INSERT INTO iwkspc_sessions(wid, devid, session_id) VALUES($1, $2, $3)`
-	_, err = dbConn.Exec(sqlStatement, wid, devid, sessionString)
+	sqlStatement := `INSERT INTO iwkspc_devices(wid, devid, keytype, devkey) VALUES($1, $2, $3, $4)`
+	_, err = dbConn.Exec(sqlStatement, wid, devid, keytype, devkey)
 	if err != nil {
-		return "", err
+		return err
 	}
-	return sessionString, nil
+	return nil
 }
 
 // RemoveDevice removes a session string for a workspace. It returns true if successful and false
@@ -360,7 +358,7 @@ func RemoveDevice(wid string, devid string) (bool, error) {
 	if len(devid) != 40 {
 		return false, errors.New("invalid session string")
 	}
-	_, err := dbConn.Exec(`DELETE FROM iwkspc_sessions WHERE wid=$1 AND devid=$2`, wid, devid)
+	_, err := dbConn.Exec(`DELETE FROM iwkspc_devices WHERE wid=$1 AND devid=$2`, wid, devid)
 	if err != nil {
 		return false, nil
 	}
@@ -368,13 +366,9 @@ func RemoveDevice(wid string, devid string) (bool, error) {
 }
 
 // CheckDevice checks a session string on a workspace and returns true or false if there is a match.
-func CheckDevice(wid string, devid string, sessionString string) (bool, error) {
-	if len(sessionString) != 40 {
-		return false, errors.New("invalid session string")
-	}
-
-	row := dbConn.QueryRow(`SELECT status FROM iwkspc_sessions WHERE wid=$1 AND 
-		devid=$2 AND session_str=$3`, wid, devid, sessionString)
+func CheckDevice(wid string, devid string, keytype string, devkey string) (bool, error) {
+	row := dbConn.QueryRow(`SELECT status FROM iwkspc_devices WHERE wid=$1 AND 
+		devid=$2 AND keytype=$3 AND devkey=$4`, wid, devid, keytype, devkey)
 
 	var widStatus string
 	err := row.Scan(&widStatus)
