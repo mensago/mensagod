@@ -343,15 +343,16 @@ func processCommand(session *sessionState) {
 
 func commandDevice(session *sessionState) {
 	// Command syntax:
-	// DEVICE <sessionID>
+	// DEVICE <devid> <keytype> <key.b85>
 
-	if len(session.Tokens) != 3 || !dbhandler.ValidateUUID(session.Tokens[1]) ||
-		len(session.Tokens[2]) != 40 || session.LoginState != loginAwaitingSessionID {
+	if len(session.Tokens) != 4 || !dbhandler.ValidateUUID(session.Tokens[1]) ||
+		session.LoginState != loginAwaitingSessionID {
 		session.WriteClient("400 BAD REQUEST\r\n")
 		return
 	}
 
-	success, err := dbhandler.CheckDevice(session.WID, session.Tokens[1], session.Tokens[2])
+	success, err := dbhandler.CheckDevice(session.WID, session.Tokens[1], session.Tokens[2],
+		session.Tokens[3])
 	if err != nil {
 		session.WriteClient("400 BAD REQUEST\r\n")
 		return
@@ -367,26 +368,20 @@ func commandDevice(session *sessionState) {
 			// 5) Upon receipt of authorization approval, update the device status in the database
 			// 6) Upon receipt of denial, log the failure and apply a lockout to the IP
 		} else {
-			var newSessionString string
-			newSessionString, err = dbhandler.AddDevice(session.WID, session.Tokens[1])
+			err = dbhandler.AddDevice(session.WID, session.Tokens[1],
+				session.Tokens[2], session.Tokens[3])
 			if err != nil {
 				ServerLog.Printf("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
 				session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
 			}
-			session.WriteClient(fmt.Sprintf("200 OK %s\r\n", newSessionString))
+			session.WriteClient("200 OK %s\r\n")
 			session.LoginState = loginClientSession
 		}
 	} else {
-		var newSessionString string
-		success, newSessionString, err = dbhandler.UpdateDevice(session.WID, session.Tokens[1],
-			session.Tokens[2])
-		if err == nil && success {
-			session.WriteClient(fmt.Sprintf("200 OK %s\r\n", newSessionString))
-			session.LoginState = loginClientSession
-		} else {
-			ServerLog.Printf("Internal server error. commandRegister.UpdateDevice. Error: %s\n", err)
-			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-		}
+		// The device is part of the workspace already, so now we issue undergo a challenge-response
+		// to ensure that the device really is authorized and the key wasn't stolen by an impostor
+
+		// TODO: Implement
 	}
 }
 
