@@ -494,7 +494,7 @@ func commandPassword(session *sessionState) {
 
 	// This command takes a numeric hash of the user's password and compares it to what is submitted
 	// by the user.
-	if len(session.Tokens) != 2 || len(session.Tokens[1]) > 48 ||
+	if len(session.Tokens) != 2 || len(session.Tokens[1]) > 150 ||
 		session.LoginState != loginAwaitingPassword {
 		session.WriteClient("400 BAD REQUEST\r\n")
 		return
