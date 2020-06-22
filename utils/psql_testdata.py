@@ -12,6 +12,7 @@ import diceware
 import nacl.public
 import nacl.pwhash
 import nacl.secret
+import nacl.signing
 import nacl.utils
 import psycopg2
 import toml
@@ -68,9 +69,8 @@ def generate_account():
 		account['status'] = 'disabled'
 	
 	# Generate user's encryption keys
-	identity = nacl.public.PrivateKey.generate()
+	identity = nacl.signing.SigningKey.generate()
 	contact_request = nacl.public.PrivateKey.generate()
-	firstdevice = nacl.public.PrivateKey.generate()
 	broadcast_aes = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
 	system_aes = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
 	folder_aes = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
@@ -79,26 +79,18 @@ def generate_account():
 		{	'type' : 'ed25519',
 			'purpose' : 'identity',
 			'id' : str(uuid.uuid4()),
-			'public_key' : bytes(identity.public_key),
-			'private_key' : bytes(identity),
-			'public_b85' : base64.b85encode(bytes(identity.public_key)).decode('utf8'),
-			'private_b85' : base64.b85encode(bytes(identity)).decode('utf8')
+			'verify_key' : bytes(identity.verify_key),
+			'sign_key' : bytes(identity),
+			'verify_b85' : base64.b85encode(bytes(identity.verify_key)).decode('utf8'),
+			'sign_b85' : base64.b85encode(bytes(identity)).decode('utf8')
 		},
-		{	'type' : 'ed25519',
+		{	'type' : 'curve25519',
 			'purpose' : 'contact_request',
 			'id' : str(uuid.uuid4()),
 			'public_key' : bytes(contact_request.public_key),
 			'private_key' : bytes(contact_request),
 			'public_b85' : base64.b85encode(bytes(contact_request.public_key)).decode('utf8'),
 			'private_b85' : base64.b85encode(bytes(contact_request)).decode('utf8')
-		},
-		{	'type' : 'ed25519',
-			'purpose' : 'firstdevice',
-			'id' : str(uuid.uuid4()),
-			'public_key' : bytes(firstdevice.public_key),
-			'private_key' : bytes(firstdevice),
-			'public_b85' : base64.b85encode(bytes(firstdevice.public_key)).decode('utf8'),
-			'private_b85' : base64.b85encode(bytes(firstdevice)).decode('utf8')
 		},
 		{
 			'type' : 'aes256',
@@ -137,8 +129,11 @@ def generate_account():
 	dev_count = rgen.randrange(1,6)
 	i = 0
 	while i < dev_count:
+		devkey = nacl.public.PrivateKey.generate()
 		account['devices'].append( {'id' : str(uuid.uuid4()),
-			'session_str' : base64.b85encode(Random.new().read(32)).decode('ascii') } )
+			'keytype' : 'curve25519',
+			'public_b85' : base64.b85encode(bytes(devkey.public_key)).decode('utf8'),
+			'private_b85' : base64.b85encode(bytes(devkey)).decode('utf8')	} )
 		i = i + 1
 
 	return account
@@ -162,9 +157,9 @@ def reset_database(dbconn):
 	cursor.execute("CREATE TABLE iwkspc_folders(id SERIAL PRIMARY KEY, fid char(36) NOT NULL, "
 					"wid char(36) NOT NULL, enc_name VARCHAR(128) NOT NULL, "
 					"enc_key VARCHAR(64) NOT NULL);")
-	cursor.execute("CREATE TABLE iwkspc_sessions(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
-					"devid CHAR(36) NOT NULL, session_str VARCHAR(40) NOT NULL, "
-					"status VARCHAR(16) NOT NULL);")
+	cursor.execute("CREATE TABLE iwkspc_devices(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
+					"devid CHAR(36) NOT NULL, keytype VARCHAR(16) NOT NULL, "
+					"devkey VARCHAR(1000) NOT NULL, status VARCHAR(16) NOT NULL);")
 	cursor.execute("CREATE TABLE failure_log(id SERIAL PRIMARY KEY, type VARCHAR(16) NOT NULL, "
 				"wid VARCHAR(36), source VARCHAR(36) NOT NULL, count INTEGER, "
 				"last_failure TIMESTAMP NOT NULL, lockout_until TIMESTAMP);")
@@ -178,7 +173,7 @@ def add_account_to_db(account, dbconn):
 	cmdparts = ["INSERT INTO iwkspc_main(wid,friendly_address,password,status) VALUES('",
 				account['wid'],
 				"',"]
-	if len(account['friendly_address']) > 0:
+	if account['friendly_address']:
 		cmdparts.extend(["'",account['friendly_address'],"',"])
 	else:
 		cmdparts.append("'',")
@@ -187,21 +182,22 @@ def add_account_to_db(account, dbconn):
 	cmd = ''.join(cmdparts)
 	cursor.execute(cmd)
 	
-	box = nacl.secret.SecretBox(account['keys'][5]['key'])
+	box = nacl.secret.SecretBox(account['keys'][4]['key'])
 	for folder_name,fid in account['folder_map'].items():
 		cmd = ("INSERT INTO iwkspc_folders(wid, fid, enc_name, enc_key) "
 					"VALUES('%s','%s','%s',$$%s$$);" % 
 					( account['wid'], fid,
 					base64.b85encode(box.encrypt(bytes(folder_name, 'utf8'))).decode('utf8'),
-					account['keys'][5]['id']))
+					account['keys'][4]['id']))
 		cursor.execute(cmd)
 
 	i = 0
 	while i < len(account['devices']):
-		cmd =	(	"INSERT INTO iwkspc_sessions(wid, devid, session_str, status) "
-					"VALUES('%s','%s','%s','active');" % (
+		cmd =	(	"INSERT INTO iwkspc_devices(wid, devid, keytype, devkey, status) "
+					"VALUES('%s','%s','%s','%s','active');" % (
 						account['wid'], account['devices'][i]['id'], 
-						account['devices'][i]['session_str']
+						account['devices'][i]['keytype'],
+						account['devices'][i]['public_b85']
 					)
 				)
 		cursor.execute(cmd)
@@ -220,15 +216,13 @@ def dump_account(account):
 		"Password" : account['password'],
 		"Local Password Hash" : account['pwhash'],
 		"Server Password Hash" : account['serverpwhash'],
-		"Identity Public.b85" : account['keys'][0]['public_b85'],
-		"Identity Private.b85" : account['keys'][0]['private_b85'],
+		"Identity Verify.b85" : account['keys'][0]['verify_b85'],
+		"Identity Signing.b85" : account['keys'][0]['sign_b85'],
 		"Contact Public.b85" : account['keys'][1]['public_b85'],
 		"Contact Private.b85" : account['keys'][1]['private_b85'],
-		"First Device Public.b85" : account['keys'][2]['public_b85'],
-		"First Device Private.b85" : account['keys'][2]['private_b85'],
-		"Broadcast.b85" : account['keys'][3]['key_b85'],
-		"System.b85" : account['keys'][4]['key_b85'],
-		"Folder Map.b85" : account['keys'][5]['key_b85'],
+		"Broadcast.b85" : account['keys'][2]['key_b85'],
+		"System.b85" : account['keys'][3]['key_b85'],
+		"Folder Map.b85" : account['keys'][4]['key_b85'],
 		"Message Folder" : account['folder_map']['Messages'],
 		"Contacts Folder" : account['folder_map']['Contacts'],
 		"Calendar Folder" : account['folder_map']['Calendar'],
@@ -241,7 +235,9 @@ def dump_account(account):
 	i = 0
 	while i < len(account['devices']):
 		out["Device #%s ID" % str(i+1)] = account['devices'][i]['id']
-		out["Device #%s Session String" % str(i+1)] = account['devices'][i]['session_str']
+		out["Device #%s Key Type" % str(i+1)] = account['devices'][i]['keytype']
+		out["Device #%s Public.b85" % str(i+1)] = account['devices'][i]['public_b85']
+		out["Device #%s Private.b85" % str(i+1)] = account['devices'][i]['private_b85']
 		i = i + 1
 
 	for k,v in out.items():

@@ -80,13 +80,13 @@ if rows[0][0] is False:
 				"enc_name VARCHAR(128) NOT NULL, enc_key VARCHAR(64) NOT NULL);")
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
-			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'iwkspc_sessions' "
+			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'iwkspc_devices' "
 			"AND c.relkind = 'r');")
 rows = cur.fetchall()
 if rows[0][0] is False:
-	cur.execute("CREATE TABLE iwkspc_sessions(id SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, "
-				"devid CHAR(36) NOT NULL, session_str VARCHAR(40) NOT NULL, "
-				"status VARCHAR(16) NOT NULL);")
+	cur.execute("CREATE TABLE iwkspc_devices(id SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, "
+				"devid CHAR(36) NOT NULL, keytype VARCHAR(16) NOT NULL, "
+				"devkey VARCHAR(1000) NOT NULL, status VARCHAR(16) NOT NULL);")
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
 			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'failure_log' "
