@@ -351,7 +351,34 @@ func commandDevice(session *sessionState) {
 		return
 	}
 
-	success, err := dbhandler.CheckDevice(session.WID, session.Tokens[1], session.Tokens[2],
+	// Check to see if this is a preregistered account that has yet to be logged into.
+	// If it is, return 200 OK and the next session ID.
+	var err error
+	if session.WorkspaceStatus == "approved" {
+		if !dbhandler.ValidateUUID(session.Tokens[1]) {
+			session.WriteClient("400 BAD REQUEST\r\n")
+			return
+		}
+
+		if session.Tokens[2] != "curve25519" {
+			session.WriteClient("309 ENCRYPTION TYPE NOT SUPPORTED\r\n")
+			return
+		}
+
+		dbhandler.AddDevice(session.WID, session.Tokens[1], session.Tokens[2], session.Tokens[3])
+		err = dbhandler.SetWorkspaceStatus(session.WID, "active")
+		if err != nil {
+			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+			return
+		}
+
+		session.LoginState = loginClientSession
+		session.WriteClient("200 OK\r\n")
+		return
+	}
+
+	var success bool
+	success, err = dbhandler.CheckDevice(session.WID, session.Tokens[1], session.Tokens[2],
 		session.Tokens[3])
 	if err != nil {
 		session.WriteClient("400 BAD REQUEST\r\n")
@@ -381,7 +408,12 @@ func commandDevice(session *sessionState) {
 		// The device is part of the workspace already, so now we issue undergo a challenge-response
 		// to ensure that the device really is authorized and the key wasn't stolen by an impostor
 
-		// TODO: Implement
+		success, err = challengeDevice(session, session.Tokens[2], session.Tokens[3])
+		if success {
+			session.LoginState = loginClientSession
+		} else {
+			dbhandler.LogFailure("device", session.WID, session.Connection.RemoteAddr().String())
+		}
 	}
 }
 
@@ -498,25 +530,16 @@ func commandPassword(session *sessionState) {
 	match, err := dbhandler.CheckPassword(session.WID, session.Tokens[1])
 	if err == nil {
 		if match {
-			// Check to see if this is a preregistered account that has yet to be logged into.
-			// If it is, return 200 OK and the next session ID.
 			if session.WorkspaceStatus == "approved" {
-				deviceString := dbhandler.GenerateRandomString(50)
-				dbhandler.AddDevice(session.WID, deviceString)
-				err = dbhandler.SetWorkspaceStatus(session.WID, "active")
-				if err != nil {
-					session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-					return
-				}
-
-				session.LoginState = loginClientSession
-				session.WriteClient(strings.Join([]string{"200 OK", deviceString, "\r\n"}, " "))
-				return
+				// Handle pre-registered accounts
+				devid := uuid.New().String()
+				session.LoginState = loginAwaitingSessionID
+				session.WriteClient(fmt.Sprintf("201 REGISTERED %s\r\n", devid))
+			} else {
+				// Regular account login
+				session.LoginState = loginAwaitingSessionID
+				session.WriteClient("100 CONTINUE\r\n")
 			}
-
-			// Regular account login
-			session.LoginState = loginAwaitingSessionID
-			session.WriteClient("100 CONTINUE\r\n")
 			return
 		}
 
@@ -562,21 +585,17 @@ func commandLogout(session *sessionState) {
 
 func commandRegister(session *sessionState) {
 	// command syntax:
-	// REGISTER <WID> <passwordHash>
+	// REGISTER <WID> <passwordHash> keytype devkey
 
-	if len(session.Tokens) != 3 || !dbhandler.ValidateUUID(session.Tokens[1]) {
+	if len(session.Tokens) != 5 || !dbhandler.ValidateUUID(session.Tokens[1]) {
 		session.WriteClient("400 BAD REQUEST\r\n")
 		return
 	}
 
 	regType := strings.ToLower(viper.GetString("global.registration"))
 	if regType == "private" {
-		// If registration is set to private, only the system administrator can use this command.
-		if session.WID != "00000000-0000-0000-0000-000000000001" ||
-			session.LoginState != loginClientSession {
-			session.WriteClient("304 REGISTRATION CLOSED\r\n")
-			return
-		}
+		session.WriteClient("304 REGISTRATION CLOSED\r\n")
+		return
 	}
 
 	success, _ := dbhandler.CheckWorkspace(session.Tokens[1])
@@ -595,8 +614,6 @@ func commandRegister(session *sessionState) {
 		return
 	case "moderated":
 		workspaceStatus = "pending"
-	case "private":
-		workspaceStatus = "approved"
 	default:
 		workspaceStatus = "active"
 	}
@@ -607,6 +624,11 @@ func commandRegister(session *sessionState) {
 		return
 	}
 
+	// Currently only curve25519 is supported
+	if session.Tokens[3] != "curve25519" {
+		session.WriteClient("309 ENCRYPTION TYPE NOT SUPPORTED\r\n")
+	}
+
 	err := dbhandler.AddWorkspace(session.Tokens[1], session.Tokens[2], workspaceStatus)
 	if err != nil {
 		ServerLog.Printf("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
@@ -614,18 +636,18 @@ func commandRegister(session *sessionState) {
 	}
 
 	// For network and public registration, we create a device ID for the first device to use.
+	devid := uuid.New().String()
 	switch regType {
 	case "moderated":
-		session.WriteClient("101 PENDING")
+		session.WriteClient(fmt.Sprintf("101 PENDING %s\r\n", devid))
 		return
-	case "network", "public", "private":
-		devid := uuid.New().String()
-		sessionString, err := dbhandler.AddDevice(session.Tokens[1], devid)
+	case "network", "public":
+		err = dbhandler.AddDevice(session.Tokens[1], devid, session.Tokens[3], session.Tokens[4])
 		if err != nil {
 			ServerLog.Printf("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
 			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
 		}
-		session.WriteClient(fmt.Sprintf("200 OK %s %s\r\n", devid, sessionString))
+		session.WriteClient(fmt.Sprintf("200 OK %s\r\n", devid))
 		return
 	}
 	panic(errors.New("Registration unfinished"))
@@ -634,4 +656,20 @@ func commandRegister(session *sessionState) {
 func commandUnrecognized(session *sessionState) {
 	// command used when not recognized
 	session.WriteClient("400 BAD REQUEST\r\n")
+}
+
+func challengeDevice(session *sessionState, keytype string, devkey string) (bool, error) {
+	if keytype != "curve25519" {
+		session.WriteClient("309 ENCRYPTION TYPE NOT SUPPORTED\r\n")
+		return false, nil
+	}
+
+	// TODO: Implement the challenge-response authentication
+	// 1) Generate a 32-byte random string of bytes
+	// 2) Encode string in base85
+	// 3) Encrypt said string, encode in base85, and return it as part of 100 CONTINUE response
+	// 4) Wait for response from client and compare response to original base85 string
+	// 5) If strings don't match, respond to client with 402 Authentication Failure and return false
+	// 6) If strings match respond to client with 200 OK and return true/nil
+	return true, nil
 }
