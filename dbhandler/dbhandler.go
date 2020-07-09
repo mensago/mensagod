@@ -339,20 +339,18 @@ func SetWorkspaceStatus(wid string, status string) error {
 	return err
 }
 
-// AddDevice is used for adding a device to a workspace. It generates a new session string for the
-// device, adds it to the device table, sets the device status, and returns the session string for
-// the new device.
-func AddDevice(wid string, devid string, keytype string, devkey string) error {
+// AddDevice is used for adding a device and associated info to a workspace.
+func AddDevice(wid string, devid string, encoding string, keytype string, devkey string) error {
 	var err error
-	sqlStatement := `INSERT INTO iwkspc_devices(wid, devid, keytype, devkey) VALUES($1, $2, $3, $4)`
-	_, err = dbConn.Exec(sqlStatement, wid, devid, keytype, devkey)
+	sqlStatement := `INSERT INTO iwkspc_devices(wid, devid, encoding, keytype, devkey) VALUES($1, $2, $3, $4, $5)`
+	_, err = dbConn.Exec(sqlStatement, wid, devid, encoding, keytype, devkey)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-// RemoveDevice removes a session string for a workspace. It returns true if successful and false
+// RemoveDevice removes a device from a workspace. It returns true if successful and false
 // if not.
 func RemoveDevice(wid string, devid string) (bool, error) {
 	if len(devid) != 40 {
@@ -365,7 +363,7 @@ func RemoveDevice(wid string, devid string) (bool, error) {
 	return true, nil
 }
 
-// CheckDevice checks a session string on a workspace and returns true or false if there is a match.
+// CheckDevice checks for a device ID on a workspace and returns true or false if there is a match.
 func CheckDevice(wid string, devid string, keytype string, devkey string) (bool, error) {
 	row := dbConn.QueryRow(`SELECT status FROM iwkspc_devices WHERE wid=$1 AND 
 		devid=$2 AND keytype=$3 AND devkey=$4`, wid, devid, keytype, devkey)
@@ -380,35 +378,6 @@ func CheckDevice(wid string, devid string, keytype string, devkey string) (bool,
 		return true, nil
 	default:
 		return false, err
-	}
-}
-
-// UpdateDevice takes a session string for a workspace, makes sure that it exists, generates a new
-// one, replaces the old with the new, and returns the new session string. If successful, it
-// returns true and the updated session string. On failure, false is returned alongside an empty
-// string.
-func UpdateDevice(wid string, devid string, sessionString string) (bool, string, error) {
-	if len(sessionString) != 40 {
-		return false, "", errors.New("invalid session string")
-	}
-
-	// Generate the new session string
-	randomBytes := make([]byte, 32)
-	_, err := rand.Read(randomBytes)
-	if err != nil {
-		panic(err)
-	}
-	newSessionString := b85.Encode(randomBytes)
-	_, err = dbConn.Exec(`UPDATE iwkspc_sessions SET session_str=$1 WHERE wid=$2 AND 
-		devid=$3 AND session_str=$4`, newSessionString, wid, devid, sessionString)
-
-	switch err {
-	case sql.ErrNoRows:
-		return false, "", err
-	case nil:
-		return true, newSessionString, nil
-	default:
-		panic(err)
 	}
 }
 
