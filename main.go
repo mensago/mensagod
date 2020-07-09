@@ -562,18 +562,17 @@ func commandLogout(session *sessionState) {
 
 func commandRegister(session *sessionState) {
 	// command syntax:
-	// REGISTER <WID> <passwordHash>
+	// REGISTER <WID> <passwordHash> <encoding> <algorithm> <devkey>
 
-	if len(session.Tokens) != 3 || !dbhandler.ValidateUUID(session.Tokens[1]) {
+	if len(session.Tokens) != 6 || !dbhandler.ValidateUUID(session.Tokens[1]) {
 		session.WriteClient("400 BAD REQUEST\r\n")
 		return
 	}
 
 	regType := strings.ToLower(viper.GetString("global.registration"))
 	if regType == "private" {
-		// If registration is set to private, only the system administrator can use this command.
-		if session.WID != "00000000-0000-0000-0000-000000000001" ||
-			session.LoginState != loginClientSession {
+		// If registration is set to private, registration must be done from the server itself.
+		if session.Connection.RemoteAddr() != session.Connection.LocalAddr() {
 			session.WriteClient("304 REGISTRATION CLOSED\r\n")
 			return
 		}
@@ -620,12 +619,14 @@ func commandRegister(session *sessionState) {
 		return
 	case "network", "public", "private":
 		devid := uuid.New().String()
-		sessionString, err := dbhandler.AddDevice(session.Tokens[1], devid)
+		// TODO: validate encoding, algorithm, and public key
+		err := dbhandler.AddDevice(session.Tokens[1], devid, session.Tokens[2],
+			session.Tokens[3], session.Tokens[4])
 		if err != nil {
 			ServerLog.Printf("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
 			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
 		}
-		session.WriteClient(fmt.Sprintf("200 OK %s %s\r\n", devid, sessionString))
+		session.WriteClient(fmt.Sprintf("200 OK %s\r\n", devid))
 		return
 	}
 	panic(errors.New("Registration unfinished"))
