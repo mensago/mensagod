@@ -343,7 +343,7 @@ func processCommand(session *sessionState) {
 
 func commandDevice(session *sessionState) {
 	// Command syntax:
-	// DEVICE <devid> <keytype> <key.b85>
+	// DEVICE <devid> <keytype> <key>
 
 	if len(session.Tokens) != 4 || !dbhandler.ValidateUUID(session.Tokens[1]) ||
 		session.LoginState != loginAwaitingSessionID {
@@ -498,23 +498,6 @@ func commandPassword(session *sessionState) {
 	match, err := dbhandler.CheckPassword(session.WID, session.Tokens[1])
 	if err == nil {
 		if match {
-			// Check to see if this is a preregistered account that has yet to be logged into.
-			// If it is, return 200 OK and the next session ID.
-			if session.WorkspaceStatus == "approved" {
-				deviceString := dbhandler.GenerateRandomString(50)
-				dbhandler.AddDevice(session.WID, deviceString)
-				err = dbhandler.SetWorkspaceStatus(session.WID, "active")
-				if err != nil {
-					session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-					return
-				}
-
-				session.LoginState = loginClientSession
-				session.WriteClient(strings.Join([]string{"200 OK", deviceString, "\r\n"}, " "))
-				return
-			}
-
-			// Regular account login
 			session.LoginState = loginAwaitingSessionID
 			session.WriteClient("100 CONTINUE\r\n")
 			return
@@ -562,9 +545,9 @@ func commandLogout(session *sessionState) {
 
 func commandRegister(session *sessionState) {
 	// command syntax:
-	// REGISTER <WID> <passwordHash> <encoding> <algorithm> <devkey>
+	// REGISTER <WID> <passwordHash> <algorithm> <devkey>
 
-	if len(session.Tokens) != 6 || !dbhandler.ValidateUUID(session.Tokens[1]) {
+	if len(session.Tokens) != 5 || !dbhandler.ValidateUUID(session.Tokens[1]) {
 		session.WriteClient("400 BAD REQUEST\r\n")
 		return
 	}
