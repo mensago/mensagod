@@ -340,10 +340,10 @@ func SetWorkspaceStatus(wid string, status string) error {
 }
 
 // AddDevice is used for adding a device and associated info to a workspace.
-func AddDevice(wid string, devid string, encoding string, keytype string, devkey string) error {
+func AddDevice(wid string, devid string, keytype string, devkey string) error {
 	var err error
-	sqlStatement := `INSERT INTO iwkspc_devices(wid, devid, encoding, keytype, devkey) VALUES($1, $2, $3, $4, $5)`
-	_, err = dbConn.Exec(sqlStatement, wid, devid, encoding, keytype, devkey)
+	sqlStatement := `INSERT INTO iwkspc_devices(wid, devid, keytype, devkey) VALUES($1, $2, $3, $4)`
+	_, err = dbConn.Exec(sqlStatement, wid, devid, keytype, devkey)
 	if err != nil {
 		return err
 	}
