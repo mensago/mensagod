@@ -20,6 +20,7 @@ import (
 	"database/sql"
 
 	"github.com/darkwyrm/b85"
+	"github.com/lib/pq"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/argon2"
 )
@@ -428,6 +429,9 @@ func CheckWorkspace(wid string) (bool, string) {
 		return false, ""
 	case nil:
 		return true, widStatus
+	case err.(*pq.Error):
+		fmt.Println("Server encountered PostgreSQL error ", err)
+		panic(err)
 	default:
 		panic(err)
 	}
