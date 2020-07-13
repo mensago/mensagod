@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -11,6 +10,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/darkwyrm/b85"
 
 	"github.com/darkwyrm/server/dbhandler"
 	"github.com/google/uuid"
@@ -277,7 +278,9 @@ func connectionWorker(conn net.Conn) {
 				session.IsTerminating = true
 				break
 			} else {
-				fmt.Println("Error reading from client: ", err.Error())
+				if err.Error() != "EOF" {
+					fmt.Println("Error reading from client: ", err.Error())
+				}
 				continue
 			}
 		}
@@ -343,7 +346,7 @@ func processCommand(session *sessionState) {
 
 func commandDevice(session *sessionState) {
 	// Command syntax:
-	// DEVICE <devid> <keytype> <key.b85>
+	// DEVICE <devid> <keytype> <key>
 
 	if len(session.Tokens) != 4 || !dbhandler.ValidateUUID(session.Tokens[1]) ||
 		session.LoginState != loginAwaitingSessionID {
@@ -530,16 +533,8 @@ func commandPassword(session *sessionState) {
 	match, err := dbhandler.CheckPassword(session.WID, session.Tokens[1])
 	if err == nil {
 		if match {
-			if session.WorkspaceStatus == "approved" {
-				// Handle pre-registered accounts
-				devid := uuid.New().String()
-				session.LoginState = loginAwaitingSessionID
-				session.WriteClient(fmt.Sprintf("201 REGISTERED %s\r\n", devid))
-			} else {
-				// Regular account login
-				session.LoginState = loginAwaitingSessionID
-				session.WriteClient("100 CONTINUE\r\n")
-			}
+			session.LoginState = loginAwaitingSessionID
+			session.WriteClient("100 CONTINUE\r\n")
 			return
 		}
 
@@ -585,7 +580,7 @@ func commandLogout(session *sessionState) {
 
 func commandRegister(session *sessionState) {
 	// command syntax:
-	// REGISTER <WID> <passwordHash> keytype devkey
+	// REGISTER <WID> <passwordHash> <algorithm> <devkey>
 
 	if len(session.Tokens) != 5 || !dbhandler.ValidateUUID(session.Tokens[1]) {
 		session.WriteClient("400 BAD REQUEST\r\n")
@@ -594,8 +589,11 @@ func commandRegister(session *sessionState) {
 
 	regType := strings.ToLower(viper.GetString("global.registration"))
 	if regType == "private" {
-		session.WriteClient("304 REGISTRATION CLOSED\r\n")
-		return
+		// If registration is set to private, registration must be done from the server itself.
+		if session.Connection.RemoteAddr() != session.Connection.LocalAddr() {
+			session.WriteClient("304 REGISTRATION CLOSED\r\n")
+			return
+		}
 	}
 
 	success, _ := dbhandler.CheckWorkspace(session.Tokens[1])
@@ -624,33 +622,37 @@ func commandRegister(session *sessionState) {
 		return
 	}
 
-	// Currently only curve25519 is supported
 	if session.Tokens[3] != "curve25519" {
 		session.WriteClient("309 ENCRYPTION TYPE NOT SUPPORTED\r\n")
+		return
 	}
 
-	err := dbhandler.AddWorkspace(session.Tokens[1], session.Tokens[2], workspaceStatus)
+	// An encryption key can be basically anything for validation purposes, but we can at least
+	// make sure that the encoding is valid.
+	_, err := b85.Decode(session.Tokens[4])
+	if err != nil {
+		session.WriteClient("400 BAD REQUEST\r\n")
+		return
+	}
+
+	err = dbhandler.AddWorkspace(session.Tokens[1], session.Tokens[2], workspaceStatus)
 	if err != nil {
 		ServerLog.Printf("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
 		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
 	}
 
-	// For network and public registration, we create a device ID for the first device to use.
 	devid := uuid.New().String()
-	switch regType {
-	case "moderated":
-		session.WriteClient(fmt.Sprintf("101 PENDING %s\r\n", devid))
-		return
-	case "network", "public":
-		err = dbhandler.AddDevice(session.Tokens[1], devid, session.Tokens[3], session.Tokens[4])
-		if err != nil {
-			ServerLog.Printf("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
-			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-		}
-		session.WriteClient(fmt.Sprintf("200 OK %s\r\n", devid))
-		return
+	err = dbhandler.AddDevice(session.Tokens[1], devid, session.Tokens[3], session.Tokens[4])
+	if err != nil {
+		ServerLog.Printf("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
+		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
 	}
-	panic(errors.New("Registration unfinished"))
+
+	if regType == "moderated" {
+		session.WriteClient("101 PENDING")
+	} else {
+		session.WriteClient(fmt.Sprintf("200 OK %s\r\n", devid))
+	}
 }
 
 func commandUnrecognized(session *sessionState) {
