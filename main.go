@@ -556,9 +556,20 @@ func commandRegister(session *sessionState) {
 	}
 
 	regType := strings.ToLower(viper.GetString("global.registration"))
+
+	ipv4Pat := regexp.MustCompile("([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}):[0-9]+")
+	mIP4 := ipv4Pat.FindStringSubmatch(session.Connection.RemoteAddr().String())
+
+	remoteIP4 := ""
+	if len(mIP4) == 2 {
+		remoteIP4 = mIP4[1]
+	}
+
 	if regType == "private" {
 		// If registration is set to private, registration must be done from the server itself.
-		if session.Connection.RemoteAddr() != session.Connection.LocalAddr() {
+		mIP6, _ := regexp.MatchString("(::1):[0-9]+", session.Connection.RemoteAddr().String())
+
+		if !mIP6 && (remoteIP4 == "" || remoteIP4 != "127.0.0.1") {
 			session.WriteClient("304 REGISTRATION CLOSED\r\n")
 			return
 		}
