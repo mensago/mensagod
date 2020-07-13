@@ -357,28 +357,29 @@ func commandDevice(session *sessionState) {
 	// Check to see if this is a preregistered account that has yet to be logged into.
 	// If it is, return 200 OK and the next session ID.
 	var err error
-	if session.WorkspaceStatus == "approved" {
-		if !dbhandler.ValidateUUID(session.Tokens[1]) {
-			session.WriteClient("400 BAD REQUEST\r\n")
-			return
-		}
+	// TODO: Handle preregistration
+	// if session.WorkspaceStatus == "approved" {
+	// 	if !dbhandler.ValidateUUID(session.Tokens[1]) {
+	// 		session.WriteClient("400 BAD REQUEST\r\n")
+	// 		return
+	// 	}
 
-		if session.Tokens[2] != "curve25519" {
-			session.WriteClient("309 ENCRYPTION TYPE NOT SUPPORTED\r\n")
-			return
-		}
+	// 	if session.Tokens[2] != "curve25519" {
+	// 		session.WriteClient("309 ENCRYPTION TYPE NOT SUPPORTED\r\n")
+	// 		return
+	// 	}
 
-		dbhandler.AddDevice(session.WID, session.Tokens[1], session.Tokens[2], session.Tokens[3])
-		err = dbhandler.SetWorkspaceStatus(session.WID, "active")
-		if err != nil {
-			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-			return
-		}
+	// 	dbhandler.AddDevice(session.WID, session.Tokens[1], session.Tokens[2], session.Tokens[3])
+	// 	err = dbhandler.SetWorkspaceStatus(session.WID, "active")
+	// 	if err != nil {
+	// 		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+	// 		return
+	// 	}
 
-		session.LoginState = loginClientSession
-		session.WriteClient("200 OK\r\n")
-		return
-	}
+	// 	session.LoginState = loginClientSession
+	// 	session.WriteClient("200 OK\r\n")
+	// 	return
+	// }
 
 	var success bool
 	success, err = dbhandler.CheckDevice(session.WID, session.Tokens[1], session.Tokens[2],
@@ -398,14 +399,15 @@ func commandDevice(session *sessionState) {
 			// 5) Upon receipt of authorization approval, update the device status in the database
 			// 6) Upon receipt of denial, log the failure and apply a lockout to the IP
 		} else {
-			err = dbhandler.AddDevice(session.WID, session.Tokens[1],
-				session.Tokens[2], session.Tokens[3])
-			if err != nil {
-				ServerLog.Printf("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
-				session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-			}
-			session.WriteClient("200 OK %s\r\n")
-			session.LoginState = loginClientSession
+			// TODO: Handle preregistration
+			// err = dbhandler.AddDevice(session.WID, session.Tokens[1],
+			// 	session.Tokens[2], session.Tokens[3])
+			// if err != nil {
+			// 	ServerLog.Printf("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
+			// 	session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+			// }
+			// session.WriteClient("200 OK %s\r\n")
+			// session.LoginState = loginClientSession
 		}
 	} else {
 		// The device is part of the workspace already, so now we issue undergo a challenge-response
@@ -653,7 +655,8 @@ func commandRegister(session *sessionState) {
 	}
 
 	devid := uuid.New().String()
-	err = dbhandler.AddDevice(session.Tokens[1], devid, session.Tokens[3], session.Tokens[4])
+	err = dbhandler.AddDevice(session.Tokens[1], devid, session.Tokens[3], session.Tokens[4],
+		"active")
 	if err != nil {
 		ServerLog.Printf("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
 		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
@@ -662,7 +665,7 @@ func commandRegister(session *sessionState) {
 	if regType == "moderated" {
 		session.WriteClient("101 PENDING")
 	} else {
-		session.WriteClient(fmt.Sprintf("200 OK %s\r\n", devid))
+		session.WriteClient(fmt.Sprintf("201 REGISTERED %s\r\n", devid))
 	}
 }
 
