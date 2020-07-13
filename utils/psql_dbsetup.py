@@ -58,6 +58,18 @@ except Exception as e:
 	print("Couldn't connect to database: %s" % e)
 	sys.exit(1)
 
+# Step 3: Drop all existing tables
+dropcmd = '''DO $$ DECLARE
+	r RECORD;
+BEGIN
+	FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = current_schema()) LOOP
+		EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
+	END LOOP;
+END $$;'''
+cursor = conn.cursor()
+cursor.execute(dropcmd)
+
+
 # Step 3: Verify existence of needed tables
 
 cur = conn.cursor()
