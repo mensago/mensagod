@@ -354,32 +354,27 @@ func commandDevice(session *sessionState) {
 		return
 	}
 
+	if session.Tokens[2] != "curve25519" {
+		session.WriteClient("309 ENCRYPTION TYPE NOT SUPPORTED\r\n")
+		return
+	}
+
 	// Check to see if this is a preregistered account that has yet to be logged into.
-	// If it is, return 200 OK and the next session ID.
+	// If it is, add the device and return 200 OK.
 	var err error
-	// TODO: Handle preregistration
-	// if session.WorkspaceStatus == "approved" {
-	// 	if !dbhandler.ValidateUUID(session.Tokens[1]) {
-	// 		session.WriteClient("400 BAD REQUEST\r\n")
-	// 		return
-	// 	}
+	if session.WorkspaceStatus == "approved" {
+		dbhandler.AddDevice(session.WID, session.Tokens[1], session.Tokens[2], session.Tokens[3],
+			"active")
+		err = dbhandler.SetWorkspaceStatus(session.WID, "active")
+		if err != nil {
+			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+			return
+		}
 
-	// 	if session.Tokens[2] != "curve25519" {
-	// 		session.WriteClient("309 ENCRYPTION TYPE NOT SUPPORTED\r\n")
-	// 		return
-	// 	}
-
-	// 	dbhandler.AddDevice(session.WID, session.Tokens[1], session.Tokens[2], session.Tokens[3])
-	// 	err = dbhandler.SetWorkspaceStatus(session.WID, "active")
-	// 	if err != nil {
-	// 		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-	// 		return
-	// 	}
-
-	// 	session.LoginState = loginClientSession
-	// 	session.WriteClient("200 OK\r\n")
-	// 	return
-	// }
+		session.LoginState = loginClientSession
+		session.WriteClient("200 OK\r\n")
+		return
+	}
 
 	var success bool
 	success, err = dbhandler.CheckDevice(session.WID, session.Tokens[1], session.Tokens[2],
@@ -399,15 +394,13 @@ func commandDevice(session *sessionState) {
 			// 5) Upon receipt of authorization approval, update the device status in the database
 			// 6) Upon receipt of denial, log the failure and apply a lockout to the IP
 		} else {
-			// TODO: Handle preregistration
-			// err = dbhandler.AddDevice(session.WID, session.Tokens[1],
-			// 	session.Tokens[2], session.Tokens[3])
-			// if err != nil {
-			// 	ServerLog.Printf("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
-			// 	session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-			// }
-			// session.WriteClient("200 OK %s\r\n")
-			// session.LoginState = loginClientSession
+			// TODO: Check for paranoid mode and reject if enabled
+			dbhandler.AddDevice(session.WID, session.Tokens[1], session.Tokens[2], session.Tokens[3],
+				"active")
+
+			session.LoginState = loginClientSession
+			session.WriteClient("200 OK\r\n")
+			return
 		}
 	} else {
 		// The device is part of the workspace already, so now we issue undergo a challenge-response
