@@ -337,6 +337,8 @@ func processCommand(session *sessionState) {
 		// Do nothing. Just resets the idle counter.
 	case "PASSWORD":
 		commandPassword(session)
+	case "PREREG":
+		commandPreregister(session)
 	case "REGISTER":
 		commandRegister(session)
 	default:
@@ -571,6 +573,54 @@ func commandLogout(session *sessionState) {
 	// LOGOUT
 	session.WriteClient("200 OK\r\n")
 	session.IsTerminating = true
+}
+
+func commandPreregister(session *sessionState) {
+	// command syntax:
+	// PREREG opt_uid
+
+	// TODO: Rewrite to match spec
+
+	if len(session.Tokens) != 3 || !dbhandler.ValidateUUID(session.Tokens[1]) {
+		session.WriteClient("400 BAD REQUEST\r\n")
+		return
+	}
+
+	ipv4Pat := regexp.MustCompile("([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}):[0-9]+")
+	mIP4 := ipv4Pat.FindStringSubmatch(session.Connection.RemoteAddr().String())
+
+	remoteIP4 := ""
+	if len(mIP4) == 2 {
+		remoteIP4 = mIP4[1]
+	}
+
+	// Preregistration must be done from the server itself.
+	mIP6, _ := regexp.MatchString("(::1):[0-9]+", session.Connection.RemoteAddr().String())
+
+	if !mIP6 && (remoteIP4 == "" || remoteIP4 != "127.0.0.1") {
+		session.WriteClient("401 UNAUTHORIZED\r\n")
+		return
+	}
+
+	success, _ := dbhandler.CheckWorkspace(session.Tokens[1])
+	if success {
+		session.WriteClient("408 RESOURCE EXISTS\r\n")
+		return
+	}
+
+	// Just some basic sanity checks on the password hash.
+	if len(session.Tokens[2]) < 8 || len(session.Tokens[2]) > 120 {
+		session.WriteClient("400 BAD REQUEST\r\n")
+		return
+	}
+
+	err := dbhandler.AddWorkspace(session.Tokens[1], session.Tokens[2], "approved")
+	if err != nil {
+		ServerLog.Printf("Internal server error. commandPreregister.AddWorkspace. Error: %s\n", err)
+		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+	}
+
+	session.WriteClient("200 OK\r\n")
 }
 
 func commandRegister(session *sessionState) {
