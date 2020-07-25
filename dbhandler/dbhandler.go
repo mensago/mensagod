@@ -492,10 +492,28 @@ func PreregWorkspace(wid string, uid string, wordList *diceware.Wordlist, wordco
 		return "", errors.New("Bad parameter length")
 	}
 
+	if len(uid) > 0 {
+		row := dbConn.QueryRow(`SELECT uid FROM prereg WHERE uid=$1`, uid)
+		var hasuid string
+		err := row.Scan(&hasuid)
+
+		switch err {
+		case sql.ErrNoRows:
+			break
+		case nil:
+			return "", errors.New("uid exists")
+		case err.(*pq.Error):
+			fmt.Println("Server encountered PostgreSQL error ", err)
+			panic(err)
+		default:
+			panic(err)
+		}
+	}
+
 	regcode, err := diceware.RollWords(wordcount, "-", *wordList)
 
 	_, err = dbConn.Exec(`INSERT INTO prereg(wid, uid, regcode) VALUES($1, $2, $3)`,
 		wid, uid, regcode)
 
-	return "", err
+	return regcode, err
 }
