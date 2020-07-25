@@ -14,6 +14,8 @@ import (
 	"github.com/darkwyrm/b85"
 
 	"github.com/darkwyrm/server/dbhandler"
+	"github.com/everlastingbeta/diceware"
+	"github.com/everlastingbeta/diceware/wordlist"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"github.com/spf13/viper"
@@ -21,6 +23,9 @@ import (
 
 // ServerLog is the global logging object
 var ServerLog *log.Logger
+
+// gRegWordList is a copy of the word list for preregistration code generation
+var gRegWordList diceware.Wordlist
 
 // -------------------------------------------------------------------------------------------
 // Types
@@ -108,6 +113,8 @@ func setupConfig() *os.File {
 	// Subnet(s) used for network registration. Defaults to private networks only.
 	viper.SetDefault("global.registration_subnet", "192.168.0.0/24, 172.16.0.0/12, 10.0.0.0/8")
 	viper.SetDefault("global.registration_subnet6", "fe80::/10")
+	viper.SetDefault("global.registration_wordlist", "eff_short_prefix")
+	viper.SetDefault("global.registration_wordcount", 6)
 
 	// Default user workspace quota in MiB. 0 = no quota
 	viper.SetDefault("global.default_quota", 0)
@@ -177,6 +184,29 @@ func setupConfig() *os.File {
 		fmt.Printf("Invalid registration mode '%s'in config file. Exiting.\n",
 			viper.GetString("global.registration"))
 		os.Exit(1)
+	}
+
+	wordList := viper.GetString("global.registration_wordlist")
+	switch wordList {
+	case "eff_short":
+		gRegWordList = wordlist.EFFShort
+	case "eff_short_prefix":
+		gRegWordList = wordlist.EFFShortPrefix
+	case "eff_long":
+		gRegWordList = wordlist.EFFLong
+	case "original":
+		gRegWordList = wordlist.Original
+	default:
+		ServerLog.Println("Invalid word list in config file. Exiting.")
+		fmt.Printf("Invalid word list in config file. Exiting.\n")
+		os.Exit(1)
+	}
+
+	if viper.GetInt("global.registration_wordcount") < 0 ||
+		viper.GetInt("global.registration_wordcount") > 12 {
+		viper.Set("global.registration_wordcount", 0)
+		ServerLog.Println("Registration wordcount out of bounds in config file. Assuming 6.")
+		fmt.Println("Registration wordcount out of bounds in config file. Assuming 6.")
 	}
 
 	if viper.GetInt("global.default_quota") < 0 {
@@ -476,7 +506,7 @@ func commandLogin(session *sessionState) {
 		if len(lockTime) > 0 {
 			// The only time that lockTime with be greater than 0 is if the account
 			// is currently locked.
-			session.WriteClient(strings.Join([]string{"407 UNAVAILABLE", lockTime, "\r\n"}, " "))
+			session.WriteClient(strings.Join([]string{"407 UNAVAILABLE ", lockTime, "\r\n"}, " "))
 			return
 		}
 
@@ -493,7 +523,7 @@ func commandLogin(session *sessionState) {
 		// means that although there has been a failure, the count for this IP address is
 		// still under the limit.
 		if len(lockTime) > 0 {
-			session.WriteClient(strings.Join([]string{"405 TERMINATED", lockTime, "\r\n"}, " "))
+			session.WriteClient(strings.Join([]string{"405 TERMINATED ", lockTime, "\r\n"}, " "))
 			session.IsTerminating = true
 		} else {
 			session.WriteClient("404 NOT FOUND\r\n")
@@ -548,7 +578,7 @@ func commandPassword(session *sessionState) {
 		// means that although there has been a failure, the count for this IP address is
 		// still under the limit.
 		if len(lockTime) > 0 {
-			session.WriteClient(strings.Join([]string{"405 TERMINATED", lockTime, "\r\n"}, " "))
+			session.WriteClient(strings.Join([]string{"405 TERMINATED ", lockTime, "\r\n"}, " "))
 			session.IsTerminating = true
 		} else {
 			session.WriteClient("402 AUTHENTICATION FAILURE\r\n")
@@ -579,11 +609,19 @@ func commandPreregister(session *sessionState) {
 	// command syntax:
 	// PREREG opt_uid
 
-	// TODO: Rewrite to match spec
-
-	if len(session.Tokens) != 3 || !dbhandler.ValidateUUID(session.Tokens[1]) {
+	if len(session.Tokens) > 2 {
 		session.WriteClient("400 BAD REQUEST\r\n")
 		return
+	}
+
+	// Just do some basic syntax checks on the user ID
+	userID := ""
+	if len(session.Tokens) == 2 {
+		userID = session.Tokens[1]
+		if strings.ContainsAny(userID, "/\"") {
+			session.WriteClient("400 BAD REQUEST\r\n")
+			return
+		}
 	}
 
 	ipv4Pat := regexp.MustCompile("([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}):[0-9]+")
@@ -594,7 +632,7 @@ func commandPreregister(session *sessionState) {
 		remoteIP4 = mIP4[1]
 	}
 
-	// Preregistration must be done from the server itself.
+	// Preregistration must be done from the server itself
 	mIP6, _ := regexp.MatchString("(::1):[0-9]+", session.Connection.RemoteAddr().String())
 
 	if !mIP6 && (remoteIP4 == "" || remoteIP4 != "127.0.0.1") {
@@ -602,25 +640,25 @@ func commandPreregister(session *sessionState) {
 		return
 	}
 
-	success, _ := dbhandler.CheckWorkspace(session.Tokens[1])
-	if success {
-		session.WriteClient("408 RESOURCE EXISTS\r\n")
-		return
+	success := false
+	var wid string
+	for !success {
+		wid = uuid.New().String()
+		success, _ = dbhandler.CheckWorkspace(session.Tokens[1])
 	}
 
-	// Just some basic sanity checks on the password hash.
-	if len(session.Tokens[2]) < 8 || len(session.Tokens[2]) > 120 {
-		session.WriteClient("400 BAD REQUEST\r\n")
-		return
-	}
-
-	err := dbhandler.AddWorkspace(session.Tokens[1], session.Tokens[2], "approved")
+	regcode, err := dbhandler.PreregWorkspace(wid, userID, &gRegWordList,
+		viper.GetInt("global.registration_wordcount"))
 	if err != nil {
-		ServerLog.Printf("Internal server error. commandPreregister.AddWorkspace. Error: %s\n", err)
+		ServerLog.Printf("Internal server error. commandPreregister.PreregWorkspace. Error: %s\n", err)
 		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
 	}
 
-	session.WriteClient("200 OK\r\n")
+	if userID != "" {
+		session.WriteClient(fmt.Sprintf("200 OK %s %s %s\r\n", wid, regcode, userID))
+	} else {
+		session.WriteClient(fmt.Sprintf("200 OK %s %s\r\n", wid, regcode))
+	}
 }
 
 func commandRegister(session *sessionState) {

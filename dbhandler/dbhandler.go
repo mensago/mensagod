@@ -20,6 +20,7 @@ import (
 	"database/sql"
 
 	"github.com/darkwyrm/b85"
+	"github.com/everlastingbeta/diceware"
 	"github.com/lib/pq"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/argon2"
@@ -447,18 +448,18 @@ func RemoveWorkspace(wid string) error {
 // CheckWorkspace checks to see if a workspace exists. If the workspace does exist,
 // True is returned along with a string containing the workspace's status. If the
 // workspace does not exist, it returns false and an empty string. The workspace
-// status can be 'active', 'pending', or 'disabled'. Note that this function does
-// not check the validity of the WID string passed to it. This should be done when
-// the input is received from the user.
+// status can be 'active', 'pending', or 'disabled'. Preregistered workspaces have the status
+// 'approved'. Note that this function does not check the validity of the WID string passed to it.
+// This should be done when the input is received from the user.
 func CheckWorkspace(wid string) (bool, string) {
-	row := dbConn.QueryRow(`SELECT status FROM iwkspc_main WHERE wid=$1`, wid)
+	row := dbConn.QueryRow(`SELECT wid FROM iwkspc_main WHERE wid=$1`, wid)
 
 	var widStatus string
 	err := row.Scan(&widStatus)
 
 	switch err {
 	case sql.ErrNoRows:
-		return false, ""
+		break
 	case nil:
 		return true, widStatus
 	case err.(*pq.Error):
@@ -467,4 +468,34 @@ func CheckWorkspace(wid string) (bool, string) {
 	default:
 		panic(err)
 	}
+
+	row = dbConn.QueryRow(`SELECT wid FROM prereg WHERE wid=$1`, wid)
+	err = row.Scan(&widStatus)
+
+	switch err {
+	case sql.ErrNoRows:
+		return false, ""
+	case nil:
+		return true, "approved"
+	case err.(*pq.Error):
+		fmt.Println("Server encountered PostgreSQL error ", err)
+		panic(err)
+	default:
+		panic(err)
+	}
+}
+
+// PreregWorkspace preregisters a workspace, adding a specified wid to the database and returns
+// a randomly-generated registration code needed to authenticate the first login
+func PreregWorkspace(wid string, uid string, wordList *diceware.Wordlist, wordcount int) (string, error) {
+	if len(wid) > 36 || len(uid) > 128 {
+		return "", errors.New("Bad parameter length")
+	}
+
+	regcode, err := diceware.RollWords(wordcount, "-", *wordList)
+
+	_, err = dbConn.Exec(`INSERT INTO prereg(wid, uid, regcode) VALUES($1, $2, $3)`,
+		wid, uid, regcode)
+
+	return "", err
 }
