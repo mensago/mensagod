@@ -116,7 +116,7 @@ cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.
 rows = cur.fetchall()
 if rows[0][0] is False:
 	cur.execute("CREATE TABLE prereg(id SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE, "
-				"uid VARCHAR(128) NOT NULL, regkey VARCHAR(128));")
+				"uid VARCHAR(128) NOT NULL, regcode VARCHAR(128));")
 
 
 cur.close()
