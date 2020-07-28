@@ -164,7 +164,7 @@ func IsConnected() bool {
 // This function will check the server configuration and if the failure has
 // exceeded the threshold for that type of failure, then a lockout timestamp will
 // be set.
-func LogFailure(failType string, wid string, source string) error {
+func LogFailure(failType string, id string, source string) error {
 
 	// failure type can only be one of three possible values
 	switch failType {
@@ -201,9 +201,9 @@ func LogFailure(failType string, wid string, source string) error {
 			sqlStatement := `
 				UPDATE failure_log 
 				SET count=$1, last_failure=$2, lockout_until=$3
-				WHERE type=$4 AND source=$5 AND wid=$6`
+				WHERE type=$4 AND source=$5 AND id=$6`
 			_, err = dbConn.Exec(sqlStatement, failCount, timeString, lockout.Format(time.RFC3339),
-				failType, source, wid)
+				failType, source, id)
 			if err != nil {
 				panic(err)
 			}
@@ -213,7 +213,7 @@ func LogFailure(failType string, wid string, source string) error {
 				UPDATE failure_log 
 				SET count=$1, last_failure=$2 
 				WHERE type=$3 AND source=$4 and wid=$5`
-			_, err = dbConn.Exec(sqlStatement, failCount, timeString, failType, source, wid)
+			_, err = dbConn.Exec(sqlStatement, failCount, timeString, failType, source, id)
 			if err != nil {
 				panic(err)
 			}
@@ -221,7 +221,7 @@ func LogFailure(failType string, wid string, source string) error {
 	} else {
 		sqlStatement := `INSERT INTO failure_log(type, source, wid, count, last_failure)
 			VALUES($1, $2, $3, $4, $5)`
-		_, err = dbConn.Exec(sqlStatement, failType, source, wid, failCount, timeString)
+		_, err = dbConn.Exec(sqlStatement, failType, source, id, failCount, timeString)
 		if err != nil {
 			panic(err)
 		}
@@ -488,7 +488,9 @@ func CheckWorkspace(wid string) (bool, string) {
 }
 
 // PreregWorkspace preregisters a workspace, adding a specified wid to the database and returns
-// a randomly-generated registration code needed to authenticate the first login
+// a randomly-generated registration code needed to authenticate the first login. Registration
+// codes are stored in the clear, but that's merely because if an attacker already has access to
+// the server to see the codes, the attacker can easily create new workspaces.
 func PreregWorkspace(wid string, uid string, wordList *diceware.Wordlist, wordcount int) (string, error) {
 	if len(wid) > 36 || len(uid) > 128 {
 		return "", errors.New("Bad parameter length")
@@ -518,4 +520,14 @@ func PreregWorkspace(wid string, uid string, wordList *diceware.Wordlist, wordco
 		wid, uid, regcode)
 
 	return regcode, err
+}
+
+// CheckRegCode handles authenticating a host using a user/workspace ID and registration
+// code provided by PreregWorkspace. Base on authentication it either returns the workspace ID
+// (success) or an empty string (failure). An error is returned only if authentication was
+// successful. The caller is still responsible for performing the necessary steps to add the
+// workspace to the database.
+func CheckRegCode(id string, wid bool, regcode string) (string, error) {
+	// TODO: Implement
+	return "", errors.New("Unimplemented")
 }
