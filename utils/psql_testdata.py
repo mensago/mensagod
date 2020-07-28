@@ -161,7 +161,7 @@ def reset_database(dbconn):
 					"devid CHAR(36) NOT NULL, keytype VARCHAR(16) NOT NULL, "
 					"devkey VARCHAR(1000) NOT NULL, status VARCHAR(16) NOT NULL);")
 	cursor.execute("CREATE TABLE failure_log(id SERIAL PRIMARY KEY, type VARCHAR(16) NOT NULL, "
-				"wid VARCHAR(36), source VARCHAR(36) NOT NULL, count INTEGER, "
+				"id VARCHAR(36), source VARCHAR(36) NOT NULL, count INTEGER, "
 				"last_failure TIMESTAMP NOT NULL, lockout_until TIMESTAMP);")
 	cursor.execute("CREATE TABLE prereg(id SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE, "
 				"uid VARCHAR(128) NOT NULL, regcode VARCHAR(128));")

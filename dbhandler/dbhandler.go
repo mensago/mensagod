@@ -254,10 +254,12 @@ func GenerateRandomString(length int) string {
 // CheckLockout corresponds to LogFailure() in that it checks to see if said
 // source has a lockout timestamp and returns it if there is or an empty string if not.
 // It also has the added benefit of resetting a counter to 0 if there is an expired
-// lockout for a particular source
-func CheckLockout(failType string, wid string, source string) (string, error) {
+// lockout for a particular source. The ID parameter is a string specific to the failure type.
+// For example, for logins, it is the workspace ID. For preregistration codes, it is the IP
+// address of the remote host.
+func CheckLockout(failType string, id string, source string) (string, error) {
 	row := dbConn.QueryRow(`SELECT lockout_until FROM failure_log 
-		WHERE wid=$1 and source=$2`, wid, source)
+		WHERE id=$1 and source=$2`, id, source)
 
 	var locktime string
 	err := row.Scan(&locktime)
