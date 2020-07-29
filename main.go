@@ -341,7 +341,6 @@ func processCommand(session *sessionState) {
 		DELETE
 		DELIVER
 		DOWNLOAD
-		GETREG
 		GETUPDATES
 		LIST
 		MKDIR
@@ -352,7 +351,6 @@ func processCommand(session *sessionState) {
 		SERVERID
 		SERVERPWD
 		SETADDR
-		SETREG
 		UNREGISTER
 		UPLOAD
 	*/
@@ -370,6 +368,8 @@ func processCommand(session *sessionState) {
 		commandPassword(session)
 	case "PREREG":
 		commandPreregister(session)
+	case "REGCODE":
+		commandRegCode(session)
 	case "REGISTER":
 		commandRegister(session)
 	default:
@@ -604,6 +604,100 @@ func commandLogout(session *sessionState) {
 	// LOGOUT
 	session.WriteClient("200 OK\r\n")
 	session.IsTerminating = true
+}
+
+func commandRegCode(session *sessionState) {
+	// command syntax:
+	// REGCODE <uid|wid> <regcode> <password_hash> <deviceID> <devkeytype> <devkey>
+
+	if len(session.Tokens) != 7 {
+		session.WriteClient("400 BAD REQUEST\r\n")
+		return
+	}
+
+	id := session.Tokens[1]
+
+	// check to see if this is a workspace ID
+	isWid := dbhandler.ValidateUUID(id)
+
+	if !isWid && strings.ContainsAny(id, "/\"") {
+		session.WriteClient("400 BAD REQUEST\r\n")
+		return
+	}
+
+	// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
+	// At this point, the connection should be terminated. However, an empty lockTime
+	// means that although there has been a failure, the count for this IP address is
+	// still under the limit.
+	lockTime, err := dbhandler.CheckLockout("prereg", session.Connection.RemoteAddr().String(),
+		session.Connection.RemoteAddr().String())
+
+	if err != nil {
+		panic(err)
+	}
+
+	if len(lockTime) > 0 {
+		session.WriteClient(strings.Join([]string{"405 TERMINATED ", lockTime, "\r\n"}, " "))
+		session.IsTerminating = true
+	}
+
+	if (len(session.Tokens[3]) < 8 || len(session.Tokens[3]) > 120) ||
+		!dbhandler.ValidateUUID(session.Tokens[4]) {
+		session.WriteClient("400 BAD REQUEST\r\n")
+		return
+	}
+
+	if session.Tokens[5] != "curve25519" {
+		session.WriteClient("309 ENCRYPTION TYPE NOT SUPPORTED\r\n")
+		return
+	}
+
+	_, err = b85.Decode(session.Tokens[6])
+	if err != nil {
+		session.WriteClient("400 BAD REQUEST\r\n")
+		return
+	}
+
+	wid, err := dbhandler.CheckRegCode(id, isWid, session.Tokens[2])
+
+	if wid == "" {
+		dbhandler.LogFailure("prereg", session.Connection.RemoteAddr().String(),
+			session.Connection.RemoteAddr().String())
+
+		lockTime, err = dbhandler.CheckLockout("prereg", session.Connection.RemoteAddr().String(),
+			session.Connection.RemoteAddr().String())
+
+		if err != nil {
+			panic(err)
+		}
+
+		if len(lockTime) > 0 {
+			session.WriteClient(strings.Join([]string{"405 TERMINATED ", lockTime, "\r\n"}, " "))
+			session.IsTerminating = true
+			return
+		}
+	}
+
+	if err != nil {
+		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+		return
+	}
+
+	err = dbhandler.AddWorkspace(wid, session.Tokens[3], "active")
+	if err != nil {
+		ServerLog.Printf("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
+		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+	}
+
+	devid := uuid.New().String()
+	err = dbhandler.AddDevice(wid, devid, session.Tokens[5], session.Tokens[6],
+		"active")
+	if err != nil {
+		ServerLog.Printf("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
+		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+	}
+
+	session.WriteClient("201 REGISTERED\r\n")
 }
 
 func commandPreregister(session *sessionState) {
