@@ -121,4 +121,3 @@ if rows[0][0] is False:
 
 cur.close()
 conn.commit()
-
