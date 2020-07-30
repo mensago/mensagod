@@ -151,19 +151,19 @@ def reset_database(dbconn):
 	END $$;'''
 	cursor = dbconn.cursor()
 	cursor.execute(dropcmd)
-	cursor.execute("CREATE TABLE iwkspc_main(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
+	cursor.execute("CREATE TABLE iwkspc_main(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
 					"friendly_address VARCHAR(48), password VARCHAR(128) NOT NULL, "
 					"status VARCHAR(16) NOT NULL);")
-	cursor.execute("CREATE TABLE iwkspc_folders(id SERIAL PRIMARY KEY, fid char(36) NOT NULL, "
+	cursor.execute("CREATE TABLE iwkspc_folders(rowid SERIAL PRIMARY KEY, fid char(36) NOT NULL, "
 					"wid char(36) NOT NULL, enc_name VARCHAR(128) NOT NULL, "
 					"enc_key VARCHAR(64) NOT NULL);")
-	cursor.execute("CREATE TABLE iwkspc_devices(id SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
+	cursor.execute("CREATE TABLE iwkspc_devices(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
 					"devid CHAR(36) NOT NULL, keytype VARCHAR(16) NOT NULL, "
 					"devkey VARCHAR(1000) NOT NULL, status VARCHAR(16) NOT NULL);")
-	cursor.execute("CREATE TABLE failure_log(id SERIAL PRIMARY KEY, type VARCHAR(16) NOT NULL, "
+	cursor.execute("CREATE TABLE failure_log(rowid SERIAL PRIMARY KEY, type VARCHAR(16) NOT NULL, "
 				"id VARCHAR(36), source VARCHAR(36) NOT NULL, count INTEGER, "
 				"last_failure TIMESTAMP NOT NULL, lockout_until TIMESTAMP);")
-	cursor.execute("CREATE TABLE prereg(id SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE, "
+	cursor.execute("CREATE TABLE prereg(rowid SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE, "
 				"uid VARCHAR(128) NOT NULL, regcode VARCHAR(128));")
 	cursor.close()
 	dbconn.commit()
