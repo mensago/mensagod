@@ -1,6 +1,9 @@
+import base64
 import os.path
+import socket
 import sys
 
+import nacl
 import psycopg2
 import toml
 
@@ -79,3 +82,68 @@ def setup_test():
 	conn = db_setup(config, schema_path)
 	return conn
 
+
+def add_workspace(account: dict, dbconn):
+	'''Creates a workspace using the supplied information in the parameter `account`'''
+	
+	cursor = dbconn.cursor()
+	cmdparts = ["INSERT INTO iwkspc_main(wid,friendly_address,password,status) VALUES('",
+				account['wid'],
+				"',"]
+	if account['uid']:
+		cmdparts.extend(["'",account['uid'],"',"])
+	else:
+		cmdparts.append("'',")
+	
+	cmdparts.extend(["'", account['serverpwhash'],"','", account['status'], "');"])
+	cmd = ''.join(cmdparts)
+	cursor.execute(cmd)
+	
+	box = nacl.secret.SecretBox(account['keys'][4]['key'])
+	for folder_name,fid in account['folder_map'].items():
+		cmd = ("INSERT INTO iwkspc_folders(wid, fid, enc_name, enc_key) "
+					"VALUES('%s','%s','%s',$$%s$$);" % 
+					( account['wid'], fid,
+					base64.b85encode(box.encrypt(bytes(folder_name, 'utf8'))).decode('utf8'),
+					account['keys'][4]['id']))
+		cursor.execute(cmd)
+
+	i = 0
+	while i < len(account['devices']):
+		cmd =	(	"INSERT INTO iwkspc_devices(wid, devid, keytype, devkey, status) "
+					"VALUES('%s','%s','%s','%s','active');" % (
+						account['wid'], account['devices'][i]['id'], 
+						account['devices'][i]['keytype'],
+						account['devices'][i]['public_b85']
+					)
+				)
+		cursor.execute(cmd)
+		i = i + 1
+	
+	cursor.close()
+	dbconn.commit()
+
+def connect():
+	'''Creates a connection to the server.'''
+	try:
+		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		# Set a short timeout in case the server doesn't respond immediately,
+		# which is the expectation as soon as a client connects.
+		sock.settimeout(10.0)
+	except:
+		return None
+	
+	try:
+		sock.connect(('127.0.0.1', 2001))
+		
+		# absorb the hello string
+		_ = sock.recv(8192)
+
+	except Exception as e:
+		print("Connection failed: %s" % e)
+		sock.close()
+		return None
+
+	# Set a timeout of 30 minutes
+	sock.settimeout(1800.0)
+	return sock
