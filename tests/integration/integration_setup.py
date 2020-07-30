@@ -4,8 +4,9 @@ import sys
 import psycopg2
 import toml
 
-def LoadDBConfig(config_file_path: str) -> dict:
+def load_db_config(config_file_path: str) -> dict:
 	'''Loads the Anselus server configuration from the config file'''
+	
 	if os.path.exists(config_file_path):
 		try:
 			serverconfig = toml.load(config_file_path)
@@ -45,7 +46,7 @@ def LoadDBConfig(config_file_path: str) -> dict:
 	return serverconfig
 
 
-def DBSetup(serverconfig: dict, schema_path: str):
+def db_setup(serverconfig: dict, schema_path: str):
 	'''Reset the test database to defaults'''
 	try:
 		conn = psycopg2.connect(host=serverconfig['database']['ip'],
@@ -57,11 +58,24 @@ def DBSetup(serverconfig: dict, schema_path: str):
 		print("Couldn't connect to database: %s" % e)
 		sys.exit(1)
 
-	# TODO: Load schema from file
-
+	sqlcmds = ''
+	with open(schema_path, 'r') as f:
+		sqlcmds = f.read()
+	
 	cur = conn.cursor()
-
-	# TODO: Run schema setup script
-
+	cur.execute(sqlcmds)
 	cur.close()
 	conn.commit()
+
+	return conn
+
+
+def setup_test():
+	'''Resets the Postgres test database to be ready for an integration test'''
+	config = load_db_config('/etc/anselus-server/serverconfig.toml')
+
+	schema_path = os.path.abspath(__file__ + '/../')
+	schema_path = os.path.join(schema_path, 'psql_schema.sql')
+	conn = db_setup(config, schema_path)
+	return conn
+
