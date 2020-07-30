@@ -1,5 +1,5 @@
 
-from integration_setup import db_setup, add_workspace, connect
+from integration_setup import setup_test, add_workspace, connect
 
 # Workspace ID : 63f1a44d-c83f-43b9-9152-9595e110e322
 # Friendly Address : 
@@ -46,6 +46,8 @@ from integration_setup import db_setup, add_workspace, connect
 def test_register_success():
 	'''Tests the server's REGISTER command'''
 
+	setup_test()
+
 	wid = '63f1a44d-c83f-43b9-9152-9595e110e322'
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
@@ -55,6 +57,18 @@ def test_register_success():
 
 	sock = connect()
 	assert sock, "Connection to server at localhost:2001 failed"
+
+	cmd = ' '.join([ "REGISTER", wid, pwhash, algorithm, devkey, "\r\n" ])
+	print('CLIENT: %s' % cmd)
+	sock.send(cmd.encode())
+
+	response = sock.recv(8192).decode()
+	print('SERVER: %s' % response)
+	
+	parts = response.split(' ')
+	assert parts[0] == '201' and parts[1] == 'REGISTERED', 'Failed to register'
+
+	sock.send('QUIT\r\n')
 
 
 if __name__ == '__main__':
