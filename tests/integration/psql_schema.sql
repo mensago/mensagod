@@ -1,6 +1,13 @@
-DROP SCHEMA public CASCADE;
-CREATE SCHEMA public;
+-- Drop all tables in the database
+DO $$ DECLARE
+	r RECORD;
+BEGIN
+	FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = current_schema()) LOOP
+		EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
+	END LOOP;
+END $$;
 
+-- Create new ones
 CREATE TABLE iwkspc_main(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL, 
 	friendly_address VARCHAR(48), password VARCHAR(128) NOT NULL, 
 	status VARCHAR(16) NOT NULL);
