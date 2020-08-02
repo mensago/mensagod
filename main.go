@@ -378,39 +378,15 @@ func processCommand(session *sessionState) {
 
 func commandDevice(session *sessionState) {
 	// Command syntax:
-	// DEVICE <devid> <keytype> <key>
+	// DEVICE <devid> <key>
 
-	if len(session.Tokens) != 4 || !dbhandler.ValidateUUID(session.Tokens[1]) ||
+	if len(session.Tokens) != 3 || !dbhandler.ValidateUUID(session.Tokens[1]) ||
 		session.LoginState != loginAwaitingSessionID {
 		session.WriteClient("400 BAD REQUEST\r\n")
 		return
 	}
 
-	if session.Tokens[2] != "curve25519" {
-		session.WriteClient("309 ENCRYPTION TYPE NOT SUPPORTED\r\n")
-		return
-	}
-
-	// Check to see if this is a preregistered account that has yet to be logged into.
-	// If it is, add the device and return 200 OK.
-	var err error
-	if session.WorkspaceStatus == "approved" {
-		dbhandler.AddDevice(session.WID, session.Tokens[1], session.Tokens[2], session.Tokens[3],
-			"active")
-		err = dbhandler.SetWorkspaceStatus(session.WID, "active")
-		if err != nil {
-			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-			return
-		}
-
-		session.LoginState = loginClientSession
-		session.WriteClient("200 OK\r\n")
-		return
-	}
-
-	var success bool
-	success, err = dbhandler.CheckDevice(session.WID, session.Tokens[1], session.Tokens[2],
-		session.Tokens[3])
+	success, err := dbhandler.CheckDevice(session.WID, session.Tokens[1], session.Tokens[2])
 	if err != nil {
 		session.WriteClient("400 BAD REQUEST\r\n")
 		return
@@ -438,7 +414,7 @@ func commandDevice(session *sessionState) {
 		// The device is part of the workspace already, so now we issue undergo a challenge-response
 		// to ensure that the device really is authorized and the key wasn't stolen by an impostor
 
-		success, err = challengeDevice(session, session.Tokens[2], session.Tokens[3])
+		success, err = challengeDevice(session, "curve25519", session.Tokens[3])
 		if success {
 			session.LoginState = loginClientSession
 		} else {
@@ -857,11 +833,6 @@ func commandUnrecognized(session *sessionState) {
 }
 
 func challengeDevice(session *sessionState, keytype string, devkey string) (bool, error) {
-	if keytype != "curve25519" {
-		session.WriteClient("309 ENCRYPTION TYPE NOT SUPPORTED\r\n")
-		return false, nil
-	}
-
 	// TODO: Implement the challenge-response authentication
 	// 1) Generate a 32-byte random string of bytes
 	// 2) Encode string in base85
@@ -869,5 +840,22 @@ func challengeDevice(session *sessionState, keytype string, devkey string) (bool
 	// 4) Wait for response from client and compare response to original base85 string
 	// 5) If strings don't match, respond to client with 402 Authentication Failure and return false
 	// 6) If strings match respond to client with 200 OK and return true/nil
+
+	// randBytes := make([]byte, 32)
+	// if _, err := rand.Read(randBytes); err != nil {
+	// 	panic(err.Error())
+	// }
+	// challenge := b85.Encode(randBytes)
+
+	// if keytype != "curve25519" {
+	// 	return false, errors.New("unsupported key type")
+	// }
+
+	// This part doesn't work... need to get a better handle on this. :(
+	// var err error
+	// var devkeyDecoded [32]byte
+	// devkeyDecoded, err = b85.Decode(devkey)
+	// box.SealAnonymous(nil, challenge, devkeyDecoded, nil)
+
 	return true, nil
 }

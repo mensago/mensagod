@@ -371,9 +371,9 @@ func RemoveDevice(wid string, devid string) (bool, error) {
 }
 
 // CheckDevice checks a session string on a workspace and returns true or false if there is a match.
-func CheckDevice(wid string, devid string, keytype string, devkey string) (bool, error) {
+func CheckDevice(wid string, devid string, devkey string) (bool, error) {
 	row := dbConn.QueryRow(`SELECT status FROM iwkspc_devices WHERE wid=$1 AND 
-		devid=$2 AND keytype=$3 AND devkey=$4`, wid, devid, keytype, devkey)
+		devid=$2 AND devkey=$3`, wid, devid, devkey)
 
 	var widStatus string
 	err := row.Scan(&widStatus)
