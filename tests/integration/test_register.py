@@ -1,5 +1,5 @@
 
-from integration_setup import setup_test, connect
+from integration_setup import setup_test, connect, validate_uuid
 
 # Workspace ID : 11111111-1111-1111-1111-111111111111
 # Friendly Address : 
@@ -70,8 +70,10 @@ def test_register_success_dup():
 	response = sock.recv(8192).decode()
 	print('SERVER: %s\n' % response)
 	
-	parts = response.split(' ')
+	parts = response.strip().split(' ')
+	assert len(parts) == 3, 'Server returned wrong number of parameters'
 	assert parts[0] == '201' and parts[1] == 'REGISTERED', 'Failed to register'
+	assert validate_uuid(parts[2]), 'Device ID from server failed to validate'
 
 	
 	# Test #2: Attempt registration of existing WID
