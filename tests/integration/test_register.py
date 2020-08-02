@@ -87,51 +87,6 @@ def test_register_success_dup():
 	parts = response.split(' ')
 	assert parts[0] == '408' and parts[1] == 'RESOURCE', 'Failed to catch duplicate registration'
 
-
-	# Test #3: Attempt registration with unsupported encryption type
-
-	wid = '11111111-1111-1111-1111-222222222222'
-	cmd = ' '.join([ "REGISTER", wid, pwhash, '3DES', devkey, "\r\n" ])
-	print('Bad encryption algorithm\n--------------------------')
-	print('CLIENT: %s' % cmd)
-	sock.send(cmd.encode())
-
-	response = sock.recv(8192).decode()
-	print('SERVER: %s' % response)
-	
-	parts = response.split(' ')
-	assert parts[0] == '309' and parts[1] == 'ENCRYPTION', 'Failed to catch unsupported algorithm'
-
-
-	# Test #4: Send bad WID
-
-	wid = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
-	cmd = ' '.join([ "REGISTER", wid, pwhash, '3DES', devkey, "\r\n" ])
-	print('Bad WID\n--------------------------')
-	print('CLIENT: %s' % cmd)
-	sock.send(cmd.encode())
-
-	response = sock.recv(8192).decode()
-	print('SERVER: %s' % response)
-	
-	parts = response.split(' ')
-	assert parts[0] == '400' and parts[1] == 'BAD', 'Failed to catch bad WID'
-
-	# Test #5: Overflow
-
-	wid = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
-	cmd = ' '.join([ "REGISTER", wid, pwhash, '3DES', devkey, "\r\n" ])
-	print('Bad WID\n--------------------------')
-	print('CLIENT: %s' % cmd)
-	sock.send(cmd.encode())
-
-	response = sock.recv(8192).decode()
-	print('SERVER: %s' % response)
-	
-	parts = response.split(' ')
-	assert parts[0] == '400' and parts[1] == 'BAD', 'Failed to catch bad WID'
-
-
 	sock.send(b'QUIT\r\n')
 
 
