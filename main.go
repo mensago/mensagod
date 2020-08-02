@@ -747,11 +747,10 @@ func commandPreregister(session *sessionState) {
 		if err.Error() == "uid exists" {
 			session.WriteClient("408 RESOURCE EXISTS\r\n")
 			return
-		} else {
-			ServerLog.Printf("Internal server error. commandPreregister.PreregWorkspace. Error: %s\n", err)
-			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-			return
 		}
+		ServerLog.Printf("Internal server error. commandPreregister.PreregWorkspace. Error: %s\n", err)
+		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+		return
 	}
 
 	if userID != "" {
