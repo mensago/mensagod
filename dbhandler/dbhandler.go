@@ -454,7 +454,7 @@ func RemoveWorkspace(wid string) error {
 // 'approved'. Note that this function does not check the validity of the WID string passed to it.
 // This should be done when the input is received from the user.
 func CheckWorkspace(wid string) (bool, string) {
-	row := dbConn.QueryRow(`SELECT wid FROM iwkspc_main WHERE wid=$1`, wid)
+	row := dbConn.QueryRow(`SELECT status FROM iwkspc_main WHERE wid=$1`, wid)
 
 	var widStatus string
 	err := row.Scan(&widStatus)

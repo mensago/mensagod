@@ -542,6 +542,8 @@ func commandLogin(session *sessionState) {
 		session.LoginState = loginAwaitingPassword
 		session.WID = wid
 		session.WriteClient("100 CONTINUE\r\n")
+	default:
+		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
 	}
 }
 
