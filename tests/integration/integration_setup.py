@@ -54,7 +54,7 @@ def db_setup(serverconfig: dict, schema_path: str):
 	try:
 		conn = psycopg2.connect(host=serverconfig['database']['ip'],
 								port=serverconfig['database']['port'],
-								database="anselus_test",
+								database="anselus",
 								user=serverconfig['database']['user'],
 								password=serverconfig['database']['password'])
 	except Exception as e:
