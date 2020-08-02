@@ -523,6 +523,13 @@ func commandLogin(session *sessionState) {
 	}
 }
 
+func commandLogout(session *sessionState) {
+	// command syntax:
+	// LOGOUT
+	session.WriteClient("200 OK\r\n")
+	session.IsTerminating = true
+}
+
 func commandPassword(session *sessionState) {
 	// Command syntax:
 	// PASSWORD <pwhash>
@@ -576,11 +583,65 @@ func commandPassword(session *sessionState) {
 	}
 }
 
-func commandLogout(session *sessionState) {
+func commandPreregister(session *sessionState) {
 	// command syntax:
-	// LOGOUT
-	session.WriteClient("200 OK\r\n")
-	session.IsTerminating = true
+	// PREREG opt_uid
+
+	if len(session.Tokens) > 2 {
+		session.WriteClient("400 BAD REQUEST\r\n")
+		return
+	}
+
+	// Just do some basic syntax checks on the user ID
+	userID := ""
+	if len(session.Tokens) == 2 {
+		userID = session.Tokens[1]
+		if strings.ContainsAny(userID, "/\"") || dbhandler.ValidateUUID(userID) {
+			session.WriteClient("400 BAD REQUEST\r\n")
+			return
+		}
+	}
+
+	ipv4Pat := regexp.MustCompile("([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}):[0-9]+")
+	mIP4 := ipv4Pat.FindStringSubmatch(session.Connection.RemoteAddr().String())
+
+	remoteIP4 := ""
+	if len(mIP4) == 2 {
+		remoteIP4 = mIP4[1]
+	}
+
+	// Preregistration must be done from the server itself
+	mIP6, _ := regexp.MatchString("(::1):[0-9]+", session.Connection.RemoteAddr().String())
+
+	if !mIP6 && (remoteIP4 == "" || remoteIP4 != "127.0.0.1") {
+		session.WriteClient("401 UNAUTHORIZED\r\n")
+		return
+	}
+
+	haswid := true
+	var wid string
+	for haswid {
+		wid = uuid.New().String()
+		haswid, _ = dbhandler.CheckWorkspace(wid)
+	}
+
+	regcode, err := dbhandler.PreregWorkspace(wid, userID, &gRegWordList,
+		viper.GetInt("global.registration_wordcount"))
+	if err != nil {
+		if err.Error() == "uid exists" {
+			session.WriteClient("408 RESOURCE EXISTS\r\n")
+			return
+		}
+		ServerLog.Printf("Internal server error. commandPreregister.PreregWorkspace. Error: %s\n", err)
+		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+		return
+	}
+
+	if userID != "" {
+		session.WriteClient(fmt.Sprintf("200 OK %s %s %s\r\n", wid, regcode, userID))
+	} else {
+		session.WriteClient(fmt.Sprintf("200 OK %s %s\r\n", wid, regcode))
+	}
 }
 
 func commandRegCode(session *sessionState) {
@@ -675,67 +736,6 @@ func commandRegCode(session *sessionState) {
 	}
 
 	session.WriteClient("201 REGISTERED\r\n")
-}
-
-func commandPreregister(session *sessionState) {
-	// command syntax:
-	// PREREG opt_uid
-
-	if len(session.Tokens) > 2 {
-		session.WriteClient("400 BAD REQUEST\r\n")
-		return
-	}
-
-	// Just do some basic syntax checks on the user ID
-	userID := ""
-	if len(session.Tokens) == 2 {
-		userID = session.Tokens[1]
-		if strings.ContainsAny(userID, "/\"") || dbhandler.ValidateUUID(userID) {
-			session.WriteClient("400 BAD REQUEST\r\n")
-			return
-		}
-	}
-
-	ipv4Pat := regexp.MustCompile("([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}):[0-9]+")
-	mIP4 := ipv4Pat.FindStringSubmatch(session.Connection.RemoteAddr().String())
-
-	remoteIP4 := ""
-	if len(mIP4) == 2 {
-		remoteIP4 = mIP4[1]
-	}
-
-	// Preregistration must be done from the server itself
-	mIP6, _ := regexp.MatchString("(::1):[0-9]+", session.Connection.RemoteAddr().String())
-
-	if !mIP6 && (remoteIP4 == "" || remoteIP4 != "127.0.0.1") {
-		session.WriteClient("401 UNAUTHORIZED\r\n")
-		return
-	}
-
-	haswid := true
-	var wid string
-	for haswid {
-		wid = uuid.New().String()
-		haswid, _ = dbhandler.CheckWorkspace(wid)
-	}
-
-	regcode, err := dbhandler.PreregWorkspace(wid, userID, &gRegWordList,
-		viper.GetInt("global.registration_wordcount"))
-	if err != nil {
-		if err.Error() == "uid exists" {
-			session.WriteClient("408 RESOURCE EXISTS\r\n")
-			return
-		}
-		ServerLog.Printf("Internal server error. commandPreregister.PreregWorkspace. Error: %s\n", err)
-		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-		return
-	}
-
-	if userID != "" {
-		session.WriteClient(fmt.Sprintf("200 OK %s %s %s\r\n", wid, regcode, userID))
-	} else {
-		session.WriteClient(fmt.Sprintf("200 OK %s %s\r\n", wid, regcode))
-	}
 }
 
 func commandRegister(session *sessionState) {
