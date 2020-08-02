@@ -1,5 +1,6 @@
 import base64
 import os.path
+import re
 import socket
 import sys
 
@@ -123,6 +124,7 @@ def add_workspace(account: dict, dbconn):
 	cursor.close()
 	dbconn.commit()
 
+
 def connect():
 	'''Creates a connection to the server.'''
 	try:
@@ -147,3 +149,19 @@ def connect():
 	# Set a timeout of 30 minutes
 	sock.settimeout(1800.0)
 	return sock
+
+
+def validate_uuid(indata):
+	'''Validates a UUID's basic format. Does not check version information.'''
+
+	# With dashes, should be 36 characters or 32 without
+	if (len(indata) != 36 and len(indata) != 32) or len(indata) == 0:
+		return False
+	
+	uuid_pattern = re.compile(
+			r"[\da-fA-F]{8}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{12}")
+	
+	if not uuid_pattern.match(indata):
+		return False
+	
+	return True
