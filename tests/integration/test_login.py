@@ -1,4 +1,6 @@
+from base64 import b85decode, b85encode
 from integration_setup import setup_test, connect, validate_uuid
+from nacl.public import PrivateKey, SealedBox
 
 # Workspace ID : 11111111-1111-1111-1111-111111111111
 # Friendly Address : jrobinson
@@ -54,6 +56,7 @@ def test_login():
 				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
 	algorithm = 'curve25519'
 	devkey = '@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'
+	devkeypriv = 'W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'
 
 	sock = connect()
 	assert sock, "Connection to server at localhost:2001 failed"
@@ -63,11 +66,15 @@ def test_login():
 	cmd = ' '.join([ "REGISTER", wid, pwhash, algorithm, devkey, "\r\n" ])
 	sock.send(cmd.encode())
 	response = sock.recv(8192).decode()
-	parts = response.split(' ')
+	parts = response.strip().split(' ')
+	assert len(parts) == 3, 'Server returned wrong number of parameters'
 	assert parts[0] == '201' and parts[1] == 'REGISTERED', 'Failed to register'
+	assert validate_uuid(parts[2]), 'Device ID from server failed to validate'
+	devid = parts[3]
 
-	# Test #1: Prereg with user ID
+	# Test #1: Login
 
+	## Phase 1: LOGIN
 	cmd = ' '.join([ "LOGIN PLAIN", wid, "\r\n" ])
 	print('Login\n--------------------------')
 	print('CLIENT: %s' % cmd)
@@ -79,6 +86,44 @@ def test_login():
 	parts = response.strip().split(' ')
 	assert parts[0] == '100' and parts[1] == 'CONTINUE', 'Failed to log in'
 
+	## Phase 2: PASSWORD
+	cmd = ' '.join([ "PASSWORD", pwhash, "\r\n" ])
+	print('CLIENT: %s' % cmd)
+	sock.send(cmd.encode())
+
+	response = sock.recv(8192).decode()
+	print('SERVER: %s\n' % response)
+	
+	parts = response.strip().split(' ')
+	assert parts[0] == '100' and parts[1] == 'CONTINUE', 'Failed to auth password'
+
+	## Phase 3: DEVICE
+	cmd = ' '.join([ "DEVICE", devid, devkey, "\r\n" ])
+	print('CLIENT: %s' % cmd)
+	sock.send(cmd.encode())
+
+	### Receive the server challenge
+	response = sock.recv(8192).decode()
+	print('SERVER: %s\n' % response)
+	parts = response.strip().split(' ')
+	assert len(parts) == 3, 'Server device challenge had wrong number of arguments'
+	assert parts[0] == '100' and parts[1] == 'CONTINUE', 'Failed to auth password'
+
+	### Decrypt the challenge
+	encrypted_challenge = b85decode(parts[2])
+	box = SealedBox(b85decode(devkeypriv))
+	decrypted_challenge = box.decrypt(encrypted_challenge)
+
+	### Send the response
+	cmd = ' '.join([ "DEVICE", devid, devkey, b85encode(decrypted_challenge), "\r\n" ])
+	print('CLIENT: %s' % cmd)
+	sock.send(cmd.encode())
+
+	### Receive the server's final response
+	response = sock.recv(8192).decode()
+	print('SERVER: %s\n' % response)
+	parts = response.strip().split(' ')
+	assert parts[0] == '200' and parts[1] == 'OK', 'Server challenge-response phase failed'
 
 	sock.send(b'QUIT\r\n')
 

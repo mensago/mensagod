@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -417,8 +419,10 @@ func commandDevice(session *sessionState) {
 		success, err = challengeDevice(session, "curve25519", session.Tokens[3])
 		if success {
 			session.LoginState = loginClientSession
+			session.WriteClient("200 OK\r\n")
 		} else {
 			dbhandler.LogFailure("device", session.WID, session.Connection.RemoteAddr().String())
+			session.WriteClient("401 UNAUTHORIZED\r\n")
 		}
 	}
 }
@@ -841,21 +845,50 @@ func challengeDevice(session *sessionState, keytype string, devkey string) (bool
 	// 5) If strings don't match, respond to client with 402 Authentication Failure and return false
 	// 6) If strings match respond to client with 200 OK and return true/nil
 
-	// randBytes := make([]byte, 32)
-	// if _, err := rand.Read(randBytes); err != nil {
-	// 	panic(err.Error())
-	// }
-	// challenge := b85.Encode(randBytes)
+	randBytes := make([]byte, 32)
+	if _, err := rand.Read(randBytes); err != nil {
+		panic(err.Error())
+	}
 
-	// if keytype != "curve25519" {
-	// 	return false, errors.New("unsupported key type")
-	// }
+	// We Base85-encode the random run of bytes this so that when we receive the response, it
+	// should just be a matter of doing a string comparison to determine success
+	challenge := b85.Encode(randBytes)
+
+	if keytype != "curve25519" {
+		return false, errors.New("unsupported key type")
+	}
 
 	// This part doesn't work... need to get a better handle on this. :(
 	// var err error
 	// var devkeyDecoded [32]byte
 	// devkeyDecoded, err = b85.Decode(devkey)
 	// box.SealAnonymous(nil, challenge, devkeyDecoded, nil)
+
+	// FIXME: Just a stand-in until proper encryption code is written
+	challengeEncrypted := b85.Encode([]byte(b85.Encode([]byte(challenge))))
+
+	session.WriteClient(fmt.Sprintf("100 CONTINUE %s", challengeEncrypted))
+
+	// Challenge has been issued. Get client response
+	buffer := make([]byte, MaxCommandLength)
+	bytesRead, err := session.Connection.Read(buffer)
+	if err != nil {
+		return false, errors.New("connection timeout")
+	}
+
+	pattern := regexp.MustCompile("\"[^\"]+\"|\"[^\"]+$|[\\S\\[\\]]+")
+	trimmedString := strings.TrimSpace(string(buffer[:bytesRead]))
+	tokens := pattern.FindAllString(trimmedString, -1)
+	if len(tokens) != 4 || tokens[0] != "DEVICE" || tokens[2] != devkey {
+		return false, nil
+	}
+
+	// Validate client response
+	var response []byte
+	response, err = b85.Decode(tokens[3])
+	if challenge != string(response) {
+		return false, nil
+	}
 
 	return true, nil
 }
