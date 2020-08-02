@@ -501,11 +501,13 @@ func PreregWorkspace(wid string, uid string, wordList *diceware.Wordlist, wordco
 		var hasuid string
 		err := row.Scan(&hasuid)
 
+		if hasuid != "" {
+			return "", errors.New("uid exists")
+		}
+
 		switch err {
 		case sql.ErrNoRows:
 			break
-		case nil:
-			return "", errors.New("uid exists")
 		case err.(*pq.Error):
 			fmt.Println("Server encountered PostgreSQL error ", err)
 			panic(err)

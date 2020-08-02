@@ -74,7 +74,7 @@ def test_prereg():
 
 	# Test #2: Prereg with WID
 
-	cmd = ' '.join([ "PREREG", wid, "\r\n" ])
+	cmd = ' '.join([ "PREREG", "\r\n" ])
 	print('Prereg with WID\n--------------------------')
 	print('CLIENT: %s' % cmd)
 	sock.send(cmd.encode())
@@ -92,7 +92,7 @@ def test_prereg():
 	# Test #3: Duplicate user ID prereg
 
 	cmd = ' '.join([ "PREREG", uid, "\r\n" ])
-	print('Prereg with user ID\n--------------------------')
+	print('Prereg with duplicate user ID\n--------------------------')
 	print('CLIENT: %s' % cmd)
 	sock.send(cmd.encode())
 
@@ -102,8 +102,18 @@ def test_prereg():
 	parts = response.split(' ')
 	assert parts[0] == '408' and parts[1] == 'RESOURCE', 'Failed to catch duplicate user ID prereg'
 
+	# Test #4: WID as user ID
 
-	# Test #4: Duplicate WID prereg
+	cmd = ' '.join([ "PREREG", wid, "\r\n" ])
+	print('Prereg with WID as user ID\n--------------------------')
+	print('CLIENT: %s' % cmd)
+	sock.send(cmd.encode())
+
+	response = sock.recv(8192).decode()
+	print('SERVER: %s\n' % response)
+	
+	parts = response.split(' ')
+	assert parts[0] == '400' and parts[1] == 'BAD', 'Failed to catch WID as user ID'
 
 
 	sock.send(b'QUIT\r\n')

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -713,7 +712,7 @@ func commandPreregister(session *sessionState) {
 	userID := ""
 	if len(session.Tokens) == 2 {
 		userID = session.Tokens[1]
-		if strings.ContainsAny(userID, "/\"") {
+		if strings.ContainsAny(userID, "/\"") || dbhandler.ValidateUUID(userID) {
 			session.WriteClient("400 BAD REQUEST\r\n")
 			return
 		}
@@ -745,8 +744,9 @@ func commandPreregister(session *sessionState) {
 	regcode, err := dbhandler.PreregWorkspace(wid, userID, &gRegWordList,
 		viper.GetInt("global.registration_wordcount"))
 	if err != nil {
-		if err == errors.New("uid exists") {
+		if err.Error() == "uid exists" {
 			session.WriteClient("408 RESOURCE EXISTS\r\n")
+			return
 		} else {
 			ServerLog.Printf("Internal server error. commandPreregister.PreregWorkspace. Error: %s\n", err)
 			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
