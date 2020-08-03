@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/darkwyrm/b85"
+	"golang.org/x/crypto/nacl/box"
 
 	"github.com/darkwyrm/server/dbhandler"
 	"github.com/everlastingbeta/diceware"
@@ -858,16 +859,20 @@ func challengeDevice(session *sessionState, keytype string, devkey string) (bool
 		return false, errors.New("unsupported key type")
 	}
 
-	// This part doesn't work... need to get a better handle on this. :(
-	// var err error
-	// var devkeyDecoded [32]byte
-	// devkeyDecoded, err = b85.Decode(devkey)
-	// box.SealAnonymous(nil, challenge, devkeyDecoded, nil)
+	var tempBuffer [32]byte
+	var challengeEncrypted []byte
 
-	// FIXME: Just a stand-in until proper encryption code is written
-	challengeEncrypted := b85.Encode([]byte(b85.Encode([]byte(challenge))))
+	devkeyDecoded, err := b85.Decode(devkey)
+	copy(tempBuffer[:], devkeyDecoded[0:32])
+	challengeEncrypted, err = box.SealAnonymous(nil, []byte(challenge), &tempBuffer, nil)
+	if err != nil {
+		session.WriteClient("300 INTERNAL SERVER ERROR")
+		return false, err
+	}
 
-	session.WriteClient(fmt.Sprintf("100 CONTINUE %s", challengeEncrypted))
+	var challengeEncoded string
+	challengeEncoded = b85.Encode(challengeEncrypted)
+	session.WriteClient(fmt.Sprintf("100 CONTINUE %s", challengeEncoded))
 
 	// Challenge has been issued. Get client response
 	buffer := make([]byte, MaxCommandLength)
