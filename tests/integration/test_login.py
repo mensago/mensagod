@@ -1,6 +1,6 @@
 from base64 import b85decode, b85encode
-from integration_setup import setup_test, connect, validate_uuid
 from nacl.public import PrivateKey, SealedBox
+from integration_setup import setup_test, connect, validate_uuid
 
 # Workspace ID : 11111111-1111-1111-1111-111111111111
 # Friendly Address : jrobinson
@@ -43,6 +43,17 @@ from nacl.public import PrivateKey, SealedBox
 # Device #5 Public.b85 : YlT2>26y#gaIQOM8x*wO7Hc~+jflG#Din3VCs52v
 # Device #5 Private.b85 : !lw2!SA7Qp%u!+(RCbgfdm1xicVHEELHdD!V24je
 
+class Base85Encoder:
+	'''Base85 encoder for PyNaCl library'''
+	@staticmethod
+	def encode(data):
+		'''Returns Base85 encoded data'''
+		return b85encode(data)
+	
+	@staticmethod
+	def decode(data):
+		'''Returns Base85 decoded data'''
+		return b85decode(data)
 
 def test_login():
 	'''Performs a basic login intended to be successful'''
@@ -57,6 +68,8 @@ def test_login():
 	algorithm = 'curve25519'
 	devkey = '@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'
 	devkeypriv = 'W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'
+	keyobj = PrivateKey(b85decode(devkeypriv))
+	box = SealedBox(keyobj)
 
 	sock = connect()
 	assert sock, "Connection to server at localhost:2001 failed"
@@ -70,7 +83,7 @@ def test_login():
 	assert len(parts) == 3, 'Server returned wrong number of parameters'
 	assert parts[0] == '201' and parts[1] == 'REGISTERED', 'Failed to register'
 	assert validate_uuid(parts[2]), 'Device ID from server failed to validate'
-	devid = parts[3]
+	devid = parts[2]
 
 	# Test #1: Login
 
@@ -111,11 +124,10 @@ def test_login():
 
 	### Decrypt the challenge
 	encrypted_challenge = b85decode(parts[2])
-	box = SealedBox(b85decode(devkeypriv))
 	decrypted_challenge = box.decrypt(encrypted_challenge)
 
 	### Send the response
-	cmd = ' '.join([ "DEVICE", devid, devkey, b85encode(decrypted_challenge), "\r\n" ])
+	cmd = ' '.join([ "DEVICE", devid, devkey, b85encode(decrypted_challenge).decode(), "\r\n" ])
 	print('CLIENT: %s' % cmd)
 	sock.send(cmd.encode())
 

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/darkwyrm/b85"
+	"golang.org/x/crypto/nacl/box"
 
 	"github.com/darkwyrm/server/dbhandler"
 	"github.com/everlastingbeta/diceware"
@@ -416,7 +417,7 @@ func commandDevice(session *sessionState) {
 		// The device is part of the workspace already, so now we issue undergo a challenge-response
 		// to ensure that the device really is authorized and the key wasn't stolen by an impostor
 
-		success, err = challengeDevice(session, "curve25519", session.Tokens[3])
+		success, err = challengeDevice(session, "curve25519", session.Tokens[2])
 		if success {
 			session.LoginState = loginClientSession
 			session.WriteClient("200 OK\r\n")
@@ -837,7 +838,6 @@ func commandUnrecognized(session *sessionState) {
 }
 
 func challengeDevice(session *sessionState, keytype string, devkey string) (bool, error) {
-	// TODO: Implement the challenge-response authentication
 	// 1) Generate a 32-byte random string of bytes
 	// 2) Encode string in base85
 	// 3) Encrypt said string, encode in base85, and return it as part of 100 CONTINUE response
@@ -853,21 +853,24 @@ func challengeDevice(session *sessionState, keytype string, devkey string) (bool
 	// We Base85-encode the random run of bytes this so that when we receive the response, it
 	// should just be a matter of doing a string comparison to determine success
 	challenge := b85.Encode(randBytes)
-
 	if keytype != "curve25519" {
 		return false, errors.New("unsupported key type")
 	}
 
 	// This part doesn't work... need to get a better handle on this. :(
-	// var err error
-	// var devkeyDecoded [32]byte
-	// devkeyDecoded, err = b85.Decode(devkey)
-	// box.SealAnonymous(nil, challenge, devkeyDecoded, nil)
+	// Oy, the typing system in Golang can make things... difficult at times. :/
+	devkeyDecoded, err := b85.Decode(devkey)
 
-	// FIXME: Just a stand-in until proper encryption code is written
-	challengeEncrypted := b85.Encode([]byte(b85.Encode([]byte(challenge))))
-
-	session.WriteClient(fmt.Sprintf("100 CONTINUE %s", challengeEncrypted))
+	var devkeyArray [32]byte
+	devKeyAdapter := devkeyArray[0:32]
+	copy(devKeyAdapter, devkeyDecoded)
+	var encryptedChallenge []byte
+	encryptedChallenge, err = box.SealAnonymous(nil, []byte(challenge), &devkeyArray, nil)
+	if err != nil {
+		session.WriteClient(fmt.Sprintf("300 INTERNAL SERVER ERROR %s", err))
+		return false, err
+	}
+	session.WriteClient(fmt.Sprintf("100 CONTINUE %s", b85.Encode(encryptedChallenge)))
 
 	// Challenge has been issued. Get client response
 	buffer := make([]byte, MaxCommandLength)
