@@ -1,36 +1,58 @@
 #!/usr/bin/env python3
 
-import nacl.public
-import nacl.secret
-import nacl.utils
+import base64
 from os import path
 import sys
 
-def encode_file(file_name):
+import nacl.signing
+import nacl.public
+import nacl.secret
+import nacl.utils
+
+def generate_encpair(filename):
+	'''Creates a asymmetric keypair and saves it to a file in Base85 encoding'''
 	keypair = nacl.public.PrivateKey.generate()
 	
-	pub_name = file_name + '.pub'
-	if path.exists(pub_name):
-		response = input("%s exists. Overwrite? [y/N]: " % pub_name)
+	if path.exists(filename):
+		response = input("%s exists. Overwrite? [y/N]: " % filename)
 		if not response or response.casefold()[0] != 'y':
 			return
-	
 	try:
-		out = open(pub_name, 'wb')
-		out.write(bytes(keypair.public_key))
-	except Exception as e:
-		print('Unable to save %s: %s' % (pub_name, e))
+		out = open(filename, 'wb')
 
-	priv_name = file_name + '.priv'
-	try:
-		out = open(priv_name, 'wb')
-		out.write(bytes(keypair))
+		out.write(b'Keypair type: encryption\r\n')
+		out.write(b'public:' + base64.b85encode(keypair.public_key.encode()) + b'\r\n')
+		out.write(b'private:' + base64.b85encode(keypair.encode()) + b'\r\n')
 	except Exception as e:
-		print('Unable to save %s: %s' % (priv_name, e))
+		print('Unable to save %s: %s' % (filename, e))
+
+
+def generate_signpair(filename):
+	'''Creates a asymmetric signing keypair and saves it to a file in Base85 encoding'''
+	keypair = nacl.signing.SigningKey.generate()
+	
+	if path.exists(filename):
+		response = input("%s exists. Overwrite? [y/N]: " % filename)
+		if not response or response.casefold()[0] != 'y':
+			return
+	try:
+		out = open(filename, 'wb')
+
+		out.write(b'Keypair type: signing\r\n')
+		out.write(b'public:' + base64.b85encode(keypair.verify_key.encode()) + b'\r\n')
+		out.write(b'private:' + base64.b85encode(keypair.encode()) + b'\r\n')
+	except Exception as e:
+		print('Unable to save %s: %s' % (filename, e))
+
 
 if __name__ == '__main__':
-	if len(sys.argv) != 2:
-		print("Usage: %s <namebase>" % path.basename(sys.argv[0]))
+	if len(sys.argv) != 3 or sys.argv[1].casefold() not in ['sign', 'encrypt']:
+		print("Usage: %s <sign|encrypt> <filename>" % path.basename(sys.argv[0]))
+		sys.exit(0)
+	
+	if sys.argv[1].casefold() == 'encrypt':
+		generate_encpair(sys.argv[2])
 	else:
-		encode_file(sys.argv[1])
+		generate_signpair(sys.argv[2])
+
 	
