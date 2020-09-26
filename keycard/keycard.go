@@ -64,3 +64,65 @@ func (as AlgoString) MakeEmpty() {
 	as.Prefix = ""
 	as.Data = ""
 }
+
+// SigInfo contains descriptive information about the signatures for an entry. The Level property
+// indicates order. For example, a signature with a level of 2 is attached to the entry after a
+// level 1 signature.
+type SigInfo struct {
+	Name     string
+	Level    string
+	Type     uint8
+	Optional bool
+}
+
+// EntryBase contains the common functionality for keycard entries
+type EntryBase struct {
+	Type           string
+	Fields         map[string]string
+	FieldNames     []string
+	RequiredFields []string
+	Signatures     map[string]string
+	SignatureInfo  []SigInfo
+	PrevHash       string
+	Hash           string
+}
+
+// SigInfoHash - signature field is a hash
+const SigInfoHash uint8 = 1
+
+// SigInfoSignature - signature field is a cryptographic signature
+const SigInfoSignature uint8 = 2
+
+// IsCompliant returns true if the object meets spec compliance (required fields, etc.)
+func (eb EntryBase) IsCompliant() bool {
+	if eb.Type != "User" && eb.Type != "Organization" {
+		return false
+	}
+
+	// Field compliance
+	for field := range eb.RequiredFields {
+		_, err := eb.Fields[eb.RequiredFields[field]]
+		if err {
+			return false
+		}
+	}
+
+	// Signature compliance
+	for infoIndex := range eb.SignatureInfo {
+		if eb.SignatureInfo[infoIndex].Type == SigInfoHash {
+			if len(eb.Hash) < 1 {
+				return false
+			}
+			continue
+		}
+
+		if eb.SignatureInfo[infoIndex].Type != SigInfoSignature {
+			return false
+		}
+
+	}
+
+	// TODO: Finish implementation
+
+	return true
+}
