@@ -1,6 +1,7 @@
 package keycard
 
 import (
+	"bytes"
 	"errors"
 	"strings"
 
@@ -70,7 +71,7 @@ func (as AlgoString) MakeEmpty() {
 // level 1 signature.
 type SigInfo struct {
 	Name     string
-	Level    string
+	Level    int
 	Type     uint8
 	Optional bool
 }
@@ -120,9 +121,68 @@ func (eb EntryBase) IsCompliant() bool {
 			return false
 		}
 
+		if eb.SignatureInfo[infoIndex].Optional {
+			val, err := eb.Signatures[eb.SignatureInfo[infoIndex].Name]
+			if err || len(val) < 1 {
+				return false
+			}
+
+		}
 	}
 
-	// TODO: Finish implementation
-
 	return true
+}
+
+// GetSignature - get the specified signature
+func (eb EntryBase) GetSignature(sigtype string) (string, error) {
+	val, exists := eb.Signatures[sigtype]
+	if exists {
+		return val, nil
+	}
+	return val, errors.New("signature not found")
+}
+
+// MakeByteString converts the entry to a string of bytes to ensure that signatures are not
+// invalidated by automatic line ending handling
+func (eb EntryBase) MakeByteString(siglevel int) []byte {
+
+	// Capacity is all possible field names + all actual signatures + hash fields
+	lines := make([][]byte, 0, len(eb.FieldNames)+len(eb.Signatures)+2)
+	if len(eb.Type) > 0 {
+		lines = append(lines, []byte(eb.Type))
+	}
+
+	for i := range eb.FieldNames {
+		if len(eb.Fields[eb.FieldNames[i]]) > 0 {
+			lines = append(lines, []byte(eb.FieldNames[i]+":"+eb.Fields[eb.FieldNames[i]]))
+		}
+	}
+
+	if siglevel < 0 || siglevel > len(eb.SignatureInfo) {
+		siglevel = eb.SignatureInfo[len(eb.SignatureInfo)-1].Level
+	}
+
+	for i := 0; i < siglevel; i++ {
+		if eb.SignatureInfo[i].Type == SigInfoHash {
+			if len(eb.PrevHash) > 0 {
+				lines = append(lines, []byte("Previous-Hash:"+eb.PrevHash))
+			}
+			if len(eb.Hash) > 0 {
+				lines = append(lines, []byte("Hash:"+eb.Hash))
+			}
+			continue
+		}
+
+		if eb.SignatureInfo[i].Type != SigInfoSignature {
+			panic("BUG: invalid signature info type in EntryBase.MakeByteString")
+		}
+
+		val, ok := eb.Signatures[eb.SignatureInfo[i].Name]
+		if ok && len(val) > 0 {
+			lines = append(lines, []byte(eb.SignatureInfo[i].Name+"-Signature:"+val))
+		}
+
+	}
+
+	return bytes.Join(lines, []byte("\r\n"))
 }
