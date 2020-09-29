@@ -3,6 +3,9 @@ package keycard
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/darkwyrm/b85"
@@ -185,4 +188,84 @@ func (eb EntryBase) MakeByteString(siglevel int) []byte {
 	}
 
 	return bytes.Join(lines, []byte("\r\n"))
+}
+
+// Save saves the entry to disk
+func (eb EntryBase) Save(path string, clobber bool) error {
+	if len(path) < 1 {
+		return errors.New("empty path")
+	}
+
+	_, err := os.Stat(path)
+	if !os.IsNotExist(err) && !clobber {
+		return errors.New("file exists")
+	}
+
+	return ioutil.WriteFile(path, eb.MakeByteString(-1), 0644)
+}
+
+// SetField sets an entry field to the specified value.
+func (eb EntryBase) SetField(fieldName string, fieldValue string) error {
+	if len(fieldName) < 1 {
+		return errors.New("empty field name")
+	}
+	eb.Fields[fieldName] = fieldValue
+
+	// Any kind of editing invalidates the signatures and hashes
+	eb.Signatures = make(map[string]string)
+	return nil
+}
+
+// SetFields sets multiple entry fields
+func (eb EntryBase) SetFields(fields map[string]string) {
+	// Any kind of editing invalidates the signatures and hashes. Unlike SetField, we clear the
+	// signature fields first because it's possible to set everything in the entry with this
+	// method, so the signatures can be valid after the call finishes if they are set by the
+	// caller.
+	eb.Signatures = make(map[string]string)
+
+	for k, v := range fields {
+		eb.Fields[k] = v
+	}
+}
+
+// Set initializes the entry from a bytestring
+func (eb EntryBase) Set(data []byte) error {
+	if len(data) < 1 {
+		return errors.New("empty byte field")
+	}
+
+	lines := strings.Split(string(data), "\r\n")
+
+	for linenum, rawline := range lines {
+		line := strings.TrimSpace(rawline)
+		parts := strings.SplitN(line, ":", 1)
+
+		if len(parts) != 2 {
+			return fmt.Errorf("bad data near line %d", linenum)
+		}
+
+		if parts[0] == "Type" {
+			if parts[1] != eb.Type {
+				return fmt.Errorf("Can't use %s data on %s entries", parts[1], eb.Type)
+			}
+		} else if strings.HasSuffix(parts[0], "Signature") {
+			sigparts := strings.SplitN(parts[0], "-", 1)
+			validSig := false
+			for _, sigitem := range eb.SignatureInfo {
+				if sigparts[0] == sigitem.Name {
+					validSig = true
+					break
+				}
+			}
+			if !validSig {
+				return fmt.Errorf("%s is not a valid signature type", sigparts[0])
+			}
+			eb.Signatures[sigparts[0]] = sigparts[1]
+		} else {
+			eb.Fields[parts[0]] = parts[1]
+		}
+	}
+
+	return nil
 }
