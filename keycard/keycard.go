@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/darkwyrm/b85"
 )
@@ -266,6 +267,29 @@ func (eb EntryBase) Set(data []byte) error {
 			eb.Fields[parts[0]] = parts[1]
 		}
 	}
+
+	return nil
+}
+
+// SetExpiration enables custom expiration dates, the standard being 90 days for user entries and
+// 1 year for organizations.
+func (eb EntryBase) SetExpiration(numdays uint16) error {
+	if numdays < 0 {
+		if eb.Type == "Organization" {
+			numdays = 365
+		} else if eb.Type == "User" {
+			numdays = 90
+		} else {
+			return errors.New("unsupported keycard type")
+		}
+	}
+
+	// An expiration date can be no longer than three years
+	if numdays > 1095 {
+		numdays = 1095
+	}
+
+	eb.Fields["Expiration"] = time.Now().AddDate(0, 0, int(numdays)).Format("%Y%m%d")
 
 	return nil
 }
