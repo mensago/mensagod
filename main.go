@@ -857,7 +857,6 @@ func challengeDevice(session *sessionState, keytype string, devkey string) (bool
 		return false, errors.New("unsupported key type")
 	}
 
-	// This part doesn't work... need to get a better handle on this. :(
 	// Oy, the typing system in Golang can make things... difficult at times. :/
 	devkeyDecoded, err := b85.Decode(devkey)
 
