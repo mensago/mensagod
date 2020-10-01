@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/darkwyrm/b85"
+	"golang.org/x/crypto/nacl/sign"
 )
 
 // AlgoString encapsulates a Base85-encoded binary string and its associated algorithm.
@@ -290,6 +291,54 @@ func (eb EntryBase) SetExpiration(numdays uint16) error {
 	}
 
 	eb.Fields["Expiration"] = time.Now().AddDate(0, 0, int(numdays)).Format("%Y%m%d")
+
+	return nil
+}
+
+// Sign cryptographically signs an entry. The supported types and expected order of the signature
+// is defined by subclasses using the SigInfo instances in the object's SignatureInfo property.
+// Adding a particular signature causes those that must follow it to be cleared. The EntryBase's
+// cryptographic hash counts as a signature in this matter. Thus, if an Organization signature is
+// added to the entry, the instance's hash and User signatures are both cleared.
+func (eb EntryBase) Sign(signingKey AlgoString, sigtype string) error {
+	if !signingKey.IsValid() {
+		return errors.New("bad signing key")
+	}
+
+	if signingKey.Prefix != "ED25519" {
+		return errors.New("unsupported signing algorithm")
+	}
+
+	sigtypeOK := false
+	sigtypeIndex := -1
+	for i := range eb.SignatureInfo {
+		if sigtype == eb.SignatureInfo[i].Name {
+			sigtypeOK = true
+			sigtypeIndex = i
+		}
+
+		// Once we have found the index of the signature, it and all following signatures must be
+		// cleared because they will no longer be valid
+		if sigtypeOK {
+			eb.Signatures[eb.SignatureInfo[i].Name] = ""
+		}
+	}
+
+	if !sigtypeOK {
+		return errors.New("bad signature type")
+	}
+
+	signkeyDecoded, err := signingKey.RawData()
+	if err != nil {
+		return err
+	}
+
+	var signkeyArray [64]byte
+	signKeyAdapter := signkeyArray[0:64]
+	copy(signKeyAdapter, signkeyDecoded)
+
+	signature := sign.Sign(nil, eb.MakeByteString(sigtypeIndex+1), &signkeyArray)
+	eb.Signatures[sigtype] = "ED25519:" + b85.Encode(signature)
 
 	return nil
 }
