@@ -342,3 +342,39 @@ func (eb EntryBase) Sign(signingKey AlgoString, sigtype string) error {
 
 	return nil
 }
+
+// GenerateHash generates a hash containing the expected signatures and the previous hash, if it
+// exists. The supported hash algorithms are 'BLAKE3-256', 'BLAKE2', 'SHA-256', and 'SHA3-256'.
+func (eb EntryBase) GenerateHash(algorithm string) error {
+	validAlgorithm := false
+	switch algorithm {
+	case
+		"BLAKE3-256",
+		"BLAKE2",
+		"SHA-256",
+		"SHA3-256":
+		validAlgorithm = true
+	}
+
+	if !validAlgorithm {
+		return errors.New("unsupported hashing algorithm")
+	}
+
+	var hashString AlgoString
+	hashLevel := -1
+	for i := range eb.SignatureInfo {
+		if eb.SignatureInfo[i].Type == SigInfoHash {
+			hashLevel = eb.SignatureInfo[i].Level
+			break
+		}
+	}
+
+	if hashLevel < 0 {
+		panic("BUG: SignatureInfo missing hash entry")
+	}
+
+	// TODO: Finish implementation
+
+	// github.com/zeebo/blake3
+	return nil
+}
