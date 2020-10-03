@@ -118,20 +118,20 @@ func (eb EntryBase) IsCompliant() bool {
 	}
 
 	// Signature compliance
-	for infoIndex := range eb.SignatureInfo {
-		if eb.SignatureInfo[infoIndex].Type == SigInfoHash {
+	for _, item := range eb.SignatureInfo {
+		if item.Type == SigInfoHash {
 			if len(eb.Hash) < 1 {
 				return false
 			}
 			continue
 		}
 
-		if eb.SignatureInfo[infoIndex].Type != SigInfoSignature {
+		if item.Type != SigInfoSignature {
 			return false
 		}
 
-		if eb.SignatureInfo[infoIndex].Optional {
-			val, err := eb.Signatures[eb.SignatureInfo[infoIndex].Name]
+		if item.Optional {
+			val, err := eb.Signatures[item.Name]
 			if err || len(val) < 1 {
 				return false
 			}
@@ -257,14 +257,7 @@ func (eb EntryBase) Set(data []byte) error {
 			}
 		} else if strings.HasSuffix(parts[0], "Signature") {
 			sigparts := strings.SplitN(parts[0], "-", 1)
-			validSig := false
-			for _, sigitem := range eb.SignatureInfo {
-				if sigparts[0] == sigitem.Name {
-					validSig = true
-					break
-				}
-			}
-			if !validSig {
+			if !eb.isValidSignatureSpecifier(sigparts[0]) {
 				return fmt.Errorf("%s is not a valid signature type", sigparts[0])
 			}
 			eb.Signatures[sigparts[0]] = sigparts[1]
@@ -393,4 +386,43 @@ func (eb EntryBase) GenerateHash(algorithm string) error {
 	}
 
 	return nil
+}
+
+// VerifySignature cryptographically verifies the entry against the key provided, given the
+// specific signature to verify.
+func (eb EntryBase) VerifySignature(verifyKey AlgoString, sigtype string) error {
+
+	if !verifyKey.IsValid() {
+		return errors.New("bad verification key")
+	}
+
+	if verifyKey.Prefix != "ED25519" {
+		return errors.New("unsupported signing algorithm")
+	}
+
+	if !eb.isValidSignatureSpecifier(sigtype) {
+		return fmt.Errorf("%s is not a valid signature type", sigtype)
+	}
+
+	// TODO: Finish implementing VerifySignature
+
+	return nil
+}
+
+// isValidSignatureSpecifier checks to see that the passed string, sigtype, is (1) an actual
+// signature field for the entry
+func (eb EntryBase) isValidSignatureSpecifier(sigtype string) bool {
+
+	validSig := false
+	for _, sigitem := range eb.SignatureInfo {
+		if sigtype == sigitem.Name {
+			validSig = true
+			break
+		}
+	}
+	if !validSig {
+		return false
+	}
+
+	return true
 }
