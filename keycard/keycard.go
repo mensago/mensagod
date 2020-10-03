@@ -2,6 +2,7 @@ package keycard
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -10,7 +11,10 @@ import (
 	"time"
 
 	"github.com/darkwyrm/b85"
+	"github.com/zeebo/blake3"
+	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/nacl/sign"
+	"golang.org/x/crypto/sha3"
 )
 
 // AlgoString encapsulates a Base85-encoded binary string and its associated algorithm.
@@ -360,7 +364,6 @@ func (eb EntryBase) GenerateHash(algorithm string) error {
 		return errors.New("unsupported hashing algorithm")
 	}
 
-	var hashString AlgoString
 	hashLevel := -1
 	for i := range eb.SignatureInfo {
 		if eb.SignatureInfo[i].Type == SigInfoHash {
@@ -373,8 +376,21 @@ func (eb EntryBase) GenerateHash(algorithm string) error {
 		panic("BUG: SignatureInfo missing hash entry")
 	}
 
-	// TODO: Finish implementation
+	switch algorithm {
+	case "BLAKE3-256":
+		hasher := blake3.New()
+		sum := hasher.Sum(eb.MakeByteString(hashLevel))
+		eb.Hash = algorithm + b85.Encode(sum[:])
+	case "BLAKE2":
+		sum := blake2b.Sum256(eb.MakeByteString(hashLevel))
+		eb.Hash = algorithm + b85.Encode(sum[:])
+	case "SHA256":
+		sum := sha256.Sum256(eb.MakeByteString(hashLevel))
+		eb.Hash = algorithm + b85.Encode(sum[:])
+	case "SHA3-256":
+		sum := sha3.Sum256(eb.MakeByteString(hashLevel))
+		eb.Hash = algorithm + b85.Encode(sum[:])
+	}
 
-	// github.com/zeebo/blake3
 	return nil
 }
