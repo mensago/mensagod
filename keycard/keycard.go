@@ -2,11 +2,13 @@ package keycard
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/zeebo/blake3"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/nacl/auth"
+	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/nacl/sign"
 	"golang.org/x/crypto/sha3"
 )
@@ -520,6 +523,82 @@ func NewOrgEntry() *OrgEntry {
 	self.SetExpiration(-1)
 
 	return self
+}
+
+// Chain creates a new OrgEntry object with new keys and a custody signature. The keys are returned
+// in a map of AlgoString using the following fields:
+// 		entry
+// 		sign.public / sign.private -- primary signing keypair
+// 		altsign.public / crsign.private -- contact request signing keypair
+// 		encrypt.public / encrypt.private -- general-purpose public encryption keypair
+//
+// For organization entries, rotating optional keys works a little differently: the primary signing
+// key becomes the secondary signing key in the new entry. When rotation is False, which is
+// recommended only in instances of revocation, the secondary key is removed. Only when
+// rotateOptional is True is the field altsign.private returned.
+func (oldEntry *OrgEntry) Chain(key AlgoString, rotateOptional bool) (OrgEntry, map[string]AlgoString, error) {
+	var newEntry OrgEntry
+	var outKeys map[string]AlgoString
+
+	if key.Prefix != "ED25519" {
+		return newEntry, outKeys, errors.New("unsupported signing key type")
+	}
+
+	if !oldEntry.IsCompliant() {
+		return newEntry, outKeys, errors.New("entry not compliant")
+	}
+
+	for k, v := range oldEntry.Fields {
+		newEntry.Fields[k] = v
+	}
+
+	index, err := strconv.ParseUint(newEntry.Fields["Index"], 10, 64)
+	if err != nil {
+		return newEntry, outKeys, errors.New("bad entry index value")
+	}
+	newEntry.Fields["Index"] = fmt.Sprintf("%d", index+1)
+
+	var ePublicKey, ePrivateKey, sPublicKey *[32]byte
+	var sPrivateKey *[64]byte
+
+	ePublicKey, ePrivateKey, err = box.GenerateKey(rand.Reader)
+	if err != nil {
+		return newEntry, outKeys, err
+	}
+	outKeys["encrypt.public"] = AlgoString{"CURVE25519", b85.Encode(ePublicKey[:])}
+	outKeys["encrypt.private"] = AlgoString{"CURVE25519", b85.Encode(ePrivateKey[:])}
+
+	sPublicKey, sPrivateKey, err = sign.GenerateKey(rand.Reader)
+	if err != nil {
+		return newEntry, outKeys, err
+	}
+	outKeys["sign.public"] = AlgoString{"ED25519", b85.Encode(sPublicKey[:])}
+	outKeys["sign.private"] = AlgoString{"ED25519", b85.Encode(sPrivateKey[:])}
+
+	if rotateOptional {
+		var asPublicKey *[32]byte
+		var asPrivateKey *[64]byte
+		asPublicKey, asPrivateKey, err = sign.GenerateKey(rand.Reader)
+		if err != nil {
+			return newEntry, outKeys, err
+		}
+		outKeys["altsign.public"] = AlgoString{"ED25519", b85.Encode(asPublicKey[:])}
+		outKeys["altsign.private"] = AlgoString{"ED25519", b85.Encode(asPrivateKey[:])}
+	} else {
+		var oldPrimary AlgoString
+		err = oldPrimary.Set(oldEntry.Fields["Primary-Signing-Key"])
+		if err != nil {
+			return newEntry, outKeys, err
+		}
+		outKeys["altsign.public"] = oldPrimary
+	}
+
+	err = newEntry.Sign(key, "Custody")
+	if err != nil {
+		return newEntry, outKeys, err
+	}
+
+	return newEntry, outKeys, errors.New("unimplemented")
 }
 
 // getStringMapKeys returns a StringList containing the keys in a map[string]string
