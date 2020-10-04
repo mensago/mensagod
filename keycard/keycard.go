@@ -526,8 +526,7 @@ func NewOrgEntry() *OrgEntry {
 }
 
 // Chain creates a new OrgEntry object with new keys and a custody signature. The keys are returned
-// in a map of AlgoString using the following fields:
-// 		entry
+// in a map of AlgoStrings using the following fields:
 // 		sign.public / sign.private -- primary signing keypair
 // 		altsign.public / crsign.private -- contact request signing keypair
 // 		encrypt.public / encrypt.private -- general-purpose public encryption keypair
@@ -705,4 +704,93 @@ func getStringMapKeys(data map[string]string) gostringlist.StringList {
 		i++
 	}
 	return out
+}
+
+// Chain creates a new UserEntry object with new keys and a custody signature. It requires the
+// previous contact request signing key passed as an AlgoString. The new keys are returned in a
+// map of AlgoStrings using the following fields:
+// 		sign.public / sign.private -- primary signing keypair
+// 		crsign.public / crsign.private -- contact request signing keypair
+// 		crencrypt.public / crencrypt.private -- contact request encryption keypair
+// 		encrypt.public / encrypt.private -- general-purpose public encryption keypair
+// 		altencrypt.public / altencrypt.private -- alternate public encryption keypair
+//
+// Note that the last two keys are not required to be updated during entry rotation so that they
+// can be rotated on a different schedule from the other keys.
+func (entry UserEntry) Chain(key AlgoString, rotateOptional bool) (UserEntry, map[string]AlgoString, error) {
+	var newEntry UserEntry
+	var outKeys map[string]AlgoString
+
+	if key.Prefix != "ED25519" {
+		return newEntry, outKeys, errors.New("unsupported signing key type")
+	}
+
+	if !entry.IsCompliant() {
+		return newEntry, outKeys, errors.New("entry not compliant")
+	}
+
+	for k, v := range entry.Fields {
+		newEntry.Fields[k] = v
+	}
+
+	index, err := strconv.ParseUint(newEntry.Fields["Index"], 10, 64)
+	if err != nil {
+		return newEntry, outKeys, errors.New("bad entry index value")
+	}
+	newEntry.Fields["Index"] = fmt.Sprintf("%d", index+1)
+
+	var sPublicKey, crsPublicKey, crePublicKey, crePrivateKey *[32]byte
+	var sPrivateKey, crsPrivateKey *[64]byte
+
+	sPublicKey, sPrivateKey, err = sign.GenerateKey(rand.Reader)
+	if err != nil {
+		return newEntry, outKeys, err
+	}
+	outKeys["sign.public"] = AlgoString{"ED25519", b85.Encode(sPublicKey[:])}
+	outKeys["sign.private"] = AlgoString{"ED25519", b85.Encode(sPrivateKey[:])}
+
+	crePublicKey, crePrivateKey, err = box.GenerateKey(rand.Reader)
+	if err != nil {
+		return newEntry, outKeys, err
+	}
+	outKeys["crencrypt.public"] = AlgoString{"CURVE25519", b85.Encode(crePublicKey[:])}
+	outKeys["crencrypt.private"] = AlgoString{"CURVE25519", b85.Encode(crePrivateKey[:])}
+
+	crsPublicKey, crsPrivateKey, err = sign.GenerateKey(rand.Reader)
+	if err != nil {
+		return newEntry, outKeys, err
+	}
+	outKeys["crsign.public"] = AlgoString{"ED25519", b85.Encode(crsPublicKey[:])}
+	outKeys["crsign.private"] = AlgoString{"ED25519", b85.Encode(crsPrivateKey[:])}
+
+	if rotateOptional {
+		var ePublicKey, ePrivateKey, altePublicKey, altePrivateKey *[32]byte
+
+		ePublicKey, ePrivateKey, err = box.GenerateKey(rand.Reader)
+		if err != nil {
+			return newEntry, outKeys, err
+		}
+		outKeys["encrypt.public"] = AlgoString{"CURVE25519", b85.Encode(ePublicKey[:])}
+		outKeys["encrypt.private"] = AlgoString{"CURVE25519", b85.Encode(ePrivateKey[:])}
+
+		altePublicKey, altePrivateKey, err = box.GenerateKey(rand.Reader)
+		if err != nil {
+			return newEntry, outKeys, err
+		}
+		outKeys["altencrypt.public"] = AlgoString{"CURVE25519", b85.Encode(altePublicKey[:])}
+		outKeys["altencrypt.private"] = AlgoString{"CURVE25519", b85.Encode(altePrivateKey[:])}
+	} else {
+		var emptyKey AlgoString
+		outKeys["encrypt.public"] = emptyKey
+		outKeys["encrypt.private"] = emptyKey
+		outKeys["altencrypt.public"] = emptyKey
+		outKeys["altencrypt.private"] = emptyKey
+	}
+
+	err = newEntry.Sign(key, "Custody")
+	if err != nil {
+		return newEntry, outKeys, err
+	}
+
+	return newEntry, outKeys, nil
 }
