@@ -649,6 +649,52 @@ func (entry OrgEntry) VerifyChain(previous OrgEntry) (bool, error) {
 	return isValid, err
 }
 
+// UserEntry - a class to represent user keycard entries
+type UserEntry struct {
+	EntryBase
+}
+
+// NewUserEntry creates a new UserEntry
+func NewUserEntry() *UserEntry {
+	self := new(UserEntry)
+
+	self.Type = "User"
+	self.FieldNames.Items = []string{
+		"Index",
+		"Name",
+		"Workspace-ID",
+		"User-ID",
+		"Domain",
+		"Contact-Request-Signing-Key",
+		"Contact-Request-Encryption-Key",
+		"Public-Encryption-Key",
+		"Alternate-Encryption-Key",
+		"Time-To-Live",
+		"Expires"}
+
+	self.RequiredFields.Items = []string{
+		"Index",
+		"Workspace-ID",
+		"Domain",
+		"Contact-Request-Signing-Key",
+		"Contact-Request-Encryption-Key",
+		"Public-Encryption-Key",
+		"Time-To-Live",
+		"Expires"}
+
+	self.SignatureInfo.Items = []SigInfo{
+		SigInfo{"Custody", 1, true, SigInfoSignature},
+		SigInfo{"Organization", 2, false, SigInfoSignature},
+		SigInfo{"Hashes", 3, false, SigInfoHash},
+		SigInfo{"User", 4, false, SigInfoSignature}}
+
+	self.Fields["Index"] = "1"
+	self.Fields["Time-To-Live"] = "30"
+	self.SetExpiration(-1)
+
+	return self
+}
+
 // getStringMapKeys returns a StringList containing the keys in a map[string]string
 func getStringMapKeys(data map[string]string) gostringlist.StringList {
 	var out gostringlist.StringList
