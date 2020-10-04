@@ -536,7 +536,7 @@ func NewOrgEntry() *OrgEntry {
 // key becomes the secondary signing key in the new entry. When rotation is False, which is
 // recommended only in instances of revocation, the secondary key is removed. Only when
 // rotateOptional is True is the field altsign.private returned.
-func (oldEntry *OrgEntry) Chain(key AlgoString, rotateOptional bool) (OrgEntry, map[string]AlgoString, error) {
+func (entry OrgEntry) Chain(key AlgoString, rotateOptional bool) (OrgEntry, map[string]AlgoString, error) {
 	var newEntry OrgEntry
 	var outKeys map[string]AlgoString
 
@@ -544,11 +544,11 @@ func (oldEntry *OrgEntry) Chain(key AlgoString, rotateOptional bool) (OrgEntry, 
 		return newEntry, outKeys, errors.New("unsupported signing key type")
 	}
 
-	if !oldEntry.IsCompliant() {
+	if !entry.IsCompliant() {
 		return newEntry, outKeys, errors.New("entry not compliant")
 	}
 
-	for k, v := range oldEntry.Fields {
+	for k, v := range entry.Fields {
 		newEntry.Fields[k] = v
 	}
 
@@ -586,7 +586,7 @@ func (oldEntry *OrgEntry) Chain(key AlgoString, rotateOptional bool) (OrgEntry, 
 		outKeys["altsign.private"] = AlgoString{"ED25519", b85.Encode(asPrivateKey[:])}
 	} else {
 		var oldPrimary AlgoString
-		err = oldPrimary.Set(oldEntry.Fields["Primary-Signing-Key"])
+		err = oldPrimary.Set(entry.Fields["Primary-Signing-Key"])
 		if err != nil {
 			return newEntry, outKeys, err
 		}
@@ -599,6 +599,54 @@ func (oldEntry *OrgEntry) Chain(key AlgoString, rotateOptional bool) (OrgEntry, 
 	}
 
 	return newEntry, outKeys, errors.New("unimplemented")
+}
+
+// VerifyChain verifies the chain of custody between the provided previous entry and the current one.
+func (entry OrgEntry) VerifyChain(previous OrgEntry) (bool, error) {
+	if previous.Type != "Organization" {
+		return false, errors.New("entryp type mismatch")
+	}
+
+	val, ok := entry.Fields["Custody"]
+	if !ok {
+		return false, errors.New("custody signature missing")
+	}
+	if val == "" {
+		return false, errors.New("custody signature empty")
+	}
+
+	val, ok = entry.Fields["Primary-Signing-Key"]
+	if !ok {
+		return false, errors.New("signing key missing in previous entry")
+	}
+	if val == "" {
+		return false, errors.New("signing key entry in previous entry")
+	}
+
+	prevIndex, err := strconv.ParseUint(previous.Fields["Index"], 10, 64)
+	if err != nil {
+		return false, errors.New("previous entry has bad index value")
+	}
+
+	var index uint64
+	index, err = strconv.ParseUint(entry.Fields["Index"], 10, 64)
+	if err != nil {
+		return false, errors.New("entry has bad index value")
+	}
+
+	if index != prevIndex+1 {
+		return false, errors.New("entry index compliance failure")
+	}
+
+	var key AlgoString
+	err = key.Set(previous.Fields["Primary-Signing-Key"])
+	if err != nil {
+		return false, errors.New("bad primary signing key in previous entry")
+	}
+
+	var isValid bool
+	isValid, err = entry.VerifySignature(key, "Custody")
+	return isValid, err
 }
 
 // getStringMapKeys returns a StringList containing the keys in a map[string]string
