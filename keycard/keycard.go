@@ -83,8 +83,8 @@ func (as AlgoString) MakeEmpty() {
 type SigInfo struct {
 	Name     string
 	Level    int
-	Type     uint8
 	Optional bool
+	Type     uint8
 }
 
 // SigInfoHash - signature field is a hash
@@ -133,8 +133,8 @@ func (sil SigInfoList) GetItem(name string) (bool, *SigInfo) {
 type EntryBase struct {
 	Type           string
 	Fields         map[string]string
-	FieldNames     []string
-	RequiredFields []string
+	FieldNames     gostringlist.StringList
+	RequiredFields gostringlist.StringList
 	Signatures     map[string]string
 	SignatureInfo  SigInfoList
 	PrevHash       string
@@ -148,9 +148,9 @@ func (eb EntryBase) IsCompliant() bool {
 	}
 
 	// Field compliance
-	for field := range eb.RequiredFields {
-		_, err := eb.Fields[eb.RequiredFields[field]]
-		if err {
+	for _, reqField := range eb.RequiredFields.Items {
+		_, ok := eb.Fields[reqField]
+		if !ok {
 			return false
 		}
 	}
@@ -194,14 +194,14 @@ func (eb EntryBase) GetSignature(sigtype string) (string, error) {
 func (eb EntryBase) MakeByteString(siglevel int) []byte {
 
 	// Capacity is all possible field names + all actual signatures + hash fields
-	lines := make([][]byte, 0, len(eb.FieldNames)+len(eb.Signatures)+2)
+	lines := make([][]byte, 0, len(eb.FieldNames.Items)+len(eb.Signatures)+2)
 	if len(eb.Type) > 0 {
 		lines = append(lines, []byte(eb.Type))
 	}
 
-	for i := range eb.FieldNames {
-		if len(eb.Fields[eb.FieldNames[i]]) > 0 {
-			lines = append(lines, []byte(eb.FieldNames[i]+":"+eb.Fields[eb.FieldNames[i]]))
+	for _, fieldName := range eb.FieldNames.Items {
+		if len(eb.Fields[fieldName]) > 0 {
+			lines = append(lines, []byte(fieldName+":"+eb.Fields[fieldName]))
 		}
 	}
 
@@ -309,7 +309,7 @@ func (eb EntryBase) Set(data []byte) error {
 
 // SetExpiration enables custom expiration dates, the standard being 90 days for user entries and
 // 1 year for organizations.
-func (eb EntryBase) SetExpiration(numdays uint16) error {
+func (eb EntryBase) SetExpiration(numdays int16) error {
 	if numdays < 0 {
 		if eb.Type == "Organization" {
 			numdays = 365
@@ -442,16 +442,6 @@ func (eb EntryBase) VerifySignature(verifyKey AlgoString, sigtype string) (bool,
 		return false, fmt.Errorf("%s is not a valid signature type", sigtype)
 	}
 
-	// Sometimes Go just makes things a lot less convenient than necessary. No built-in method to
-	// return all the keys in a slice? Seriously?
-	var sigkeys gostringlist.StringList
-	sigkeys.Items = make([]string, len(eb.Signatures))
-	i := 0
-	for k := range eb.Signatures {
-		sigkeys.Items[i] = k
-		i++
-	}
-
 	infoValid, sigInfo := eb.SignatureInfo.GetItem(sigtype)
 	if !infoValid {
 		return false, errors.New("specified signature missing")
@@ -486,4 +476,60 @@ func (eb EntryBase) VerifySignature(verifyKey AlgoString, sigtype string) (bool,
 	verifyStatus := auth.Verify(digest, eb.MakeByteString(sigInfo.Level), &verifykeyArray)
 
 	return verifyStatus, nil
+}
+
+// OrgEntry - a class to represent organization keycard entries
+type OrgEntry struct {
+	EntryBase
+}
+
+// NewOrgEntry creates a new OrgEntry
+func NewOrgEntry() *OrgEntry {
+	self := new(OrgEntry)
+
+	self.Type = "Organization"
+	self.FieldNames.Items = []string{
+		"Index",
+		"Name",
+		"Contact-Admin",
+		"Contact-Abuse",
+		"Contact-Support",
+		"Language",
+		"Primary-Signing-Key",
+		"Secondary-Signing-Key",
+		"Encryption-Key",
+		"Time-To-Live",
+		"Expires"}
+
+	self.RequiredFields.Items = []string{
+		"Index",
+		"Name",
+		"Contact-Admin",
+		"Primary-Signing-Key",
+		"Encryption-Key",
+		"Time-To-Live",
+		"Expires"}
+
+	self.SignatureInfo.Items = []SigInfo{
+		SigInfo{"Custody", 1, true, SigInfoSignature},
+		SigInfo{"Organization", 2, false, SigInfoSignature},
+		SigInfo{"Hashes", 3, false, SigInfoHash}}
+
+	self.Fields["Index"] = "1"
+	self.Fields["Time-To-Live"] = "30"
+	self.SetExpiration(-1)
+
+	return self
+}
+
+// getStringMapKeys returns a StringList containing the keys in a map[string]string
+func getStringMapKeys(data map[string]string) gostringlist.StringList {
+	var out gostringlist.StringList
+	out.Items = make([]string, len(data))
+	i := 0
+	for k := range data {
+		out.Items[i] = k
+		i++
+	}
+	return out
 }
