@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/darkwyrm/b85"
+	"github.com/darkwyrm/gostringlist"
 	"github.com/zeebo/blake3"
 	"golang.org/x/crypto/blake2b"
+	"golang.org/x/crypto/nacl/auth"
 	"golang.org/x/crypto/nacl/sign"
 	"golang.org/x/crypto/sha3"
 )
@@ -85,6 +87,48 @@ type SigInfo struct {
 	Optional bool
 }
 
+// SigInfoHash - signature field is a hash
+const SigInfoHash uint8 = 1
+
+// SigInfoSignature - signature field is a cryptographic signature
+const SigInfoSignature uint8 = 2
+
+// SigInfoList is a specialized list container for SigInfo structure instances
+type SigInfoList struct {
+	Items []SigInfo
+}
+
+// Contains returns true if one of the SigInfo items has the specified name
+func (sil SigInfoList) Contains(name string) bool {
+	for _, item := range sil.Items {
+		if item.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// IndexOf returns the index of the item named and -1 if it doesn't exist
+func (sil SigInfoList) IndexOf(name string) int {
+	for i, item := range sil.Items {
+		if item.Name == name {
+			return i
+		}
+	}
+	return -1
+}
+
+// GetItem returns the item matching the specified name or nil if it doesn't exist
+func (sil SigInfoList) GetItem(name string) (bool, *SigInfo) {
+	for _, item := range sil.Items {
+		if item.Name == name {
+			return true, &item
+		}
+	}
+	var empty SigInfo
+	return false, &empty
+}
+
 // EntryBase contains the common functionality for keycard entries
 type EntryBase struct {
 	Type           string
@@ -92,16 +136,10 @@ type EntryBase struct {
 	FieldNames     []string
 	RequiredFields []string
 	Signatures     map[string]string
-	SignatureInfo  []SigInfo
+	SignatureInfo  SigInfoList
 	PrevHash       string
 	Hash           string
 }
-
-// SigInfoHash - signature field is a hash
-const SigInfoHash uint8 = 1
-
-// SigInfoSignature - signature field is a cryptographic signature
-const SigInfoSignature uint8 = 2
 
 // IsCompliant returns true if the object meets spec compliance (required fields, etc.)
 func (eb EntryBase) IsCompliant() bool {
@@ -118,7 +156,7 @@ func (eb EntryBase) IsCompliant() bool {
 	}
 
 	// Signature compliance
-	for _, item := range eb.SignatureInfo {
+	for _, item := range eb.SignatureInfo.Items {
 		if item.Type == SigInfoHash {
 			if len(eb.Hash) < 1 {
 				return false
@@ -167,12 +205,12 @@ func (eb EntryBase) MakeByteString(siglevel int) []byte {
 		}
 	}
 
-	if siglevel < 0 || siglevel > len(eb.SignatureInfo) {
-		siglevel = eb.SignatureInfo[len(eb.SignatureInfo)-1].Level
+	if siglevel < 0 || siglevel > len(eb.SignatureInfo.Items) {
+		siglevel = eb.SignatureInfo.Items[len(eb.SignatureInfo.Items)-1].Level
 	}
 
 	for i := 0; i < siglevel; i++ {
-		if eb.SignatureInfo[i].Type == SigInfoHash {
+		if eb.SignatureInfo.Items[i].Type == SigInfoHash {
 			if len(eb.PrevHash) > 0 {
 				lines = append(lines, []byte("Previous-Hash:"+eb.PrevHash))
 			}
@@ -182,13 +220,13 @@ func (eb EntryBase) MakeByteString(siglevel int) []byte {
 			continue
 		}
 
-		if eb.SignatureInfo[i].Type != SigInfoSignature {
+		if eb.SignatureInfo.Items[i].Type != SigInfoSignature {
 			panic("BUG: invalid signature info type in EntryBase.MakeByteString")
 		}
 
-		val, ok := eb.Signatures[eb.SignatureInfo[i].Name]
+		val, ok := eb.Signatures[eb.SignatureInfo.Items[i].Name]
 		if ok && len(val) > 0 {
-			lines = append(lines, []byte(eb.SignatureInfo[i].Name+"-Signature:"+val))
+			lines = append(lines, []byte(eb.SignatureInfo.Items[i].Name+"-Signature:"+val))
 		}
 
 	}
@@ -257,7 +295,7 @@ func (eb EntryBase) Set(data []byte) error {
 			}
 		} else if strings.HasSuffix(parts[0], "Signature") {
 			sigparts := strings.SplitN(parts[0], "-", 1)
-			if !eb.isValidSignatureSpecifier(sigparts[0]) {
+			if !eb.SignatureInfo.Contains(sigparts[0]) {
 				return fmt.Errorf("%s is not a valid signature type", sigparts[0])
 			}
 			eb.Signatures[sigparts[0]] = sigparts[1]
@@ -308,8 +346,8 @@ func (eb EntryBase) Sign(signingKey AlgoString, sigtype string) error {
 
 	sigtypeOK := false
 	sigtypeIndex := -1
-	for i := range eb.SignatureInfo {
-		if sigtype == eb.SignatureInfo[i].Name {
+	for i := range eb.SignatureInfo.Items {
+		if sigtype == eb.SignatureInfo.Items[i].Name {
 			sigtypeOK = true
 			sigtypeIndex = i
 		}
@@ -317,7 +355,7 @@ func (eb EntryBase) Sign(signingKey AlgoString, sigtype string) error {
 		// Once we have found the index of the signature, it and all following signatures must be
 		// cleared because they will no longer be valid
 		if sigtypeOK {
-			eb.Signatures[eb.SignatureInfo[i].Name] = ""
+			eb.Signatures[eb.SignatureInfo.Items[i].Name] = ""
 		}
 	}
 
@@ -358,9 +396,9 @@ func (eb EntryBase) GenerateHash(algorithm string) error {
 	}
 
 	hashLevel := -1
-	for i := range eb.SignatureInfo {
-		if eb.SignatureInfo[i].Type == SigInfoHash {
-			hashLevel = eb.SignatureInfo[i].Level
+	for i := range eb.SignatureInfo.Items {
+		if eb.SignatureInfo.Items[i].Type == SigInfoHash {
+			hashLevel = eb.SignatureInfo.Items[i].Level
 			break
 		}
 	}
@@ -390,39 +428,62 @@ func (eb EntryBase) GenerateHash(algorithm string) error {
 
 // VerifySignature cryptographically verifies the entry against the key provided, given the
 // specific signature to verify.
-func (eb EntryBase) VerifySignature(verifyKey AlgoString, sigtype string) error {
+func (eb EntryBase) VerifySignature(verifyKey AlgoString, sigtype string) (bool, error) {
 
 	if !verifyKey.IsValid() {
-		return errors.New("bad verification key")
+		return false, errors.New("bad verification key")
 	}
 
 	if verifyKey.Prefix != "ED25519" {
-		return errors.New("unsupported signing algorithm")
+		return false, errors.New("unsupported signing algorithm")
 	}
 
-	if !eb.isValidSignatureSpecifier(sigtype) {
-		return fmt.Errorf("%s is not a valid signature type", sigtype)
+	if !eb.SignatureInfo.Contains(sigtype) {
+		return false, fmt.Errorf("%s is not a valid signature type", sigtype)
 	}
 
-	// TODO: Finish implementing VerifySignature
-
-	return nil
-}
-
-// isValidSignatureSpecifier checks to see that the passed string, sigtype, is (1) an actual
-// signature field for the entry
-func (eb EntryBase) isValidSignatureSpecifier(sigtype string) bool {
-
-	validSig := false
-	for _, sigitem := range eb.SignatureInfo {
-		if sigtype == sigitem.Name {
-			validSig = true
-			break
-		}
-	}
-	if !validSig {
-		return false
+	// Sometimes Go just makes things a lot less convenient than necessary. No built-in method to
+	// return all the keys in a slice? Seriously?
+	var sigkeys gostringlist.StringList
+	sigkeys.Items = make([]string, len(eb.Signatures))
+	i := 0
+	for k := range eb.Signatures {
+		sigkeys.Items[i] = k
+		i++
 	}
 
-	return true
+	infoValid, sigInfo := eb.SignatureInfo.GetItem(sigtype)
+	if !infoValid {
+		return false, errors.New("specified signature missing")
+	}
+
+	if eb.Signatures[sigtype] == "" {
+		return false, errors.New("specified signature empty")
+	}
+
+	var sig AlgoString
+	err := sig.Set(eb.Signatures[sigtype])
+	if err != nil {
+		return false, err
+	}
+	if sig.Prefix != "ED25519" {
+		return false, errors.New("signature uses unsupported signing algorithm")
+	}
+
+	verifykeyDecoded, err := verifyKey.RawData()
+	if err != nil {
+		return false, err
+	}
+
+	var verifykeyArray [32]byte
+	verifyKeyAdapter := verifykeyArray[0:32]
+	copy(verifyKeyAdapter, verifykeyDecoded)
+
+	digest, err := sig.RawData()
+	if err != nil {
+		return false, errors.New("decoding error in signature")
+	}
+	verifyStatus := auth.Verify(digest, eb.MakeByteString(sigInfo.Level), &verifykeyArray)
+
+	return verifyStatus, nil
 }
