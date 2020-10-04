@@ -603,7 +603,7 @@ func (entry OrgEntry) Chain(key AlgoString, rotateOptional bool) (OrgEntry, map[
 // VerifyChain verifies the chain of custody between the provided previous entry and the current one.
 func (entry OrgEntry) VerifyChain(previous OrgEntry) (bool, error) {
 	if previous.Type != "Organization" {
-		return false, errors.New("entryp type mismatch")
+		return false, errors.New("entry type mismatch")
 	}
 
 	val, ok := entry.Fields["Custody"]
@@ -694,18 +694,6 @@ func NewUserEntry() *UserEntry {
 	return self
 }
 
-// getStringMapKeys returns a StringList containing the keys in a map[string]string
-func getStringMapKeys(data map[string]string) gostringlist.StringList {
-	var out gostringlist.StringList
-	out.Items = make([]string, len(data))
-	i := 0
-	for k := range data {
-		out.Items[i] = k
-		i++
-	}
-	return out
-}
-
 // Chain creates a new UserEntry object with new keys and a custody signature. It requires the
 // previous contact request signing key passed as an AlgoString. The new keys are returned in a
 // map of AlgoStrings using the following fields:
@@ -793,4 +781,64 @@ func (entry UserEntry) Chain(key AlgoString, rotateOptional bool) (UserEntry, ma
 	}
 
 	return newEntry, outKeys, nil
+}
+
+// VerifyChain verifies the chain of custody between the provided previous entry and the current one.
+func (entry UserEntry) VerifyChain(previous UserEntry) (bool, error) {
+	if previous.Type != "User" {
+		return false, errors.New("entry type mismatch")
+	}
+
+	val, ok := entry.Fields["Custody"]
+	if !ok {
+		return false, errors.New("custody signature missing")
+	}
+	if val == "" {
+		return false, errors.New("custody signature empty")
+	}
+
+	val, ok = entry.Fields["Contact-Request-Signing-Key"]
+	if !ok {
+		return false, errors.New("signing key missing in previous entry")
+	}
+	if val == "" {
+		return false, errors.New("signing key entry in previous entry")
+	}
+
+	prevIndex, err := strconv.ParseUint(previous.Fields["Index"], 10, 64)
+	if err != nil {
+		return false, errors.New("previous entry has bad index value")
+	}
+
+	var index uint64
+	index, err = strconv.ParseUint(entry.Fields["Index"], 10, 64)
+	if err != nil {
+		return false, errors.New("entry has bad index value")
+	}
+
+	if index != prevIndex+1 {
+		return false, errors.New("entry index compliance failure")
+	}
+
+	var key AlgoString
+	err = key.Set(previous.Fields["Contact-Request-Signing-Key"])
+	if err != nil {
+		return false, errors.New("bad signing key in previous entry")
+	}
+
+	var isValid bool
+	isValid, err = entry.VerifySignature(key, "Custody")
+	return isValid, err
+}
+
+// getStringMapKeys returns a StringList containing the keys in a map[string]string
+func getStringMapKeys(data map[string]string) gostringlist.StringList {
+	var out gostringlist.StringList
+	out.Items = make([]string, len(data))
+	i := 0
+	for k := range data {
+		out.Items[i] = k
+		i++
+	}
+	return out
 }
