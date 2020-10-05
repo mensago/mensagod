@@ -132,6 +132,23 @@ func (sil SigInfoList) GetItem(name string) (bool, *SigInfo) {
 	return false, &empty
 }
 
+// Entry is an interface for all keycard entries
+type Entry interface {
+	IsCompliant() bool
+	GetSignature(string) (string, error)
+	MakeByteString(int) []byte
+	Save(string, bool) error
+	SetField(string, string) error
+	SetFields(map[string]string)
+	Set([]byte) error
+	SetExpiration(int16) error
+	Sign(AlgoString, string) error
+	GenerateHash(string) error
+	VerifySignature(AlgoString, string) (bool, error)
+	Chain(AlgoString, bool) (*Entry, map[string]AlgoString, error)
+	VerifyChain(*Entry) (bool, error)
+}
+
 // EntryBase contains the common functionality for keycard entries
 type EntryBase struct {
 	Type           string
@@ -829,6 +846,32 @@ func (entry UserEntry) VerifyChain(previous UserEntry) (bool, error) {
 	var isValid bool
 	isValid, err = entry.VerifySignature(key, "Custody")
 	return isValid, err
+}
+
+// Keycard - class which houses a list of entries into a hash-linked chain
+type Keycard struct {
+	Type    string
+	Entries []Entry
+}
+
+// Chain - appends a new entry to the chain, optionally rotating keys which aren't required to be
+// changed. This method requires that the root entry already exist. Note that user cards will not
+// have all the required signatures when the call returns
+func (card *Keycard) Chain(key AlgoString, rotateOptional bool) (*Entry, map[string]AlgoString, error) {
+	var newEntry Entry
+	var keyMap map[string]AlgoString
+	// if len(card.Entries) < 1 {
+	// 	return &newEntry, keyMap, errors.New("root entry missing")
+	// }
+
+	// var lastEntry *Entry
+	// lastEntry = &card.Entries[len(card.Entries)-1]
+
+	// var err error
+	// newEntry, keyMap, err = lastEntry.Chain(key, rotateOptional)
+
+	// TODO: Finish implementing
+	return &newEntry, keyMap, errors.New("Unimplemented")
 }
 
 // getStringMapKeys returns a StringList containing the keys in a map[string]string
