@@ -855,3 +855,50 @@ type Keycard struct {
 	Type    string
 	Entries []Entry
 }
+
+// Load writes the entire entry chain to one file with optional overwrite
+func (card Keycard) Load(path string, clobber bool) error {
+	return errors.New("load unimplemented")
+}
+
+// Save writes the entire entry chain to one file with optional overwrite
+func (card Keycard) Save(path string, clobber bool) error {
+	if len(path) < 1 {
+		return errors.New("empty path")
+	}
+
+	_, err := os.Stat(path)
+	if !os.IsNotExist(err) && !clobber {
+		return errors.New("file exists")
+	}
+
+	fHandle, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	fHandle.Close()
+
+	for _, entry := range card.Entries {
+		_, err = fHandle.Write([]byte("----- BEGIN ENTRY -----\r\n"))
+		if err != nil {
+			return err
+		}
+
+		_, err = fHandle.Write(entry.MakeByteString(-1))
+		if err != nil {
+			return err
+		}
+
+		_, err = fHandle.Write([]byte("----- END ENTRY -----\r\n"))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// VerifyChain verifies the entire chain of entries
+func (card Keycard) VerifyChain(path string, clobber bool) error {
+	return errors.New("verifychain unimplemented")
+}
