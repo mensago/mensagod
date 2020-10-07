@@ -145,8 +145,8 @@ type Entry interface {
 	Sign(AlgoString, string) error
 	GenerateHash(string) error
 	VerifySignature(AlgoString, string) (bool, error)
-	Chain(AlgoString, bool) (*Entry, map[string]AlgoString, error)
-	VerifyChain(*Entry) (bool, error)
+	Chain(AlgoString, bool) (Entry, map[string]AlgoString, error)
+	VerifyChain(Entry) (bool, error)
 }
 
 // EntryBase contains the common functionality for keycard entries
@@ -498,7 +498,8 @@ func (eb EntryBase) VerifySignature(verifyKey AlgoString, sigtype string) (bool,
 	return verifyStatus, nil
 }
 
-// OrgEntry - a class to represent organization keycard entries
+// OrgEntry - a class to represent organization keycard entries + methods to finish rounding out
+// the Entry interface
 type OrgEntry struct {
 	EntryBase
 }
@@ -552,16 +553,16 @@ func NewOrgEntry() *OrgEntry {
 // key becomes the secondary signing key in the new entry. When rotation is False, which is
 // recommended only in instances of revocation, the secondary key is removed. Only when
 // rotateOptional is True is the field altsign.private returned.
-func (entry OrgEntry) Chain(key AlgoString, rotateOptional bool) (OrgEntry, map[string]AlgoString, error) {
+func (entry OrgEntry) Chain(key AlgoString, rotateOptional bool) (*OrgEntry, map[string]AlgoString, error) {
 	var newEntry OrgEntry
 	var outKeys map[string]AlgoString
 
 	if key.Prefix != "ED25519" {
-		return newEntry, outKeys, errors.New("unsupported signing key type")
+		return &newEntry, outKeys, errors.New("unsupported signing key type")
 	}
 
 	if !entry.IsCompliant() {
-		return newEntry, outKeys, errors.New("entry not compliant")
+		return &newEntry, outKeys, errors.New("entry not compliant")
 	}
 
 	for k, v := range entry.Fields {
@@ -570,7 +571,7 @@ func (entry OrgEntry) Chain(key AlgoString, rotateOptional bool) (OrgEntry, map[
 
 	index, err := strconv.ParseUint(newEntry.Fields["Index"], 10, 64)
 	if err != nil {
-		return newEntry, outKeys, errors.New("bad entry index value")
+		return &newEntry, outKeys, errors.New("bad entry index value")
 	}
 	newEntry.Fields["Index"] = fmt.Sprintf("%d", index+1)
 
@@ -579,14 +580,14 @@ func (entry OrgEntry) Chain(key AlgoString, rotateOptional bool) (OrgEntry, map[
 
 	ePublicKey, ePrivateKey, err = box.GenerateKey(rand.Reader)
 	if err != nil {
-		return newEntry, outKeys, err
+		return &newEntry, outKeys, err
 	}
 	outKeys["encrypt.public"] = AlgoString{"CURVE25519", b85.Encode(ePublicKey[:])}
 	outKeys["encrypt.private"] = AlgoString{"CURVE25519", b85.Encode(ePrivateKey[:])}
 
 	sPublicKey, sPrivateKey, err = sign.GenerateKey(rand.Reader)
 	if err != nil {
-		return newEntry, outKeys, err
+		return &newEntry, outKeys, err
 	}
 	outKeys["sign.public"] = AlgoString{"ED25519", b85.Encode(sPublicKey[:])}
 	outKeys["sign.private"] = AlgoString{"ED25519", b85.Encode(sPrivateKey[:])}
@@ -596,7 +597,7 @@ func (entry OrgEntry) Chain(key AlgoString, rotateOptional bool) (OrgEntry, map[
 		var asPrivateKey *[64]byte
 		asPublicKey, asPrivateKey, err = sign.GenerateKey(rand.Reader)
 		if err != nil {
-			return newEntry, outKeys, err
+			return &newEntry, outKeys, err
 		}
 		outKeys["altsign.public"] = AlgoString{"ED25519", b85.Encode(asPublicKey[:])}
 		outKeys["altsign.private"] = AlgoString{"ED25519", b85.Encode(asPrivateKey[:])}
@@ -604,21 +605,21 @@ func (entry OrgEntry) Chain(key AlgoString, rotateOptional bool) (OrgEntry, map[
 		var oldPrimary AlgoString
 		err = oldPrimary.Set(entry.Fields["Primary-Signing-Key"])
 		if err != nil {
-			return newEntry, outKeys, err
+			return &newEntry, outKeys, err
 		}
 		outKeys["altsign.public"] = oldPrimary
 	}
 
 	err = newEntry.Sign(key, "Custody")
 	if err != nil {
-		return newEntry, outKeys, err
+		return &newEntry, outKeys, err
 	}
 
-	return newEntry, outKeys, errors.New("unimplemented")
+	return &newEntry, outKeys, errors.New("unimplemented")
 }
 
 // VerifyChain verifies the chain of custody between the provided previous entry and the current one.
-func (entry OrgEntry) VerifyChain(previous OrgEntry) (bool, error) {
+func (entry OrgEntry) VerifyChain(previous *OrgEntry) (bool, error) {
 	if previous.Type != "Organization" {
 		return false, errors.New("entry type mismatch")
 	}
@@ -665,7 +666,8 @@ func (entry OrgEntry) VerifyChain(previous OrgEntry) (bool, error) {
 	return isValid, err
 }
 
-// UserEntry - a class to represent user keycard entries
+// UserEntry - a class to represent user keycard entries + methods to finish rounding out the
+// Entry interface
 type UserEntry struct {
 	EntryBase
 }
@@ -722,16 +724,16 @@ func NewUserEntry() *UserEntry {
 //
 // Note that the last two keys are not required to be updated during entry rotation so that they
 // can be rotated on a different schedule from the other keys.
-func (entry UserEntry) Chain(key AlgoString, rotateOptional bool) (UserEntry, map[string]AlgoString, error) {
+func (entry UserEntry) Chain(key AlgoString, rotateOptional bool) (*UserEntry, map[string]AlgoString, error) {
 	var newEntry UserEntry
 	var outKeys map[string]AlgoString
 
 	if key.Prefix != "ED25519" {
-		return newEntry, outKeys, errors.New("unsupported signing key type")
+		return &newEntry, outKeys, errors.New("unsupported signing key type")
 	}
 
 	if !entry.IsCompliant() {
-		return newEntry, outKeys, errors.New("entry not compliant")
+		return &newEntry, outKeys, errors.New("entry not compliant")
 	}
 
 	for k, v := range entry.Fields {
@@ -740,7 +742,7 @@ func (entry UserEntry) Chain(key AlgoString, rotateOptional bool) (UserEntry, ma
 
 	index, err := strconv.ParseUint(newEntry.Fields["Index"], 10, 64)
 	if err != nil {
-		return newEntry, outKeys, errors.New("bad entry index value")
+		return &newEntry, outKeys, errors.New("bad entry index value")
 	}
 	newEntry.Fields["Index"] = fmt.Sprintf("%d", index+1)
 
@@ -749,21 +751,21 @@ func (entry UserEntry) Chain(key AlgoString, rotateOptional bool) (UserEntry, ma
 
 	sPublicKey, sPrivateKey, err = sign.GenerateKey(rand.Reader)
 	if err != nil {
-		return newEntry, outKeys, err
+		return &newEntry, outKeys, err
 	}
 	outKeys["sign.public"] = AlgoString{"ED25519", b85.Encode(sPublicKey[:])}
 	outKeys["sign.private"] = AlgoString{"ED25519", b85.Encode(sPrivateKey[:])}
 
 	crePublicKey, crePrivateKey, err = box.GenerateKey(rand.Reader)
 	if err != nil {
-		return newEntry, outKeys, err
+		return &newEntry, outKeys, err
 	}
 	outKeys["crencrypt.public"] = AlgoString{"CURVE25519", b85.Encode(crePublicKey[:])}
 	outKeys["crencrypt.private"] = AlgoString{"CURVE25519", b85.Encode(crePrivateKey[:])}
 
 	crsPublicKey, crsPrivateKey, err = sign.GenerateKey(rand.Reader)
 	if err != nil {
-		return newEntry, outKeys, err
+		return &newEntry, outKeys, err
 	}
 	outKeys["crsign.public"] = AlgoString{"ED25519", b85.Encode(crsPublicKey[:])}
 	outKeys["crsign.private"] = AlgoString{"ED25519", b85.Encode(crsPrivateKey[:])}
@@ -773,14 +775,14 @@ func (entry UserEntry) Chain(key AlgoString, rotateOptional bool) (UserEntry, ma
 
 		ePublicKey, ePrivateKey, err = box.GenerateKey(rand.Reader)
 		if err != nil {
-			return newEntry, outKeys, err
+			return &newEntry, outKeys, err
 		}
 		outKeys["encrypt.public"] = AlgoString{"CURVE25519", b85.Encode(ePublicKey[:])}
 		outKeys["encrypt.private"] = AlgoString{"CURVE25519", b85.Encode(ePrivateKey[:])}
 
 		altePublicKey, altePrivateKey, err = box.GenerateKey(rand.Reader)
 		if err != nil {
-			return newEntry, outKeys, err
+			return &newEntry, outKeys, err
 		}
 		outKeys["altencrypt.public"] = AlgoString{"CURVE25519", b85.Encode(altePublicKey[:])}
 		outKeys["altencrypt.private"] = AlgoString{"CURVE25519", b85.Encode(altePrivateKey[:])}
@@ -794,14 +796,14 @@ func (entry UserEntry) Chain(key AlgoString, rotateOptional bool) (UserEntry, ma
 
 	err = newEntry.Sign(key, "Custody")
 	if err != nil {
-		return newEntry, outKeys, err
+		return &newEntry, outKeys, err
 	}
 
-	return newEntry, outKeys, nil
+	return &newEntry, outKeys, nil
 }
 
 // VerifyChain verifies the chain of custody between the provided previous entry and the current one.
-func (entry UserEntry) VerifyChain(previous UserEntry) (bool, error) {
+func (entry UserEntry) VerifyChain(previous *UserEntry) (bool, error) {
 	if previous.Type != "User" {
 		return false, errors.New("entry type mismatch")
 	}
@@ -852,36 +854,4 @@ func (entry UserEntry) VerifyChain(previous UserEntry) (bool, error) {
 type Keycard struct {
 	Type    string
 	Entries []Entry
-}
-
-// Chain - appends a new entry to the chain, optionally rotating keys which aren't required to be
-// changed. This method requires that the root entry already exist. Note that user cards will not
-// have all the required signatures when the call returns
-func (card *Keycard) Chain(key AlgoString, rotateOptional bool) (*Entry, map[string]AlgoString, error) {
-	var newEntry Entry
-	var keyMap map[string]AlgoString
-	// if len(card.Entries) < 1 {
-	// 	return &newEntry, keyMap, errors.New("root entry missing")
-	// }
-
-	// var lastEntry *Entry
-	// lastEntry = &card.Entries[len(card.Entries)-1]
-
-	// var err error
-	// newEntry, keyMap, err = lastEntry.Chain(key, rotateOptional)
-
-	// TODO: Finish implementing
-	return &newEntry, keyMap, errors.New("Unimplemented")
-}
-
-// getStringMapKeys returns a StringList containing the keys in a map[string]string
-func getStringMapKeys(data map[string]string) gostringlist.StringList {
-	var out gostringlist.StringList
-	out.Items = make([]string, len(data))
-	i := 0
-	for k := range data {
-		out.Items[i] = k
-		i++
-	}
-	return out
 }
