@@ -80,6 +80,13 @@ func (as AlgoString) MakeEmpty() {
 	as.Data = ""
 }
 
+// KeyInfo describes the encryption and signing key fields for an Entry object
+type KeyInfo struct {
+	Name     string
+	Type     string
+	Optional bool
+}
+
 // SigInfo contains descriptive information about the signatures for an entry. The Level property
 // indicates order. For example, a signature with a level of 2 is attached to the entry after a
 // level 1 signature.
@@ -142,6 +149,7 @@ type Entry struct {
 	SignatureInfo  SigInfoList
 	PrevHash       string
 	Hash           string
+	Keys           []KeyInfo
 }
 
 // IsCompliant returns true if the object meets spec compliance (required fields, etc.)
@@ -481,6 +489,72 @@ func (entry Entry) VerifySignature(verifyKey AlgoString, sigtype string) (bool, 
 	return verifyStatus, nil
 }
 
+// Chain creates a new Entry object with new keys and a custody signature. It requires the
+// previous contact request signing key passed as an AlgoString. The new keys are returned with the
+// string '.private' or '.public' appended to the key's field name, e.g.
+// Primary-Encryption-Key.public.
+//
+// Note that a user's public encryption keys and an organization's alternate verification key are
+// not required to be updated during entry rotation so that they can be rotated on a different
+// schedule from the other keys.
+func (entry Entry) Chain(key AlgoString, rotateOptional bool) (*Entry, map[string]AlgoString, error) {
+	var newEntry *Entry
+	var outKeys map[string]AlgoString
+
+	switch entry.Type {
+	case "User":
+		newEntry = NewUserEntry()
+	case "Organization":
+		newEntry = NewOrgEntry()
+	default:
+		return newEntry, outKeys, errors.New("unsupported entry type")
+	}
+
+	if key.Prefix != "ED25519" {
+		return newEntry, outKeys, errors.New("unsupported signing key type")
+	}
+
+	if !entry.IsCompliant() {
+		return newEntry, outKeys, errors.New("entry not compliant")
+	}
+
+	for k, v := range entry.Fields {
+		newEntry.Fields[k] = v
+	}
+
+	index, err := strconv.ParseUint(newEntry.Fields["Index"], 10, 64)
+	if err != nil {
+		return newEntry, outKeys, errors.New("bad entry index value")
+	}
+	newEntry.Fields["Index"] = fmt.Sprintf("%d", index+1)
+
+	switch entry.Type {
+	case "User":
+		outKeys, err = GenerateUserKeys(rotateOptional)
+	case "Organization":
+		outKeys, err = GenerateOrgKeys(rotateOptional)
+	}
+	if err != nil {
+		return newEntry, outKeys, err
+	}
+
+	for _, info := range entry.Keys {
+		keyString, ok := outKeys[info.Name+".public"]
+		if ok {
+			newEntry.Fields[info.Name] = keyString.AsString()
+		} else if !info.Optional {
+			panic("BUG: missing required keys generated for Chain() ")
+		}
+	}
+
+	err = newEntry.Sign(key, "Custody")
+	if err != nil {
+		return newEntry, outKeys, err
+	}
+
+	return newEntry, outKeys, nil
+}
+
 // NewOrgEntry creates a new OrgEntry
 func NewOrgEntry() *Entry {
 	self := new(Entry)
@@ -508,10 +582,62 @@ func NewOrgEntry() *Entry {
 		"Time-To-Live",
 		"Expires"}
 
+	self.Keys = []KeyInfo{
+		KeyInfo{"Primary-Verification-Key", "signing", false},
+		KeyInfo{"Secondary-Verification-Key", "signing", false},
+		KeyInfo{"Encryption-Key", "encryption", true}}
+
 	self.SignatureInfo.Items = []SigInfo{
 		SigInfo{"Custody", 1, true, SigInfoSignature},
 		SigInfo{"Organization", 2, false, SigInfoSignature},
 		SigInfo{"Hashes", 3, false, SigInfoHash}}
+
+	self.Fields["Index"] = "1"
+	self.Fields["Time-To-Live"] = "30"
+	self.SetExpiration(-1)
+
+	return self
+}
+
+// NewUserEntry creates a new UserEntry
+func NewUserEntry() *Entry {
+	self := new(Entry)
+
+	self.Type = "User"
+	self.FieldNames.Items = []string{
+		"Index",
+		"Name",
+		"Workspace-ID",
+		"User-ID",
+		"Domain",
+		"Contact-Request-Verification-Key",
+		"Contact-Request-Encryption-Key",
+		"Public-Encryption-Key",
+		"Alternate-Encryption-Key",
+		"Time-To-Live",
+		"Expires"}
+
+	self.Keys = []KeyInfo{
+		KeyInfo{"Contact-Request-Verification-Key", "signing", false},
+		KeyInfo{"Contact-Request-Encryption-Key", "encryption", false},
+		KeyInfo{"Public-Encryption-Key", "encryption", true},
+		KeyInfo{"Alternate-Encryption-Key", "encryption", true}}
+
+	self.RequiredFields.Items = []string{
+		"Index",
+		"Workspace-ID",
+		"Domain",
+		"Contact-Request-Verification-Key",
+		"Contact-Request-Encryption-Key",
+		"Public-Encryption-Key",
+		"Time-To-Live",
+		"Expires"}
+
+	self.SignatureInfo.Items = []SigInfo{
+		SigInfo{"Custody", 1, true, SigInfoSignature},
+		SigInfo{"Organization", 2, false, SigInfoSignature},
+		SigInfo{"Hashes", 3, false, SigInfoHash},
+		SigInfo{"User", 4, false, SigInfoSignature}}
 
 	self.Fields["Index"] = "1"
 	self.Fields["Time-To-Live"] = "30"
@@ -557,102 +683,13 @@ func GenerateOrgKeys(rotateOptional bool) (map[string]AlgoString, error) {
 		if err != nil {
 			return outKeys, err
 		}
-		outKeys["Alternate-Verification-Key.public"] = AlgoString{"ED25519",
+		outKeys["Secondary-Verification-Key.public"] = AlgoString{"ED25519",
 			b85.Encode(asPublicKey[:])}
-		outKeys["Alternate-Verification-Key.private"] = AlgoString{"ED25519",
+		outKeys["Secondary-Verification-Key.private"] = AlgoString{"ED25519",
 			b85.Encode(asPrivateKey[:])}
 	}
 
 	return outKeys, nil
-}
-
-// VerifyChain verifies the chain of custody between the provided previous entry and the current one.
-func (entry Entry) VerifyChain(previous *Entry) (bool, error) {
-	if previous.Type != "Organization" {
-		return false, errors.New("entry type mismatch")
-	}
-
-	val, ok := entry.Fields["Custody"]
-	if !ok {
-		return false, errors.New("custody signature missing")
-	}
-	if val == "" {
-		return false, errors.New("custody signature empty")
-	}
-
-	val, ok = entry.Fields["Primary-Verification-Key"]
-	if !ok {
-		return false, errors.New("signing key missing in previous entry")
-	}
-	if val == "" {
-		return false, errors.New("signing key entry in previous entry")
-	}
-
-	prevIndex, err := strconv.ParseUint(previous.Fields["Index"], 10, 64)
-	if err != nil {
-		return false, errors.New("previous entry has bad index value")
-	}
-
-	var index uint64
-	index, err = strconv.ParseUint(entry.Fields["Index"], 10, 64)
-	if err != nil {
-		return false, errors.New("entry has bad index value")
-	}
-
-	if index != prevIndex+1 {
-		return false, errors.New("entry index compliance failure")
-	}
-
-	var key AlgoString
-	err = key.Set(previous.Fields["Primary-Verification-Key"])
-	if err != nil {
-		return false, errors.New("bad primary signing key in previous entry")
-	}
-
-	var isValid bool
-	isValid, err = entry.VerifySignature(key, "Custody")
-	return isValid, err
-}
-
-// NewUserEntry creates a new UserEntry
-func NewUserEntry() *Entry {
-	self := new(Entry)
-
-	self.Type = "User"
-	self.FieldNames.Items = []string{
-		"Index",
-		"Name",
-		"Workspace-ID",
-		"User-ID",
-		"Domain",
-		"Contact-Request-Verification-Key",
-		"Contact-Request-Encryption-Key",
-		"Public-Encryption-Key",
-		"Alternate-Encryption-Key",
-		"Time-To-Live",
-		"Expires"}
-
-	self.RequiredFields.Items = []string{
-		"Index",
-		"Workspace-ID",
-		"Domain",
-		"Contact-Request-Verification-Key",
-		"Contact-Request-Encryption-Key",
-		"Public-Encryption-Key",
-		"Time-To-Live",
-		"Expires"}
-
-	self.SignatureInfo.Items = []SigInfo{
-		SigInfo{"Custody", 1, true, SigInfoSignature},
-		SigInfo{"Organization", 2, false, SigInfoSignature},
-		SigInfo{"Hashes", 3, false, SigInfoHash},
-		SigInfo{"User", 4, false, SigInfoSignature}}
-
-	self.Fields["Index"] = "1"
-	self.Fields["Time-To-Live"] = "30"
-	self.SetExpiration(-1)
-
-	return self
 }
 
 // GenerateUserKeys generates a set of cryptographic keys for user entries, optionally including
@@ -725,68 +762,9 @@ func GenerateUserKeys(rotateOptional bool) (map[string]AlgoString, error) {
 	return outKeys, nil
 }
 
-// Chain creates a new Entry object with new keys and a custody signature. It requires the
-// previous contact request signing key passed as an AlgoString. The new keys are returned with the
-// string '.private' or '.public' appended to the key's field name, e.g.
-// Primary-Encryption-Key.public.
-//
-// Note that a user's public encryption keys and an organization's alternate verification key are
-// not required to be updated during entry rotation so that they can be rotated on a different
-// schedule from the other keys.
-func (entry Entry) Chain(key AlgoString, rotateOptional bool) (*Entry, map[string]AlgoString, error) {
-	var newEntry *Entry
-	var outKeys map[string]AlgoString
-
-	switch entry.Type {
-	case "User":
-		newEntry = NewUserEntry()
-	case "Organization":
-		newEntry = NewOrgEntry()
-	default:
-		return newEntry, outKeys, errors.New("unsupported entry type")
-	}
-
-	if key.Prefix != "ED25519" {
-		return newEntry, outKeys, errors.New("unsupported signing key type")
-	}
-
-	if !entry.IsCompliant() {
-		return newEntry, outKeys, errors.New("entry not compliant")
-	}
-
-	for k, v := range entry.Fields {
-		newEntry.Fields[k] = v
-	}
-
-	index, err := strconv.ParseUint(newEntry.Fields["Index"], 10, 64)
-	if err != nil {
-		return newEntry, outKeys, errors.New("bad entry index value")
-	}
-	newEntry.Fields["Index"] = fmt.Sprintf("%d", index+1)
-
-	switch entry.Type {
-	case "User":
-		outKeys, err = GenerateUserKeys(rotateOptional)
-	case "Organization":
-		outKeys, err = GenerateOrgKeys(rotateOptional)
-	}
-	if err != nil {
-		return newEntry, outKeys, err
-	}
-
-	// TODO: Assign new keys to appropriate fields in the entry
-
-	err = newEntry.Sign(key, "Custody")
-	if err != nil {
-		return newEntry, outKeys, err
-	}
-
-	return newEntry, outKeys, nil
-}
-
-// VerifyUserChain verifies the chain of custody between the provided previous entry and the current one.
-func (entry Entry) VerifyUserChain(previous *Entry) (bool, error) {
-	if previous.Type != "User" {
+// VerifyChain verifies the chain of custody between the provided previous entry and the current one.
+func (entry Entry) VerifyChain(previous *Entry) (bool, error) {
+	if previous.Type != entry.Type {
 		return false, errors.New("entry type mismatch")
 	}
 
@@ -798,7 +776,17 @@ func (entry Entry) VerifyUserChain(previous *Entry) (bool, error) {
 		return false, errors.New("custody signature empty")
 	}
 
-	val, ok = entry.Fields["Contact-Request-Verification-Key"]
+	verifyField := ""
+	switch entry.Type {
+	case "Organization":
+		verifyField = "Primary-Verification-Key"
+	case "User":
+		verifyField = "Contact-Request-Verification-Key"
+	default:
+		return false, errors.New("unsupported entry type")
+	}
+
+	val, ok = entry.Fields[verifyField]
 	if !ok {
 		return false, errors.New("signing key missing in previous entry")
 	}
@@ -822,7 +810,7 @@ func (entry Entry) VerifyUserChain(previous *Entry) (bool, error) {
 	}
 
 	var key AlgoString
-	err = key.Set(previous.Fields["Contact-Request-Verification-Key"])
+	err = key.Set(previous.Fields[verifyField])
 	if err != nil {
 		return false, errors.New("bad signing key in previous entry")
 	}
@@ -938,7 +926,7 @@ func (card Keycard) VerifyChain(path string, clobber bool) (bool, error) {
 	}
 
 	for i := 0; i < len(card.Entries)-1; i++ {
-		verifyStatus, err := card.Entries[i].VerifyChain(card.Entries[i+1])
+		verifyStatus, err := card.Entries[i].VerifyChain(&card.Entries[i+1])
 		if err != nil || !verifyStatus {
 			return false, err
 		}
