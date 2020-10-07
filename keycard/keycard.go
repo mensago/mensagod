@@ -1,6 +1,7 @@
 package keycard
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
@@ -832,50 +833,78 @@ func (card Keycard) Load(path string, clobber bool) error {
 		return errors.New("empty path")
 	}
 
-	// fHandle, err := os.Open(path)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer fHandle.Close()
+	fHandle, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer fHandle.Close()
 
-	// fReader := bufio.NewReader(fHandle)
+	fReader := bufio.NewReader(fHandle)
 
-	// var line string
-	// line, err = fReader.ReadString('\n')
-	// if err != nil {
-	// 	return err
-	// }
+	var line string
+	line, err = fReader.ReadString('\n')
+	if err != nil {
+		return err
+	}
 
-	// accumulator := make([]string, 0, 16)
-	// cardType := ""
-	// lineIndex := 1
-	// entryIndex := 1
-	// for line != "" {
-	// 	line = strings.TrimSpace(line)
-	// 	if line == "" {
-	// 		lineIndex++
-	// 		continue
-	// 	}
+	accumulator := make([][2]string, 0, 16)
+	cardType := ""
+	lineIndex := 1
+	for line != "" {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			lineIndex++
+			continue
+		}
 
-	// 	switch line {
-	// 	case "----- BEGIN ENTRY -----":
-	// 		accumulator := make([]string, 0, 16)
-	// 	case "----- END ENTRY -----":
-	// 		var currentEntry Entry
-	// 		if cardType == "User" {
-	// 			currentEntry = NewUserEntry()
-	// 		}
-	// 	}
+		switch line {
+		case "----- BEGIN ENTRY -----":
+			accumulator = make([][2]string, 0, 16)
 
-	// 	line, err = fReader.ReadString('\n')
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	lineIndex++
-	// }
+		case "----- END ENTRY -----":
+			var currentEntry *Entry
+			switch cardType {
+			case "User":
+				currentEntry = NewUserEntry()
+			case "Organization":
+				currentEntry = NewOrgEntry()
+			default:
+				return errors.New("unsupported entry type ")
+			}
 
-	// TODO: Implement Keycard.Load()
-	return errors.New("load unimplemented")
+			for _, fieldData := range accumulator {
+				err = currentEntry.SetField(fieldData[0], fieldData[1])
+				if err != nil {
+					return fmt.Errorf("bad field data in card line %d", lineIndex)
+				}
+			}
+
+		default:
+			parts := strings.SplitN(line, ":", 1)
+			if len(parts) != 2 {
+				return fmt.Errorf("bad line data in card line %d", lineIndex)
+			}
+
+			if parts[0] == "Type" {
+				if cardType != "" {
+					if cardType != parts[1] {
+						return fmt.Errorf("keycard-entry type mismatch in line %d", lineIndex)
+					}
+				} else {
+					cardType = parts[0]
+				}
+			}
+			accumulator = append(accumulator, [2]string{parts[0], parts[1]})
+		}
+
+		line, err = fReader.ReadString('\n')
+		if err != nil {
+			return err
+		}
+		lineIndex++
+	}
+
+	return nil
 }
 
 // Save writes the entire entry chain to one file with optional overwrite
