@@ -132,25 +132,8 @@ func (sil SigInfoList) GetItem(name string) (bool, *SigInfo) {
 	return false, &empty
 }
 
-// Entry is an interface for all keycard entries
-type Entry interface {
-	IsCompliant() bool
-	GetSignature(string) (string, error)
-	MakeByteString(int) []byte
-	Save(string, bool) error
-	SetField(string, string) error
-	SetFields(map[string]string)
-	Set([]byte) error
-	SetExpiration(int16) error
-	Sign(AlgoString, string) error
-	GenerateHash(string) error
-	VerifySignature(AlgoString, string) (bool, error)
-	Chain(AlgoString, bool) (*EntryBase, map[string]AlgoString, error)
-	VerifyChain(*EntryBase) (bool, error)
-}
-
-// EntryBase contains the common functionality for keycard entries
-type EntryBase struct {
+// Entry contains the common functionality for keycard entries
+type Entry struct {
 	Type           string
 	Fields         map[string]string
 	FieldNames     gostringlist.StringList
@@ -162,23 +145,23 @@ type EntryBase struct {
 }
 
 // IsCompliant returns true if the object meets spec compliance (required fields, etc.)
-func (eb EntryBase) IsCompliant() bool {
-	if eb.Type != "User" && eb.Type != "Organization" {
+func (entry Entry) IsCompliant() bool {
+	if entry.Type != "User" && entry.Type != "Organization" {
 		return false
 	}
 
 	// Field compliance
-	for _, reqField := range eb.RequiredFields.Items {
-		_, ok := eb.Fields[reqField]
+	for _, reqField := range entry.RequiredFields.Items {
+		_, ok := entry.Fields[reqField]
 		if !ok {
 			return false
 		}
 	}
 
 	// Signature compliance
-	for _, item := range eb.SignatureInfo.Items {
+	for _, item := range entry.SignatureInfo.Items {
 		if item.Type == SigInfoHash {
-			if len(eb.Hash) < 1 {
+			if len(entry.Hash) < 1 {
 				return false
 			}
 			continue
@@ -189,7 +172,7 @@ func (eb EntryBase) IsCompliant() bool {
 		}
 
 		if item.Optional {
-			val, err := eb.Signatures[item.Name]
+			val, err := entry.Signatures[item.Name]
 			if err || len(val) < 1 {
 				return false
 			}
@@ -201,8 +184,8 @@ func (eb EntryBase) IsCompliant() bool {
 }
 
 // GetSignature - get the specified signature
-func (eb EntryBase) GetSignature(sigtype string) (string, error) {
-	val, exists := eb.Signatures[sigtype]
+func (entry Entry) GetSignature(sigtype string) (string, error) {
+	val, exists := entry.Signatures[sigtype]
 	if exists {
 		return val, nil
 	}
@@ -211,42 +194,42 @@ func (eb EntryBase) GetSignature(sigtype string) (string, error) {
 
 // MakeByteString converts the entry to a string of bytes to ensure that signatures are not
 // invalidated by automatic line ending handling
-func (eb EntryBase) MakeByteString(siglevel int) []byte {
+func (entry Entry) MakeByteString(siglevel int) []byte {
 
 	// Capacity is all possible field names + all actual signatures + hash fields
-	lines := make([][]byte, 0, len(eb.FieldNames.Items)+len(eb.Signatures)+2)
-	if len(eb.Type) > 0 {
-		lines = append(lines, []byte(eb.Type))
+	lines := make([][]byte, 0, len(entry.FieldNames.Items)+len(entry.Signatures)+2)
+	if len(entry.Type) > 0 {
+		lines = append(lines, []byte(entry.Type))
 	}
 
-	for _, fieldName := range eb.FieldNames.Items {
-		if len(eb.Fields[fieldName]) > 0 {
-			lines = append(lines, []byte(fieldName+":"+eb.Fields[fieldName]))
+	for _, fieldName := range entry.FieldNames.Items {
+		if len(entry.Fields[fieldName]) > 0 {
+			lines = append(lines, []byte(fieldName+":"+entry.Fields[fieldName]))
 		}
 	}
 
-	if siglevel < 0 || siglevel > len(eb.SignatureInfo.Items) {
-		siglevel = eb.SignatureInfo.Items[len(eb.SignatureInfo.Items)-1].Level
+	if siglevel < 0 || siglevel > len(entry.SignatureInfo.Items) {
+		siglevel = entry.SignatureInfo.Items[len(entry.SignatureInfo.Items)-1].Level
 	}
 
 	for i := 0; i < siglevel; i++ {
-		if eb.SignatureInfo.Items[i].Type == SigInfoHash {
-			if len(eb.PrevHash) > 0 {
-				lines = append(lines, []byte("Previous-Hash:"+eb.PrevHash))
+		if entry.SignatureInfo.Items[i].Type == SigInfoHash {
+			if len(entry.PrevHash) > 0 {
+				lines = append(lines, []byte("Previous-Hash:"+entry.PrevHash))
 			}
-			if len(eb.Hash) > 0 {
-				lines = append(lines, []byte("Hash:"+eb.Hash))
+			if len(entry.Hash) > 0 {
+				lines = append(lines, []byte("Hash:"+entry.Hash))
 			}
 			continue
 		}
 
-		if eb.SignatureInfo.Items[i].Type != SigInfoSignature {
-			panic("BUG: invalid signature info type in EntryBase.MakeByteString")
+		if entry.SignatureInfo.Items[i].Type != SigInfoSignature {
+			panic("BUG: invalid signature info type in Entry.MakeByteString")
 		}
 
-		val, ok := eb.Signatures[eb.SignatureInfo.Items[i].Name]
+		val, ok := entry.Signatures[entry.SignatureInfo.Items[i].Name]
 		if ok && len(val) > 0 {
-			lines = append(lines, []byte(eb.SignatureInfo.Items[i].Name+"-Signature:"+val))
+			lines = append(lines, []byte(entry.SignatureInfo.Items[i].Name+"-Signature:"+val))
 		}
 
 	}
@@ -255,7 +238,7 @@ func (eb EntryBase) MakeByteString(siglevel int) []byte {
 }
 
 // Save saves the entry to disk
-func (eb EntryBase) Save(path string, clobber bool) error {
+func (entry Entry) Save(path string, clobber bool) error {
 	if len(path) < 1 {
 		return errors.New("empty path")
 	}
@@ -265,36 +248,36 @@ func (eb EntryBase) Save(path string, clobber bool) error {
 		return errors.New("file exists")
 	}
 
-	return ioutil.WriteFile(path, eb.MakeByteString(-1), 0644)
+	return ioutil.WriteFile(path, entry.MakeByteString(-1), 0644)
 }
 
 // SetField sets an entry field to the specified value.
-func (eb EntryBase) SetField(fieldName string, fieldValue string) error {
+func (entry Entry) SetField(fieldName string, fieldValue string) error {
 	if len(fieldName) < 1 {
 		return errors.New("empty field name")
 	}
-	eb.Fields[fieldName] = fieldValue
+	entry.Fields[fieldName] = fieldValue
 
 	// Any kind of editing invalidates the signatures and hashes
-	eb.Signatures = make(map[string]string)
+	entry.Signatures = make(map[string]string)
 	return nil
 }
 
 // SetFields sets multiple entry fields
-func (eb EntryBase) SetFields(fields map[string]string) {
+func (entry Entry) SetFields(fields map[string]string) {
 	// Any kind of editing invalidates the signatures and hashes. Unlike SetField, we clear the
 	// signature fields first because it's possible to set everything in the entry with this
 	// method, so the signatures can be valid after the call finishes if they are set by the
 	// caller.
-	eb.Signatures = make(map[string]string)
+	entry.Signatures = make(map[string]string)
 
 	for k, v := range fields {
-		eb.Fields[k] = v
+		entry.Fields[k] = v
 	}
 }
 
 // Set initializes the entry from a bytestring
-func (eb EntryBase) Set(data []byte) error {
+func (entry Entry) Set(data []byte) error {
 	if len(data) < 1 {
 		return errors.New("empty byte field")
 	}
@@ -310,17 +293,17 @@ func (eb EntryBase) Set(data []byte) error {
 		}
 
 		if parts[0] == "Type" {
-			if parts[1] != eb.Type {
-				return fmt.Errorf("Can't use %s data on %s entries", parts[1], eb.Type)
+			if parts[1] != entry.Type {
+				return fmt.Errorf("Can't use %s data on %s entries", parts[1], entry.Type)
 			}
 		} else if strings.HasSuffix(parts[0], "Signature") {
 			sigparts := strings.SplitN(parts[0], "-", 1)
-			if !eb.SignatureInfo.Contains(sigparts[0]) {
+			if !entry.SignatureInfo.Contains(sigparts[0]) {
 				return fmt.Errorf("%s is not a valid signature type", sigparts[0])
 			}
-			eb.Signatures[sigparts[0]] = sigparts[1]
+			entry.Signatures[sigparts[0]] = sigparts[1]
 		} else {
-			eb.Fields[parts[0]] = parts[1]
+			entry.Fields[parts[0]] = parts[1]
 		}
 	}
 
@@ -329,11 +312,11 @@ func (eb EntryBase) Set(data []byte) error {
 
 // SetExpiration enables custom expiration dates, the standard being 90 days for user entries and
 // 1 year for organizations.
-func (eb EntryBase) SetExpiration(numdays int16) error {
+func (entry Entry) SetExpiration(numdays int16) error {
 	if numdays < 0 {
-		if eb.Type == "Organization" {
+		if entry.Type == "Organization" {
 			numdays = 365
-		} else if eb.Type == "User" {
+		} else if entry.Type == "User" {
 			numdays = 90
 		} else {
 			return errors.New("unsupported keycard type")
@@ -345,17 +328,17 @@ func (eb EntryBase) SetExpiration(numdays int16) error {
 		numdays = 1095
 	}
 
-	eb.Fields["Expiration"] = time.Now().AddDate(0, 0, int(numdays)).Format("%Y%m%d")
+	entry.Fields["Expiration"] = time.Now().AddDate(0, 0, int(numdays)).Format("%Y%m%d")
 
 	return nil
 }
 
 // Sign cryptographically signs an entry. The supported types and expected order of the signature
 // is defined by subclasses using the SigInfo instances in the object's SignatureInfo property.
-// Adding a particular signature causes those that must follow it to be cleared. The EntryBase's
+// Adding a particular signature causes those that must follow it to be cleared. The Entry's
 // cryptographic hash counts as a signature in this matter. Thus, if an Organization signature is
 // added to the entry, the instance's hash and User signatures are both cleared.
-func (eb EntryBase) Sign(signingKey AlgoString, sigtype string) error {
+func (entry Entry) Sign(signingKey AlgoString, sigtype string) error {
 	if !signingKey.IsValid() {
 		return errors.New("bad signing key")
 	}
@@ -366,8 +349,8 @@ func (eb EntryBase) Sign(signingKey AlgoString, sigtype string) error {
 
 	sigtypeOK := false
 	sigtypeIndex := -1
-	for i := range eb.SignatureInfo.Items {
-		if sigtype == eb.SignatureInfo.Items[i].Name {
+	for i := range entry.SignatureInfo.Items {
+		if sigtype == entry.SignatureInfo.Items[i].Name {
 			sigtypeOK = true
 			sigtypeIndex = i
 		}
@@ -375,7 +358,7 @@ func (eb EntryBase) Sign(signingKey AlgoString, sigtype string) error {
 		// Once we have found the index of the signature, it and all following signatures must be
 		// cleared because they will no longer be valid
 		if sigtypeOK {
-			eb.Signatures[eb.SignatureInfo.Items[i].Name] = ""
+			entry.Signatures[entry.SignatureInfo.Items[i].Name] = ""
 		}
 	}
 
@@ -392,15 +375,15 @@ func (eb EntryBase) Sign(signingKey AlgoString, sigtype string) error {
 	signKeyAdapter := signkeyArray[0:64]
 	copy(signKeyAdapter, signkeyDecoded)
 
-	signature := sign.Sign(nil, eb.MakeByteString(sigtypeIndex+1), &signkeyArray)
-	eb.Signatures[sigtype] = "ED25519:" + b85.Encode(signature)
+	signature := sign.Sign(nil, entry.MakeByteString(sigtypeIndex+1), &signkeyArray)
+	entry.Signatures[sigtype] = "ED25519:" + b85.Encode(signature)
 
 	return nil
 }
 
 // GenerateHash generates a hash containing the expected signatures and the previous hash, if it
 // exists. The supported hash algorithms are 'BLAKE3-256', 'BLAKE2', 'SHA-256', and 'SHA3-256'.
-func (eb EntryBase) GenerateHash(algorithm string) error {
+func (entry Entry) GenerateHash(algorithm string) error {
 	validAlgorithm := false
 	switch algorithm {
 	case
@@ -416,9 +399,9 @@ func (eb EntryBase) GenerateHash(algorithm string) error {
 	}
 
 	hashLevel := -1
-	for i := range eb.SignatureInfo.Items {
-		if eb.SignatureInfo.Items[i].Type == SigInfoHash {
-			hashLevel = eb.SignatureInfo.Items[i].Level
+	for i := range entry.SignatureInfo.Items {
+		if entry.SignatureInfo.Items[i].Type == SigInfoHash {
+			hashLevel = entry.SignatureInfo.Items[i].Level
 			break
 		}
 	}
@@ -430,17 +413,17 @@ func (eb EntryBase) GenerateHash(algorithm string) error {
 	switch algorithm {
 	case "BLAKE3-256":
 		hasher := blake3.New()
-		sum := hasher.Sum(eb.MakeByteString(hashLevel))
-		eb.Hash = algorithm + b85.Encode(sum[:])
+		sum := hasher.Sum(entry.MakeByteString(hashLevel))
+		entry.Hash = algorithm + b85.Encode(sum[:])
 	case "BLAKE2":
-		sum := blake2b.Sum256(eb.MakeByteString(hashLevel))
-		eb.Hash = algorithm + b85.Encode(sum[:])
+		sum := blake2b.Sum256(entry.MakeByteString(hashLevel))
+		entry.Hash = algorithm + b85.Encode(sum[:])
 	case "SHA256":
-		sum := sha256.Sum256(eb.MakeByteString(hashLevel))
-		eb.Hash = algorithm + b85.Encode(sum[:])
+		sum := sha256.Sum256(entry.MakeByteString(hashLevel))
+		entry.Hash = algorithm + b85.Encode(sum[:])
 	case "SHA3-256":
-		sum := sha3.Sum256(eb.MakeByteString(hashLevel))
-		eb.Hash = algorithm + b85.Encode(sum[:])
+		sum := sha3.Sum256(entry.MakeByteString(hashLevel))
+		entry.Hash = algorithm + b85.Encode(sum[:])
 	}
 
 	return nil
@@ -448,7 +431,7 @@ func (eb EntryBase) GenerateHash(algorithm string) error {
 
 // VerifySignature cryptographically verifies the entry against the key provided, given the
 // specific signature to verify.
-func (eb EntryBase) VerifySignature(verifyKey AlgoString, sigtype string) (bool, error) {
+func (entry Entry) VerifySignature(verifyKey AlgoString, sigtype string) (bool, error) {
 
 	if !verifyKey.IsValid() {
 		return false, errors.New("bad verification key")
@@ -458,21 +441,21 @@ func (eb EntryBase) VerifySignature(verifyKey AlgoString, sigtype string) (bool,
 		return false, errors.New("unsupported signing algorithm")
 	}
 
-	if !eb.SignatureInfo.Contains(sigtype) {
+	if !entry.SignatureInfo.Contains(sigtype) {
 		return false, fmt.Errorf("%s is not a valid signature type", sigtype)
 	}
 
-	infoValid, sigInfo := eb.SignatureInfo.GetItem(sigtype)
+	infoValid, sigInfo := entry.SignatureInfo.GetItem(sigtype)
 	if !infoValid {
 		return false, errors.New("specified signature missing")
 	}
 
-	if eb.Signatures[sigtype] == "" {
+	if entry.Signatures[sigtype] == "" {
 		return false, errors.New("specified signature empty")
 	}
 
 	var sig AlgoString
-	err := sig.Set(eb.Signatures[sigtype])
+	err := sig.Set(entry.Signatures[sigtype])
 	if err != nil {
 		return false, err
 	}
@@ -493,20 +476,14 @@ func (eb EntryBase) VerifySignature(verifyKey AlgoString, sigtype string) (bool,
 	if err != nil {
 		return false, errors.New("decoding error in signature")
 	}
-	verifyStatus := auth.Verify(digest, eb.MakeByteString(sigInfo.Level), &verifykeyArray)
+	verifyStatus := auth.Verify(digest, entry.MakeByteString(sigInfo.Level), &verifykeyArray)
 
 	return verifyStatus, nil
 }
 
-// OrgEntry - a class to represent organization keycard entries + methods to finish rounding out
-// the Entry interface
-type OrgEntry struct {
-	EntryBase
-}
-
 // NewOrgEntry creates a new OrgEntry
-func NewOrgEntry() *OrgEntry {
-	self := new(OrgEntry)
+func NewOrgEntry() *Entry {
+	self := new(Entry)
 
 	self.Type = "Organization"
 	self.FieldNames.Items = []string{
@@ -516,8 +493,8 @@ func NewOrgEntry() *OrgEntry {
 		"Contact-Abuse",
 		"Contact-Support",
 		"Language",
-		"Primary-Signing-Key",
-		"Secondary-Signing-Key",
+		"Primary-Verification-Key",
+		"Secondary-Verification-Key",
 		"Encryption-Key",
 		"Time-To-Live",
 		"Expires"}
@@ -526,7 +503,7 @@ func NewOrgEntry() *OrgEntry {
 		"Index",
 		"Name",
 		"Contact-Admin",
-		"Primary-Signing-Key",
+		"Primary-Verification-Key",
 		"Encryption-Key",
 		"Time-To-Live",
 		"Expires"}
@@ -543,83 +520,54 @@ func NewOrgEntry() *OrgEntry {
 	return self
 }
 
-// Chain creates a new OrgEntry object with new keys and a custody signature. The keys are returned
-// in a map of AlgoStrings using the following fields:
-// 		sign.public / sign.private -- primary signing keypair
-// 		altsign.public / crsign.private -- contact request signing keypair
-// 		encrypt.public / encrypt.private -- general-purpose public encryption keypair
-//
-// For organization entries, rotating optional keys works a little differently: the primary signing
-// key becomes the secondary signing key in the new entry. When rotation is False, which is
-// recommended only in instances of revocation, the secondary key is removed. Only when
-// rotateOptional is True is the field altsign.private returned.
-func (entry OrgEntry) Chain(key AlgoString, rotateOptional bool) (*OrgEntry, map[string]AlgoString, error) {
-	var newEntry OrgEntry
+// GenerateOrgKeys generates a set of cryptographic keys for user entries, optionally including
+// non-required keys
+func GenerateOrgKeys(rotateOptional bool) (map[string]AlgoString, error) {
 	var outKeys map[string]AlgoString
-
-	if key.Prefix != "ED25519" {
-		return &newEntry, outKeys, errors.New("unsupported signing key type")
+	if rotateOptional {
+		outKeys = make(map[string]AlgoString, 10)
+	} else {
+		outKeys = make(map[string]AlgoString, 6)
 	}
 
-	if !entry.IsCompliant() {
-		return &newEntry, outKeys, errors.New("entry not compliant")
-	}
-
-	for k, v := range entry.Fields {
-		newEntry.Fields[k] = v
-	}
-
-	index, err := strconv.ParseUint(newEntry.Fields["Index"], 10, 64)
-	if err != nil {
-		return &newEntry, outKeys, errors.New("bad entry index value")
-	}
-	newEntry.Fields["Index"] = fmt.Sprintf("%d", index+1)
-
+	var err error
 	var ePublicKey, ePrivateKey, sPublicKey *[32]byte
 	var sPrivateKey *[64]byte
 
 	ePublicKey, ePrivateKey, err = box.GenerateKey(rand.Reader)
 	if err != nil {
-		return &newEntry, outKeys, err
+		return outKeys, err
 	}
-	outKeys["encrypt.public"] = AlgoString{"CURVE25519", b85.Encode(ePublicKey[:])}
-	outKeys["encrypt.private"] = AlgoString{"CURVE25519", b85.Encode(ePrivateKey[:])}
+	outKeys["Encryption-Key.public"] = AlgoString{"CURVE25519", b85.Encode(ePublicKey[:])}
+	outKeys["Encryption-Key.private"] = AlgoString{"CURVE25519", b85.Encode(ePrivateKey[:])}
 
 	sPublicKey, sPrivateKey, err = sign.GenerateKey(rand.Reader)
 	if err != nil {
-		return &newEntry, outKeys, err
+		return outKeys, err
 	}
-	outKeys["sign.public"] = AlgoString{"ED25519", b85.Encode(sPublicKey[:])}
-	outKeys["sign.private"] = AlgoString{"ED25519", b85.Encode(sPrivateKey[:])}
+	outKeys["Primary-Verification-Key.public"] = AlgoString{"ED25519",
+		b85.Encode(sPublicKey[:])}
+	outKeys["Primary-Verification-Key.private"] = AlgoString{"ED25519",
+		b85.Encode(sPrivateKey[:])}
 
 	if rotateOptional {
 		var asPublicKey *[32]byte
 		var asPrivateKey *[64]byte
 		asPublicKey, asPrivateKey, err = sign.GenerateKey(rand.Reader)
 		if err != nil {
-			return &newEntry, outKeys, err
+			return outKeys, err
 		}
-		outKeys["altsign.public"] = AlgoString{"ED25519", b85.Encode(asPublicKey[:])}
-		outKeys["altsign.private"] = AlgoString{"ED25519", b85.Encode(asPrivateKey[:])}
-	} else {
-		var oldPrimary AlgoString
-		err = oldPrimary.Set(entry.Fields["Primary-Signing-Key"])
-		if err != nil {
-			return &newEntry, outKeys, err
-		}
-		outKeys["altsign.public"] = oldPrimary
+		outKeys["Alternate-Verification-Key.public"] = AlgoString{"ED25519",
+			b85.Encode(asPublicKey[:])}
+		outKeys["Alternate-Verification-Key.private"] = AlgoString{"ED25519",
+			b85.Encode(asPrivateKey[:])}
 	}
 
-	err = newEntry.Sign(key, "Custody")
-	if err != nil {
-		return &newEntry, outKeys, err
-	}
-
-	return &newEntry, outKeys, errors.New("unimplemented")
+	return outKeys, nil
 }
 
 // VerifyChain verifies the chain of custody between the provided previous entry and the current one.
-func (entry OrgEntry) VerifyChain(previous *EntryBase) (bool, error) {
+func (entry Entry) VerifyChain(previous *Entry) (bool, error) {
 	if previous.Type != "Organization" {
 		return false, errors.New("entry type mismatch")
 	}
@@ -632,7 +580,7 @@ func (entry OrgEntry) VerifyChain(previous *EntryBase) (bool, error) {
 		return false, errors.New("custody signature empty")
 	}
 
-	val, ok = entry.Fields["Primary-Signing-Key"]
+	val, ok = entry.Fields["Primary-Verification-Key"]
 	if !ok {
 		return false, errors.New("signing key missing in previous entry")
 	}
@@ -656,7 +604,7 @@ func (entry OrgEntry) VerifyChain(previous *EntryBase) (bool, error) {
 	}
 
 	var key AlgoString
-	err = key.Set(previous.Fields["Primary-Signing-Key"])
+	err = key.Set(previous.Fields["Primary-Verification-Key"])
 	if err != nil {
 		return false, errors.New("bad primary signing key in previous entry")
 	}
@@ -666,15 +614,9 @@ func (entry OrgEntry) VerifyChain(previous *EntryBase) (bool, error) {
 	return isValid, err
 }
 
-// UserEntry - a class to represent user keycard entries + methods to finish rounding out the
-// Entry interface
-type UserEntry struct {
-	EntryBase
-}
-
 // NewUserEntry creates a new UserEntry
-func NewUserEntry() *UserEntry {
-	self := new(UserEntry)
+func NewUserEntry() *Entry {
+	self := new(Entry)
 
 	self.Type = "User"
 	self.FieldNames.Items = []string{
@@ -683,7 +625,7 @@ func NewUserEntry() *UserEntry {
 		"Workspace-ID",
 		"User-ID",
 		"Domain",
-		"Contact-Request-Signing-Key",
+		"Contact-Request-Verification-Key",
 		"Contact-Request-Encryption-Key",
 		"Public-Encryption-Key",
 		"Alternate-Encryption-Key",
@@ -694,7 +636,7 @@ func NewUserEntry() *UserEntry {
 		"Index",
 		"Workspace-ID",
 		"Domain",
-		"Contact-Request-Signing-Key",
+		"Contact-Request-Verification-Key",
 		"Contact-Request-Encryption-Key",
 		"Public-Encryption-Key",
 		"Time-To-Live",
@@ -713,27 +655,103 @@ func NewUserEntry() *UserEntry {
 	return self
 }
 
-// Chain creates a new UserEntry object with new keys and a custody signature. It requires the
-// previous contact request signing key passed as an AlgoString. The new keys are returned in a
-// map of AlgoStrings using the following fields:
-// 		sign.public / sign.private -- primary signing keypair
-// 		crsign.public / crsign.private -- contact request signing keypair
-// 		crencrypt.public / crencrypt.private -- contact request encryption keypair
-// 		encrypt.public / encrypt.private -- general-purpose public encryption keypair
-// 		altencrypt.public / altencrypt.private -- alternate public encryption keypair
+// GenerateUserKeys generates a set of cryptographic keys for user entries, optionally including
+// non-required keys
+func GenerateUserKeys(rotateOptional bool) (map[string]AlgoString, error) {
+	var outKeys map[string]AlgoString
+	if rotateOptional {
+		outKeys = make(map[string]AlgoString, 10)
+	} else {
+		outKeys = make(map[string]AlgoString, 6)
+	}
+
+	var err error
+	var sPublicKey, crsPublicKey, crePublicKey, crePrivateKey *[32]byte
+	var sPrivateKey, crsPrivateKey *[64]byte
+
+	sPublicKey, sPrivateKey, err = sign.GenerateKey(rand.Reader)
+	if err != nil {
+		return outKeys, err
+	}
+	outKeys["Primary-Verification-Key.public"] = AlgoString{"ED25519", b85.Encode(sPublicKey[:])}
+	outKeys["Primary-Verification-Key.private"] = AlgoString{"ED25519", b85.Encode(sPrivateKey[:])}
+
+	crePublicKey, crePrivateKey, err = box.GenerateKey(rand.Reader)
+	if err != nil {
+		return outKeys, err
+	}
+	outKeys["Contact-Request-Encryption-Key.public"] = AlgoString{"CURVE25519",
+		b85.Encode(crePublicKey[:])}
+	outKeys["Contact-Request-Encryption-Key.private"] = AlgoString{"CURVE25519",
+		b85.Encode(crePrivateKey[:])}
+
+	crsPublicKey, crsPrivateKey, err = sign.GenerateKey(rand.Reader)
+	if err != nil {
+		return outKeys, err
+	}
+	outKeys["Contact-Request-Verification-Key.public"] = AlgoString{"ED25519",
+		b85.Encode(crsPublicKey[:])}
+	outKeys["Contact-Request-Verification-Key.private"] = AlgoString{"ED25519",
+		b85.Encode(crsPrivateKey[:])}
+
+	if rotateOptional {
+		var ePublicKey, ePrivateKey, altePublicKey, altePrivateKey *[32]byte
+
+		ePublicKey, ePrivateKey, err = box.GenerateKey(rand.Reader)
+		if err != nil {
+			return outKeys, err
+		}
+		outKeys["Public-Encryption-Key.public"] = AlgoString{"CURVE25519",
+			b85.Encode(ePublicKey[:])}
+		outKeys["Public-Encryption-Key.private"] = AlgoString{"CURVE25519",
+			b85.Encode(ePrivateKey[:])}
+
+		altePublicKey, altePrivateKey, err = box.GenerateKey(rand.Reader)
+		if err != nil {
+			return outKeys, err
+		}
+		outKeys["Alternate-Encryption-Key.public"] = AlgoString{"CURVE25519",
+			b85.Encode(altePublicKey[:])}
+		outKeys["Alternate-Encryption-Key.private"] = AlgoString{"CURVE25519",
+			b85.Encode(altePrivateKey[:])}
+	} else {
+		var emptyKey AlgoString
+		outKeys["Public-Encryption-Key.public"] = emptyKey
+		outKeys["Public-Encryption-Key.private"] = emptyKey
+		outKeys["Alternate-Encryption-Key.public"] = emptyKey
+		outKeys["Alternate-Encryption-Key.private"] = emptyKey
+	}
+
+	return outKeys, nil
+}
+
+// Chain creates a new Entry object with new keys and a custody signature. It requires the
+// previous contact request signing key passed as an AlgoString. The new keys are returned with the
+// string '.private' or '.public' appended to the key's field name, e.g.
+// Primary-Encryption-Key.public.
 //
-// Note that the last two keys are not required to be updated during entry rotation so that they
-// can be rotated on a different schedule from the other keys.
-func (entry UserEntry) Chain(key AlgoString, rotateOptional bool) (*UserEntry, map[string]AlgoString, error) {
-	var newEntry UserEntry
+// Note that a user's public encryption keys and an organization's alternate verification key are
+// not required to be updated during entry rotation so that they can be rotated on a different
+// schedule from the other keys.
+func (entry Entry) Chain(key AlgoString, rotateOptional bool) (*Entry, map[string]AlgoString, error) {
+	var newEntry *Entry
 	var outKeys map[string]AlgoString
 
+	switch entry.Type {
+	case "User":
+		newEntry = NewUserEntry()
+	case "Organization":
+		newEntry = NewOrgEntry()
+	default:
+		return newEntry, outKeys, errors.New("unsupported entry type")
+	}
+
 	if key.Prefix != "ED25519" {
-		return &newEntry, outKeys, errors.New("unsupported signing key type")
+		return newEntry, outKeys, errors.New("unsupported signing key type")
 	}
 
 	if !entry.IsCompliant() {
-		return &newEntry, outKeys, errors.New("entry not compliant")
+		return newEntry, outKeys, errors.New("entry not compliant")
 	}
 
 	for k, v := range entry.Fields {
@@ -742,68 +760,32 @@ func (entry UserEntry) Chain(key AlgoString, rotateOptional bool) (*UserEntry, m
 
 	index, err := strconv.ParseUint(newEntry.Fields["Index"], 10, 64)
 	if err != nil {
-		return &newEntry, outKeys, errors.New("bad entry index value")
+		return newEntry, outKeys, errors.New("bad entry index value")
 	}
 	newEntry.Fields["Index"] = fmt.Sprintf("%d", index+1)
 
-	var sPublicKey, crsPublicKey, crePublicKey, crePrivateKey *[32]byte
-	var sPrivateKey, crsPrivateKey *[64]byte
-
-	sPublicKey, sPrivateKey, err = sign.GenerateKey(rand.Reader)
+	switch entry.Type {
+	case "User":
+		outKeys, err = GenerateUserKeys(rotateOptional)
+	case "Organization":
+		outKeys, err = GenerateOrgKeys(rotateOptional)
+	}
 	if err != nil {
-		return &newEntry, outKeys, err
+		return newEntry, outKeys, err
 	}
-	outKeys["sign.public"] = AlgoString{"ED25519", b85.Encode(sPublicKey[:])}
-	outKeys["sign.private"] = AlgoString{"ED25519", b85.Encode(sPrivateKey[:])}
 
-	crePublicKey, crePrivateKey, err = box.GenerateKey(rand.Reader)
-	if err != nil {
-		return &newEntry, outKeys, err
-	}
-	outKeys["crencrypt.public"] = AlgoString{"CURVE25519", b85.Encode(crePublicKey[:])}
-	outKeys["crencrypt.private"] = AlgoString{"CURVE25519", b85.Encode(crePrivateKey[:])}
-
-	crsPublicKey, crsPrivateKey, err = sign.GenerateKey(rand.Reader)
-	if err != nil {
-		return &newEntry, outKeys, err
-	}
-	outKeys["crsign.public"] = AlgoString{"ED25519", b85.Encode(crsPublicKey[:])}
-	outKeys["crsign.private"] = AlgoString{"ED25519", b85.Encode(crsPrivateKey[:])}
-
-	if rotateOptional {
-		var ePublicKey, ePrivateKey, altePublicKey, altePrivateKey *[32]byte
-
-		ePublicKey, ePrivateKey, err = box.GenerateKey(rand.Reader)
-		if err != nil {
-			return &newEntry, outKeys, err
-		}
-		outKeys["encrypt.public"] = AlgoString{"CURVE25519", b85.Encode(ePublicKey[:])}
-		outKeys["encrypt.private"] = AlgoString{"CURVE25519", b85.Encode(ePrivateKey[:])}
-
-		altePublicKey, altePrivateKey, err = box.GenerateKey(rand.Reader)
-		if err != nil {
-			return &newEntry, outKeys, err
-		}
-		outKeys["altencrypt.public"] = AlgoString{"CURVE25519", b85.Encode(altePublicKey[:])}
-		outKeys["altencrypt.private"] = AlgoString{"CURVE25519", b85.Encode(altePrivateKey[:])}
-	} else {
-		var emptyKey AlgoString
-		outKeys["encrypt.public"] = emptyKey
-		outKeys["encrypt.private"] = emptyKey
-		outKeys["altencrypt.public"] = emptyKey
-		outKeys["altencrypt.private"] = emptyKey
-	}
+	// TODO: Assign new keys to appropriate fields in the entry
 
 	err = newEntry.Sign(key, "Custody")
 	if err != nil {
-		return &newEntry, outKeys, err
+		return newEntry, outKeys, err
 	}
 
-	return &newEntry, outKeys, nil
+	return newEntry, outKeys, nil
 }
 
-// VerifyChain verifies the chain of custody between the provided previous entry and the current one.
-func (entry UserEntry) VerifyChain(previous *UserEntry) (bool, error) {
+// VerifyUserChain verifies the chain of custody between the provided previous entry and the current one.
+func (entry Entry) VerifyUserChain(previous *Entry) (bool, error) {
 	if previous.Type != "User" {
 		return false, errors.New("entry type mismatch")
 	}
@@ -816,7 +798,7 @@ func (entry UserEntry) VerifyChain(previous *UserEntry) (bool, error) {
 		return false, errors.New("custody signature empty")
 	}
 
-	val, ok = entry.Fields["Contact-Request-Signing-Key"]
+	val, ok = entry.Fields["Contact-Request-Verification-Key"]
 	if !ok {
 		return false, errors.New("signing key missing in previous entry")
 	}
@@ -840,7 +822,7 @@ func (entry UserEntry) VerifyChain(previous *UserEntry) (bool, error) {
 	}
 
 	var key AlgoString
-	err = key.Set(previous.Fields["Contact-Request-Signing-Key"])
+	err = key.Set(previous.Fields["Contact-Request-Verification-Key"])
 	if err != nil {
 		return false, errors.New("bad signing key in previous entry")
 	}
@@ -853,7 +835,7 @@ func (entry UserEntry) VerifyChain(previous *UserEntry) (bool, error) {
 // Keycard - class which houses a list of entries into a hash-linked chain
 type Keycard struct {
 	Type    string
-	Entries []EntryBase
+	Entries []Entry
 }
 
 // Load writes the entire entry chain to one file with optional overwrite
@@ -947,22 +929,19 @@ func (card Keycard) Save(path string, clobber bool) error {
 
 // VerifyChain verifies the entire chain of entries
 func (card Keycard) VerifyChain(path string, clobber bool) (bool, error) {
-	// if len(card.Entries) < 1 {
-	// 	return false, errors.New("no entries in keycard")
-	// }
+	if len(card.Entries) < 1 {
+		return false, errors.New("no entries in keycard")
+	}
 
-	// if len(card.Entries) == 1 {
-	// 	return true, nil
-	// }
+	if len(card.Entries) == 1 {
+		return true, nil
+	}
 
-	// for i := 0; i < len(card.Entries)-1; i++ {
-	// 	verifyStatus, err := card.Entries[i].VerifyChain(card.Entries[i+1])
-	// 	if err != nil || !verifyStatus {
-	// 		return false, err
-	// 	}
-	// }
-	// return true, nil
-
-	// TODO: re-enabled code after refactoring
-	return false, errors.New("Unimplmemented")
+	for i := 0; i < len(card.Entries)-1; i++ {
+		verifyStatus, err := card.Entries[i].VerifyChain(card.Entries[i+1])
+		if err != nil || !verifyStatus {
+			return false, err
+		}
+	}
+	return true, nil
 }
