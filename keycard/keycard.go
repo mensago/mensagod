@@ -858,6 +858,7 @@ type Keycard struct {
 
 // Load writes the entire entry chain to one file with optional overwrite
 func (card Keycard) Load(path string, clobber bool) error {
+	// TODO: Implement Keycard.Load()
 	return errors.New("load unimplemented")
 }
 
@@ -899,6 +900,20 @@ func (card Keycard) Save(path string, clobber bool) error {
 }
 
 // VerifyChain verifies the entire chain of entries
-func (card Keycard) VerifyChain(path string, clobber bool) error {
-	return errors.New("verifychain unimplemented")
+func (card Keycard) VerifyChain(path string, clobber bool) (bool, error) {
+	if len(card.Entries) < 1 {
+		return false, errors.New("no entries in keycard")
+	}
+
+	if len(card.Entries) == 1 {
+		return true, nil
+	}
+
+	for i := 0; i < len(card.Entries)-1; i++ {
+		verifyStatus, err := card.Entries[i].VerifyChain(card.Entries[i+1])
+		if err != nil || !verifyStatus {
+			return false, err
+		}
+	}
+	return true, nil
 }
