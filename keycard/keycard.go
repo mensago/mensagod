@@ -145,8 +145,8 @@ type Entry interface {
 	Sign(AlgoString, string) error
 	GenerateHash(string) error
 	VerifySignature(AlgoString, string) (bool, error)
-	Chain(AlgoString, bool) (Entry, map[string]AlgoString, error)
-	VerifyChain(Entry) (bool, error)
+	Chain(AlgoString, bool) (*EntryBase, map[string]AlgoString, error)
+	VerifyChain(*EntryBase) (bool, error)
 }
 
 // EntryBase contains the common functionality for keycard entries
@@ -619,7 +619,7 @@ func (entry OrgEntry) Chain(key AlgoString, rotateOptional bool) (*OrgEntry, map
 }
 
 // VerifyChain verifies the chain of custody between the provided previous entry and the current one.
-func (entry OrgEntry) VerifyChain(previous *OrgEntry) (bool, error) {
+func (entry OrgEntry) VerifyChain(previous *EntryBase) (bool, error) {
 	if previous.Type != "Organization" {
 		return false, errors.New("entry type mismatch")
 	}
@@ -853,11 +853,57 @@ func (entry UserEntry) VerifyChain(previous *UserEntry) (bool, error) {
 // Keycard - class which houses a list of entries into a hash-linked chain
 type Keycard struct {
 	Type    string
-	Entries []Entry
+	Entries []EntryBase
 }
 
 // Load writes the entire entry chain to one file with optional overwrite
 func (card Keycard) Load(path string, clobber bool) error {
+	if len(path) < 1 {
+		return errors.New("empty path")
+	}
+
+	// fHandle, err := os.Open(path)
+	// if err != nil {
+	// 	return err
+	// }
+	// defer fHandle.Close()
+
+	// fReader := bufio.NewReader(fHandle)
+
+	// var line string
+	// line, err = fReader.ReadString('\n')
+	// if err != nil {
+	// 	return err
+	// }
+
+	// accumulator := make([]string, 0, 16)
+	// cardType := ""
+	// lineIndex := 1
+	// entryIndex := 1
+	// for line != "" {
+	// 	line = strings.TrimSpace(line)
+	// 	if line == "" {
+	// 		lineIndex++
+	// 		continue
+	// 	}
+
+	// 	switch line {
+	// 	case "----- BEGIN ENTRY -----":
+	// 		accumulator := make([]string, 0, 16)
+	// 	case "----- END ENTRY -----":
+	// 		var currentEntry Entry
+	// 		if cardType == "User" {
+	// 			currentEntry = NewUserEntry()
+	// 		}
+	// 	}
+
+	// 	line, err = fReader.ReadString('\n')
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	lineIndex++
+	// }
+
 	// TODO: Implement Keycard.Load()
 	return errors.New("load unimplemented")
 }
@@ -901,19 +947,22 @@ func (card Keycard) Save(path string, clobber bool) error {
 
 // VerifyChain verifies the entire chain of entries
 func (card Keycard) VerifyChain(path string, clobber bool) (bool, error) {
-	if len(card.Entries) < 1 {
-		return false, errors.New("no entries in keycard")
-	}
+	// if len(card.Entries) < 1 {
+	// 	return false, errors.New("no entries in keycard")
+	// }
 
-	if len(card.Entries) == 1 {
-		return true, nil
-	}
+	// if len(card.Entries) == 1 {
+	// 	return true, nil
+	// }
 
-	for i := 0; i < len(card.Entries)-1; i++ {
-		verifyStatus, err := card.Entries[i].VerifyChain(card.Entries[i+1])
-		if err != nil || !verifyStatus {
-			return false, err
-		}
-	}
-	return true, nil
+	// for i := 0; i < len(card.Entries)-1; i++ {
+	// 	verifyStatus, err := card.Entries[i].VerifyChain(card.Entries[i+1])
+	// 	if err != nil || !verifyStatus {
+	// 		return false, err
+	// 	}
+	// }
+	// return true, nil
+
+	// TODO: re-enabled code after refactoring
+	return false, errors.New("Unimplmemented")
 }
