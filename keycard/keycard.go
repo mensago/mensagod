@@ -208,7 +208,7 @@ func (entry Entry) MakeByteString(siglevel int) []byte {
 	// Capacity is all possible field names + all actual signatures + hash fields
 	lines := make([][]byte, 0, len(entry.FieldNames.Items)+len(entry.Signatures)+2)
 	if len(entry.Type) > 0 {
-		lines = append(lines, []byte(entry.Type))
+		lines = append(lines, []byte("Type:"+entry.Type))
 	}
 
 	for _, fieldName := range entry.FieldNames.Items {
@@ -242,7 +242,9 @@ func (entry Entry) MakeByteString(siglevel int) []byte {
 		}
 
 	}
-
+	for _, line := range lines {
+		fmt.Println(string(line))
+	}
 	return bytes.Join(lines, []byte("\r\n"))
 }
 

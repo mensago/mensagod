@@ -40,9 +40,37 @@ func TestSet(t *testing.T) {
 	if err != nil {
 		t.Fatal("Entry.Set() didn't work")
 	}
-	fmt.Println(entry.Signatures["Organization"])
+
 	if entry.Signatures["Organization"] != "x3)dYq@S0rd1Rfbie*J7kF{fkxQ=J=A)OoO1WGx"+
 		"97o-utWtfbwyn-$(js_n^d6uTZY7p{gd60=rPZ|;m" {
 		t.Fatal("Entry.Set() didn't handle the signature correctly")
+	}
+}
+
+func TestMakeByteString(t *testing.T) {
+	sampleString :=
+		"Name:Corbin Smith" +
+			"User-ID:csmith" +
+			"Custody-Signature:0000000000" +
+			"Organization-Signature:2222222222" +
+			"User-Signature:1111111111"
+
+	entry := keycard.NewUserEntry()
+	err := entry.Set([]byte(sampleString))
+	if err != nil {
+		t.Fatal("Entry.Set() didn't work")
+	}
+
+	actualOut := string(entry.MakeByteString(-1))
+	expectedOut := "Name:Corbin Smith\r\n" +
+		"User-ID:csmith\r\n" +
+		"Custody-Signature:0000000000\r\n" +
+		"Organization-Signature:2222222222\r\n" +
+		"User-Signature:1111111111\r\n"
+	if actualOut != expectedOut {
+		fmt.Println("Actual: " + actualOut)
+		fmt.Println("Expected: " + expectedOut)
+
+		t.Fatal("Entry.MakeByteString() didn't match expectations")
 	}
 }
