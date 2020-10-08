@@ -295,7 +295,10 @@ func (entry Entry) Set(data []byte) error {
 
 	for linenum, rawline := range lines {
 		line := strings.TrimSpace(rawline)
-		parts := strings.SplitN(line, ":", 1)
+		if len(line) < 1 {
+			continue
+		}
+		parts := strings.SplitN(line, ":", 2)
 
 		if len(parts) != 2 {
 			return fmt.Errorf("bad data near line %d", linenum)
@@ -306,11 +309,12 @@ func (entry Entry) Set(data []byte) error {
 				return fmt.Errorf("Can't use %s data on %s entries", parts[1], entry.Type)
 			}
 		} else if strings.HasSuffix(parts[0], "Signature") {
-			sigparts := strings.SplitN(parts[0], "-", 1)
-			if !entry.SignatureInfo.Contains(sigparts[0]) {
-				return fmt.Errorf("%s is not a valid signature type", sigparts[0])
+			sigNameParts := strings.SplitN(parts[0], "-", 2)
+			if !entry.SignatureInfo.Contains(sigNameParts[0]) {
+				return fmt.Errorf("%s is not a valid signature type", sigNameParts[0])
 			}
-			entry.Signatures[sigparts[0]] = sigparts[1]
+
+			entry.Signatures[sigNameParts[0]] = parts[1]
 		} else {
 			entry.Fields[parts[0]] = parts[1]
 		}
