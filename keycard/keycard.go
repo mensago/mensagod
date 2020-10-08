@@ -559,6 +559,9 @@ func (entry Entry) Chain(key AlgoString, rotateOptional bool) (*Entry, map[strin
 // NewOrgEntry creates a new OrgEntry
 func NewOrgEntry() *Entry {
 	self := new(Entry)
+	self.Fields = make(map[string]string)
+	self.Signatures = make(map[string]string)
+	self.Keys = make([]KeyInfo, 4)
 
 	self.Type = "Organization"
 	self.FieldNames.Items = []string{
@@ -603,6 +606,9 @@ func NewOrgEntry() *Entry {
 // NewUserEntry creates a new UserEntry
 func NewUserEntry() *Entry {
 	self := new(Entry)
+	self.Fields = make(map[string]string)
+	self.Signatures = make(map[string]string)
+	self.Keys = make([]KeyInfo, 4)
 
 	self.Type = "User"
 	self.FieldNames.Items = []string{
