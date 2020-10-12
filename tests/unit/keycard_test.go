@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/darkwyrm/server/keycard"
 )
@@ -75,5 +76,14 @@ func TestMakeByteString(t *testing.T) {
 		fmt.Println("Expected: " + expectedOut)
 
 		t.Fatal("Entry.MakeByteString() didn't match expectations")
+	}
+}
+
+func TestSetExpiration(t *testing.T) {
+	entry := keycard.NewUserEntry()
+	entry.SetExpiration(7)
+	expiration := time.Now().AddDate(0, 0, 7).Format("%Y%m%d")
+	if entry.Fields["Expiration"] != expiration {
+		t.Fatal("expiration calculations failed")
 	}
 }
