@@ -62,8 +62,11 @@ func TestMakeByteString(t *testing.T) {
 	}
 
 	actualOut := string(entry.MakeByteString(-1))
-	expectedOut := "Name:Corbin Smith\r\n" +
+	expectedOut := "Type:User\r\n" +
+		"Index:1\r\n" +
+		"Name:Corbin Smith\r\n" +
 		"User-ID:csmith\r\n" +
+		"Time-To-Live:30\r\n" +
 		"Custody-Signature:0000000000\r\n" +
 		"Organization-Signature:2222222222\r\n" +
 		"User-Signature:1111111111\r\n"
