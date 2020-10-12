@@ -2,7 +2,6 @@ package keycard
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"errors"
@@ -206,14 +205,15 @@ func (entry Entry) GetSignature(sigtype string) (string, error) {
 func (entry Entry) MakeByteString(siglevel int) []byte {
 
 	// Capacity is all possible field names + all actual signatures + hash fields
-	lines := make([][]byte, 0, len(entry.FieldNames.Items)+len(entry.Signatures)+2)
+	// lines := gostringlist.New()
+	var lines gostringlist.StringList
 	if len(entry.Type) > 0 {
-		lines = append(lines, []byte("Type:"+entry.Type))
+		lines.Append("Type:" + entry.Type)
 	}
 
 	for _, fieldName := range entry.FieldNames.Items {
 		if len(entry.Fields[fieldName]) > 0 {
-			lines = append(lines, []byte(fieldName+":"+entry.Fields[fieldName]))
+			lines.Append(fieldName + ":" + entry.Fields[fieldName])
 		}
 	}
 
@@ -224,10 +224,10 @@ func (entry Entry) MakeByteString(siglevel int) []byte {
 	for i := 0; i < siglevel; i++ {
 		if entry.SignatureInfo.Items[i].Type == SigInfoHash {
 			if len(entry.PrevHash) > 0 {
-				lines = append(lines, []byte("Previous-Hash:"+entry.PrevHash))
+				lines.Append("Previous-Hash:" + entry.PrevHash)
 			}
 			if len(entry.Hash) > 0 {
-				lines = append(lines, []byte("Hash:"+entry.Hash))
+				lines.Append("Hash:" + entry.Hash)
 			}
 			continue
 		}
@@ -238,14 +238,13 @@ func (entry Entry) MakeByteString(siglevel int) []byte {
 
 		val, ok := entry.Signatures[entry.SignatureInfo.Items[i].Name]
 		if ok && len(val) > 0 {
-			lines = append(lines, []byte(entry.SignatureInfo.Items[i].Name+"-Signature:"+val))
+			lines.Append(entry.SignatureInfo.Items[i].Name + "-Signature:" + val)
 		}
 
 	}
-	for _, line := range lines {
-		fmt.Println(string(line))
-	}
-	return bytes.Join(lines, []byte("\r\n"))
+	lines.Append("")
+	fmt.Print(lines.ToString())
+	return []byte(lines.Join("\r\n"))
 }
 
 // Save saves the entry to disk
