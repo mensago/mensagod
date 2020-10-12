@@ -243,7 +243,6 @@ func (entry Entry) MakeByteString(siglevel int) []byte {
 
 	}
 	lines.Append("")
-	fmt.Print(lines.ToString())
 	return []byte(lines.Join("\r\n"))
 }
 
