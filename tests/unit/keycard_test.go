@@ -49,11 +49,11 @@ func TestSet(t *testing.T) {
 
 func TestMakeByteString(t *testing.T) {
 	sampleString :=
-		"Name:Corbin Smith" +
-			"User-ID:csmith" +
-			"Custody-Signature:0000000000" +
-			"Organization-Signature:2222222222" +
-			"User-Signature:1111111111"
+		"Name:Corbin Smith\r\n" +
+			"User-ID:csmith\r\n" +
+			"Custody-Signature:0000000000\r\n" +
+			"Organization-Signature:2222222222\r\n" +
+			"User-Signature:1111111111\r\n"
 
 	entry := keycard.NewUserEntry()
 	err := entry.Set([]byte(sampleString))
