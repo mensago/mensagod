@@ -32,7 +32,7 @@ type AlgoString struct {
 }
 
 // Set assigns an AlgoString-formatted string to the object
-func (as AlgoString) Set(data string) error {
+func (as *AlgoString) Set(data string) error {
 	if len(data) < 1 {
 		as.Prefix = ""
 		as.Data = ""
@@ -50,7 +50,7 @@ func (as AlgoString) Set(data string) error {
 }
 
 // SetBytes initializes the AlgoString from an array of bytes
-func (as AlgoString) SetBytes(data []byte) error {
+func (as *AlgoString) SetBytes(data []byte) error {
 	return as.Set(string(data))
 }
 
@@ -75,7 +75,7 @@ func (as AlgoString) RawData() ([]byte, error) {
 }
 
 // MakeEmpty clears the AlgoString's internal data
-func (as AlgoString) MakeEmpty() {
+func (as *AlgoString) MakeEmpty() {
 	as.Prefix = ""
 	as.Data = ""
 }
@@ -262,7 +262,7 @@ func (entry Entry) Save(path string, clobber bool) error {
 }
 
 // SetField sets an entry field to the specified value.
-func (entry Entry) SetField(fieldName string, fieldValue string) error {
+func (entry *Entry) SetField(fieldName string, fieldValue string) error {
 	if len(fieldName) < 1 {
 		return errors.New("empty field name")
 	}
@@ -274,7 +274,7 @@ func (entry Entry) SetField(fieldName string, fieldValue string) error {
 }
 
 // SetFields sets multiple entry fields
-func (entry Entry) SetFields(fields map[string]string) {
+func (entry *Entry) SetFields(fields map[string]string) {
 	// Any kind of editing invalidates the signatures and hashes. Unlike SetField, we clear the
 	// signature fields first because it's possible to set everything in the entry with this
 	// method, so the signatures can be valid after the call finishes if they are set by the
@@ -287,7 +287,7 @@ func (entry Entry) SetFields(fields map[string]string) {
 }
 
 // Set initializes the entry from a bytestring
-func (entry Entry) Set(data []byte) error {
+func (entry *Entry) Set(data []byte) error {
 	if len(data) < 1 {
 		return errors.New("empty byte field")
 	}
@@ -326,7 +326,7 @@ func (entry Entry) Set(data []byte) error {
 
 // SetExpiration enables custom expiration dates, the standard being 90 days for user entries and
 // 1 year for organizations.
-func (entry Entry) SetExpiration(numdays int16) error {
+func (entry *Entry) SetExpiration(numdays int16) error {
 	if numdays < 0 {
 		if entry.Type == "Organization" {
 			numdays = 365
@@ -352,7 +352,7 @@ func (entry Entry) SetExpiration(numdays int16) error {
 // Adding a particular signature causes those that must follow it to be cleared. The Entry's
 // cryptographic hash counts as a signature in this matter. Thus, if an Organization signature is
 // added to the entry, the instance's hash and User signatures are both cleared.
-func (entry Entry) Sign(signingKey AlgoString, sigtype string) error {
+func (entry *Entry) Sign(signingKey AlgoString, sigtype string) error {
 	if !signingKey.IsValid() {
 		return errors.New("bad signing key")
 	}
@@ -397,7 +397,7 @@ func (entry Entry) Sign(signingKey AlgoString, sigtype string) error {
 
 // GenerateHash generates a hash containing the expected signatures and the previous hash, if it
 // exists. The supported hash algorithms are 'BLAKE3-256', 'BLAKE2', 'SHA-256', and 'SHA3-256'.
-func (entry Entry) GenerateHash(algorithm string) error {
+func (entry *Entry) GenerateHash(algorithm string) error {
 	validAlgorithm := false
 	switch algorithm {
 	case
@@ -503,7 +503,7 @@ func (entry Entry) VerifySignature(verifyKey AlgoString, sigtype string) (bool, 
 // Note that a user's public encryption keys and an organization's alternate verification key are
 // not required to be updated during entry rotation so that they can be rotated on a different
 // schedule from the other keys.
-func (entry Entry) Chain(key AlgoString, rotateOptional bool) (*Entry, map[string]AlgoString, error) {
+func (entry *Entry) Chain(key AlgoString, rotateOptional bool) (*Entry, map[string]AlgoString, error) {
 	var newEntry *Entry
 	var outKeys map[string]AlgoString
 
@@ -839,7 +839,7 @@ type Keycard struct {
 }
 
 // Load writes the entire entry chain to one file with optional overwrite
-func (card Keycard) Load(path string, clobber bool) error {
+func (card *Keycard) Load(path string, clobber bool) error {
 	if len(path) < 1 {
 		return errors.New("empty path")
 	}
