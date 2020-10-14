@@ -39,7 +39,7 @@ func (as *AlgoString) Set(data string) error {
 		return nil
 	}
 
-	parts := strings.SplitN(data, ":", 1)
+	parts := strings.SplitN(data, ":", 2)
 	if len(parts) != 2 {
 		return errors.New("bad string format")
 	}
