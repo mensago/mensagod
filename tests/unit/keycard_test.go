@@ -87,3 +87,43 @@ func TestSetExpiration(t *testing.T) {
 		t.Fatal("expiration calculations failed")
 	}
 }
+
+func TestSign(t *testing.T) {
+	entry := keycard.NewUserEntry()
+	entry.SetFields(map[string]string{
+		"Name":                             "Corbin Simons",
+		"Workspace-ID":                     "4418bf6c-000b-4bb3-8111-316e72030468",
+		"Domain":                           "example.com",
+		"Contact-Request-Verification-Key": "ED25519:7dfD==!Jmt4cDtQDBxYa7(dV|N$}8mYwe$=RZuW|",
+		"Contact-Request-Encryption-Key":   "CURVE25519:yBZ0{1fE9{2<b~#i^R+JT-yh-y5M(Wyw_)}_SZOn",
+		"Public-Encryption-Key":            "CURVE25519:_`UC|vltn_%P5}~vwV^)oY){#uvQSSy(dOD_l(yE",
+		"Expires":                          "20201002",
+
+		// These junk signatures will end up being cleared when sign("Organization") is called
+		"Organization-Signature": "1111111111",
+		"User-Signature":         "2222222222"})
+
+	var signingKey keycard.AlgoString
+	err := signingKey.Set("ED25519:p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+")
+	if err != nil {
+		t.Fatalf("TestSign: signing key decoding failure: %s\n", err)
+	}
+
+	err = entry.Sign(signingKey, "Organization")
+	if err != nil {
+		t.Fatalf("TestSign: signing failure: %s\n", err)
+	}
+
+	err = entry.GenerateHash("BLAKE3-256")
+	t.Errorf("TestSign: hash:  %s\n", entry.Hash)
+	if err != nil {
+		t.Fatalf("TestSign: hashing failure: %s\n", err)
+	}
+
+	expectedSig := "ED25519:N~nZ1#wE%i`sO?wZ%b4;zrEk4D-rd{!oY=C26w0GepfvnArTHlw*HeIZB|oHZke`T*eGbw>GvYD8YQR)"
+	if entry.Signatures["Organization"] != expectedSig {
+		t.Errorf("TestSign: expected signature:  %s\n", expectedSig)
+		t.Errorf("TestSign: actual signature:  %s\n", entry.Signatures["Organization"])
+		t.Fatal("TestSign: entry did not yield the expected signature\n")
+	}
+}
