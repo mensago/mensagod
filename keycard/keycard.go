@@ -2,6 +2,7 @@ package keycard
 
 import (
 	"bufio"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
 	"errors"
@@ -384,16 +385,11 @@ func (entry *Entry) Sign(signingKey AlgoString, sigtype string) error {
 		return err
 	}
 
-	var signkeyArray [64]byte
-	signKeyAdapter := signkeyArray[0:64]
-	copy(signKeyAdapter, signkeyDecoded)
-
-	cardString := entry.MakeByteString(sigtypeIndex + 1)
-
-	// The Go implementation returns the signature appended to the original message. All we need
-	// is the signature itself. Le sigh.
-	signedMessage := sign.Sign(nil, cardString, &signkeyArray)
-	signature := signedMessage[len(cardString):]
+	// We bypass the nacl/sign module because it requires a 64-bit private key. We, however, pass
+	// around the 32-bit ed25519 seeds used to generate the keys. Thus, we have to skip using
+	// nacl.Sign() and go directly to the equivalent code in the ed25519 module.z
+	signKeyPriv := ed25519.NewKeyFromSeed(signkeyDecoded)
+	signature := ed25519.Sign(signKeyPriv, entry.MakeByteString(sigtypeIndex+1))
 	entry.Signatures[sigtype] = "ED25519:" + b85.Encode(signature)
 
 	return nil
