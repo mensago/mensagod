@@ -119,7 +119,7 @@ func TestSign(t *testing.T) {
 		t.Fatalf("TestSign: hashing failure: %s\n", err)
 	}
 
-	expectedSig := "ED25519:N~nZ1#wE%i`sO?wZ%b4;zrEk4D-rd{!oY=C26w0GepfvnArTHlw*HeIZB|oHZke`T*eGbw>GvYD8YQR)"
+	expectedSig := "ED25519:7HkLW3-_%#`F{n&Mv%p1GZ?nerY^*S_bUVdt}EH;1J3@&ADgxLdg1t{IdXp#-t1qW1?cW;u<8Yi9KnMN"
 	if entry.Signatures["Organization"] != expectedSig {
 		t.Errorf("TestSign: expected signature:  %s\n", expectedSig)
 		t.Errorf("TestSign: actual signature:  %s\n", entry.Signatures["Organization"])
