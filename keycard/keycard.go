@@ -425,8 +425,7 @@ func (entry *Entry) GenerateHash(algorithm string) error {
 
 	switch algorithm {
 	case "BLAKE3-256":
-		hasher := blake3.New()
-		sum := hasher.Sum(entry.MakeByteString(hashLevel))
+		sum := blake3.Sum256(entry.MakeByteString(hashLevel))
 		entry.Hash = algorithm + b85.Encode(sum[:])
 	case "BLAKE2":
 		sum := blake2b.Sum256(entry.MakeByteString(hashLevel))

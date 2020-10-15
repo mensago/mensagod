@@ -115,7 +115,6 @@ func TestSign(t *testing.T) {
 	}
 
 	err = entry.GenerateHash("BLAKE3-256")
-	t.Errorf("TestSign: hash:  %s\n", entry.Hash)
 	if err != nil {
 		t.Fatalf("TestSign: hashing failure: %s\n", err)
 	}
