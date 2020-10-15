@@ -388,7 +388,12 @@ func (entry *Entry) Sign(signingKey AlgoString, sigtype string) error {
 	signKeyAdapter := signkeyArray[0:64]
 	copy(signKeyAdapter, signkeyDecoded)
 
-	signature := sign.Sign(nil, entry.MakeByteString(sigtypeIndex+1), &signkeyArray)
+	cardString := entry.MakeByteString(sigtypeIndex + 1)
+
+	// The Go implementation returns the signature appended to the original message. All we need
+	// is the signature itself. Le sigh.
+	signedMessage := sign.Sign(nil, cardString, &signkeyArray)
+	signature := signedMessage[len(cardString):]
 	entry.Signatures[sigtype] = "ED25519:" + b85.Encode(signature)
 
 	return nil
