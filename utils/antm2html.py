@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+# AntmConv - a conversion utility for the AnTM markup language, https://anselus.org/spec/antm/
+
+# Released under the terms of the GPLv3 license
+# ©2019-2020 Jon Yoder <jsyoder@mailfence.com>
+
 import re
 import sys
 
