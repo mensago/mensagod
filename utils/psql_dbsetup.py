@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+# psql_dbsetup - a script to set up an empty Anselus database. NOTE: it will reset existing 
+# 	databases back to empty, so do not run this if you have valuable data in the database
+
+# Released under the terms of the GPLv3 license
+# ©2019-2020 Jon Yoder <jsyoder@mailfence.com>
+
 import os.path
 import sys
 

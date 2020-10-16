@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 
+# psql_testdata - Reset Anselus database and populate with randomly-generated test data. Output 
+#	of this command is the necessary data to interact with the created accounts, such as passwords 
+#	and encryption keys.
+#	General usage looks like this: python3 psql_testdata > '~/Desktop/Anselus Test Data.txt'
+
+# Released under the terms of the GPLv3 license
+# ©2019-2020 Jon Yoder <jsyoder@mailfence.com>
+
 import argparse
 import base64
 import os.path

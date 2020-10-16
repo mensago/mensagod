@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+# genkeypair - a quick-and-dirty utility to create ed25519 signing key pairs and curve25519
+# 	encryption key pairs
+
+# Released under the terms of the GPLv3 license
+# ©2019-2020 Jon Yoder <jsyoder@mailfence.com>
+
 import base64
 from os import path
 import sys
