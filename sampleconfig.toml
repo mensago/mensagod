@@ -1,12 +1,12 @@
-# This is a sample Anselus server config file. Each value listed below is the default value.
+# This is a sample Ansid config file. Each value listed below is the default value.
 # Every effort has been made to set this file to sensible defaults so that configuration is
-# kept to a minimum. This file is expected to be found in /etc/anselusd/serverconfig.toml 
-# or in the same directory as the executable, also named serverconfig.toml in that location.
+# kept to a minimum. This file is expected to be found in /etc/anselusd/ansid.toml 
+# or in the same directory as the executable, also named ansid.toml in that location.
 
 [database]
 # The database section, in theory, should be the only real editing for this file.
 #
-# Currently only PostgresQL is supported, but the 'engine' parameter exists for future expansion.
+# Currently only PostgreSQL is supported, but the 'engine' parameter exists for future expansion.
 # engine = "postgresql"
 # ip = "127.0.0.1"
 # port = "5432"
