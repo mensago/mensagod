@@ -17,15 +17,15 @@ The Anselus platform is a very young, very ambitious project that needs help in 
 1. Create a task-specific user and group (default:anselus/anselus)
 2. Create the workspace, configuration, and log file directories and grant read/write/execute permissions to the new user
 	- Windows
-		- Log/Config: C:\ProgramData\anselus-server
+		- Log/Config: C:\ProgramData\anselusd
 		- Workspace: C:\ProgramData\anselus
 	- POSIX
 		- Log: /var/log/anselus
-		- Config: /etc/anselus-server
+		- Config: /etc/anselusd
 		- Workspace: /var/anselus
-3. Set permissions on /etc/anselus-server to root/anselus 660 or C:\ProgramData\anselus-server to Full Control for Administrators and the Anselus user only. 
+3. Set permissions on /etc/anselusd to root/anselus 660 or C:\ProgramData\anselusd to Full Control for Administrators and the Anselus user only. 
 4. Create PostgreSQL database and grant all permissions to anselus user (default:anselus)
-5. Copy sampleconfig.toml to /etc/anselus-server/serverconfig.toml
+5. Copy sampleconfig.toml to /etc/anselusd/serverconfig.toml
 6. Edit serverconfig.toml
 	- Set the database username and password at minimum
 	- If your Postgres setup is non-standard (not localhost:5432, database name/user anselus/anselus), make the necessary adjustments to your database config

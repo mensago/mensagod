@@ -76,7 +76,7 @@ def db_setup(serverconfig: dict, schema_path: str):
 
 def setup_test():
 	'''Resets the Postgres test database to be ready for an integration test'''
-	config = load_db_config('/etc/anselus-server/serverconfig.toml')
+	config = load_db_config('/etc/anselusd/serverconfig.toml')
 
 	schema_path = os.path.abspath(__file__ + '/../')
 	schema_path = os.path.join(schema_path, 'psql_schema.sql')

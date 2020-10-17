@@ -1,6 +1,6 @@
 # This is a sample Anselus server config file. Each value listed below is the default value.
 # Every effort has been made to set this file to sensible defaults so that configuration is
-# kept to a minimum. This file is expected to be found in /etc/anselus-server/serverconfig.toml 
+# kept to a minimum. This file is expected to be found in /etc/anselusd/serverconfig.toml 
 # or in the same directory as the executable, also named serverconfig.toml in that location.
 
 [database]

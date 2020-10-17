@@ -95,14 +95,14 @@ func setupConfig() *os.File {
 		}
 
 		viper.SetDefault("global.workspace_dir", filepath.Join(programData, "anselus"))
-		viper.Set("global.log_dir", filepath.Join(programData, "anselus-server"))
+		viper.Set("global.log_dir", filepath.Join(programData, "anselusd"))
 		viper.SetConfigName("serverconfig")
-		viper.AddConfigPath(filepath.Join(programData, "anselus-server"))
+		viper.AddConfigPath(filepath.Join(programData, "anselusd"))
 	default:
 		viper.SetDefault("global.workspace_dir", "/var/anselus/")
-		viper.Set("global.log_dir", "/var/log/anselus-server/")
+		viper.Set("global.log_dir", "/var/log/anselusd/")
 		viper.SetConfigName("serverconfig")
-		viper.AddConfigPath("/etc/anselus-server/")
+		viper.AddConfigPath("/etc/anselusd/")
 	}
 
 	// Account registration modes
@@ -148,7 +148,7 @@ func setupConfig() *os.File {
 		os.Exit(1)
 	}
 
-	logLocation := filepath.Join(viper.GetString("global.log_dir"), "anselus-server.log")
+	logLocation := filepath.Join(viper.GetString("global.log_dir"), "anselusd.log")
 	if _, err := os.Stat(viper.GetString("global.log_dir")); os.IsNotExist(err) {
 		err = os.Mkdir(viper.GetString("global.log_dir"), 0600)
 		if err != nil {
@@ -163,7 +163,7 @@ func setupConfig() *os.File {
 		os.Exit(1)
 	}
 	defer logHandle.Close()
-	ServerLog = log.New(logHandle, "anselus-server:", log.LstdFlags)
+	ServerLog = log.New(logHandle, "anselusd:", log.LstdFlags)
 
 	_, err = os.Stat(viper.GetString("global.workspace_dir"))
 	if os.IsNotExist(err) {

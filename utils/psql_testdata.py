@@ -259,7 +259,7 @@ def dump_account(account):
 
 # Step 1: load the config
 
-config_file_path = '/etc/anselus-server/serverconfig.toml'
+config_file_path = '/etc/anselusd/serverconfig.toml'
 
 if os.path.exists(config_file_path):
 	try:
