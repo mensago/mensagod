@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 
+import base64
+import hashlib
 import sys
+
+import blake3
 
 # Hasher85.py: utility to generate base85-encoded hash signatures
 # Usage: hasher85.py <algorithm> <filename>
@@ -17,11 +21,36 @@ supported_algorithms = [
 def hash_blake3_256(data: bytes):
 	'''Returns a 256-bit BLAKE3 hash as a string'''
 
-	# TODO: Implement
-	return ""
+	hasher = blake3.blake3() # pylint: disable=c-extension-no-member
+	hasher.update(data)
+	return "BLAKE3-256:" + base64.b85encode(hasher.digest(length=256)).decode()
+
+def hash_blake2_256(data: bytes):
+	'''Returns a 256-bit BLAKE2 hash as a string'''
+
+	hasher = hasher = hashlib.blake2b()
+	hasher.update(data)
+	return "BLAKE2-256:" + base64.b85encode(hasher.digest()).decode()
+
+def hash_sha256(data: bytes):
+	'''Returns a SHA2-256 hash as a string'''
+
+	hasher = hasher = hashlib.sha256()
+	hasher.update(data)
+	return "SHA256:" + base64.b85encode(hasher.digest()).decode()
+
+def hash_sha3_256(data: bytes):
+	'''Returns a SHA3-256 hash as a string'''
+
+	hasher = hasher = hashlib.sha3_256()
+	hasher.update(data)
+	return "SHA3-256:" + base64.b85encode(hasher.digest()).decode()
 
 hash_functions = {
-	"blake3-256" : hash_blake3_256
+	"blake3-256" : hash_blake3_256,
+	"blake2-256" : hash_blake2_256,
+	'sha256' : hash_sha256,
+	'sha3-256': hash_sha3_256
 }
 
 def PrintUsage():
@@ -44,7 +73,7 @@ def HashFile(path: str, algorithm: str):
 		return
 	
 	file_hash = hash_functions[algorithm](file_data)
-	print(f"{path}:\t{file_hash}")
+	print(f"{path}\t{file_hash}")
 	
 
 if __name__ == '__main__':
