@@ -178,10 +178,7 @@ func TestVerify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TestVerify: hashing failure: %s\n", err)
 	}
-	expectedHash := "BLAKE3-256:d0;tNM(8Q1dRN|}7`g8dH#fxYK(WHKiFX`bcHLkUG3+BMFmNht6Qg9yQ*;VAE!Qd" +
-		"CgM%D>bTXG$8qm`7!z2_Y;R=ox&{Z57ryXRf<Br+Dw$^D^@4+I$mpHhTu6>o2-xd$s<dT71)v`QDj6J1s?MbLQm" +
-		"N}&HHxVWHsOjNC;x1W<_gmHQDJk-!(%{MdC(!j0=<P+(HtavCqQ{LiQRNK*Op9n^U~HntVN>#BeKrgt<O6Ui+f`" +
-		"d$_~eUW*E}&wYcW#ERZ(E}geS}XngGZ!-L!uvmRuLE|8ds{0L9r1<x$Y3UJsQQDHo{}L2Ji~VfebS_Uv?p"
+	expectedHash := "BLAKE3-256:Sf-8tomh6p&nD?5>}Y}Il@&7@`N%CZLt<QVhBJ#O"
 
 	if entry.Hash != expectedHash {
 		t.Errorf("TestVerify: expected hash:  %s\n", expectedHash)
@@ -195,7 +192,7 @@ func TestVerify(t *testing.T) {
 		t.Fatalf("TestVerify: user signing failure: %s\n", err)
 	}
 
-	expectedSig = "ED25519:n23~;I*EX`aX00YRu}Q}J=;4~0{Bt@WtE--Ve>zT!gf5E(+IH8Crv~TRRZZ$wFuTOw+Hj-7+`HcVozfR"
+	expectedSig = "ED25519:stdU*<>f~?m(LhhS1z#sY!s-N`$-evY@j)@KP)=A>X0Vd{*$IH*SWyB$zH;Wk_eC%DA3%f31fQ;?Xrvw"
 	if entry.Signatures["User"] != expectedSig {
 		t.Errorf("TestVerify: expected signature:  %s\n", expectedSig)
 		t.Errorf("TestVerify: actual signature:  %s\n", entry.Signatures["Organization"])
