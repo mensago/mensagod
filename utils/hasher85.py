@@ -39,6 +39,13 @@ def hash_sha256(data: bytes):
 	hasher.update(data)
 	return "SHA256:" + base64.b85encode(hasher.digest()).decode()
 
+def hash_sha512(data: bytes):
+	'''Returns a SHA2-512 hash as a string'''
+
+	hasher = hasher = hashlib.sha512()
+	hasher.update(data)
+	return "SHA512:" + base64.b85encode(hasher.digest()).decode()
+
 def hash_sha3_256(data: bytes):
 	'''Returns a SHA3-256 hash as a string'''
 
@@ -46,11 +53,20 @@ def hash_sha3_256(data: bytes):
 	hasher.update(data)
 	return "SHA3-256:" + base64.b85encode(hasher.digest()).decode()
 
+def hash_sha3_512(data: bytes):
+	'''Returns a SHA3-512 hash as a string'''
+
+	hasher = hasher = hashlib.sha3_512()
+	hasher.update(data)
+	return "SHA3-512:" + base64.b85encode(hasher.digest()).decode()
+
 hash_functions = {
 	"blake3-256" : hash_blake3_256,
 	"blake2-256" : hash_blake2_256,
 	'sha256' : hash_sha256,
-	'sha3-256': hash_sha3_256
+	'sha512' : hash_sha512,
+	'sha3-256': hash_sha3_256,
+	'sha3-512': hash_sha3_512
 }
 
 def PrintUsage():
