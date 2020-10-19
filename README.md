@@ -1,4 +1,4 @@
-# Ansid: Anselus Identity Service Daemon
+# Ansid: Anselus Identity Daemon
 
 Ansid provides identity services for the Anselus communications platform and is released under the GPLv3 license. 
 
