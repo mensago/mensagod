@@ -1,0 +1,9 @@
+Type:Organization
+Index:1
+Name:Acme, Inc.
+Contact-Admin:admin/acme.com
+Language:en
+Primary-Verification-Key:ED25519:&JEq)5Ktu@jfM+Sa@+1GU6E&Ct2*<2ZYXh#l0FxP
+Encryption-Key:CURVE25519:^fI7bdC(IEwC#(nG8Em-;nx98TcH<TnfvajjjDV@
+Time-To-Live:14
+Expires:20201002
