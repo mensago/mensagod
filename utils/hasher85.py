@@ -23,7 +23,7 @@ def hash_blake3_256(data: bytes):
 
 	hasher = blake3.blake3() # pylint: disable=c-extension-no-member
 	hasher.update(data)
-	return "BLAKE3-256:" + base64.b85encode(hasher.digest(length=256)).decode()
+	return "BLAKE3-256:" + base64.b85encode(hasher.digest()).decode()
 
 def hash_blake2_256(data: bytes):
 	'''Returns a 256-bit BLAKE2 hash as a string'''
