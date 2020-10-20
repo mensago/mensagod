@@ -29,12 +29,13 @@ func TestSet(t *testing.T) {
 	sampleString := "Name:Acme, Inc.\r\n" +
 		"Contact-Admin:admin/acme.com\r\n" +
 		"Language:en\r\n" +
-		"Primary-Verification-Key:ED25519:&JEq)5Ktu@jfM+Sa@+1GU6E&Ct2*<2ZYXh#l0FxP\r\n" +
-		"Encryption-Key:CURVE25519:^fI7bdC(IEwC#(nG8Em-;nx98TcH<TnfvajjjDV@\r\n" +
+		"Primary-Verification-Key:ED25519:)8id(gE02^S<{3H>9B;X4{DuYcb`%wo^mC&1lN88\r\n" +
+		"Encryption-Key:CURVE25519:@b?cjpeY;<&y+LSOA&yUQ&ZIrp(JGt{W$*V>ATLG\r\n" +
 		"Time-To-Live:14\r\n" +
-		"Expires:730\r\n" +
-		"Organization-Signature:x3)dYq@S0rd1Rfbie*J7kF{fkxQ=J=A)OoO1WGx97o-utWtfbwyn-$(js" +
-		"_n^d6uTZY7p{gd60=rPZ|;m\r\n"
+		"Expires:20201002\r\n" +
+		"Hash:BLAKE3-256:^zPiV;CKvLd2(uwpIzmyMotYFsKM=cgbL=nSI2LN\r\n" +
+		"Organization-Signature:ED25519:6lXjej0C~!F&_`qnkPHrC`z8+>;#g*fNfjV@4ngGlp#xsr8}1rS2(NG" +
+		")@ANTe`~05d)3*<q%pX`Oj0-t\r\n"
 
 	entry := keycard.NewOrgEntry()
 	err := entry.Set([]byte(sampleString))
@@ -42,8 +43,8 @@ func TestSet(t *testing.T) {
 		t.Fatal("Entry.Set() didn't work")
 	}
 
-	if entry.Signatures["Organization"] != "x3)dYq@S0rd1Rfbie*J7kF{fkxQ=J=A)OoO1WGx"+
-		"97o-utWtfbwyn-$(js_n^d6uTZY7p{gd60=rPZ|;m" {
+	if entry.Signatures["Organization"] != "ED25519:6lXjej0C~!F&_`qnkPHrC`z8+>;#g*fNfjV@4ng"+
+		"Glp#xsr8}1rS2(NG)@ANTe`~05d)3*<q%pX`Oj0-t" {
 		t.Fatal("Entry.Set() didn't handle the signature correctly")
 	}
 }
