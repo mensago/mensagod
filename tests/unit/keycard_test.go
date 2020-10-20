@@ -95,9 +95,10 @@ func TestSign(t *testing.T) {
 		"Name":                             "Corbin Simons",
 		"Workspace-ID":                     "4418bf6c-000b-4bb3-8111-316e72030468",
 		"Domain":                           "example.com",
-		"Contact-Request-Verification-Key": "ED25519:7dfD==!Jmt4cDtQDBxYa7(dV|N$}8mYwe$=RZuW|",
-		"Contact-Request-Encryption-Key":   "CURVE25519:yBZ0{1fE9{2<b~#i^R+JT-yh-y5M(Wyw_)}_SZOn",
-		"Public-Encryption-Key":            "CURVE25519:_`UC|vltn_%P5}~vwV^)oY){#uvQSSy(dOD_l(yE",
+		"Contact-Request-Verification-Key": "ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D",
+		"Contact-Request-Encryption-Key":   "CURVE25519:j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph",
+		"Public-Encryption-Key":            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
+		"Time-To-Live":                     "30",
 		"Expires":                          "20201002",
 
 		// These junk signatures will end up being cleared when sign("Organization") is called
@@ -105,7 +106,7 @@ func TestSign(t *testing.T) {
 		"User-Signature":         "2222222222"})
 
 	var signingKey keycard.AlgoString
-	err := signingKey.Set("ED25519:p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+")
+	err := signingKey.Set("ED25519:msvXw(nII<Qm6oBHc+92xwRI3>VFF-RcZ=7DEu3|")
 	if err != nil {
 		t.Fatalf("TestSign: signing key decoding failure: %s\n", err)
 	}
@@ -115,16 +116,16 @@ func TestSign(t *testing.T) {
 		t.Fatalf("TestSign: signing failure: %s\n", err)
 	}
 
-	err = entry.GenerateHash("BLAKE3-256")
-	if err != nil {
-		t.Fatalf("TestSign: hashing failure: %s\n", err)
-	}
-
-	expectedSig := "ED25519:7HkLW3-_%#`F{n&Mv%p1GZ?nerY^*S_bUVdt}EH;1J3@&ADgxLdg1t{IdXp#-t1qW1?cW;u<8Yi9KnMN"
+	expectedSig := "ED25519:j64>fQV`D#Por}_!QP;4JG-WM+@t}vA5NmNezjP{UiIweJNpw}LqHLumc_2l<p@;wH8&1{Ei@H|VdS|1"
 	if entry.Signatures["Organization"] != expectedSig {
 		t.Errorf("TestSign: expected signature:  %s\n", expectedSig)
 		t.Errorf("TestSign: actual signature:  %s\n", entry.Signatures["Organization"])
 		t.Fatal("TestSign: entry did not yield the expected signature\n")
+	}
+
+	err = entry.GenerateHash("BLAKE2-256")
+	if err != nil {
+		t.Fatalf("TestSign: hashing failure: %s\n", err)
 	}
 }
 
@@ -175,7 +176,6 @@ func TestVerify(t *testing.T) {
 	}
 
 	// Set up the hashes
-	entry.PrevHash = "1234567890"
 	err = entry.GenerateHash("BLAKE2-256")
 	if err != nil {
 		t.Fatalf("TestVerify: hashing failure: %s\n", err)
@@ -194,7 +194,7 @@ func TestVerify(t *testing.T) {
 		t.Fatalf("TestVerify: user signing failure: %s\n", err)
 	}
 
-	expectedSig = "ED25519:stdU*<>f~?m(LhhS1z#sY!s-N`$-evY@j)@KP)=A>X0Vd{*$IH*SWyB$zH;Wk_eC%DA3%f31fQ;?Xrvw"
+	expectedSig = "ED25519:n`4a1vEIQ%HhdJzUc%{{i%Leu%5XZxx1pgO%`w8)dkQT~UWJcHe5Q+L!CLP*{+d3OOSw5ogu*Qa5bWs&"
 	if entry.Signatures["User"] != expectedSig {
 		t.Errorf("TestVerify: expected signature:  %s\n", expectedSig)
 		t.Errorf("TestVerify: actual signature:  %s\n", entry.Signatures["Organization"])
