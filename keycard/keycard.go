@@ -387,7 +387,7 @@ func (entry *Entry) Sign(signingKey AlgoString, sigtype string) error {
 
 	// We bypass the nacl/sign module because it requires a 64-bit private key. We, however, pass
 	// around the 32-bit ed25519 seeds used to generate the keys. Thus, we have to skip using
-	// nacl.Sign() and go directly to the equivalent code in the ed25519 module.z
+	// nacl.Sign() and go directly to the equivalent code in the ed25519 module.
 	signKeyPriv := ed25519.NewKeyFromSeed(signkeyDecoded)
 	signature := ed25519.Sign(signKeyPriv, entry.MakeByteString(sigtypeIndex+1))
 	entry.Signatures[sigtype] = "ED25519:" + b85.Encode(signature)
@@ -402,7 +402,7 @@ func (entry *Entry) GenerateHash(algorithm string) error {
 	switch algorithm {
 	case
 		"BLAKE3-256",
-		"BLAKE2",
+		"BLAKE2-256",
 		"SHA-256",
 		"SHA3-256":
 		validAlgorithm = true
@@ -428,7 +428,7 @@ func (entry *Entry) GenerateHash(algorithm string) error {
 	case "BLAKE3-256":
 		sum := blake3.Sum256(entry.MakeByteString(hashLevel))
 		entry.Hash = algorithm + ":" + b85.Encode(sum[:])
-	case "BLAKE2":
+	case "BLAKE2-256":
 		sum := blake2b.Sum256(entry.MakeByteString(hashLevel))
 		entry.Hash = algorithm + ":" + b85.Encode(sum[:])
 	case "SHA256":
