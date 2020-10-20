@@ -299,3 +299,59 @@ func TestIsCompliantUser(t *testing.T) {
 	}
 
 }
+
+func TestIsCompliantOrg(t *testing.T) {
+	entry := keycard.NewOrgEntry()
+	var orgSigningKey keycard.AlgoString
+
+	err := orgSigningKey.Set("ED25519:msvXw(nII<Qm6oBHc+92xwRI3>VFF-RcZ=7DEu3|")
+	if err != nil {
+		t.Fatalf("TestIsCompliantOrg: org signing key decoding failure: %s\n", err)
+	}
+
+	entry.SetFields(map[string]string{
+		"Name":                     "Acme, Inc.",
+		"Contact-Admin":            "admin/acme.com",
+		"Language":                 "en",
+		"Primary-Verification-Key": "ED25519:)8id(gE02^S<{3H>9B;X4{DuYcb`%wo^mC&1lN88",
+		"Encryption-Key":           "CURVE25519:@b?cjpeY;<&y+LSOA&yUQ&ZIrp(JGt{W$*V>ATLG",
+		"Time-To-Live":             "14",
+		"Expires":                  "20201002"})
+
+	if entry.IsCompliant() {
+		t.Fatal("TestIsCompliantOrg: compliance check passed a non-compliant entry\n")
+	}
+
+	err = entry.GenerateHash("BLAKE2-256")
+	if err != nil {
+		t.Fatalf("TestIsCompliantOrg: hashing failure: %s\n", err)
+	}
+	expectedHash := "BLAKE2-256:VN^gT*=wbkH$y{Hc%upm$x|q1JBDN8F<L+@5IgX?"
+
+	if entry.Hash != expectedHash {
+		t.Errorf("TestIsCompliantOrg: expected hash:  %s\n", expectedHash)
+		t.Errorf("TestIsCompliantOrg: actual hash:  %s\n", entry.Hash)
+		t.Fatal("TestIsCompliantOrg: entry did not yield the expected hash\n")
+	}
+
+	if entry.IsCompliant() {
+		t.Fatal("TestIsCompliantOrg: compliance check passed a non-compliant entry\n")
+	}
+
+	// Organization sign and verify
+	err = entry.Sign(orgSigningKey, "Organization")
+	if err != nil {
+		t.Fatalf("TestIsCompliantOrg: org signing failure: %s\n", err)
+	}
+
+	expectedSig := "ED25519:I@F`6)d!_-1L=z_L{;`H?<oDGi?BQtk7O6kTu0m6wg4rCfEQipp=>`h;^)-eOp@%<1#q!*qF%Ih@j2rO"
+	if entry.Signatures["Organization"] != expectedSig {
+		t.Errorf("TestIsCompliantOrg: expected signature:  %s\n", expectedSig)
+		t.Errorf("TestIsCompliantOrg: actual signature:  %s\n", entry.Signatures["Organization"])
+		t.Fatal("TestIsCompliantOrg: entry did not yield the expected org signature\n")
+	}
+
+	if !entry.IsCompliant() {
+		t.Fatal("TestIsCompliantOrg: compliance check failed a compliant org entry\n")
+	}
+}
