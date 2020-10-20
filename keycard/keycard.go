@@ -179,9 +179,9 @@ func (entry Entry) IsCompliant() bool {
 			return false
 		}
 
-		if item.Optional {
-			val, err := entry.Signatures[item.Name]
-			if err || len(val) < 1 {
+		if !item.Optional {
+			val, ok := entry.Signatures[item.Name]
+			if !ok || len(val) < 1 {
 				return false
 			}
 
