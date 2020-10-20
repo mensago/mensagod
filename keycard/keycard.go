@@ -17,7 +17,6 @@ import (
 	"github.com/darkwyrm/gostringlist"
 	"github.com/zeebo/blake3"
 	"golang.org/x/crypto/blake2b"
-	"golang.org/x/crypto/nacl/auth"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/nacl/sign"
 	"golang.org/x/crypto/sha3"
@@ -475,21 +474,17 @@ func (entry Entry) VerifySignature(verifyKey AlgoString, sigtype string) (bool, 
 	if sig.Prefix != "ED25519" {
 		return false, errors.New("signature uses unsupported signing algorithm")
 	}
-
-	verifykeyDecoded, err := verifyKey.RawData()
-	if err != nil {
-		return false, err
-	}
-
-	var verifykeyArray [32]byte
-	verifyKeyAdapter := verifykeyArray[0:32]
-	copy(verifyKeyAdapter, verifykeyDecoded)
-
 	digest, err := sig.RawData()
 	if err != nil {
 		return false, errors.New("decoding error in signature")
 	}
-	verifyStatus := auth.Verify(digest, entry.MakeByteString(sigInfo.Level), &verifykeyArray)
+
+	verifyKeyDecoded, err := verifyKey.RawData()
+	if err != nil {
+		return false, err
+	}
+
+	verifyStatus := ed25519.Verify(verifyKeyDecoded, entry.MakeByteString(sigInfo.Level-1), digest)
 
 	return verifyStatus, nil
 }
