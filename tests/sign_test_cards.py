@@ -22,7 +22,7 @@ import base64
 import os
 from pathlib import Path
 
-import blake3
+import hashlib
 import nacl.signing
 
 def sign_org_card():
@@ -42,9 +42,9 @@ def sign_org_card():
 	key = nacl.signing.SigningKey(base64.b85decode(org_signing_key85))
 
 	# Add the entry hash
-	hasher = blake3.blake3() # pylint: disable=c-extension-no-member
+	hasher = hashlib.blake2b(digest_size=32)
 	hasher.update(orgcard_data)
-	orgcard_data = orgcard_data + b"Hash:BLAKE3-256:" + base64.b85encode(hasher.digest()) + \
+	orgcard_data = orgcard_data + b"Hash:BLAKE2-256:" + base64.b85encode(hasher.digest()) + \
 		b"\r\n"
 	
 	# Org sign the keycard
@@ -86,9 +86,9 @@ def sign_user_card():
 	usercard_data = usercard_data + b"Organization-Signature:ED25519:" + signature + b"\r\n"
 	
 	# Add the entry hash
-	hasher = blake3.blake3() # pylint: disable=c-extension-no-member
+	hasher = hashlib.blake2b(digest_size=32)
 	hasher.update(usercard_data)
-	usercard_data = usercard_data + b"Hash:BLAKE3-256:" + base64.b85encode(hasher.digest()) + \
+	usercard_data = usercard_data + b"Hash:BLAKE2-256:" + base64.b85encode(hasher.digest()) + \
 		b"\r\n"
 	
 	# user sign the keycard
