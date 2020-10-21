@@ -243,17 +243,17 @@ func TestIsCompliantUser(t *testing.T) {
 
 	err := signingKey.Set("ED25519:p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+")
 	if err != nil {
-		t.Fatalf("TestVerify: signing key decoding failure: %s\n", err)
+		t.Fatalf("TestIsCompliantUser: signing key decoding failure: %s\n", err)
 	}
 
 	err = verifyKey.Set("ED25519:6|HBWrxMY6-?r&Sm)_^PLPerpqOj#b&x#N_#C3}p")
 	if err != nil {
-		t.Fatalf("TestVerify: verify key decoding failure: %s\n", err)
+		t.Fatalf("TestIsCompliantUser: verify key decoding failure: %s\n", err)
 	}
 
 	err = orgSigningKey.Set("ED25519:msvXw(nII<Qm6oBHc+92xwRI3>VFF-RcZ=7DEu3|")
 	if err != nil {
-		t.Fatalf("TestVerify: signing key decoding failure: %s\n", err)
+		t.Fatalf("TestIsCompliantUser: signing key decoding failure: %s\n", err)
 	}
 
 	entry := keycard.NewUserEntry()
@@ -274,50 +274,50 @@ func TestIsCompliantUser(t *testing.T) {
 	// Organization sign and verify
 	err = entry.Sign(orgSigningKey, "Organization")
 	if err != nil {
-		t.Fatalf("TestVerify: org signing failure: %s\n", err)
+		t.Fatalf("TestIsCompliantUser: org signing failure: %s\n", err)
 	}
 
 	expectedSig := "ED25519:j64>fQV`D#Por}_!QP;4JG-WM+@t}vA5NmNezjP{UiIweJNpw}LqHLumc_2l<p@;wH8&1{Ei@H|VdS|1"
 	if entry.Signatures["Organization"] != expectedSig {
-		t.Errorf("TestVerify: expected signature:  %s\n", expectedSig)
-		t.Errorf("TestVerify: actual signature:  %s\n", entry.Signatures["Organization"])
-		t.Fatal("TestVerify: entry did not yield the expected org signature\n")
+		t.Errorf("TestIsCompliantUser: expected signature:  %s\n", expectedSig)
+		t.Errorf("TestIsCompliantUser: actual signature:  %s\n", entry.Signatures["Organization"])
+		t.Fatal("TestIsCompliantUser: entry did not yield the expected org signature\n")
 	}
 
 	// Set up the hashes
 	err = entry.GenerateHash("BLAKE2-256")
 	if err != nil {
-		t.Fatalf("TestVerify: hashing failure: %s\n", err)
+		t.Fatalf("TestIsCompliantUser: hashing failure: %s\n", err)
 	}
 	expectedHash := "BLAKE2-256:V=VdvKJ0A=!odf;z9UhGh#bRntU=+1E8yWbGTw1X"
 
 	if entry.Hash != expectedHash {
-		t.Errorf("TestVerify: expected hash:  %s\n", expectedHash)
-		t.Errorf("TestVerify: actual hash:  %s\n", entry.Hash)
-		t.Fatal("TestVerify: entry did not yield the expected hash\n")
+		t.Errorf("TestIsCompliantUser: expected hash:  %s\n", expectedHash)
+		t.Errorf("TestVTestIsCompliantUsererify: actual hash:  %s\n", entry.Hash)
+		t.Fatal("TestIsCompliantUser: entry did not yield the expected hash\n")
 	}
 
 	// User sign and verify
 	err = entry.Sign(signingKey, "User")
 	if err != nil {
-		t.Fatalf("TestVerify: user signing failure: %s\n", err)
+		t.Fatalf("TestIsCompliantUser: user signing failure: %s\n", err)
 	}
 
 	expectedSig = "ED25519:n`4a1vEIQ%HhdJzUc%{{i%Leu%5XZxx1pgO%`w8)dkQT~UWJcHe5Q+L!CLP*{+d3OOSw5ogu*Qa5bWs&"
 	if entry.Signatures["User"] != expectedSig {
-		t.Errorf("TestVerify: expected signature:  %s\n", expectedSig)
-		t.Errorf("TestVerify: actual signature:  %s\n", entry.Signatures["User"])
-		t.Fatal("TestVerify: entry did not yield the expected user signature\n")
+		t.Errorf("TestIsCompliantUser: expected signature:  %s\n", expectedSig)
+		t.Errorf("TestIsCompliantUser: actual signature:  %s\n", entry.Signatures["User"])
+		t.Fatal("TestIsCompliantUser: entry did not yield the expected user signature\n")
 	}
 
 	var verified bool
 	verified, err = entry.VerifySignature(verifyKey, "User")
 	if err != nil {
-		t.Fatalf("TestVerify: user verify error: %s\n", err)
+		t.Fatalf("TestIsCompliantUser: user verify error: %s\n", err)
 	}
 
 	if !verified {
-		t.Fatal("TestVerify: user verify failure\n")
+		t.Fatal("TestIsCompliantUser: user verify failure\n")
 	}
 
 	if !entry.IsCompliant() {
@@ -373,20 +373,106 @@ func TestIsCompliantOrg(t *testing.T) {
 	var verifyKey keycard.AlgoString
 	err = verifyKey.Set("ED25519:)8id(gE02^S<{3H>9B;X4{DuYcb`%wo^mC&1lN88")
 	if err != nil {
-		t.Fatalf("TestVerify: verify key decoding failure: %s\n", err)
+		t.Fatalf("TestIsCompliantOrg: verify key decoding failure: %s\n", err)
 	}
 
 	var verified bool
 	verified, err = entry.VerifySignature(verifyKey, "Organization")
 	if err != nil {
-		t.Fatalf("TestVerify: user verify error: %s\n", err)
+		t.Fatalf("TestIsCompliantOrg: user verify error: %s\n", err)
 	}
 
 	if !verified {
-		t.Fatal("TestVerify: user verify failure\n")
+		t.Fatal("TestIsCompliantOrg: user verify failure\n")
 	}
 
 	if !entry.IsCompliant() {
 		t.Fatal("TestIsCompliantOrg: compliance check failed a compliant org entry\n")
+	}
+}
+
+func TestOrgChain(t *testing.T) {
+	entry := keycard.NewOrgEntry()
+	var orgSigningKey keycard.AlgoString
+
+	err := orgSigningKey.Set("ED25519:msvXw(nII<Qm6oBHc+92xwRI3>VFF-RcZ=7DEu3|")
+	if err != nil {
+		t.Fatalf("TestIsCompliantOrg: org signing key decoding failure: %s\n", err)
+	}
+
+	entry.SetFields(map[string]string{
+		"Name":                     "Acme, Inc.",
+		"Contact-Admin":            "admin/acme.com",
+		"Language":                 "en",
+		"Primary-Verification-Key": "ED25519:)8id(gE02^S<{3H>9B;X4{DuYcb`%wo^mC&1lN88",
+		"Encryption-Key":           "CURVE25519:@b?cjpeY;<&y+LSOA&yUQ&ZIrp(JGt{W$*V>ATLG",
+		"Time-To-Live":             "14",
+		"Expires":                  "20201002"})
+
+	err = entry.GenerateHash("BLAKE2-256")
+	if err != nil {
+		t.Fatalf("TestOrgChain: hashing failure: %s\n", err)
+	}
+	expectedHash := "BLAKE2-256:VN^gT*=wbkH$y{Hc%upm$x|q1JBDN8F<L+@5IgX?"
+
+	if entry.Hash != expectedHash {
+		t.Errorf("TestOrgChain: expected hash:  %s\n", expectedHash)
+		t.Errorf("TestOrgChain: actual hash:  %s\n", entry.Hash)
+		t.Fatal("TestOrgChain: entry did not yield the expected hash\n")
+	}
+
+	// Organization sign and verify
+	err = entry.Sign(orgSigningKey, "Organization")
+	if err != nil {
+		t.Fatalf("TestOrgChain: org signing failure: %s\n", err)
+	}
+
+	var verifyKey keycard.AlgoString
+	err = verifyKey.Set("ED25519:)8id(gE02^S<{3H>9B;X4{DuYcb`%wo^mC&1lN88")
+	if err != nil {
+		t.Fatalf("TestOrgChain: verify key decoding failure: %s\n", err)
+	}
+
+	var verified bool
+	verified, err = entry.VerifySignature(verifyKey, "Organization")
+	if err != nil {
+		t.Fatalf("TestOrgChain: user verify error: %s\n", err)
+	}
+
+	if !verified {
+		t.Fatal("TestOrgChain: user verify failure\n")
+	}
+
+	if !entry.IsCompliant() {
+		t.Fatal("TestOrgChain: compliance check failed a compliant org entry\n")
+	}
+
+	var newEntry *keycard.Entry
+	var newKeys map[string]keycard.AlgoString
+	newEntry, newKeys, err = entry.Chain(orgSigningKey, true)
+	if err != nil {
+		t.Fatalf("TestOrgChain: chain failure error: %s\n", err)
+	}
+
+	// Now that we have a new entry, it only has a valid custody signature. Add all the other
+	// signatures needed to be compliant and then verify the whole thing.
+	err = newEntry.GenerateHash("BLAKE2-256")
+	if err != nil {
+		t.Fatalf("TestOrgChain: hashing failure: %s\n", err)
+	}
+
+	newpsKeyString := newKeys["sign.private"]
+	err = newEntry.Sign(newpsKeyString, "Organization")
+	if err != nil {
+		t.Fatalf("TestIsCompliantOrg: org signing failure: %s\n", err)
+	}
+
+	if !entry.IsCompliant() {
+		t.Fatal("TestOrgChain: compliance check failure on new entry\n")
+	}
+
+	verified, err = newEntry.VerifyChain(entry)
+	if !verified {
+		t.Fatal("TestOrgChain: chain verify failure\n")
 	}
 }
