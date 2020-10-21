@@ -105,13 +105,19 @@ func TestSign(t *testing.T) {
 		"Organization-Signature": "1111111111",
 		"User-Signature":         "2222222222"})
 
-	var signingKey keycard.AlgoString
-	err := signingKey.Set("ED25519:msvXw(nII<Qm6oBHc+92xwRI3>VFF-RcZ=7DEu3|")
+	var signingKey, orgSigningKey keycard.AlgoString
+
+	err := signingKey.Set("ED25519:p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+")
+	if err != nil {
+		t.Fatalf("TestVerify: signing key decoding failure: %s\n", err)
+	}
+
+	err = orgSigningKey.Set("ED25519:msvXw(nII<Qm6oBHc+92xwRI3>VFF-RcZ=7DEu3|")
 	if err != nil {
 		t.Fatalf("TestSign: signing key decoding failure: %s\n", err)
 	}
 
-	err = entry.Sign(signingKey, "Organization")
+	err = entry.Sign(orgSigningKey, "Organization")
 	if err != nil {
 		t.Fatalf("TestSign: signing failure: %s\n", err)
 	}
@@ -126,6 +132,26 @@ func TestSign(t *testing.T) {
 	err = entry.GenerateHash("BLAKE2-256")
 	if err != nil {
 		t.Fatalf("TestSign: hashing failure: %s\n", err)
+	}
+	expectedHash := "BLAKE2-256:V=VdvKJ0A=!odf;z9UhGh#bRntU=+1E8yWbGTw1X"
+
+	if entry.Hash != expectedHash {
+		t.Errorf("TestSign: expected hash:  %s\n", expectedHash)
+		t.Errorf("TestSign: actual hash:  %s\n", entry.Hash)
+		t.Fatal("TestSign: entry did not yield the expected hash\n")
+	}
+
+	// User sign and verify
+	err = entry.Sign(signingKey, "User")
+	if err != nil {
+		t.Fatalf("TestVerify: user signing failure: %s\n", err)
+	}
+
+	expectedSig = "ED25519:n`4a1vEIQ%HhdJzUc%{{i%Leu%5XZxx1pgO%`w8)dkQT~UWJcHe5Q+L!CLP*{+d3OOSw5ogu*Qa5bWs&"
+	if entry.Signatures["User"] != expectedSig {
+		t.Errorf("TestSign: expected signature:  %s\n", expectedSig)
+		t.Errorf("TestSign: actual signature:  %s\n", entry.Signatures["User"])
+		t.Fatal("TestSign: entry did not yield the expected user signature\n")
 	}
 }
 
@@ -197,7 +223,7 @@ func TestVerify(t *testing.T) {
 	expectedSig = "ED25519:n`4a1vEIQ%HhdJzUc%{{i%Leu%5XZxx1pgO%`w8)dkQT~UWJcHe5Q+L!CLP*{+d3OOSw5ogu*Qa5bWs&"
 	if entry.Signatures["User"] != expectedSig {
 		t.Errorf("TestVerify: expected signature:  %s\n", expectedSig)
-		t.Errorf("TestVerify: actual signature:  %s\n", entry.Signatures["Organization"])
+		t.Errorf("TestVerify: actual signature:  %s\n", entry.Signatures["User"])
 		t.Fatal("TestVerify: entry did not yield the expected user signature\n")
 	}
 
@@ -280,7 +306,7 @@ func TestIsCompliantUser(t *testing.T) {
 	expectedSig = "ED25519:n`4a1vEIQ%HhdJzUc%{{i%Leu%5XZxx1pgO%`w8)dkQT~UWJcHe5Q+L!CLP*{+d3OOSw5ogu*Qa5bWs&"
 	if entry.Signatures["User"] != expectedSig {
 		t.Errorf("TestVerify: expected signature:  %s\n", expectedSig)
-		t.Errorf("TestVerify: actual signature:  %s\n", entry.Signatures["Organization"])
+		t.Errorf("TestVerify: actual signature:  %s\n", entry.Signatures["User"])
 		t.Fatal("TestVerify: entry did not yield the expected user signature\n")
 	}
 
