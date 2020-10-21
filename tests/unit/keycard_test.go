@@ -370,11 +370,20 @@ func TestIsCompliantOrg(t *testing.T) {
 		t.Fatalf("TestIsCompliantOrg: org signing failure: %s\n", err)
 	}
 
-	expectedSig := "ED25519:I@F`6)d!_-1L=z_L{;`H?<oDGi?BQtk7O6kTu0m6wg4rCfEQipp=>`h;^)-eOp@%<1#q!*qF%Ih@j2rO"
-	if entry.Signatures["Organization"] != expectedSig {
-		t.Errorf("TestIsCompliantOrg: expected signature:  %s\n", expectedSig)
-		t.Errorf("TestIsCompliantOrg: actual signature:  %s\n", entry.Signatures["Organization"])
-		t.Fatal("TestIsCompliantOrg: entry did not yield the expected org signature\n")
+	var verifyKey keycard.AlgoString
+	err = verifyKey.Set("ED25519:)8id(gE02^S<{3H>9B;X4{DuYcb`%wo^mC&1lN88")
+	if err != nil {
+		t.Fatalf("TestVerify: verify key decoding failure: %s\n", err)
+	}
+
+	var verified bool
+	verified, err = entry.VerifySignature(verifyKey, "Organization")
+	if err != nil {
+		t.Fatalf("TestVerify: user verify error: %s\n", err)
+	}
+
+	if !verified {
+		t.Fatal("TestVerify: user verify failure\n")
 	}
 
 	if !entry.IsCompliant() {
