@@ -7,6 +7,7 @@
 # ©2019-2020 Jon Yoder <jsyoder@mailfence.com>
 
 import base64
+import hashlib
 from os import path
 import sys
 
@@ -19,9 +20,13 @@ def generate_encpair(filename):
 	'''Creates a asymmetric keypair and saves it to a file in Base85 encoding'''
 	keypair = nacl.public.PrivateKey.generate()
 	
+	hasher=hashlib.blake2b(digest_size=32)
+	hasher.update(keypair.public_key.encode())
+	publicHash = "BLAKE2B-256:" + base64.b85encode(hasher.digest()).decode()
 	if not filename:
 		print('Keypair type: encryption\r\n')
 		print('public: %s' % base64.b85encode(keypair.public_key.encode()).decode())
+		print('public hash: %s' % publicHash)
 		print('private: %s' % base64.b85encode(keypair.encode()).decode())
 		return
 
