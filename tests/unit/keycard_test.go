@@ -461,7 +461,7 @@ func TestOrgChain(t *testing.T) {
 		t.Fatalf("TestOrgChain: hashing failure: %s\n", err)
 	}
 
-	newpsKeyString := newKeys["sign.private"]
+	newpsKeyString := newKeys["Primary-Verification-Key.private"]
 	err = newEntry.Sign(newpsKeyString, "Organization")
 	if err != nil {
 		t.Fatalf("TestIsCompliantOrg: org signing failure: %s\n", err)
@@ -473,6 +473,6 @@ func TestOrgChain(t *testing.T) {
 
 	verified, err = newEntry.VerifyChain(entry)
 	if !verified {
-		t.Fatal("TestOrgChain: chain verify failure\n")
+		t.Fatalf("TestOrgChain: chain verify failure: %s\n", err)
 	}
 }

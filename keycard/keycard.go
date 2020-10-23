@@ -18,7 +18,6 @@ import (
 	"github.com/zeebo/blake3"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/nacl/box"
-	"golang.org/x/crypto/nacl/sign"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -663,8 +662,9 @@ func GenerateOrgKeys(rotateOptional bool) (map[string]AlgoString, error) {
 	}
 
 	var err error
-	var ePublicKey, ePrivateKey, sPublicKey *[32]byte
-	var sPrivateKey *[64]byte
+	var ePublicKey, ePrivateKey *[32]byte
+	var sPublicKey ed25519.PublicKey
+	var sPrivateKey ed25519.PrivateKey
 
 	ePublicKey, ePrivateKey, err = box.GenerateKey(rand.Reader)
 	if err != nil {
@@ -673,26 +673,26 @@ func GenerateOrgKeys(rotateOptional bool) (map[string]AlgoString, error) {
 	outKeys["Encryption-Key.public"] = AlgoString{"CURVE25519", b85.Encode(ePublicKey[:])}
 	outKeys["Encryption-Key.private"] = AlgoString{"CURVE25519", b85.Encode(ePrivateKey[:])}
 
-	sPublicKey, sPrivateKey, err = sign.GenerateKey(rand.Reader)
+	sPublicKey, sPrivateKey, err = ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return outKeys, err
 	}
 	outKeys["Primary-Verification-Key.public"] = AlgoString{"ED25519",
 		b85.Encode(sPublicKey[:])}
 	outKeys["Primary-Verification-Key.private"] = AlgoString{"ED25519",
-		b85.Encode(sPrivateKey[:])}
+		b85.Encode(sPrivateKey.Seed())}
 
 	if rotateOptional {
-		var asPublicKey *[32]byte
-		var asPrivateKey *[64]byte
-		asPublicKey, asPrivateKey, err = sign.GenerateKey(rand.Reader)
+		var asPublicKey ed25519.PublicKey
+		var asPrivateKey ed25519.PrivateKey
+		asPublicKey, asPrivateKey, err = ed25519.GenerateKey(rand.Reader)
 		if err != nil {
 			return outKeys, err
 		}
 		outKeys["Secondary-Verification-Key.public"] = AlgoString{"ED25519",
 			b85.Encode(asPublicKey[:])}
 		outKeys["Secondary-Verification-Key.private"] = AlgoString{"ED25519",
-			b85.Encode(asPrivateKey[:])}
+			b85.Encode(asPrivateKey.Seed())}
 	}
 
 	return outKeys, nil
@@ -709,15 +709,16 @@ func GenerateUserKeys(rotateOptional bool) (map[string]AlgoString, error) {
 	}
 
 	var err error
-	var sPublicKey, crsPublicKey, crePublicKey, crePrivateKey *[32]byte
-	var sPrivateKey, crsPrivateKey *[64]byte
+	var crePublicKey, crePrivateKey *[32]byte
+	var sPublicKey, crsPublicKey ed25519.PublicKey
+	var sPrivateKey, crsPrivateKey ed25519.PrivateKey
 
-	sPublicKey, sPrivateKey, err = sign.GenerateKey(rand.Reader)
+	sPublicKey, sPrivateKey, err = ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return outKeys, err
 	}
 	outKeys["Primary-Verification-Key.public"] = AlgoString{"ED25519", b85.Encode(sPublicKey[:])}
-	outKeys["Primary-Verification-Key.private"] = AlgoString{"ED25519", b85.Encode(sPrivateKey[:])}
+	outKeys["Primary-Verification-Key.private"] = AlgoString{"ED25519", b85.Encode(sPrivateKey.Seed())}
 
 	crePublicKey, crePrivateKey, err = box.GenerateKey(rand.Reader)
 	if err != nil {
@@ -728,14 +729,14 @@ func GenerateUserKeys(rotateOptional bool) (map[string]AlgoString, error) {
 	outKeys["Contact-Request-Encryption-Key.private"] = AlgoString{"CURVE25519",
 		b85.Encode(crePrivateKey[:])}
 
-	crsPublicKey, crsPrivateKey, err = sign.GenerateKey(rand.Reader)
+	crsPublicKey, crsPrivateKey, err = ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return outKeys, err
 	}
 	outKeys["Contact-Request-Verification-Key.public"] = AlgoString{"ED25519",
 		b85.Encode(crsPublicKey[:])}
 	outKeys["Contact-Request-Verification-Key.private"] = AlgoString{"ED25519",
-		b85.Encode(crsPrivateKey[:])}
+		b85.Encode(crsPrivateKey.Seed())}
 
 	if rotateOptional {
 		var ePublicKey, ePrivateKey, altePublicKey, altePrivateKey *[32]byte
@@ -774,7 +775,7 @@ func (entry Entry) VerifyChain(previous *Entry) (bool, error) {
 		return false, errors.New("entry type mismatch")
 	}
 
-	val, ok := entry.Fields["Custody"]
+	val, ok := entry.Signatures["Custody"]
 	if !ok {
 		return false, errors.New("custody signature missing")
 	}
