@@ -476,3 +476,128 @@ func TestOrgChain(t *testing.T) {
 		t.Fatalf("TestOrgChain: chain verify failure: %s\n", err)
 	}
 }
+
+func TestUserChain(t *testing.T) {
+	var signingKey, crSigningKey, orgSigningKey, verifyKey keycard.AlgoString
+
+	err := signingKey.Set("ED25519:p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+")
+	if err != nil {
+		t.Fatalf("TestUserChain: signing key decoding failure: %s\n", err)
+	}
+
+	err = crSigningKey.Set("ED25519:ip52{ps^jH)t$k-9bc_RzkegpIW?}FFe~BX&<V}9")
+	if err != nil {
+		t.Fatalf("TestUserChain: request signing key decoding failure: %s\n", err)
+	}
+
+	err = verifyKey.Set("ED25519:6|HBWrxMY6-?r&Sm)_^PLPerpqOj#b&x#N_#C3}p")
+	if err != nil {
+		t.Fatalf("TestUserChain: verify key decoding failure: %s\n", err)
+	}
+
+	err = orgSigningKey.Set("ED25519:msvXw(nII<Qm6oBHc+92xwRI3>VFF-RcZ=7DEu3|")
+	if err != nil {
+		t.Fatalf("TestUserChain: signing key decoding failure: %s\n", err)
+	}
+
+	entry := keycard.NewUserEntry()
+	entry.SetFields(map[string]string{
+		"Name":                             "Corbin Simons",
+		"Workspace-ID":                     "4418bf6c-000b-4bb3-8111-316e72030468",
+		"Domain":                           "example.com",
+		"Contact-Request-Verification-Key": "ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D",
+		"Contact-Request-Encryption-Key":   "CURVE25519:j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph",
+		"Public-Encryption-Key":            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
+		"Time-To-Live":                     "30",
+		"Expires":                          "20201002"})
+
+	if entry.IsCompliant() {
+		t.Fatal("TestUserChain: compliance check passed a non-compliant entry\n")
+	}
+
+	// Organization sign and verify
+	err = entry.Sign(orgSigningKey, "Organization")
+	if err != nil {
+		t.Fatalf("TestUserChain: org signing failure: %s\n", err)
+	}
+
+	expectedSig := "ED25519:j64>fQV`D#Por}_!QP;4JG-WM+@t}vA5NmNezjP{UiIweJNpw}LqHLumc_2l<p@;wH8&1{Ei@H|VdS|1"
+	if entry.Signatures["Organization"] != expectedSig {
+		t.Errorf("TestUserChain: expected signature:  %s\n", expectedSig)
+		t.Errorf("TestUserChain: actual signature:  %s\n", entry.Signatures["Organization"])
+		t.Fatal("TestUserChain: entry did not yield the expected org signature\n")
+	}
+
+	// Set up the hashes
+	err = entry.GenerateHash("BLAKE2-256")
+	if err != nil {
+		t.Fatalf("TestUserChain: hashing failure: %s\n", err)
+	}
+	expectedHash := "BLAKE2-256:V=VdvKJ0A=!odf;z9UhGh#bRntU=+1E8yWbGTw1X"
+
+	if entry.Hash != expectedHash {
+		t.Errorf("TestUserChain: expected hash:  %s\n", expectedHash)
+		t.Errorf("TestUserChain: actual hash:  %s\n", entry.Hash)
+		t.Fatal("TestUserChain: entry did not yield the expected hash\n")
+	}
+
+	// User sign and verify
+	err = entry.Sign(signingKey, "User")
+	if err != nil {
+		t.Fatalf("TestUserChain: user signing failure: %s\n", err)
+	}
+
+	expectedSig = "ED25519:n`4a1vEIQ%HhdJzUc%{{i%Leu%5XZxx1pgO%`w8)dkQT~UWJcHe5Q+L!CLP*{+d3OOSw5ogu*Qa5bWs&"
+	if entry.Signatures["User"] != expectedSig {
+		t.Errorf("TestUserChain: expected signature:  %s\n", expectedSig)
+		t.Errorf("TestUserChain: actual signature:  %s\n", entry.Signatures["User"])
+		t.Fatal("TestUserChain: entry did not yield the expected user signature\n")
+	}
+
+	var verified bool
+	verified, err = entry.VerifySignature(verifyKey, "User")
+	if err != nil {
+		t.Fatalf("TestUserChain: user verify error: %s\n", err)
+	}
+
+	if !verified {
+		t.Fatal("TestUserChain: user verify failure\n")
+	}
+
+	if !entry.IsCompliant() {
+		t.Fatal("TestUserChain: compliance check failed a compliant user entry\n")
+	}
+
+	var newEntry *keycard.Entry
+	var newKeys map[string]keycard.AlgoString
+	newEntry, newKeys, err = entry.Chain(crSigningKey, true)
+	if err != nil {
+		t.Fatalf("TestUserChain: chain failure error: %s\n", err)
+	}
+
+	// Now that we have a new entry, it only has a valid custody signature. Add all the other
+	// signatures needed to be compliant and then verify the whole thing.
+	err = newEntry.Sign(orgSigningKey, "Organization")
+	if err != nil {
+		t.Fatalf("TestUserChain: org signing failure: %s\n", err)
+	}
+	err = newEntry.GenerateHash("BLAKE2-256")
+	if err != nil {
+		t.Fatalf("TestUserChain: hashing failure: %s\n", err)
+	}
+
+	newpsKeyString := newKeys["Primary-Verification-Key.private"]
+	err = newEntry.Sign(newpsKeyString, "User")
+	if err != nil {
+		t.Fatalf("TestUserChain: user signing failure: %s\n", err)
+	}
+
+	if !newEntry.IsCompliant() {
+		t.Fatal("TestUserChain: compliance check failure on new entry\n")
+	}
+
+	verified, err = newEntry.VerifyChain(entry)
+	if !verified {
+		t.Fatalf("TestUserChain: chain verify failure: %s\n", err)
+	}
+}
