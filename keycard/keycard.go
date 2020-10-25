@@ -21,17 +21,17 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-// AlgoString encapsulates a Base85-encoded binary string and its associated algorithm.
+// EncodedString encapsulates a Base85-encoded binary string and its associated algorithm.
 // Algorithms are expected to utilize capital letters, dashes, and numbers and be no more than
 // 16 characters, not including the colon separator.
 // Example: ED25519:p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+
-type AlgoString struct {
+type EncodedString struct {
 	Prefix string
 	Data   string
 }
 
-// Set assigns an AlgoString-formatted string to the object
-func (as *AlgoString) Set(data string) error {
+// Set assigns an EncodedString-formatted string to the object
+func (as *EncodedString) Set(data string) error {
 	if len(data) < 1 {
 		as.Prefix = ""
 		as.Data = ""
@@ -48,33 +48,33 @@ func (as *AlgoString) Set(data string) error {
 	return nil
 }
 
-// SetBytes initializes the AlgoString from an array of bytes
-func (as *AlgoString) SetBytes(data []byte) error {
+// SetBytes initializes the EncodedString from an array of bytes
+func (as *EncodedString) SetBytes(data []byte) error {
 	return as.Set(string(data))
 }
 
-// AsBytes returns the AlgoString as a byte array
-func (as AlgoString) AsBytes() []byte {
+// AsBytes returns the EncodedString as a byte array
+func (as EncodedString) AsBytes() []byte {
 	return []byte(as.Prefix + ":" + as.Data)
 }
 
-// AsString returns the AlgoString as a complete string
-func (as AlgoString) AsString() string {
+// AsString returns the EncodedString as a complete string
+func (as EncodedString) AsString() string {
 	return as.Prefix + ":" + as.Data
 }
 
 // IsValid returns true if the object contains valid data
-func (as AlgoString) IsValid() bool {
+func (as EncodedString) IsValid() bool {
 	return (len(as.Prefix) > 0 && len(as.Data) > 0)
 }
 
 // RawData returns the raw data held in the string
-func (as AlgoString) RawData() ([]byte, error) {
+func (as EncodedString) RawData() ([]byte, error) {
 	return b85.Decode(as.Data)
 }
 
-// MakeEmpty clears the AlgoString's internal data
-func (as *AlgoString) MakeEmpty() {
+// MakeEmpty clears the EncodedString's internal data
+func (as *EncodedString) MakeEmpty() {
 	as.Prefix = ""
 	as.Data = ""
 }
@@ -350,7 +350,7 @@ func (entry *Entry) SetExpiration(numdays int16) error {
 // Adding a particular signature causes those that must follow it to be cleared. The Entry's
 // cryptographic hash counts as a signature in this matter. Thus, if an Organization signature is
 // added to the entry, the instance's hash and User signatures are both cleared.
-func (entry *Entry) Sign(signingKey AlgoString, sigtype string) error {
+func (entry *Entry) Sign(signingKey EncodedString, sigtype string) error {
 	if !signingKey.IsValid() {
 		return errors.New("bad signing key")
 	}
@@ -442,7 +442,7 @@ func (entry *Entry) GenerateHash(algorithm string) error {
 
 // VerifySignature cryptographically verifies the entry against the key provided, given the
 // specific signature to verify.
-func (entry Entry) VerifySignature(verifyKey AlgoString, sigtype string) (bool, error) {
+func (entry Entry) VerifySignature(verifyKey EncodedString, sigtype string) (bool, error) {
 
 	if !verifyKey.IsValid() {
 		return false, errors.New("bad verification key")
@@ -465,7 +465,7 @@ func (entry Entry) VerifySignature(verifyKey AlgoString, sigtype string) (bool, 
 		return false, errors.New("specified signature empty")
 	}
 
-	var sig AlgoString
+	var sig EncodedString
 	err := sig.Set(entry.Signatures[sigtype])
 	if err != nil {
 		return false, err
@@ -489,16 +489,16 @@ func (entry Entry) VerifySignature(verifyKey AlgoString, sigtype string) (bool, 
 }
 
 // Chain creates a new Entry object with new keys and a custody signature. It requires the
-// previous contact request signing key passed as an AlgoString. The new keys are returned with the
+// previous contact request signing key passed as an EncodedString. The new keys are returned with the
 // string '.private' or '.public' appended to the key's field name, e.g.
 // Primary-Encryption-Key.public.
 //
 // Note that a user's public encryption keys and an organization's alternate verification key are
 // not required to be updated during entry rotation so that they can be rotated on a different
 // schedule from the other keys.
-func (entry *Entry) Chain(key AlgoString, rotateOptional bool) (*Entry, map[string]AlgoString, error) {
+func (entry *Entry) Chain(key EncodedString, rotateOptional bool) (*Entry, map[string]EncodedString, error) {
 	var newEntry *Entry
-	var outKeys map[string]AlgoString
+	var outKeys map[string]EncodedString
 
 	switch entry.Type {
 	case "User":
@@ -653,12 +653,12 @@ func NewUserEntry() *Entry {
 
 // GenerateOrgKeys generates a set of cryptographic keys for user entries, optionally including
 // non-required keys
-func GenerateOrgKeys(rotateOptional bool) (map[string]AlgoString, error) {
-	var outKeys map[string]AlgoString
+func GenerateOrgKeys(rotateOptional bool) (map[string]EncodedString, error) {
+	var outKeys map[string]EncodedString
 	if rotateOptional {
-		outKeys = make(map[string]AlgoString, 10)
+		outKeys = make(map[string]EncodedString, 10)
 	} else {
-		outKeys = make(map[string]AlgoString, 6)
+		outKeys = make(map[string]EncodedString, 6)
 	}
 
 	var err error
@@ -670,16 +670,16 @@ func GenerateOrgKeys(rotateOptional bool) (map[string]AlgoString, error) {
 	if err != nil {
 		return outKeys, err
 	}
-	outKeys["Encryption-Key.public"] = AlgoString{"CURVE25519", b85.Encode(ePublicKey[:])}
-	outKeys["Encryption-Key.private"] = AlgoString{"CURVE25519", b85.Encode(ePrivateKey[:])}
+	outKeys["Encryption-Key.public"] = EncodedString{"CURVE25519", b85.Encode(ePublicKey[:])}
+	outKeys["Encryption-Key.private"] = EncodedString{"CURVE25519", b85.Encode(ePrivateKey[:])}
 
 	sPublicKey, sPrivateKey, err = ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return outKeys, err
 	}
-	outKeys["Primary-Verification-Key.public"] = AlgoString{"ED25519",
+	outKeys["Primary-Verification-Key.public"] = EncodedString{"ED25519",
 		b85.Encode(sPublicKey[:])}
-	outKeys["Primary-Verification-Key.private"] = AlgoString{"ED25519",
+	outKeys["Primary-Verification-Key.private"] = EncodedString{"ED25519",
 		b85.Encode(sPrivateKey.Seed())}
 
 	if rotateOptional {
@@ -689,9 +689,9 @@ func GenerateOrgKeys(rotateOptional bool) (map[string]AlgoString, error) {
 		if err != nil {
 			return outKeys, err
 		}
-		outKeys["Secondary-Verification-Key.public"] = AlgoString{"ED25519",
+		outKeys["Secondary-Verification-Key.public"] = EncodedString{"ED25519",
 			b85.Encode(asPublicKey[:])}
-		outKeys["Secondary-Verification-Key.private"] = AlgoString{"ED25519",
+		outKeys["Secondary-Verification-Key.private"] = EncodedString{"ED25519",
 			b85.Encode(asPrivateKey.Seed())}
 	}
 
@@ -700,12 +700,12 @@ func GenerateOrgKeys(rotateOptional bool) (map[string]AlgoString, error) {
 
 // GenerateUserKeys generates a set of cryptographic keys for user entries, optionally including
 // non-required keys
-func GenerateUserKeys(rotateOptional bool) (map[string]AlgoString, error) {
-	var outKeys map[string]AlgoString
+func GenerateUserKeys(rotateOptional bool) (map[string]EncodedString, error) {
+	var outKeys map[string]EncodedString
 	if rotateOptional {
-		outKeys = make(map[string]AlgoString, 10)
+		outKeys = make(map[string]EncodedString, 10)
 	} else {
-		outKeys = make(map[string]AlgoString, 6)
+		outKeys = make(map[string]EncodedString, 6)
 	}
 
 	var err error
@@ -717,25 +717,25 @@ func GenerateUserKeys(rotateOptional bool) (map[string]AlgoString, error) {
 	if err != nil {
 		return outKeys, err
 	}
-	outKeys["Primary-Verification-Key.public"] = AlgoString{"ED25519", b85.Encode(sPublicKey[:])}
-	outKeys["Primary-Verification-Key.private"] = AlgoString{"ED25519", b85.Encode(sPrivateKey.Seed())}
+	outKeys["Primary-Verification-Key.public"] = EncodedString{"ED25519", b85.Encode(sPublicKey[:])}
+	outKeys["Primary-Verification-Key.private"] = EncodedString{"ED25519", b85.Encode(sPrivateKey.Seed())}
 
 	crePublicKey, crePrivateKey, err = box.GenerateKey(rand.Reader)
 	if err != nil {
 		return outKeys, err
 	}
-	outKeys["Contact-Request-Encryption-Key.public"] = AlgoString{"CURVE25519",
+	outKeys["Contact-Request-Encryption-Key.public"] = EncodedString{"CURVE25519",
 		b85.Encode(crePublicKey[:])}
-	outKeys["Contact-Request-Encryption-Key.private"] = AlgoString{"CURVE25519",
+	outKeys["Contact-Request-Encryption-Key.private"] = EncodedString{"CURVE25519",
 		b85.Encode(crePrivateKey[:])}
 
 	crsPublicKey, crsPrivateKey, err = ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return outKeys, err
 	}
-	outKeys["Contact-Request-Verification-Key.public"] = AlgoString{"ED25519",
+	outKeys["Contact-Request-Verification-Key.public"] = EncodedString{"ED25519",
 		b85.Encode(crsPublicKey[:])}
-	outKeys["Contact-Request-Verification-Key.private"] = AlgoString{"ED25519",
+	outKeys["Contact-Request-Verification-Key.private"] = EncodedString{"ED25519",
 		b85.Encode(crsPrivateKey.Seed())}
 
 	if rotateOptional {
@@ -745,21 +745,21 @@ func GenerateUserKeys(rotateOptional bool) (map[string]AlgoString, error) {
 		if err != nil {
 			return outKeys, err
 		}
-		outKeys["Public-Encryption-Key.public"] = AlgoString{"CURVE25519",
+		outKeys["Public-Encryption-Key.public"] = EncodedString{"CURVE25519",
 			b85.Encode(ePublicKey[:])}
-		outKeys["Public-Encryption-Key.private"] = AlgoString{"CURVE25519",
+		outKeys["Public-Encryption-Key.private"] = EncodedString{"CURVE25519",
 			b85.Encode(ePrivateKey[:])}
 
 		altePublicKey, altePrivateKey, err = box.GenerateKey(rand.Reader)
 		if err != nil {
 			return outKeys, err
 		}
-		outKeys["Alternate-Encryption-Key.public"] = AlgoString{"CURVE25519",
+		outKeys["Alternate-Encryption-Key.public"] = EncodedString{"CURVE25519",
 			b85.Encode(altePublicKey[:])}
-		outKeys["Alternate-Encryption-Key.private"] = AlgoString{"CURVE25519",
+		outKeys["Alternate-Encryption-Key.private"] = EncodedString{"CURVE25519",
 			b85.Encode(altePrivateKey[:])}
 	} else {
-		var emptyKey AlgoString
+		var emptyKey EncodedString
 		outKeys["Public-Encryption-Key.public"] = emptyKey
 		outKeys["Public-Encryption-Key.private"] = emptyKey
 		outKeys["Alternate-Encryption-Key.public"] = emptyKey
@@ -816,7 +816,7 @@ func (entry Entry) VerifyChain(previous *Entry) (bool, error) {
 		return false, errors.New("entry index compliance failure")
 	}
 
-	var key AlgoString
+	var key EncodedString
 	err = key.Set(previous.Fields[verifyField])
 	if err != nil {
 		return false, errors.New("bad signing key in previous entry")
