@@ -44,7 +44,7 @@ def sign_org_card():
 	# Add the entry hash
 	hasher = hashlib.blake2b(digest_size=32)
 	hasher.update(orgcard_data)
-	orgcard_data = orgcard_data + b"Hash:BLAKE2-256:" + base64.b85encode(hasher.digest()) + \
+	orgcard_data = orgcard_data + b"Hash:BLAKE2B-256:" + base64.b85encode(hasher.digest()) + \
 		b"\r\n"
 	
 	# Org sign the keycard
@@ -88,7 +88,7 @@ def sign_user_card():
 	# Add the entry hash
 	hasher = hashlib.blake2b(digest_size=32)
 	hasher.update(usercard_data)
-	usercard_data = usercard_data + b"Hash:BLAKE2-256:" + base64.b85encode(hasher.digest()) + \
+	usercard_data = usercard_data + b"Hash:BLAKE2B-256:" + base64.b85encode(hasher.digest()) + \
 		b"\r\n"
 	
 	# user sign the keycard

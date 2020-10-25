@@ -129,11 +129,11 @@ func TestSign(t *testing.T) {
 		t.Fatal("TestSign: entry did not yield the expected signature\n")
 	}
 
-	err = entry.GenerateHash("BLAKE2-256")
+	err = entry.GenerateHash("BLAKE2B-256")
 	if err != nil {
 		t.Fatalf("TestSign: hashing failure: %s\n", err)
 	}
-	expectedHash := "BLAKE2-256:V=VdvKJ0A=!odf;z9UhGh#bRntU=+1E8yWbGTw1X"
+	expectedHash := "BLAKE2B-256:V=VdvKJ0A=!odf;z9UhGh#bRntU=+1E8yWbGTw1X"
 
 	if entry.Hash != expectedHash {
 		t.Errorf("TestSign: expected hash:  %s\n", expectedHash)
@@ -202,11 +202,11 @@ func TestVerify(t *testing.T) {
 	}
 
 	// Set up the hashes
-	err = entry.GenerateHash("BLAKE2-256")
+	err = entry.GenerateHash("BLAKE2B-256")
 	if err != nil {
 		t.Fatalf("TestVerify: hashing failure: %s\n", err)
 	}
-	expectedHash := "BLAKE2-256:V=VdvKJ0A=!odf;z9UhGh#bRntU=+1E8yWbGTw1X"
+	expectedHash := "BLAKE2B-256:V=VdvKJ0A=!odf;z9UhGh#bRntU=+1E8yWbGTw1X"
 
 	if entry.Hash != expectedHash {
 		t.Errorf("TestVerify: expected hash:  %s\n", expectedHash)
@@ -285,11 +285,11 @@ func TestIsCompliantUser(t *testing.T) {
 	}
 
 	// Set up the hashes
-	err = entry.GenerateHash("BLAKE2-256")
+	err = entry.GenerateHash("BLAKE2B-256")
 	if err != nil {
 		t.Fatalf("TestIsCompliantUser: hashing failure: %s\n", err)
 	}
-	expectedHash := "BLAKE2-256:V=VdvKJ0A=!odf;z9UhGh#bRntU=+1E8yWbGTw1X"
+	expectedHash := "BLAKE2B-256:V=VdvKJ0A=!odf;z9UhGh#bRntU=+1E8yWbGTw1X"
 
 	if entry.Hash != expectedHash {
 		t.Errorf("TestIsCompliantUser: expected hash:  %s\n", expectedHash)
@@ -348,11 +348,11 @@ func TestIsCompliantOrg(t *testing.T) {
 		t.Fatal("TestIsCompliantOrg: compliance check passed a non-compliant entry\n")
 	}
 
-	err = entry.GenerateHash("BLAKE2-256")
+	err = entry.GenerateHash("BLAKE2B-256")
 	if err != nil {
 		t.Fatalf("TestIsCompliantOrg: hashing failure: %s\n", err)
 	}
-	expectedHash := "BLAKE2-256:VN^gT*=wbkH$y{Hc%upm$x|q1JBDN8F<L+@5IgX?"
+	expectedHash := "BLAKE2B-256:VN^gT*=wbkH$y{Hc%upm$x|q1JBDN8F<L+@5IgX?"
 
 	if entry.Hash != expectedHash {
 		t.Errorf("TestIsCompliantOrg: expected hash:  %s\n", expectedHash)
@@ -409,11 +409,11 @@ func TestOrgChain(t *testing.T) {
 		"Time-To-Live":             "14",
 		"Expires":                  "20201002"})
 
-	err = entry.GenerateHash("BLAKE2-256")
+	err = entry.GenerateHash("BLAKE2B-256")
 	if err != nil {
 		t.Fatalf("TestOrgChain: hashing failure: %s\n", err)
 	}
-	expectedHash := "BLAKE2-256:VN^gT*=wbkH$y{Hc%upm$x|q1JBDN8F<L+@5IgX?"
+	expectedHash := "BLAKE2B-256:VN^gT*=wbkH$y{Hc%upm$x|q1JBDN8F<L+@5IgX?"
 
 	if entry.Hash != expectedHash {
 		t.Errorf("TestOrgChain: expected hash:  %s\n", expectedHash)
@@ -456,7 +456,7 @@ func TestOrgChain(t *testing.T) {
 
 	// Now that we have a new entry, it only has a valid custody signature. Add all the other
 	// signatures needed to be compliant and then verify the whole thing.
-	err = newEntry.GenerateHash("BLAKE2-256")
+	err = newEntry.GenerateHash("BLAKE2B-256")
 	if err != nil {
 		t.Fatalf("TestOrgChain: hashing failure: %s\n", err)
 	}
@@ -529,11 +529,11 @@ func TestUserChain(t *testing.T) {
 	}
 
 	// Set up the hashes
-	err = entry.GenerateHash("BLAKE2-256")
+	err = entry.GenerateHash("BLAKE2B-256")
 	if err != nil {
 		t.Fatalf("TestUserChain: hashing failure: %s\n", err)
 	}
-	expectedHash := "BLAKE2-256:V=VdvKJ0A=!odf;z9UhGh#bRntU=+1E8yWbGTw1X"
+	expectedHash := "BLAKE2B-256:V=VdvKJ0A=!odf;z9UhGh#bRntU=+1E8yWbGTw1X"
 
 	if entry.Hash != expectedHash {
 		t.Errorf("TestUserChain: expected hash:  %s\n", expectedHash)
@@ -581,7 +581,7 @@ func TestUserChain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TestUserChain: org signing failure: %s\n", err)
 	}
-	err = newEntry.GenerateHash("BLAKE2-256")
+	err = newEntry.GenerateHash("BLAKE2B-256")
 	if err != nil {
 		t.Fatalf("TestUserChain: hashing failure: %s\n", err)
 	}

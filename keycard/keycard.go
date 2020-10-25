@@ -394,13 +394,13 @@ func (entry *Entry) Sign(signingKey EncodedString, sigtype string) error {
 }
 
 // GenerateHash generates a hash containing the expected signatures and the previous hash, if it
-// exists. The supported hash algorithms are 'BLAKE3-256', 'BLAKE2', 'SHA-256', and 'SHA3-256'.
+// exists. The supported hash algorithms are 'BLAKE3-256', 'BLAKE2B-256', 'SHA-256', and 'SHA3-256'.
 func (entry *Entry) GenerateHash(algorithm string) error {
 	validAlgorithm := false
 	switch algorithm {
 	case
 		"BLAKE3-256",
-		"BLAKE2-256",
+		"BLAKE2B-256",
 		"SHA-256",
 		"SHA3-256":
 		validAlgorithm = true
@@ -426,7 +426,7 @@ func (entry *Entry) GenerateHash(algorithm string) error {
 	case "BLAKE3-256":
 		sum := blake3.Sum256(entry.MakeByteString(hashLevel))
 		entry.Hash = algorithm + ":" + b85.Encode(sum[:])
-	case "BLAKE2-256":
+	case "BLAKE2B-256":
 		sum := blake2b.Sum256(entry.MakeByteString(hashLevel))
 		entry.Hash = algorithm + ":" + b85.Encode(sum[:])
 	case "SHA256":
