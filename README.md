@@ -1,6 +1,6 @@
 # anselusd: server-side daemon for the [Anselus](https://anselus.org) online communications platform
 
-anselusd, which will eventually have a better name, provides identity services and data storage and synchronization for Anselus client applications and is released under the GPLv3 license. 
+anselusd, which will eventually have a better name, provides identity services and data storage and synchronization for Anselus client applications and is released under the MIT license. 
 
 ## Description
 
