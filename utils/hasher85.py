@@ -25,8 +25,8 @@ def hash_blake3_256(data: bytes):
 	hasher.update(data)
 	return "BLAKE3-256:" + base64.b85encode(hasher.digest()).decode()
 
-def hash_blake2_256(data: bytes):
-	'''Returns a 256-bit BLAKE2 hash as a string'''
+def hash_blake2b_256(data: bytes):
+	'''Returns a 256-bit BLAKE2B hash as a string'''
 
 	hasher = hasher = hashlib.blake2b()
 	hasher.update(data)
@@ -62,7 +62,7 @@ def hash_sha3_512(data: bytes):
 
 hash_functions = {
 	"blake3-256" : hash_blake3_256,
-	"blake2-256" : hash_blake2_256,
+	"blake2-256" : hash_blake2b_256,
 	'sha256' : hash_sha256,
 	'sha512' : hash_sha512,
 	'sha3-256': hash_sha3_256,
