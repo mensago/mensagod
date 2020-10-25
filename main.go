@@ -16,7 +16,7 @@ import (
 	"github.com/darkwyrm/b85"
 	"golang.org/x/crypto/nacl/box"
 
-	"github.com/darkwyrm/server/dbhandler"
+	"github.com/darkwyrm/anselusd/dbhandler"
 	"github.com/everlastingbeta/diceware"
 	"github.com/everlastingbeta/diceware/wordlist"
 	"github.com/google/uuid"
