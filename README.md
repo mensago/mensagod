@@ -1,16 +1,16 @@
-# Ansid: Anselus Identity Daemon
+# anselusd: server-side daemon for the [Anselus](https://anselus.org) online communications platform
 
-Ansid provides identity services for the Anselus communications platform and is released under the GPLv3 license. 
+anselusd, which will eventually have a better name, provides identity services and data storage and synchronization for Anselus client applications and is released under the GPLv3 license. 
 
 ## Description
 
-The code for Ansid was originally slated to be part of the Anselusd, the reference Anselus server. However, in the interests of scalability and usefulness as an identity and authentication provider, it was broken out into a separate service.
+Yeah, yeah, everyone says that they are the "next-generation online communications platform," but no one has had the guts to try to replace e-mail. No one has, that is, until now. Frankly, though, it's not just e-mail, it's Outlook, Facebook, and Twitter.
 
-Unlike most multi-factor authentication solutions, Ansid is intended to be the identity provider, not the account on the third party service (Google, Facebook, etc.). As such, its primary purpose is not to serve as an MFA add-on. Providing a way for passwordless logins to third party services is secondary, but nonetheless important.
+The server daemon isn't dramatically different from other database-based applications. It sits on top of PostgreSQL, runs as a non-privileged user, stores files in a dedicated directory, and listens on the network. The main server code is written in Go, but ancillary utilities are written in Python to keep the build simple.
 
 ## Contributing
 
-The Anselus platform is a very young, very ambitious project that needs help in all sorts of areas -- not just writing code. Find out more information at https://anselus.org/develop.
+Anselus is a very young, very ambitious project that needs help in all sorts of areas -- not just writing code. Find out more information at https://anselus.org/develop.
 
 ### Environment Setup
 
@@ -38,4 +38,6 @@ As of 10/2020, account registration and logins are complete and working, and mos
 - Finish unit tests for existing keycard code ported from Smilodon
 - Keycard resolver code and command handling in worker threads
 - File transfer and management code, unit tests, and command handling
+- File synchronization
+- Message delivery
 - Device checking

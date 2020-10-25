@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/darkwyrm/ansid/keycard"
+	"github.com/darkwyrm/anselusd/keycard"
 )
 
 func TestSetField(t *testing.T) {
