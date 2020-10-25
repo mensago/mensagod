@@ -147,7 +147,7 @@ func TestSign(t *testing.T) {
 		t.Fatalf("TestVerify: user signing failure: %s\n", err)
 	}
 
-	expectedSig = "ED25519:n`4a1vEIQ%HhdJzUc%{{i%Leu%5XZxx1pgO%`w8)dkQT~UWJcHe5Q+L!CLP*{+d3OOSw5ogu*Qa5bWs&"
+	expectedSig = "ED25519:A2zd{CwwYz(!8&^Ag8B9th#|>&3dLpUhdd8)`07bbq`mzD6p;%|B$f<;z`zm!MQOmFViNv-1{yw^F=QK"
 	if entry.Signatures["User"] != expectedSig {
 		t.Errorf("TestSign: expected signature:  %s\n", expectedSig)
 		t.Errorf("TestSign: actual signature:  %s\n", entry.Signatures["User"])
@@ -220,7 +220,7 @@ func TestVerify(t *testing.T) {
 		t.Fatalf("TestVerify: user signing failure: %s\n", err)
 	}
 
-	expectedSig = "ED25519:n`4a1vEIQ%HhdJzUc%{{i%Leu%5XZxx1pgO%`w8)dkQT~UWJcHe5Q+L!CLP*{+d3OOSw5ogu*Qa5bWs&"
+	expectedSig = "ED25519:A2zd{CwwYz(!8&^Ag8B9th#|>&3dLpUhdd8)`07bbq`mzD6p;%|B$f<;z`zm!MQOmFViNv-1{yw^F=QK"
 	if entry.Signatures["User"] != expectedSig {
 		t.Errorf("TestVerify: expected signature:  %s\n", expectedSig)
 		t.Errorf("TestVerify: actual signature:  %s\n", entry.Signatures["User"])
@@ -303,7 +303,7 @@ func TestIsCompliantUser(t *testing.T) {
 		t.Fatalf("TestIsCompliantUser: user signing failure: %s\n", err)
 	}
 
-	expectedSig = "ED25519:n`4a1vEIQ%HhdJzUc%{{i%Leu%5XZxx1pgO%`w8)dkQT~UWJcHe5Q+L!CLP*{+d3OOSw5ogu*Qa5bWs&"
+	expectedSig = "ED25519:A2zd{CwwYz(!8&^Ag8B9th#|>&3dLpUhdd8)`07bbq`mzD6p;%|B$f<;z`zm!MQOmFViNv-1{yw^F=QK"
 	if entry.Signatures["User"] != expectedSig {
 		t.Errorf("TestIsCompliantUser: expected signature:  %s\n", expectedSig)
 		t.Errorf("TestIsCompliantUser: actual signature:  %s\n", entry.Signatures["User"])
@@ -547,7 +547,7 @@ func TestUserChain(t *testing.T) {
 		t.Fatalf("TestUserChain: user signing failure: %s\n", err)
 	}
 
-	expectedSig = "ED25519:n`4a1vEIQ%HhdJzUc%{{i%Leu%5XZxx1pgO%`w8)dkQT~UWJcHe5Q+L!CLP*{+d3OOSw5ogu*Qa5bWs&"
+	expectedSig = "ED25519:A2zd{CwwYz(!8&^Ag8B9th#|>&3dLpUhdd8)`07bbq`mzD6p;%|B$f<;z`zm!MQOmFViNv-1{yw^F=QK"
 	if entry.Signatures["User"] != expectedSig {
 		t.Errorf("TestUserChain: expected signature:  %s\n", expectedSig)
 		t.Errorf("TestUserChain: actual signature:  %s\n", entry.Signatures["User"])
