@@ -585,14 +585,14 @@ func NewOrgEntry() *Entry {
 		"Expires"}
 
 	self.Keys = []KeyInfo{
-		KeyInfo{"Primary-Verification-Key", "signing", false},
-		KeyInfo{"Secondary-Verification-Key", "signing", false},
-		KeyInfo{"Encryption-Key", "encryption", true}}
+		{"Primary-Verification-Key", "signing", false},
+		{"Secondary-Verification-Key", "signing", false},
+		{"Encryption-Key", "encryption", true}}
 
 	self.SignatureInfo.Items = []SigInfo{
-		SigInfo{"Custody", 1, true, SigInfoSignature},
-		SigInfo{"Organization", 2, false, SigInfoSignature},
-		SigInfo{"Hashes", 3, false, SigInfoHash}}
+		{"Custody", 1, true, SigInfoSignature},
+		{"Organization", 2, false, SigInfoSignature},
+		{"Hashes", 3, false, SigInfoHash}}
 
 	self.Fields["Index"] = "1"
 	self.Fields["Time-To-Live"] = "30"
@@ -623,10 +623,10 @@ func NewUserEntry() *Entry {
 		"Expires"}
 
 	self.Keys = []KeyInfo{
-		KeyInfo{"Contact-Request-Verification-Key", "signing", false},
-		KeyInfo{"Contact-Request-Encryption-Key", "encryption", false},
-		KeyInfo{"Public-Encryption-Key", "encryption", true},
-		KeyInfo{"Alternate-Encryption-Key", "encryption", true}}
+		{"Contact-Request-Verification-Key", "signing", false},
+		{"Contact-Request-Encryption-Key", "encryption", false},
+		{"Public-Encryption-Key", "encryption", true},
+		{"Alternate-Encryption-Key", "encryption", true}}
 
 	self.RequiredFields.Items = []string{
 		"Index",
@@ -639,10 +639,10 @@ func NewUserEntry() *Entry {
 		"Expires"}
 
 	self.SignatureInfo.Items = []SigInfo{
-		SigInfo{"Custody", 1, true, SigInfoSignature},
-		SigInfo{"Organization", 2, false, SigInfoSignature},
-		SigInfo{"Hashes", 3, false, SigInfoHash},
-		SigInfo{"User", 4, false, SigInfoSignature}}
+		{"Custody", 1, true, SigInfoSignature},
+		{"Organization", 2, false, SigInfoSignature},
+		{"Hashes", 3, false, SigInfoHash},
+		{"User", 4, false, SigInfoSignature}}
 
 	self.Fields["Index"] = "1"
 	self.Fields["Time-To-Live"] = "30"
