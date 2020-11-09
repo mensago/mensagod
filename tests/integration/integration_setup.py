@@ -4,7 +4,7 @@ import re
 import socket
 import sys
 
-import nacl
+import nacl.secret
 import psycopg2
 import toml
 
