@@ -66,6 +66,25 @@ func (s sessionState) WriteClient(msg string) (n int, err error) {
 	return s.Connection.Write([]byte(msg))
 }
 
+func (s sessionState) ReadClient() (string, error) {
+	buffer := make([]byte, MaxCommandLength)
+	bytesRead, err := s.Connection.Read(buffer)
+	if err != nil {
+		ne, ok := err.(*net.OpError)
+		if ok && ne.Timeout() {
+			s.IsTerminating = true
+			return "", errors.New("connection timed out")
+		}
+
+		if err.Error() != "EOF" {
+			fmt.Println("Error reading from client: ", err.Error())
+		}
+		return "", err
+	}
+
+	return strings.TrimSpace(string(buffer[:bytesRead])), nil
+}
+
 // -------------------------------------------------------------------------------------------
 // Function Definitions
 // -------------------------------------------------------------------------------------------
@@ -294,8 +313,6 @@ func connectionWorker(conn net.Conn) {
 	conn.SetReadDeadline(time.Now().Add(time.Minute * 30))
 	conn.SetWriteDeadline(time.Now().Add(time.Minute * 10))
 
-	buffer := make([]byte, MaxCommandLength)
-
 	var session sessionState
 	session.Connection = conn
 	session.LoginState = loginNoSession
@@ -304,22 +321,11 @@ func connectionWorker(conn net.Conn) {
 
 	session.WriteClient("Anselus v0.1\r\n200 OK\r\n")
 	for {
-		bytesRead, err := conn.Read(buffer)
-		if err != nil {
-			ne, ok := err.(*net.OpError)
-			if ok && ne.Timeout() {
-				session.IsTerminating = true
-				break
-			} else {
-				if err.Error() != "EOF" {
-					fmt.Println("Error reading from client: ", err.Error())
-				}
-				continue
-			}
+		clientString, err := session.ReadClient()
+		if err != nil && err.Error() != "EOF" {
+			break
 		}
-
-		trimmedString := strings.TrimSpace(string(buffer[:bytesRead]))
-		session.Tokens = pattern.FindAllString(trimmedString, -1)
+		session.Tokens = pattern.FindAllString(clientString, -1)
 
 		if len(session.Tokens) > 0 {
 			if session.Tokens[0] == "QUIT" {
@@ -377,6 +383,23 @@ func processCommand(session *sessionState) {
 	default:
 		commandUnrecognized(session)
 	}
+}
+
+func commandAddEntry(session *sessionState) {
+	// Command syntax:
+	// ADDENTRY
+
+	if session.LoginState != loginClientSession {
+		session.WriteClient("401 UNAUTHORIZED\r\n")
+		return
+	}
+
+	if len(session.Tokens) != 1 {
+		session.WriteClient("400 BAD REQUEST\r\n")
+		return
+	}
+
+	session.WriteClient("100 CONTINUE\r\n")
 }
 
 func commandDevice(session *sessionState) {
