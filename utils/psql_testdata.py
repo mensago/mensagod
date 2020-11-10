@@ -173,6 +173,9 @@ def reset_database(dbconn):
 				"last_failure TIMESTAMP NOT NULL, lockout_until TIMESTAMP);")
 	cursor.execute("CREATE TABLE prereg(rowid SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE, "
 				"uid VARCHAR(128) NOT NULL, regcode VARCHAR(128));")
+	cursor.execute("CREATE TABLE keycards(rowid SERIAL PRIMARY KEY, owner VARCHAR(64) NOT NULL, "
+				"creationtime TIMESTAMP NOT NULL, index INTEGER NOT NULL, "
+				"entry VARCHAR(8192) NOT NULL, fingerprint VARCHAR(768) NOT NULL);")
 	cursor.close()
 	dbconn.commit()
 

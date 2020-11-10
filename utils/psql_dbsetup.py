@@ -125,5 +125,14 @@ if rows[0][0] is False:
 				"uid VARCHAR(128) NOT NULL, regcode VARCHAR(128));")
 
 
+cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
+			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'keycards' "
+			"AND c.relkind = 'r');")
+rows = cur.fetchall()
+if rows[0][0] is False:
+	cur.execute("CREATE TABLE keycards(rowid SERIAL PRIMARY KEY, owner VARCHAR(64) NOT NULL, "
+				"creationtime TIMESTAMP NOT NULL, index INTEGER NOT NULL, "
+				"entry VARCHAR(8192) NOT NULL, fingerprint VARCHAR(768) NOT NULL);")
+
 cur.close()
 conn.commit()
