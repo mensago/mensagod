@@ -573,7 +573,8 @@ func NewOrgEntry() *Entry {
 		"Secondary-Verification-Key",
 		"Encryption-Key",
 		"Time-To-Live",
-		"Expires"}
+		"Expires",
+		"Timestamp"}
 
 	self.RequiredFields.Items = []string{
 		"Index",
@@ -582,7 +583,8 @@ func NewOrgEntry() *Entry {
 		"Primary-Verification-Key",
 		"Encryption-Key",
 		"Time-To-Live",
-		"Expires"}
+		"Expires",
+		"Timestamp"}
 
 	self.Keys = []KeyInfo{
 		{"Primary-Verification-Key", "signing", false},
@@ -597,6 +599,10 @@ func NewOrgEntry() *Entry {
 	self.Fields["Index"] = "1"
 	self.Fields["Time-To-Live"] = "30"
 	self.SetExpiration(-1)
+
+	now := time.Now()
+	self.Fields["Timestamp"] = fmt.Sprintf("%d%02d%02dT%02d%02d%02dZ", now.Year(), now.Month(),
+		now.Day(), now.Hour(), now.Minute(), now.Second())
 
 	return self
 }
@@ -620,7 +626,8 @@ func NewUserEntry() *Entry {
 		"Public-Encryption-Key",
 		"Alternate-Encryption-Key",
 		"Time-To-Live",
-		"Expires"}
+		"Expires",
+		"Timestamp"}
 
 	self.Keys = []KeyInfo{
 		{"Contact-Request-Verification-Key", "signing", false},
@@ -636,7 +643,8 @@ func NewUserEntry() *Entry {
 		"Contact-Request-Encryption-Key",
 		"Public-Encryption-Key",
 		"Time-To-Live",
-		"Expires"}
+		"Expires",
+		"Timestamp"}
 
 	self.SignatureInfo.Items = []SigInfo{
 		{"Custody", 1, true, SigInfoSignature},
@@ -647,6 +655,9 @@ func NewUserEntry() *Entry {
 	self.Fields["Index"] = "1"
 	self.Fields["Time-To-Live"] = "30"
 	self.SetExpiration(-1)
+	now := time.Now()
+	self.Fields["Timestamp"] = fmt.Sprintf("%d%02d%02dT%02d%02d%02dZ", now.Year(), now.Month(),
+		now.Day(), now.Hour(), now.Minute(), now.Second())
 
 	return self
 }
