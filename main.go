@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"log"
@@ -13,13 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/darkwyrm/b85"
-	"golang.org/x/crypto/nacl/box"
-
 	"github.com/darkwyrm/anselusd/dbhandler"
 	"github.com/everlastingbeta/diceware"
 	"github.com/everlastingbeta/diceware/wordlist"
-	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"github.com/spf13/viper"
 )
@@ -66,7 +61,7 @@ func (s sessionState) WriteClient(msg string) (n int, err error) {
 	return s.Connection.Write([]byte(msg))
 }
 
-func (s sessionState) ReadClient() (string, error) {
+func (s *sessionState) ReadClient() (string, error) {
 	buffer := make([]byte, MaxCommandLength)
 	bytesRead, err := s.Connection.Read(buffer)
 	if err != nil {
@@ -389,6 +384,16 @@ func commandAddEntry(session *sessionState) {
 	// Command syntax:
 	// ADDENTRY
 
+	// Client sends the ADDENTRY command.
+	// When the server is ready, the server responds with 100 CONTINUE.
+	// The client uploads the data for entry, transmitting the entry data between the ----- BEGIN USER KEYCARD ----- header and the ----- END USER KEYCARD ----- footer.
+	// The server then checks compliance of the entry data. Assuming that it complies, the server generates a cryptographic signature and responds with 100 CONTINUE, returning the fingerprint of the data and the hash of the previous entry in the database.
+	// The client verifies the signature against the organization’s verification key
+	// The client appends the hash from the previous entry as the Previous-Hash field
+	// The client generates the hash value for the entry as the Hash field
+	// The client signs the entry as the User-Signature field and then uploads the result to the server using the same header and footer as the first time.
+	// Once uploaded, the server validates the Hash and User-Signature fields, and, assuming that all is well, adds it to the keycard database and returns 200 OK.
+
 	if session.LoginState != loginClientSession {
 		session.WriteClient("401 UNAUTHORIZED\r\n")
 		return
@@ -400,55 +405,40 @@ func commandAddEntry(session *sessionState) {
 	}
 
 	session.WriteClient("100 CONTINUE\r\n")
-}
 
-func commandDevice(session *sessionState) {
-	// Command syntax:
-	// DEVICE <devid> <key>
+	rawstr, err := session.ReadClient()
 
-	if len(session.Tokens) != 3 || !dbhandler.ValidateUUID(session.Tokens[1]) ||
-		session.LoginState != loginAwaitingSessionID {
+	// ReadClient can set the IsTerminating flag if the read times out
+	if session.IsTerminating || (err != nil && err.Error() != "EOF") {
+		return
+	}
+
+	// We've managed to read data from the client. Now for some extensive validation.
+
+	// The minimum number of lines is 12 because every org keycard, which is the smaller of the two,
+	// has 9 required fields in addition to the Type line and the entry header and footer lines.
+	lines := strings.Split(rawstr, "\r\n")
+	if len(lines) < 12 {
 		session.WriteClient("400 BAD REQUEST\r\n")
 		return
 	}
 
-	success, err := dbhandler.CheckDevice(session.WID, session.Tokens[1], session.Tokens[2])
-	if err != nil {
-		session.WriteClient("400 BAD REQUEST\r\n")
-		return
-	}
-
-	if !success {
-		if strings.ToLower(viper.GetString("security.device_checking")) == "on" {
-			// TODO: implement device checking:
-			// 1) Check to see if there are multiple devices
-			// 2) If there are multiple devices, push out an authorization message.
-			// 3) Record the session ID in the table as a pending device.
-			// 4) Return 101 PENDING and close the connection
-			// 5) Upon receipt of authorization approval, update the device status in the database
-			// 6) Upon receipt of denial, log the failure and apply a lockout to the IP
-		} else {
-			// TODO: Check for paranoid mode and reject if enabled
-			dbhandler.AddDevice(session.WID, session.Tokens[1], session.Tokens[2], session.Tokens[3],
-				"active")
-
-			session.LoginState = loginClientSession
-			session.WriteClient("200 OK\r\n")
+	if lines[0] == "----- BEGIN USER ENTRY -----" {
+		if lines[len(lines)-1] != "----- END USER ENTRY -----" {
+			session.WriteClient("400 BAD REQUEST\r\n")
 			return
 		}
-	} else {
-		// The device is part of the workspace already, so now we issue undergo a challenge-response
-		// to ensure that the device really is authorized and the key wasn't stolen by an impostor
 
-		success, err = challengeDevice(session, "curve25519", session.Tokens[2])
-		if success {
-			session.LoginState = loginClientSession
-			session.WriteClient("200 OK\r\n")
-		} else {
-			dbhandler.LogFailure("device", session.WID, session.Connection.RemoteAddr().String())
-			session.WriteClient("401 UNAUTHORIZED\r\n")
+	}
+
+	if lines[0] == "----- BEGIN ORG ENTRY -----" {
+		if lines[len(lines)-1] != "----- END ORG ENTRY -----" {
+			session.WriteClient("400 BAD REQUEST\r\n")
+			return
 		}
 	}
+
+	// TODO: Finish implementing AddEntry()
 }
 
 func commandExists(session *sessionState) {
@@ -477,443 +467,4 @@ func commandExists(session *sessionState) {
 	} else {
 		session.WriteClient("200 OK\r\n")
 	}
-}
-
-func commandLogin(session *sessionState) {
-	// Command syntax:
-	// LOGIN PLAIN WORKSPACE_ID
-
-	// PLAIN authentication is currently the only supported type, so a total of 3 tokens
-	// are required for this command.
-	if len(session.Tokens) != 3 || session.Tokens[1] != "PLAIN" || !dbhandler.ValidateUUID(session.Tokens[2]) ||
-		session.LoginState != loginNoSession {
-		session.WriteClient("400 BAD REQUEST\r\n")
-		return
-	}
-
-	wid := session.Tokens[2]
-	var exists bool
-	exists, session.WorkspaceStatus = dbhandler.CheckWorkspace(wid)
-	if exists {
-		lockTime, err := dbhandler.CheckLockout("workspace", wid, session.Connection.RemoteAddr().String())
-		if err != nil {
-			panic(err)
-		}
-
-		if len(lockTime) > 0 {
-			lockTime, err = dbhandler.CheckLockout("password", wid, session.Connection.RemoteAddr().String())
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		if len(lockTime) > 0 {
-			// The only time that lockTime with be greater than 0 is if the account
-			// is currently locked.
-			session.WriteClient(strings.Join([]string{"407 UNAVAILABLE ", lockTime, "\r\n"}, " "))
-			return
-		}
-
-	} else {
-		dbhandler.LogFailure("workspace", "", session.Connection.RemoteAddr().String())
-
-		lockTime, err := dbhandler.CheckLockout("workspace", wid, session.Connection.RemoteAddr().String())
-		if err != nil {
-			panic(err)
-		}
-
-		// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
-		// At this point, the connection should be terminated. However, an empty lockTime
-		// means that although there has been a failure, the count for this IP address is
-		// still under the limit.
-		if len(lockTime) > 0 {
-			session.WriteClient(strings.Join([]string{"405 TERMINATED ", lockTime, "\r\n"}, " "))
-			session.IsTerminating = true
-		} else {
-			session.WriteClient("404 NOT FOUND\r\n")
-		}
-		return
-	}
-
-	switch session.WorkspaceStatus {
-	case "disabled":
-		session.WriteClient("411 ACCOUNT DISABLED\r\n")
-		session.IsTerminating = true
-	case "awaiting":
-		session.WriteClient("101 PENDING\r\n")
-		session.IsTerminating = true
-	case "active", "approved":
-		session.LoginState = loginAwaitingPassword
-		session.WID = wid
-		session.WriteClient("100 CONTINUE\r\n")
-	default:
-		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-	}
-}
-
-func commandLogout(session *sessionState) {
-	// command syntax:
-	// LOGOUT
-	session.WriteClient("200 OK\r\n")
-	session.IsTerminating = true
-}
-
-func commandPassword(session *sessionState) {
-	// Command syntax:
-	// PASSWORD <pwhash>
-
-	// This command takes a numeric hash of the user's password and compares it to what is submitted
-	// by the user.
-	if len(session.Tokens) != 2 || len(session.Tokens[1]) > 150 ||
-		session.LoginState != loginAwaitingPassword {
-		session.WriteClient("400 BAD REQUEST\r\n")
-		return
-	}
-
-	match, err := dbhandler.CheckPassword(session.WID, session.Tokens[1])
-	if err == nil {
-		if match {
-			session.LoginState = loginAwaitingSessionID
-			session.WriteClient("100 CONTINUE\r\n")
-			return
-		}
-
-		dbhandler.LogFailure("password", session.WID, session.Connection.RemoteAddr().String())
-
-		lockTime, err := dbhandler.CheckLockout("password", session.WID,
-			session.Connection.RemoteAddr().String())
-		if err != nil {
-			panic(err)
-		}
-
-		// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
-		// At this point, the connection should be terminated. However, an empty lockTime
-		// means that although there has been a failure, the count for this IP address is
-		// still under the limit.
-		if len(lockTime) > 0 {
-			session.WriteClient(strings.Join([]string{"405 TERMINATED ", lockTime, "\r\n"}, " "))
-			session.IsTerminating = true
-		} else {
-			session.WriteClient("402 AUTHENTICATION FAILURE\r\n")
-
-			var d time.Duration
-			delayString := viper.GetString("security.failure_delay_sec") + "s"
-			d, err = time.ParseDuration(delayString)
-			if err != nil {
-				ServerLog.Printf("Bad login failure delay string %s. Sleeping 3s.", delayString)
-				fmt.Printf("Bad login failure delay string: %s. Sleeping 3s.", err)
-				d, err = time.ParseDuration("3s")
-			}
-			time.Sleep(d)
-		}
-	} else {
-		session.WriteClient("400 BAD REQUEST\r\n")
-	}
-}
-
-func commandPreregister(session *sessionState) {
-	// command syntax:
-	// PREREG opt_uid
-
-	if len(session.Tokens) > 2 {
-		session.WriteClient("400 BAD REQUEST\r\n")
-		return
-	}
-
-	// Just do some basic syntax checks on the user ID
-	userID := ""
-	if len(session.Tokens) == 2 {
-		userID = session.Tokens[1]
-		if strings.ContainsAny(userID, "/\"") || dbhandler.ValidateUUID(userID) {
-			session.WriteClient("400 BAD REQUEST\r\n")
-			return
-		}
-	}
-
-	ipv4Pat := regexp.MustCompile("([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}):[0-9]+")
-	mIP4 := ipv4Pat.FindStringSubmatch(session.Connection.RemoteAddr().String())
-
-	remoteIP4 := ""
-	if len(mIP4) == 2 {
-		remoteIP4 = mIP4[1]
-	}
-
-	// Preregistration must be done from the server itself
-	mIP6, _ := regexp.MatchString("(::1):[0-9]+", session.Connection.RemoteAddr().String())
-
-	if !mIP6 && (remoteIP4 == "" || remoteIP4 != "127.0.0.1") {
-		session.WriteClient("401 UNAUTHORIZED\r\n")
-		return
-	}
-
-	haswid := true
-	var wid string
-	for haswid {
-		wid = uuid.New().String()
-		haswid, _ = dbhandler.CheckWorkspace(wid)
-	}
-
-	regcode, err := dbhandler.PreregWorkspace(wid, userID, &gRegWordList,
-		viper.GetInt("global.registration_wordcount"))
-	if err != nil {
-		if err.Error() == "uid exists" {
-			session.WriteClient("408 RESOURCE EXISTS\r\n")
-			return
-		}
-		ServerLog.Printf("Internal server error. commandPreregister.PreregWorkspace. Error: %s\n", err)
-		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-		return
-	}
-
-	if userID != "" {
-		session.WriteClient(fmt.Sprintf("200 OK %s %s %s\r\n", wid, regcode, userID))
-	} else {
-		session.WriteClient(fmt.Sprintf("200 OK %s %s\r\n", wid, regcode))
-	}
-}
-
-func commandRegCode(session *sessionState) {
-	// command syntax:
-	// REGCODE <uid|wid> <regcode> <password_hash> <deviceID> <devkeytype> <devkey>
-
-	if len(session.Tokens) != 7 {
-		session.WriteClient("400 BAD REQUEST\r\n")
-		return
-	}
-
-	id := session.Tokens[1]
-
-	// check to see if this is a workspace ID
-	isWid := dbhandler.ValidateUUID(id)
-
-	if !isWid && strings.ContainsAny(id, "/\"") {
-		session.WriteClient("400 BAD REQUEST\r\n")
-		return
-	}
-
-	// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
-	// At this point, the connection should be terminated. However, an empty lockTime
-	// means that although there has been a failure, the count for this IP address is
-	// still under the limit.
-	lockTime, err := dbhandler.CheckLockout("prereg", session.Connection.RemoteAddr().String(),
-		session.Connection.RemoteAddr().String())
-
-	if err != nil {
-		panic(err)
-	}
-
-	if len(lockTime) > 0 {
-		session.WriteClient(strings.Join([]string{"405 TERMINATED ", lockTime, "\r\n"}, " "))
-		session.IsTerminating = true
-	}
-
-	if (len(session.Tokens[3]) < 8 || len(session.Tokens[3]) > 120) ||
-		!dbhandler.ValidateUUID(session.Tokens[4]) {
-		session.WriteClient("400 BAD REQUEST\r\n")
-		return
-	}
-
-	if session.Tokens[5] != "curve25519" {
-		session.WriteClient("309 ENCRYPTION TYPE NOT SUPPORTED\r\n")
-		return
-	}
-
-	_, err = b85.Decode(session.Tokens[6])
-	if err != nil {
-		session.WriteClient("400 BAD REQUEST\r\n")
-		return
-	}
-
-	wid, err := dbhandler.CheckRegCode(id, isWid, session.Tokens[2])
-
-	if wid == "" {
-		dbhandler.LogFailure("prereg", session.Connection.RemoteAddr().String(),
-			session.Connection.RemoteAddr().String())
-
-		lockTime, err = dbhandler.CheckLockout("prereg", session.Connection.RemoteAddr().String(),
-			session.Connection.RemoteAddr().String())
-
-		if err != nil {
-			panic(err)
-		}
-
-		if len(lockTime) > 0 {
-			session.WriteClient(strings.Join([]string{"405 TERMINATED ", lockTime, "\r\n"}, " "))
-			session.IsTerminating = true
-			return
-		}
-	}
-
-	if err != nil {
-		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-		return
-	}
-
-	err = dbhandler.AddWorkspace(wid, session.Tokens[3], "active")
-	if err != nil {
-		ServerLog.Printf("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
-		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-	}
-
-	devid := uuid.New().String()
-	err = dbhandler.AddDevice(wid, devid, session.Tokens[5], session.Tokens[6],
-		"active")
-	if err != nil {
-		ServerLog.Printf("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
-		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-	}
-
-	session.WriteClient("201 REGISTERED\r\n")
-}
-
-func commandRegister(session *sessionState) {
-	// command syntax:
-	// REGISTER <WID> <passwordHash> <algorithm> <devkey>
-
-	if len(session.Tokens) != 5 || !dbhandler.ValidateUUID(session.Tokens[1]) {
-		session.WriteClient("400 BAD REQUEST\r\n")
-		return
-	}
-
-	regType := strings.ToLower(viper.GetString("global.registration"))
-
-	ipv4Pat := regexp.MustCompile("([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}):[0-9]+")
-	mIP4 := ipv4Pat.FindStringSubmatch(session.Connection.RemoteAddr().String())
-
-	remoteIP4 := ""
-	if len(mIP4) == 2 {
-		remoteIP4 = mIP4[1]
-	}
-
-	if regType == "private" {
-		// If registration is set to private, registration must be done from the server itself.
-		mIP6, _ := regexp.MatchString("(::1):[0-9]+", session.Connection.RemoteAddr().String())
-
-		if !mIP6 && (remoteIP4 == "" || remoteIP4 != "127.0.0.1") {
-			session.WriteClient("304 REGISTRATION CLOSED\r\n")
-			return
-		}
-	}
-
-	success, _ := dbhandler.CheckWorkspace(session.Tokens[1])
-	if success {
-		session.WriteClient("408 RESOURCE EXISTS\r\n")
-		return
-	}
-
-	// TODO: Check number of recent registration requests from this IP
-
-	var workspaceStatus string
-	switch regType {
-	case "network":
-		// TODO: Check that remote address is within permitted subnet
-		session.WriteClient("301 NOT IMPLEMENTED\r\n")
-		return
-	case "moderated":
-		workspaceStatus = "pending"
-	default:
-		workspaceStatus = "active"
-	}
-
-	// Just some basic sanity checks on the password hash.
-	if len(session.Tokens[2]) < 8 || len(session.Tokens[2]) > 120 {
-		session.WriteClient("400 BAD REQUEST\r\n")
-		return
-	}
-
-	if session.Tokens[3] != "curve25519" {
-		session.WriteClient("309 ENCRYPTION TYPE NOT SUPPORTED\r\n")
-		return
-	}
-
-	// An encryption key can be basically anything for validation purposes, but we can at least
-	// make sure that the encoding is valid.
-	_, err := b85.Decode(session.Tokens[4])
-	if err != nil {
-		session.WriteClient("400 BAD REQUEST\r\n")
-		return
-	}
-
-	err = dbhandler.AddWorkspace(session.Tokens[1], session.Tokens[2], workspaceStatus)
-	if err != nil {
-		ServerLog.Printf("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
-		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-	}
-
-	devid := uuid.New().String()
-	err = dbhandler.AddDevice(session.Tokens[1], devid, session.Tokens[3], session.Tokens[4],
-		"active")
-	if err != nil {
-		ServerLog.Printf("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
-		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
-	}
-
-	if regType == "moderated" {
-		session.WriteClient("101 PENDING")
-	} else {
-		session.WriteClient(fmt.Sprintf("201 REGISTERED %s\r\n", devid))
-	}
-}
-
-func commandUnrecognized(session *sessionState) {
-	// command used when not recognized
-	session.WriteClient("400 BAD REQUEST\r\n")
-}
-
-func challengeDevice(session *sessionState, keytype string, devkey string) (bool, error) {
-	// 1) Generate a 32-byte random string of bytes
-	// 2) Encode string in base85
-	// 3) Encrypt said string, encode in base85, and return it as part of 100 CONTINUE response
-	// 4) Wait for response from client and compare response to original base85 string
-	// 5) If strings don't match, respond to client with 402 Authentication Failure and return false
-	// 6) If strings match respond to client with 200 OK and return true/nil
-
-	randBytes := make([]byte, 32)
-	if _, err := rand.Read(randBytes); err != nil {
-		panic(err.Error())
-	}
-
-	// We Base85-encode the random run of bytes this so that when we receive the response, it
-	// should just be a matter of doing a string comparison to determine success
-	challenge := b85.Encode(randBytes)
-	if keytype != "curve25519" {
-		return false, errors.New("unsupported key type")
-	}
-
-	// Oy, the typing system in Golang can make things... difficult at times. :/
-	devkeyDecoded, err := b85.Decode(devkey)
-
-	var devkeyArray [32]byte
-	devKeyAdapter := devkeyArray[0:32]
-	copy(devKeyAdapter, devkeyDecoded)
-	var encryptedChallenge []byte
-	encryptedChallenge, err = box.SealAnonymous(nil, []byte(challenge), &devkeyArray, nil)
-	if err != nil {
-		session.WriteClient(fmt.Sprintf("300 INTERNAL SERVER ERROR %s", err))
-		return false, err
-	}
-	session.WriteClient(fmt.Sprintf("100 CONTINUE %s", b85.Encode(encryptedChallenge)))
-
-	// Challenge has been issued. Get client response
-	buffer := make([]byte, MaxCommandLength)
-	bytesRead, err := session.Connection.Read(buffer)
-	if err != nil {
-		return false, errors.New("connection timeout")
-	}
-
-	pattern := regexp.MustCompile("\"[^\"]+\"|\"[^\"]+$|[\\S\\[\\]]+")
-	trimmedString := strings.TrimSpace(string(buffer[:bytesRead]))
-	tokens := pattern.FindAllString(trimmedString, -1)
-	if len(tokens) != 4 || tokens[0] != "DEVICE" || tokens[2] != devkey {
-		return false, nil
-	}
-
-	// Validate client response
-	var response []byte
-	response, err = b85.Decode(tokens[3])
-	if challenge != string(response) {
-		return false, nil
-	}
-
-	return true, nil
 }
