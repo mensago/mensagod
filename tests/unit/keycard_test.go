@@ -609,3 +609,15 @@ func TestUserChain(t *testing.T) {
 		t.Fatalf("TestUserChain: chain verify failure: %s\n", err)
 	}
 }
+
+func TestIsDataCompliant(t *testing.T) {
+	// TODO: Implement TestIsDataCompliant
+}
+
+func TestIsExpired(t *testing.T) {
+	// TODO: Implement TestIsExpired
+}
+
+func TestIsTimestampValid(t *testing.T) {
+	// TODO: Implement TestIsTimestampValid
+}
