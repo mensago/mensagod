@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/darkwyrm/anselusd/dbhandler"
+	"github.com/darkwyrm/anselusd/keycard"
 	"github.com/everlastingbeta/diceware"
 	"github.com/everlastingbeta/diceware/wordlist"
 	_ "github.com/lib/pq"
@@ -414,28 +415,12 @@ func commandAddEntry(session *sessionState) {
 	}
 
 	// We've managed to read data from the client. Now for some extensive validation.
+	var entry *keycard.Entry
+	entry, err = keycard.NewEntryFromData(rawstr)
 
-	// The minimum number of lines is 12 because every org keycard, which is the smaller of the two,
-	// has 9 required fields in addition to the Type line and the entry header and footer lines.
-	lines := strings.Split(rawstr, "\r\n")
-	if len(lines) < 12 {
-		session.WriteClient("400 BAD REQUEST\r\n")
+	if err != nil || !entry.IsDataCompliant() {
+		session.WriteClient("411 BAD KEYCARD DATA\r\n")
 		return
-	}
-
-	if lines[0] == "----- BEGIN USER ENTRY -----" {
-		if lines[len(lines)-1] != "----- END USER ENTRY -----" {
-			session.WriteClient("400 BAD REQUEST\r\n")
-			return
-		}
-
-	}
-
-	if lines[0] == "----- BEGIN ORG ENTRY -----" {
-		if lines[len(lines)-1] != "----- END ORG ENTRY -----" {
-			session.WriteClient("400 BAD REQUEST\r\n")
-			return
-		}
 	}
 
 	// TODO: Finish implementing AddEntry()
