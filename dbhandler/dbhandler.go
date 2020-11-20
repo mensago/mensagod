@@ -530,6 +530,6 @@ func PreregWorkspace(wid string, uid string, wordList *diceware.Wordlist, wordco
 // successful. The caller is still responsible for performing the necessary steps to add the
 // workspace to the database.
 func CheckRegCode(id string, wid bool, regcode string) (string, error) {
-	// TODO: Implement
+	// TODO: Implement CheckRegCode
 	return "", errors.New("Unimplemented")
 }
