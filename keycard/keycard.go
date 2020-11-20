@@ -151,6 +151,22 @@ type Entry struct {
 	Keys           []KeyInfo
 }
 
+// IsDataCompliant checks only the data fields of the entry to ensure that they are valid
+func (entry Entry) IsDataCompliant() bool {
+	if entry.Type != "User" && entry.Type != "Organization" {
+		return false
+	}
+
+	for _, reqField := range entry.RequiredFields.Items {
+		_, ok := entry.Fields[reqField]
+		if !ok {
+			return false
+		}
+	}
+
+	return true
+}
+
 // IsCompliant returns true if the object meets spec compliance (required fields, etc.)
 func (entry Entry) IsCompliant() bool {
 	if entry.Type != "User" && entry.Type != "Organization" {
