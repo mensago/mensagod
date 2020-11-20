@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/darkwyrm/b85"
 	"github.com/darkwyrm/gostringlist"
@@ -158,27 +160,34 @@ func (entry Entry) IsDataCompliant() bool {
 	}
 
 	for _, reqField := range entry.RequiredFields.Items {
-		_, ok := entry.Fields[reqField]
-		if !ok {
+		strValue, ok := entry.Fields[reqField]
+		if !ok || strValue != strings.TrimSpace(strValue) {
 			return false
 		}
 	}
 
-	return true
+	// If a field exists, it may not be empty and may not be greater than 6144 bytes
+	for _, fieldValue := range entry.Fields {
+		if fieldValue == "" || len(fieldValue) > 6144 {
+			return false
+		}
+	}
+
+	var dataValid bool
+	if entry.Type == "User" {
+		dataValid, _ = entry.validateUserEntry()
+	} else {
+		dataValid, _ = entry.validateOrgEntry()
+	}
+
+	return dataValid
 }
 
 // IsCompliant returns true if the object meets spec compliance (required fields, etc.)
 func (entry Entry) IsCompliant() bool {
-	if entry.Type != "User" && entry.Type != "Organization" {
-		return false
-	}
 
-	// Field compliance
-	for _, reqField := range entry.RequiredFields.Items {
-		_, ok := entry.Fields[reqField]
-		if !ok {
-			return false
-		}
+	if !entry.IsDataCompliant() {
+		return false
 	}
 
 	// Signature compliance
@@ -204,6 +213,20 @@ func (entry Entry) IsCompliant() bool {
 	}
 
 	return true
+}
+
+// IsExpired returns true if the entry has expired
+func (entry Entry) IsExpired() bool {
+	// TODO: Implement keycard::IsExpired()
+
+	return true
+}
+
+// IsTimestampValid returns true if the timestamp for the entry is valid
+func (entry Entry) IsTimestampValid() bool {
+	// TODO: Implement keycard::IsTimestampValid()
+
+	return false
 }
 
 // GetSignature - get the specified signature
@@ -698,6 +721,14 @@ func NewOrgEntry() *Entry {
 	return self
 }
 
+// validateOrgEntry checks the validity all OrgEntry data fields to ensure the data in them
+// meets basic data validity checks
+func (entry Entry) validateOrgEntry() (bool, error) {
+	// TODO: Implement
+
+	return false, errors.New("unimplemented")
+}
+
 // NewUserEntry creates a new UserEntry
 func NewUserEntry() *Entry {
 	self := new(Entry)
@@ -753,6 +784,187 @@ func NewUserEntry() *Entry {
 		now.Day(), now.Hour(), now.Minute(), now.Second())
 
 	return self
+}
+
+// validateUserEntry checks the validity all UserEntry data fields to ensure the data in them
+// meets basic data validity checks. Note that this function only checks data format; it does
+// not fail if the entry's Expires field is past due, the Timestamp field is in the future, etc.
+func (entry Entry) validateUserEntry() (bool, error) {
+	// Required Fields
+	// "Index",
+
+	// Required field: Index
+	pattern := regexp.MustCompile("[[:digit:]]+")
+	if !pattern.MatchString(entry.Fields["Index"]) {
+		return false, errors.New("bad index")
+	}
+
+	// Required field: Workspace-ID
+	pattern = regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
+	if len(entry.Fields["Workspace-ID"]) != 36 && len(entry.Fields["Workspace-ID"]) != 32 {
+		return false, errors.New("bad workspace id")
+	}
+
+	if !pattern.MatchString(entry.Fields["Workspace-ID"]) {
+		return false, errors.New("bad workspace id")
+	}
+
+	// Required field: Domain
+	pattern = regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
+	if !pattern.MatchString(entry.Fields["Domain"]) {
+		return false, errors.New("bad domain")
+	}
+
+	// Required field: Contact Request Verification Key
+	// We can't actually verify the key data, but we can ensure that it at least decodes from Base85
+	_, err := b85.Decode(entry.Fields["Contact-Request-Verification-Key"])
+	if err != nil {
+		return false, errors.New("bad contact request verification key")
+	}
+
+	// Required field: Contact Request Encryption Key
+	_, err = b85.Decode(entry.Fields["Contact-Request-Encryption-Key"])
+	if err != nil {
+		return false, errors.New("bad contact request encryption key")
+	}
+
+	// Required field: Public Encryption Key
+	_, err = b85.Decode(entry.Fields["Public-Encryption-Key"])
+	if err != nil {
+		return false, errors.New("bad public encryption key")
+	}
+
+	// Required field: Time To Live
+	pattern = regexp.MustCompile("[[:digit:]]{1,2}")
+	if !pattern.MatchString(entry.Fields["Time-To-Live"]) {
+		return false, errors.New("bad time to live")
+	}
+	var intValue int
+	intValue, err = strconv.Atoi(entry.Fields["Time-To-Live"])
+	if intValue < 1 || intValue > 30 {
+		return false, errors.New("time to live out of range")
+	}
+
+	// Required field: Expires
+	pattern = regexp.MustCompile("[[:digit:]]{8}")
+	if !pattern.MatchString(entry.Fields["Expires"]) {
+		return false, errors.New("bad expiration date format")
+	}
+
+	year, _ := strconv.Atoi(entry.Fields["Expires"][0:3])
+	month, _ := strconv.Atoi(entry.Fields["Expires"][4:5])
+	day, _ := strconv.Atoi(entry.Fields["Expires"][6:7])
+
+	var validDate bool
+	validDate, err = isValidDate(month, day, year)
+	if !validDate {
+		return false, fmt.Errorf("bad expiration date %s", err.Error())
+	}
+
+	// Required field: Timestamp
+	pattern = regexp.MustCompile("[[:digit:]]{8}T[[:digit:]]{6}Z")
+	if !pattern.MatchString(entry.Fields["Timestamp"]) {
+		return false, errors.New("bad timestamp format")
+	}
+	year, _ = strconv.Atoi(entry.Fields["Timestamp"][0:3])
+	month, _ = strconv.Atoi(entry.Fields["Timestamp"][4:5])
+	day, _ = strconv.Atoi(entry.Fields["Timestamp"][6:7])
+
+	validDate, err = isValidDate(month, day, year)
+	if !validDate {
+		return false, fmt.Errorf("bad timestamp date %s", err.Error())
+	}
+
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][9:10])
+	if intValue > 23 {
+		return false, fmt.Errorf("bad timestamp hours")
+	}
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][11:12])
+	if intValue > 59 {
+		return false, fmt.Errorf("bad timestamp minutes")
+	}
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][13:14])
+	if intValue > 59 {
+		return false, fmt.Errorf("bad timestamp seconds")
+	}
+
+	// Optional field: Name
+	if strValue, ok := entry.Fields["Name"]; ok {
+		// There are some stipulations to a person's name:
+		// 1) the contents of the name field must contain at least 1 printable character
+		// 2) maximum length of 64 code points
+		pattern = regexp.MustCompile("^[[:space:]]+$")
+		if !pattern.MatchString(strValue) {
+			return false, errors.New("name field has no printable characters")
+		}
+
+		if utf8.RuneCountInString(strValue) > 64 {
+			return false, errors.New("name field too long")
+		}
+	}
+
+	// Optional field: User ID
+	if strValue, ok := entry.Fields["User-ID"]; ok {
+		pattern = regexp.MustCompile("[[:space:]]+")
+		if !pattern.MatchString(strValue) {
+			return false, errors.New("user id contains whitespace")
+		}
+
+		pattern = regexp.MustCompile("[\\/\"]")
+		if !pattern.MatchString(strValue) {
+			return false, errors.New("user id contains illegal characters")
+		}
+
+		if utf8.RuneCountInString(strValue) > 64 {
+			return false, errors.New("user id too long")
+		}
+	}
+
+	// Optional field: Alternate Encryption Key
+	if strValue, ok := entry.Fields["Alternate-Encryption-Key"]; ok {
+		_, err = b85.Decode(strValue)
+		if err != nil {
+			return false, errors.New("bad alternate encryption key")
+		}
+	}
+
+	return true, nil
+}
+
+// isValidDate handles basic date validation for this context. The year is expected to be at least
+// 2020 and the month/day are expected to be valid
+func isValidDate(m int, d int, y int) (bool, error) {
+	if y < 2020 {
+		return false, errors.New("year")
+	}
+
+	if m < 1 || m > 12 {
+		return false, errors.New("month")
+	}
+
+	if d < 1 {
+		return false, errors.New("day")
+	}
+	switch m {
+	case 2:
+		if y%4 == 0 && y%100 != 0 {
+			if d > 29 {
+				return false, errors.New("day")
+			}
+		} else if d > 28 {
+			return false, errors.New("day")
+		}
+	case 1, 3, 5, 7, 8, 10, 12:
+		if d > 31 {
+			return false, errors.New("day")
+		}
+	default:
+		if d > 30 {
+			return false, errors.New("day")
+		}
+	}
+
+	return true, nil
 }
 
 // GenerateOrgKeys generates a set of cryptographic keys for user entries, optionally including
