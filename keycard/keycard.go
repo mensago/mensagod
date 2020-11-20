@@ -286,13 +286,39 @@ func (entry *Entry) SetFields(fields map[string]string) {
 
 // Set initializes the entry from a bytestring
 func (entry *Entry) Set(data []byte) error {
+	// CAUTION: This function needs to be extra careful because it handles untrusted data
+
 	if len(data) < 1 {
 		return errors.New("empty byte field")
 	}
 
 	lines := strings.Split(string(data), "\r\n")
 
-	for linenum, rawline := range lines {
+	stripHeader := false
+	if entry.Type == "Organization" {
+		if lines[0] != "----- BEGIN ORG ENTRY -----" ||
+			lines[len(lines)-1] != "----- END ORG ENTRY -----" {
+			return errors.New("bad entry header/footer")
+		}
+		stripHeader = true
+	} else if entry.Type == "User" {
+		if lines[0] != "----- BEGIN USER ENTRY -----" ||
+			lines[len(lines)-1] != "----- END USER ENTRY -----" {
+			return errors.New("bad entry header/footer")
+		}
+		stripHeader = true
+	} else {
+		return errors.New("bad entry type")
+	}
+
+	startLine := 0
+	endLine := len(lines) - 1
+	if stripHeader {
+		startLine++
+		endLine--
+	}
+
+	for linenum, rawline := range lines[startLine:endLine] {
 		line := strings.TrimSpace(rawline)
 		if len(line) < 1 {
 			continue
@@ -554,6 +580,53 @@ func (entry *Entry) Chain(key EncodedString, rotateOptional bool) (*Entry, map[s
 	return newEntry, outKeys, nil
 }
 
+// NewEntryFromData creates a new entry from a text block of entry information which includes the
+// header and footer. The type of entry created is based on the information in the text block
+func NewEntryFromData(textBlock string) (*Entry, error) {
+	// CAUTION: This function needs to be extra careful because it handles untrusted data
+
+	// The minimum number of lines is 11 because every org keycard, which is the smaller of the two,
+	// has 9 required fields in addition to the Type line and the entry header and footer lines.
+	lines := strings.Split(textBlock, "\r\n")
+	if len(lines) < 11 {
+		return nil, errors.New("entry too short")
+	}
+
+	var outEntry *Entry
+	if lines[0] == "----- BEGIN USER ENTRY -----" {
+		if lines[len(lines)-1] != "----- END USER ENTRY -----" {
+			return nil, errors.New("bad entry header/footer")
+		}
+
+		// 9 required fields for User entries + header/footer lines + Type line
+		if len(lines) < 12 {
+			return nil, errors.New("entry too short")
+		}
+
+		if lines[1] != "Type:User" {
+			return nil, errors.New("bad entry Type line")
+		}
+
+		outEntry = NewUserEntry()
+
+	} else if lines[0] == "----- BEGIN ORG ENTRY -----" {
+		if lines[len(lines)-1] != "----- END ORG ENTRY -----" {
+			return nil, errors.New("bad entry header/footer")
+		}
+
+		if lines[1] != "Type:Organization" {
+			return nil, errors.New("bad entry Type line")
+		}
+
+		outEntry = NewOrgEntry()
+	} else {
+		return nil, errors.New("bad entry data")
+	}
+
+	outEntry.Set([]byte(textBlock))
+	return outEntry, nil
+}
+
 // NewOrgEntry creates a new OrgEntry
 func NewOrgEntry() *Entry {
 	self := new(Entry)
@@ -576,6 +649,8 @@ func NewOrgEntry() *Entry {
 		"Expires",
 		"Timestamp"}
 
+	// If changes are made to the number of these fields, the minimum line count in NewEntryFromData
+	// will need to be updated
 	self.RequiredFields.Items = []string{
 		"Index",
 		"Name",
@@ -635,6 +710,8 @@ func NewUserEntry() *Entry {
 		{"Public-Encryption-Key", "encryption", true},
 		{"Alternate-Encryption-Key", "encryption", true}}
 
+	// If changes are made to the number of these fields, the minimum line count in NewEntryFromData
+	// will need to be updated
 	self.RequiredFields.Items = []string{
 		"Index",
 		"Workspace-ID",
