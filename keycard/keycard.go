@@ -724,9 +724,130 @@ func NewOrgEntry() *Entry {
 // validateOrgEntry checks the validity all OrgEntry data fields to ensure the data in them
 // meets basic data validity checks
 func (entry Entry) validateOrgEntry() (bool, error) {
-	// TODO: Implement
+	// Required field: Index
+	pattern := regexp.MustCompile("[[:digit:]]+")
+	if !pattern.MatchString(entry.Fields["Index"]) {
+		return false, errors.New("bad index")
+	}
 
-	return false, errors.New("unimplemented")
+	// Required field: Name
+	// There are some stipulations to a person's name:
+	// 1) the contents of the name field must contain at least 1 printable character
+	// 2) maximum length of 64 code points
+	pattern = regexp.MustCompile("^[[:space:]]+$")
+	if !pattern.MatchString(entry.Fields["Name"]) {
+		return false, errors.New("name field has no printable characters")
+	}
+
+	if utf8.RuneCountInString(entry.Fields["Name"]) > 64 {
+		return false, errors.New("name field too long")
+	}
+
+	// Required field: Admin address
+	pattern = regexp.MustCompile("^[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}" +
+		"-?[\\da-fA-F]{12}/([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+$")
+	if !pattern.MatchString(entry.Fields["Contact-Admin"]) {
+		return false, errors.New("bad admin contact address")
+	}
+
+	// Required field: Primary Verification Key
+	// We can't actually verify the key data, but we can ensure that it at least decodes from Base85
+	_, err := b85.Decode(entry.Fields["Primary-Verification-Key"])
+	if err != nil {
+		return false, errors.New("bad primary verification key")
+	}
+
+	// Required field: Encryption Key
+	_, err = b85.Decode(entry.Fields["Encryption-Key"])
+	if err != nil {
+		return false, errors.New("bad encryption key")
+	}
+
+	// Required field: Time To Live
+	pattern = regexp.MustCompile("^[[:digit:]]{1,2}$")
+	if !pattern.MatchString(entry.Fields["Time-To-Live"]) {
+		return false, errors.New("bad time to live")
+	}
+	var intValue int
+	intValue, err = strconv.Atoi(entry.Fields["Time-To-Live"])
+	if intValue < 1 || intValue > 30 {
+		return false, errors.New("time to live out of range")
+	}
+
+	// Required field: Expires
+	pattern = regexp.MustCompile("^[[:digit:]]{8}$")
+	if !pattern.MatchString(entry.Fields["Expires"]) {
+		return false, errors.New("bad expiration date format")
+	}
+
+	year, _ := strconv.Atoi(entry.Fields["Expires"][0:3])
+	month, _ := strconv.Atoi(entry.Fields["Expires"][4:5])
+	day, _ := strconv.Atoi(entry.Fields["Expires"][6:7])
+
+	var validDate bool
+	validDate, err = isValidDate(month, day, year)
+	if !validDate {
+		return false, fmt.Errorf("bad expiration date %s", err.Error())
+	}
+
+	// Required field: Timestamp
+	pattern = regexp.MustCompile("^[[:digit:]]{8}T[[:digit:]]{6}Z$")
+	if !pattern.MatchString(entry.Fields["Timestamp"]) {
+		return false, errors.New("bad timestamp format")
+	}
+	year, _ = strconv.Atoi(entry.Fields["Timestamp"][0:3])
+	month, _ = strconv.Atoi(entry.Fields["Timestamp"][4:5])
+	day, _ = strconv.Atoi(entry.Fields["Timestamp"][6:7])
+
+	validDate, err = isValidDate(month, day, year)
+	if !validDate {
+		return false, fmt.Errorf("bad timestamp date %s", err.Error())
+	}
+
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][9:10])
+	if intValue > 23 {
+		return false, fmt.Errorf("bad timestamp hours")
+	}
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][11:12])
+	if intValue > 59 {
+		return false, fmt.Errorf("bad timestamp minutes")
+	}
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][13:14])
+	if intValue > 59 {
+		return false, fmt.Errorf("bad timestamp seconds")
+	}
+
+	// Optional fields: Abuse address and Support addresses
+	pattern = regexp.MustCompile("^[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]" +
+		"{4}-?[\\da-fA-F]{12}/([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+$")
+	if strValue, ok := entry.Fields["Contact-Abuse"]; ok {
+		if !pattern.MatchString(strValue) {
+			return false, errors.New("bad abuse contact address")
+		}
+	}
+	if strValue, ok := entry.Fields["Contact-Support"]; ok {
+		if !pattern.MatchString(strValue) {
+			return false, errors.New("bad support contact address")
+		}
+	}
+
+	// Optional field: Language
+	if strValue, ok := entry.Fields["Language"]; ok {
+		pattern = regexp.MustCompile("^[[:alpha:]]{2,3}(,[[:alpha:]]{2,3})*?$")
+		if !pattern.MatchString(strValue) {
+			return false, errors.New("bad language list")
+		}
+	}
+
+	// Optional field: Secondary Verification Key
+	if strValue, ok := entry.Fields["Secondary-Verification-Key"]; ok {
+		_, err = b85.Decode(strValue)
+		if err != nil {
+			return false, errors.New("bad secondary verification key")
+		}
+	}
+
+	return true, nil
 }
 
 // NewUserEntry creates a new UserEntry
@@ -790,9 +911,6 @@ func NewUserEntry() *Entry {
 // meets basic data validity checks. Note that this function only checks data format; it does
 // not fail if the entry's Expires field is past due, the Timestamp field is in the future, etc.
 func (entry Entry) validateUserEntry() (bool, error) {
-	// Required Fields
-	// "Index",
-
 	// Required field: Index
 	pattern := regexp.MustCompile("[[:digit:]]+")
 	if !pattern.MatchString(entry.Fields["Index"]) {
@@ -800,7 +918,8 @@ func (entry Entry) validateUserEntry() (bool, error) {
 	}
 
 	// Required field: Workspace-ID
-	pattern = regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
+	pattern = regexp.MustCompile("^[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}" +
+		"-?[\\da-fA-F]{12}$")
 	if len(entry.Fields["Workspace-ID"]) != 36 && len(entry.Fields["Workspace-ID"]) != 32 {
 		return false, errors.New("bad workspace id")
 	}
@@ -835,7 +954,7 @@ func (entry Entry) validateUserEntry() (bool, error) {
 	}
 
 	// Required field: Time To Live
-	pattern = regexp.MustCompile("[[:digit:]]{1,2}")
+	pattern = regexp.MustCompile("^[[:digit:]]{1,2}$")
 	if !pattern.MatchString(entry.Fields["Time-To-Live"]) {
 		return false, errors.New("bad time to live")
 	}
@@ -846,7 +965,7 @@ func (entry Entry) validateUserEntry() (bool, error) {
 	}
 
 	// Required field: Expires
-	pattern = regexp.MustCompile("[[:digit:]]{8}")
+	pattern = regexp.MustCompile("^[[:digit:]]{8}$")
 	if !pattern.MatchString(entry.Fields["Expires"]) {
 		return false, errors.New("bad expiration date format")
 	}
@@ -862,7 +981,7 @@ func (entry Entry) validateUserEntry() (bool, error) {
 	}
 
 	// Required field: Timestamp
-	pattern = regexp.MustCompile("[[:digit:]]{8}T[[:digit:]]{6}Z")
+	pattern = regexp.MustCompile("^[[:digit:]]{8}T[[:digit:]]{6}Z$")
 	if !pattern.MatchString(entry.Fields["Timestamp"]) {
 		return false, errors.New("bad timestamp format")
 	}
@@ -905,7 +1024,7 @@ func (entry Entry) validateUserEntry() (bool, error) {
 
 	// Optional field: User ID
 	if strValue, ok := entry.Fields["User-ID"]; ok {
-		pattern = regexp.MustCompile("[[:space:]]+")
+		pattern = regexp.MustCompile("^[[:space:]]+$")
 		if !pattern.MatchString(strValue) {
 			return false, errors.New("user id contains whitespace")
 		}
