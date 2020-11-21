@@ -216,17 +216,60 @@ func (entry Entry) IsCompliant() bool {
 }
 
 // IsExpired returns true if the entry has expired
-func (entry Entry) IsExpired() bool {
-	// TODO: Implement keycard::IsExpired()
+func (entry Entry) IsExpired() (bool, error) {
 
-	return true
+	// Basic validation
+	pattern := regexp.MustCompile("^[[:digit:]]{8}$")
+	if !pattern.MatchString(entry.Fields["Expires"]) {
+		return false, errors.New("bad expiration date format")
+	}
+
+	year, _ := strconv.Atoi(entry.Fields["Expires"][0:3])
+	month, _ := strconv.Atoi(entry.Fields["Expires"][4:5])
+	day, _ := strconv.Atoi(entry.Fields["Expires"][6:7])
+
+	validDate, err := isValidDate(month, day, year)
+	if !validDate {
+		return false, fmt.Errorf("bad expiration date %s", err.Error())
+	}
+
+	now := time.Now()
+	expiration, _ := time.Parse("20060102", entry.Fields["Expires"])
+	return now.After(expiration), nil
 }
 
 // IsTimestampValid returns true if the timestamp for the entry is valid
-func (entry Entry) IsTimestampValid() bool {
-	// TODO: Implement keycard::IsTimestampValid()
+func (entry Entry) IsTimestampValid() (bool, error) {
+	pattern := regexp.MustCompile("^[[:digit:]]{8}T[[:digit:]]{6}Z$")
+	if !pattern.MatchString(entry.Fields["Timestamp"]) {
+		return false, errors.New("bad timestamp format")
+	}
+	year, _ := strconv.Atoi(entry.Fields["Timestamp"][0:3])
+	month, _ := strconv.Atoi(entry.Fields["Timestamp"][4:5])
+	day, _ := strconv.Atoi(entry.Fields["Timestamp"][6:7])
 
-	return false
+	validDate, err := isValidDate(month, day, year)
+	if !validDate {
+		return false, fmt.Errorf("bad timestamp date %s", err.Error())
+	}
+
+	var intValue int
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][9:10])
+	if intValue > 23 {
+		return false, fmt.Errorf("bad timestamp hours")
+	}
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][11:12])
+	if intValue > 59 {
+		return false, fmt.Errorf("bad timestamp minutes")
+	}
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][13:14])
+	if intValue > 59 {
+		return false, fmt.Errorf("bad timestamp seconds")
+	}
+
+	now := time.Now()
+	timestamp, _ := time.Parse("20060102 030405", entry.Fields["Timestamp"])
+	return now.After(timestamp), nil
 }
 
 // GetSignature - get the specified signature
