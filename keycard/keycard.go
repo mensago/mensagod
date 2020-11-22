@@ -379,6 +379,9 @@ func (entry *Entry) Set(data []byte) error {
 	}
 
 	lines := strings.Split(string(data), "\r\n")
+	if lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
 
 	stripHeader := false
 	if entry.Type == "Organization" {
@@ -398,7 +401,7 @@ func (entry *Entry) Set(data []byte) error {
 	}
 
 	startLine := 0
-	endLine := len(lines) - 1
+	endLine := len(lines)
 	if stripHeader {
 		startLine++
 		endLine--
