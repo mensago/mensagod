@@ -5,7 +5,7 @@
 #	and encryption keys.
 #	General usage looks like this: python3 psql_testdata > '~/Desktop/Anselus Test Data.txt'
 
-# Released under the terms of the GPLv3 license
+# Released under the terms of the MIT license
 # ©2019-2020 Jon Yoder <jsyoder@mailfence.com>
 
 import argparse
@@ -15,7 +15,6 @@ import secrets
 import sys
 import uuid
 
-from Crypto import Random
 import diceware
 import nacl.public
 import nacl.pwhash

@@ -3,7 +3,7 @@
 # genkeypair - a quick-and-dirty utility to create ed25519 signing key pairs and curve25519
 # 	encryption key pairs
 
-# Released under the terms of the GPLv3 license
+# Released under the terms of the MIT license
 # ©2019-2020 Jon Yoder <jsyoder@mailfence.com>
 
 import base64
