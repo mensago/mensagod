@@ -610,12 +610,174 @@ func TestUserChain(t *testing.T) {
 	}
 }
 
-func TestIsDataCompliant(t *testing.T) {
-	// TODO: Implement TestIsDataCompliant
+func TestIsDataCompliantOrg(t *testing.T) {
+	entry := keycard.NewOrgEntry()
+
+	entry.SetFields(map[string]string{
+		"Name":                     "Acme, Inc.",
+		"Contact-Admin":            "54025843-bacc-40cc-a0e4-df48a099c2f3/acme.com",
+		"Language":                 "en",
+		"Primary-Verification-Key": "ED25519:)8id(gE02^S<{3H>9B;X4{DuYcb`%wo^mC&1lN88",
+		"Encryption-Key":           "CURVE25519:@b?cjpeY;<&y+LSOA&yUQ&ZIrp(JGt{W$*V>ATLG",
+		"Time-To-Live":             "14",
+		"Expires":                  "20201002",
+		"Timestamp":                "20200901T131313Z"})
+
+	if !entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: compliance failed a compliant entry\n")
+	}
+
+	// Now to test failures of each field. The extent of this testing wouldn't normally be
+	// necessary, but this function validates data from outside. We *have* to be extra sure that
+	// this data is good... especially when it will be permanently added to the database if it is
+	// accepted.
+
+	entry.SetField("Index", "-1")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with a bad index\n")
+	}
+	entry.SetField("Index", "1")
+
+	entry.SetField("Name", "")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with an empty name\n")
+	}
+	entry.SetField("Name", "\t \t")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with a whitespace name\n")
+	}
+	entry.SetField("Name", "Acme, Inc.")
+
+	entry.SetField("Contact-Admin", "admin/example.com")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with an Anselus address " +
+			"for the admin contact\n")
+	}
+	entry.SetField("Contact-Admin", "54025843-bacc-40cc-a0e4-df48a099c2f3/acme.com")
+
+	entry.SetField("Contact-Abuse", "abuse/example.com")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with an Anselus address " +
+			"for the abuse contact\n")
+	}
+	entry.SetField("Contact-Abuse", "54025843-bacc-40cc-a0e4-df48a099c2f3/acme.com")
+
+	entry.SetField("Contact-Support", "support/example.com")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with an Anselus address " +
+			"for the support contact\n")
+	}
+	entry.SetField("Contact-Support", "54025843-bacc-40cc-a0e4-df48a099c2f3/acme.com")
+
+	entry.SetField("Language", "en-us")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with a bad language\n")
+	}
+	entry.SetField("Language", "de,es,FR")
+	if !entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant failed an entry with a passing language list\n")
+	}
+
+	entry.SetField("Primary-Verification-Key", "d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with a bad key\n")
+	}
+	entry.SetField("Primary-Verification-Key", "ED25519:123456789:123456789")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with a bad key\n")
+	}
+	entry.SetField("Primary-Verification-Key", "ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D")
+
+	entry.SetField("Secondary-Verification-Key", "d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with a bad key\n")
+	}
+	entry.SetField("Secondary-Verification-Key", "ED25519:123456789:123456789")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with a bad key\n")
+	}
+	entry.SetField("Secondary-Verification-Key", "ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D")
+
+	entry.SetField("Encryption-Key", "d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with a bad key\n")
+	}
+	entry.SetField("Encryption-Key", "ED25519:123456789:123456789")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with a bad key\n")
+	}
+	entry.SetField("Encryption-Key", "ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D")
+
+	entry.SetField("Time-To-Live", "0")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with a bad TTL\n")
+	}
+	entry.SetField("Time-To-Live", "60")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with a bad TTL\n")
+	}
+	entry.SetField("Time-To-Live", "sdf'pomwerASDFOAQEtmlde123,l.")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with a bad TTL\n")
+	}
+	entry.SetField("Time-To-Live", "7")
+
+	tempStr := entry.Fields["Expires"]
+	entry.SetField("Expires", "12345678")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with a bad expiration date\n")
+	}
+	entry.SetField("Expires", "99999999")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with a bad expiration date\n")
+	}
+	entry.SetField("Expires", tempStr)
+
+	entry.SetField("Timestamp", "12345678 121212")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with a bad " +
+			"format timestamp\n")
+	}
+	entry.SetField("Timestamp", "12345678T121212Z")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with a too-old timestamp\n")
+	}
+	entry.SetField("Timestamp", "20200901T131313Z")
+}
+
+func TestIsDataCompliantUser(t *testing.T) {
+	// TODO: Implement TestIsDataCompliantUser
 }
 
 func TestIsExpired(t *testing.T) {
-	// TODO: Implement TestIsExpired
+	entry := keycard.NewOrgEntry()
+
+	// NewOrgEntry always creates an entry with a valid expiration date
+	isExpired, err := entry.IsExpired()
+	if err != nil {
+		t.Fatal("TestIsDataCompliantOrg: IsExpired returned an error\n")
+	}
+	if isExpired {
+		t.Fatal("TestIsDataCompliantOrg: IsExpired failed a passing expiration date\n")
+	}
+
+	entry.SetFields(map[string]string{
+		"Name":                     "Acme, Inc.",
+		"Contact-Admin":            "54025843-bacc-40cc-a0e4-df48a099c2f3/acme.com",
+		"Language":                 "en",
+		"Primary-Verification-Key": "ED25519:)8id(gE02^S<{3H>9B;X4{DuYcb`%wo^mC&1lN88",
+		"Encryption-Key":           "CURVE25519:@b?cjpeY;<&y+LSOA&yUQ&ZIrp(JGt{W$*V>ATLG",
+		"Time-To-Live":             "14",
+		"Expires":                  "20201002",
+		"Timestamp":                "20200901T131313Z"})
+
+	isExpired, err = entry.IsExpired()
+	if err != nil {
+		t.Fatal("TestIsDataCompliantOrg: IsExpired returned an error\n")
+	}
+	if !isExpired {
+		t.Fatal("TestIsDataCompliantOrg: IsExpired passed a failing expiration date\n")
+	}
 }
 
 func TestIsTimestampValid(t *testing.T) {

@@ -224,9 +224,9 @@ func (entry Entry) IsExpired() (bool, error) {
 		return false, errors.New("bad expiration date format")
 	}
 
-	year, _ := strconv.Atoi(entry.Fields["Expires"][0:3])
-	month, _ := strconv.Atoi(entry.Fields["Expires"][4:5])
-	day, _ := strconv.Atoi(entry.Fields["Expires"][6:7])
+	year, _ := strconv.Atoi(entry.Fields["Expires"][0:4])
+	month, _ := strconv.Atoi(entry.Fields["Expires"][4:6])
+	day, _ := strconv.Atoi(entry.Fields["Expires"][6:8])
 
 	validDate, err := isValidDate(month, day, year)
 	if !validDate {
@@ -448,7 +448,7 @@ func (entry *Entry) SetExpiration(numdays int16) error {
 		numdays = 1095
 	}
 
-	entry.Fields["Expiration"] = time.Now().AddDate(0, 0, int(numdays)).Format("%Y%m%d")
+	entry.Fields["Expires"] = time.Now().AddDate(0, 0, int(numdays)).Format("20060102")
 
 	return nil
 }
@@ -772,13 +772,18 @@ func (entry Entry) validateOrgEntry() (bool, error) {
 	if !pattern.MatchString(entry.Fields["Index"]) {
 		return false, errors.New("bad index")
 	}
+	var intValue int
+	intValue, err := strconv.Atoi(entry.Fields["Index"])
+	if intValue < 1 {
+		return false, errors.New("bad index value")
+	}
 
 	// Required field: Name
 	// There are some stipulations to a person's name:
 	// 1) the contents of the name field must contain at least 1 printable character
 	// 2) maximum length of 64 code points
 	pattern = regexp.MustCompile("^[[:space:]]+$")
-	if !pattern.MatchString(entry.Fields["Name"]) {
+	if pattern.MatchString(entry.Fields["Name"]) {
 		return false, errors.New("name field has no printable characters")
 	}
 
@@ -795,13 +800,22 @@ func (entry Entry) validateOrgEntry() (bool, error) {
 
 	// Required field: Primary Verification Key
 	// We can't actually verify the key data, but we can ensure that it at least decodes from Base85
-	_, err := b85.Decode(entry.Fields["Primary-Verification-Key"])
+	var keystr EncodedString
+	err = keystr.Set(entry.Fields["Primary-Verification-Key"])
+	if err != nil {
+		return false, errors.New("bad primary verification key")
+	}
+	_, err = keystr.RawData()
 	if err != nil {
 		return false, errors.New("bad primary verification key")
 	}
 
 	// Required field: Encryption Key
-	_, err = b85.Decode(entry.Fields["Encryption-Key"])
+	err = keystr.Set(entry.Fields["Encryption-Key"])
+	if err != nil {
+		return false, errors.New("bad encryption key")
+	}
+	_, err = keystr.RawData()
 	if err != nil {
 		return false, errors.New("bad encryption key")
 	}
@@ -811,7 +825,7 @@ func (entry Entry) validateOrgEntry() (bool, error) {
 	if !pattern.MatchString(entry.Fields["Time-To-Live"]) {
 		return false, errors.New("bad time to live")
 	}
-	var intValue int
+
 	intValue, err = strconv.Atoi(entry.Fields["Time-To-Live"])
 	if intValue < 1 || intValue > 30 {
 		return false, errors.New("time to live out of range")
@@ -823,9 +837,9 @@ func (entry Entry) validateOrgEntry() (bool, error) {
 		return false, errors.New("bad expiration date format")
 	}
 
-	year, _ := strconv.Atoi(entry.Fields["Expires"][0:3])
-	month, _ := strconv.Atoi(entry.Fields["Expires"][4:5])
-	day, _ := strconv.Atoi(entry.Fields["Expires"][6:7])
+	year, _ := strconv.Atoi(entry.Fields["Expires"][0:4])
+	month, _ := strconv.Atoi(entry.Fields["Expires"][4:6])
+	day, _ := strconv.Atoi(entry.Fields["Expires"][6:8])
 
 	var validDate bool
 	validDate, err = isValidDate(month, day, year)
@@ -838,24 +852,24 @@ func (entry Entry) validateOrgEntry() (bool, error) {
 	if !pattern.MatchString(entry.Fields["Timestamp"]) {
 		return false, errors.New("bad timestamp format")
 	}
-	year, _ = strconv.Atoi(entry.Fields["Timestamp"][0:3])
-	month, _ = strconv.Atoi(entry.Fields["Timestamp"][4:5])
-	day, _ = strconv.Atoi(entry.Fields["Timestamp"][6:7])
+	year, _ = strconv.Atoi(entry.Fields["Timestamp"][0:4])
+	month, _ = strconv.Atoi(entry.Fields["Timestamp"][4:6])
+	day, _ = strconv.Atoi(entry.Fields["Timestamp"][6:8])
 
 	validDate, err = isValidDate(month, day, year)
 	if !validDate {
 		return false, fmt.Errorf("bad timestamp date %s", err.Error())
 	}
 
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][9:10])
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][9:11])
 	if intValue > 23 {
 		return false, fmt.Errorf("bad timestamp hours")
 	}
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][11:12])
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][11:13])
 	if intValue > 59 {
 		return false, fmt.Errorf("bad timestamp minutes")
 	}
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][13:14])
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][13:15])
 	if intValue > 59 {
 		return false, fmt.Errorf("bad timestamp seconds")
 	}
@@ -884,7 +898,11 @@ func (entry Entry) validateOrgEntry() (bool, error) {
 
 	// Optional field: Secondary Verification Key
 	if strValue, ok := entry.Fields["Secondary-Verification-Key"]; ok {
-		_, err = b85.Decode(strValue)
+		err = keystr.Set(strValue)
+		if err != nil {
+			return false, errors.New("bad secondary verification key")
+		}
+		_, err = keystr.RawData()
 		if err != nil {
 			return false, errors.New("bad secondary verification key")
 		}
@@ -1028,24 +1046,24 @@ func (entry Entry) validateUserEntry() (bool, error) {
 	if !pattern.MatchString(entry.Fields["Timestamp"]) {
 		return false, errors.New("bad timestamp format")
 	}
-	year, _ = strconv.Atoi(entry.Fields["Timestamp"][0:3])
-	month, _ = strconv.Atoi(entry.Fields["Timestamp"][4:5])
-	day, _ = strconv.Atoi(entry.Fields["Timestamp"][6:7])
+	year, _ = strconv.Atoi(entry.Fields["Timestamp"][0:4])
+	month, _ = strconv.Atoi(entry.Fields["Timestamp"][4:6])
+	day, _ = strconv.Atoi(entry.Fields["Timestamp"][6:8])
 
 	validDate, err = isValidDate(month, day, year)
 	if !validDate {
 		return false, fmt.Errorf("bad timestamp date %s", err.Error())
 	}
 
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][9:10])
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][9:11])
 	if intValue > 23 {
 		return false, fmt.Errorf("bad timestamp hours")
 	}
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][11:12])
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][11:13])
 	if intValue > 59 {
 		return false, fmt.Errorf("bad timestamp minutes")
 	}
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][13:14])
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][13:15])
 	if intValue > 59 {
 		return false, fmt.Errorf("bad timestamp seconds")
 	}
@@ -1056,7 +1074,7 @@ func (entry Entry) validateUserEntry() (bool, error) {
 		// 1) the contents of the name field must contain at least 1 printable character
 		// 2) maximum length of 64 code points
 		pattern = regexp.MustCompile("^[[:space:]]+$")
-		if !pattern.MatchString(strValue) {
+		if pattern.MatchString(strValue) {
 			return false, errors.New("name field has no printable characters")
 		}
 
