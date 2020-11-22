@@ -981,6 +981,11 @@ func (entry Entry) validateUserEntry() (bool, error) {
 	if !pattern.MatchString(entry.Fields["Index"]) {
 		return false, errors.New("bad index")
 	}
+	var intValue int
+	intValue, err := strconv.Atoi(entry.Fields["Index"])
+	if intValue < 1 {
+		return false, errors.New("bad index value")
+	}
 
 	// Required field: Workspace-ID
 	pattern = regexp.MustCompile("^[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}" +
@@ -1001,19 +1006,32 @@ func (entry Entry) validateUserEntry() (bool, error) {
 
 	// Required field: Contact Request Verification Key
 	// We can't actually verify the key data, but we can ensure that it at least decodes from Base85
-	_, err := b85.Decode(entry.Fields["Contact-Request-Verification-Key"])
+	var keystr EncodedString
+	err = keystr.Set(entry.Fields["Contact-Request-Verification-Key"])
+	if err != nil {
+		return false, errors.New("bad contact request verification key")
+	}
+	_, err = keystr.RawData()
 	if err != nil {
 		return false, errors.New("bad contact request verification key")
 	}
 
 	// Required field: Contact Request Encryption Key
-	_, err = b85.Decode(entry.Fields["Contact-Request-Encryption-Key"])
+	err = keystr.Set(entry.Fields["Contact-Request-Encryption-Key"])
+	if err != nil {
+		return false, errors.New("bad contact request encryption key")
+	}
+	_, err = keystr.RawData()
 	if err != nil {
 		return false, errors.New("bad contact request encryption key")
 	}
 
 	// Required field: Public Encryption Key
-	_, err = b85.Decode(entry.Fields["Public-Encryption-Key"])
+	err = keystr.Set(entry.Fields["Public-Encryption-Key"])
+	if err != nil {
+		return false, errors.New("bad public encryption key")
+	}
+	_, err = keystr.RawData()
 	if err != nil {
 		return false, errors.New("bad public encryption key")
 	}
@@ -1023,7 +1041,6 @@ func (entry Entry) validateUserEntry() (bool, error) {
 	if !pattern.MatchString(entry.Fields["Time-To-Live"]) {
 		return false, errors.New("bad time to live")
 	}
-	var intValue int
 	intValue, err = strconv.Atoi(entry.Fields["Time-To-Live"])
 	if intValue < 1 || intValue > 30 {
 		return false, errors.New("time to live out of range")
@@ -1035,9 +1052,9 @@ func (entry Entry) validateUserEntry() (bool, error) {
 		return false, errors.New("bad expiration date format")
 	}
 
-	year, _ := strconv.Atoi(entry.Fields["Expires"][0:3])
-	month, _ := strconv.Atoi(entry.Fields["Expires"][4:5])
-	day, _ := strconv.Atoi(entry.Fields["Expires"][6:7])
+	year, _ := strconv.Atoi(entry.Fields["Expires"][0:4])
+	month, _ := strconv.Atoi(entry.Fields["Expires"][4:6])
+	day, _ := strconv.Atoi(entry.Fields["Expires"][6:8])
 
 	var validDate bool
 	validDate, err = isValidDate(month, day, year)
@@ -1089,13 +1106,14 @@ func (entry Entry) validateUserEntry() (bool, error) {
 
 	// Optional field: User ID
 	if strValue, ok := entry.Fields["User-ID"]; ok {
-		pattern = regexp.MustCompile("^[[:space:]]+$")
-		if !pattern.MatchString(strValue) {
+		pattern = regexp.MustCompile("[[:space:]]+")
+		if pattern.MatchString(strValue) {
 			return false, errors.New("user id contains whitespace")
 		}
 
-		pattern = regexp.MustCompile("[\\/\"]")
-		if !pattern.MatchString(strValue) {
+		// pattern = regexp.MustCompile("[\\/\"]")
+		pattern = regexp.MustCompile("[\\\\/\"]")
+		if pattern.MatchString(strValue) {
 			return false, errors.New("user id contains illegal characters")
 		}
 
@@ -1106,9 +1124,13 @@ func (entry Entry) validateUserEntry() (bool, error) {
 
 	// Optional field: Alternate Encryption Key
 	if strValue, ok := entry.Fields["Alternate-Encryption-Key"]; ok {
-		_, err = b85.Decode(strValue)
+		err = keystr.Set(strValue)
 		if err != nil {
-			return false, errors.New("bad alternate encryption key")
+			return false, errors.New("bad alt encryption key")
+		}
+		_, err = keystr.RawData()
+		if err != nil {
+			return false, errors.New("bad alt encryption key")
 		}
 	}
 

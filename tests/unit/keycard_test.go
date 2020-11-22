@@ -746,7 +746,167 @@ func TestIsDataCompliantOrg(t *testing.T) {
 }
 
 func TestIsDataCompliantUser(t *testing.T) {
-	// TODO: Implement TestIsDataCompliantUser
+	entry := keycard.NewUserEntry()
+	entry.SetFields(map[string]string{
+		"Name":                             "Corbin Simons",
+		"Workspace-ID":                     "4418bf6c-000b-4bb3-8111-316e72030468",
+		"Domain":                           "example.com",
+		"Contact-Request-Verification-Key": "ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D",
+		"Contact-Request-Encryption-Key":   "CURVE25519:j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph",
+		"Public-Encryption-Key":            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
+		"Time-To-Live":                     "30",
+		"Expires":                          "20201002",
+		"Timestamp":                        "20200901T121212Z"})
+
+	if !entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: compliance check failed a compliant entry\n")
+	}
+
+	// Now to test failures of each field. The extent of this testing wouldn't normally be
+	// necessary, but this function validates data from outside. We *have* to be extra sure that
+	// this data is good... especially when it will be permanently added to the database if it is
+	// accepted.
+
+	// Required field: Index
+	entry.SetField("Index", "-1")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a bad index\n")
+	}
+	entry.SetField("Index", "1")
+
+	// Required field: Workspace ID
+	entry.SetField("Workspace-ID", "4418bf6c-000b-4bb3-8111-316e72030468/example.com")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a workspace " +
+			"address for a workspace ID\n")
+	}
+	entry.SetField("Workspace-ID", "4418bf6c-000b-4bb3-8111-316e72030468")
+
+	// Required field: Domain
+	entry.SetField("Domain", "")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with an empty domain\n")
+	}
+	entry.SetField("Domain", "\t \t")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a whitespace domain\n")
+	}
+	entry.SetField("Domain", "example.com")
+
+	// Required field: Contact Request Verification Key
+	entry.SetField("Contact-Request-Verification-Key", "d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a bad crv key\n")
+	}
+	entry.SetField("Contact-Request-Verification-Key", "ED25519:123456789:123456789")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a bad crv key\n")
+	}
+	entry.SetField("Contact-Request-Verification-Key",
+		"ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D")
+
+	// Required field: Contact Request Encryption Key
+	entry.SetField("Contact-Request-Encryption-Key", "j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a bad cre key\n")
+	}
+	entry.SetField("Contact-Request-Encryption-Key", "CURVE25519:123456789:123456789")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a bad cre key\n")
+	}
+	entry.SetField("Contact-Request-Encryption-Key",
+		"CURVE25519:j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph")
+
+	// Required field: Public Encryption Key
+	entry.SetField("Public-Encryption-Key", "nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a bad pe key\n")
+	}
+	entry.SetField("Public-Encryption-Key", "CURVE25519:123456789:123456789")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a bad pe key\n")
+	}
+	entry.SetField("Public-Encryption-Key",
+		"CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN")
+
+	// Required field: Time to Live
+	entry.SetField("Time-To-Live", "0")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a bad TTL\n")
+	}
+	entry.SetField("Time-To-Live", "60")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a bad TTL\n")
+	}
+	entry.SetField("Time-To-Live", "sdf'pomwerASDFOAQEtmlde123,l.")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a bad TTL\n")
+	}
+	entry.SetField("Time-To-Live", "7")
+
+	// Required field: Expires
+	tempStr := entry.Fields["Expires"]
+	entry.SetField("Expires", "12345678")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a bad expiration date\n")
+	}
+	entry.SetField("Expires", "99999999")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a bad expiration date\n")
+	}
+	entry.SetField("Expires", tempStr)
+
+	// Required field: timestamp
+	entry.SetField("Timestamp", "12345678 121212")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a bad " +
+			"format timestamp\n")
+	}
+	entry.SetField("Timestamp", "12345678T121212Z")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a too-old timestamp\n")
+	}
+	entry.SetField("Timestamp", "20200901T131313Z")
+
+	// Optional field: Name
+	entry.SetField("Name", "")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with an empty name\n")
+	}
+	entry.SetField("Name", "\t \t")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a whitespace name\n")
+	}
+	entry.SetField("Name", "Acme, Inc.")
+
+	// Optional field: User ID
+	entry.SetField("User-ID", "Corbin Simons")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a user id " +
+			"containing whitespace\n")
+	}
+	entry.SetField("User-ID", "TEST\\csimons")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a user id " +
+			"containing a backslash\n")
+	}
+	entry.SetField("User-ID", "csimons_is-teh.bestest:PERSON>>>>EVARRRR<<<<<LOL😁")
+	if !entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant failed an entry with a valid user id\n")
+	}
+
+	// Optional field: Alternate Encryption Key
+	entry.SetField("Alternate-Encryption-Key", "nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a bad alt key\n")
+	}
+	entry.SetField("Alternate-Encryption-Key", "CURVE25519:123456789:123456789")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a bad alt key\n")
+	}
+	entry.SetField("Alternate-Encryption-Key",
+		"CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN")
+
 }
 
 func TestIsExpired(t *testing.T) {
