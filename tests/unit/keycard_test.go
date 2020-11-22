@@ -781,5 +781,26 @@ func TestIsExpired(t *testing.T) {
 }
 
 func TestIsTimestampValid(t *testing.T) {
-	// TODO: Implement TestIsTimestampValid
+	entry := keycard.NewOrgEntry()
+
+	// NewOrgEntry always creates an entry with a valid timestamp
+	err := entry.IsTimestampValid()
+	if err != nil {
+		t.Fatal("TestIsTimestampValid: IsTimestampValid failed a passing timestamp\n")
+	}
+
+	entry.SetFields(map[string]string{
+		"Name":                     "Acme, Inc.",
+		"Contact-Admin":            "54025843-bacc-40cc-a0e4-df48a099c2f3/acme.com",
+		"Language":                 "en",
+		"Primary-Verification-Key": "ED25519:)8id(gE02^S<{3H>9B;X4{DuYcb`%wo^mC&1lN88",
+		"Encryption-Key":           "CURVE25519:@b?cjpeY;<&y+LSOA&yUQ&ZIrp(JGt{W$*V>ATLG",
+		"Time-To-Live":             "14",
+		"Expires":                  "20201002",
+		"Timestamp":                "20200901 131313"})
+
+	err = entry.IsTimestampValid()
+	if err == nil {
+		t.Fatal("TestIsTimestampValid: IsTimestampValid passed a failing timestamp\n")
+	}
 }

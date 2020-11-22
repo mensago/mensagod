@@ -239,37 +239,41 @@ func (entry Entry) IsExpired() (bool, error) {
 }
 
 // IsTimestampValid returns true if the timestamp for the entry is valid
-func (entry Entry) IsTimestampValid() (bool, error) {
+func (entry Entry) IsTimestampValid() error {
 	pattern := regexp.MustCompile("^[[:digit:]]{8}T[[:digit:]]{6}Z$")
 	if !pattern.MatchString(entry.Fields["Timestamp"]) {
-		return false, errors.New("bad timestamp format")
+		return errors.New("bad timestamp format")
 	}
-	year, _ := strconv.Atoi(entry.Fields["Timestamp"][0:3])
-	month, _ := strconv.Atoi(entry.Fields["Timestamp"][4:5])
-	day, _ := strconv.Atoi(entry.Fields["Timestamp"][6:7])
+	year, _ := strconv.Atoi(entry.Fields["Timestamp"][0:4])
+	month, _ := strconv.Atoi(entry.Fields["Timestamp"][4:6])
+	day, _ := strconv.Atoi(entry.Fields["Timestamp"][6:8])
 
 	validDate, err := isValidDate(month, day, year)
 	if !validDate {
-		return false, fmt.Errorf("bad timestamp date %s", err.Error())
+		return fmt.Errorf("bad timestamp date %s", err.Error())
 	}
 
 	var intValue int
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][9:10])
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][9:11])
 	if intValue > 23 {
-		return false, fmt.Errorf("bad timestamp hours")
+		return fmt.Errorf("bad timestamp hours")
 	}
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][11:12])
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][11:13])
 	if intValue > 59 {
-		return false, fmt.Errorf("bad timestamp minutes")
+		return fmt.Errorf("bad timestamp minutes")
 	}
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][13:14])
+	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][13:15])
 	if intValue > 59 {
-		return false, fmt.Errorf("bad timestamp seconds")
+		return fmt.Errorf("bad timestamp seconds")
 	}
 
 	now := time.Now()
-	timestamp, _ := time.Parse("20060102 030405", entry.Fields["Timestamp"])
-	return now.After(timestamp), nil
+	timestamp, _ := time.Parse("20060102T030405Z", entry.Fields["Timestamp"])
+	if now.Before(timestamp) {
+		return errors.New("timestamp is later than expiration date")
+	}
+
+	return nil
 }
 
 // GetSignature - get the specified signature
