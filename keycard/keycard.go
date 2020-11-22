@@ -915,6 +915,10 @@ func (entry Entry) validateOrgEntry() (bool, error) {
 		}
 	}
 
+	if entry.IsTimestampValid() != nil {
+		return false, errors.New("invalid timestamp")
+	}
+
 	return true, nil
 }
 
@@ -1135,6 +1139,10 @@ func (entry Entry) validateUserEntry() (bool, error) {
 		if err != nil {
 			return false, errors.New("bad alt encryption key")
 		}
+	}
+
+	if entry.IsTimestampValid() != nil {
+		return false, errors.New("invalid timestamp")
 	}
 
 	return true, nil
