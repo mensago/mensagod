@@ -5,13 +5,17 @@
 # Released under the terms of the MIT license
 # ©2019-2020 Jon Yoder <jsyoder@mailfence.com>
 
+import base64
+import hashlib
 import os
 import platform
 import subprocess
 import sys
+import time
 
+import nacl.public
+import nacl.signing
 import psycopg2
-import toml
 
 # Steps to perform:
 #
@@ -133,11 +137,11 @@ cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.
 			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'iwkspc_main' AND "
 			"c.relkind = 'r');")
 rows = cur.fetchall()
-
 if rows[0][0] is False:
 	cur.execute("CREATE TABLE iwkspc_main(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
 				"friendly_address VARCHAR(48), password VARCHAR(128) NOT NULL, "
 				"status VARCHAR(16) NOT NULL);")
+
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
 			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'iwkspc_folders' "
@@ -147,6 +151,7 @@ if rows[0][0] is False:
 	cur.execute("CREATE TABLE iwkspc_folders(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
 				"enc_name VARCHAR(128) NOT NULL, enc_key VARCHAR(64) NOT NULL);")
 
+
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
 			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'iwkspc_devices' "
 			"AND c.relkind = 'r');")
@@ -155,6 +160,7 @@ if rows[0][0] is False:
 	cur.execute("CREATE TABLE iwkspc_devices(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, "
 				"devid CHAR(36) NOT NULL, keytype VARCHAR(16) NOT NULL, "
 				"devkey VARCHAR(1000) NOT NULL, status VARCHAR(16) NOT NULL);")
+
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
 			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'failure_log' "
@@ -182,49 +188,57 @@ rows = cur.fetchall()
 if rows[0][0] is False:
 	cur.execute("CREATE TABLE keycards(rowid SERIAL PRIMARY KEY, owner VARCHAR(64) NOT NULL, "
 				"creationtime TIMESTAMP NOT NULL, index INTEGER NOT NULL, "
-				"entry VARCHAR(8192) NOT NULL, fingerprint VARCHAR(768) NOT NULL);")
+				"entry VARCHAR(8192) NOT NULL, fingerprint VARCHAR(800) NOT NULL);")
 
-# TODO: Create the table to store the server's crypto keys
+
+cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
+			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'keycards' "
+			"AND c.relkind = 'r');")
+rows = cur.fetchall()
+if rows[0][0] is False:
+	cur.execute("CREATE TABLE orgkeys(rowid SERIAL PRIMARY KEY, creationtime TIMESTAMP NOT NULL, "
+				"pubkey VARCHAR(7000), privkey VARCHAR(7000) NOT NULL, "
+				"purpose VARCHAR(8) NOT NULL, fingerprint VARCHAR(800) NOT NULL);")
+
+
+# create the org's keys and put them in the table
+
+ekey = dict()
+hasher = hashlib.blake2b(digest_size=32)
+key = nacl.public.PrivateKey.generate()
+ekey['public'] = "CURVE25519:" + base64.b85encode(key.public_key.encode())
+ekey['private'] = "CURVE25519:" + base64.b85encode(key.encode())
+hasher.update(base64.b85encode(key.public_key.encode()))
+ekey['fingerprint'] = "BLAKE2B-256:" + base64.b85encode(hasher.digest())
+ekey['timestamp'] = time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())
+
+
+pskey = dict()
+hasher = hashlib.blake2b(digest_size=32)
+key = nacl.signing.SigningKey.generate()
+pskey['verify'] = "CURVE25519:" + base64.b85encode(key.verify_key.encode())
+pskey['sign'] = "CURVE25519:" + base64.b85encode(key.encode())
+hasher.update(base64.b85encode(key.verify_key.encode()))
+pskey['fingerprint'] = "BLAKE2B-256:" + base64.b85encode(hasher.digest())
+pskey['timestamp'] = time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())
+
+# Using Python's string substitution to compose SQL commands is normally really, really 
+# dangerous because it enables SQL injection attacks. We're using only our own data generated in 
+# this script, so it's not so terrible
+
+cur.execute(f"INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose) "
+			f"VALUES('{ekey['timestamp']}', '{ekey['public']}', '{ekey['private']}', 'encrypt', "
+			f"'{ekey['fingerprint']}');")
+
+cur.execute(f"INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose) "
+			f"VALUES('{pskey['timestamp']}', '{pskey['public']}', '{pskey['private']}', 'sign', "
+			f"'{pskey['fingerprint']}');")
+
+# TODO: preregister the admin account and put into the serverconfig
 
 cur.close()
 conn.commit()
 
-# save the config
-
-# config_file_path = '/etc/anselusd/serverconfig.toml'
-
-# if os.path.exists(config_file_path):
-# 	try:
-# 		serverconfig = toml.load(config_file_path)
-# 	except Exception as e:
-# 		print("Unable to load server config %s: %s" % (config_file_path, e))
-# 		sys.exit(1)
-# else:
-# 	serverconfig = {}
-
-# serverconfig.setdefault('database', dict())
-# serverconfig['database'].setdefault('engine','postgresql')
-# serverconfig['database'].setdefault('ip','localhost')
-# serverconfig['database'].setdefault('port','5432')
-# serverconfig['database'].setdefault('name','anselus')
-# serverconfig['database'].setdefault('user','anselus')
-# serverconfig['database'].setdefault('password','CHANGEME')
-
-# serverconfig.setdefault('network', dict())
-# serverconfig['network'].setdefault('listen_ip','localhost')
-# serverconfig['network'].setdefault('port','2001')
-
-# serverconfig.setdefault('global', dict())
-# serverconfig['global'].setdefault('workspace_dir','/var/anselus')
-# serverconfig['global'].setdefault('registration','private')
-# serverconfig['global'].setdefault('default_quota',0)
-
-# serverconfig.setdefault('security', dict())
-# serverconfig['security'].setdefault('failure_delay_sec',3)
-# serverconfig['security'].setdefault('max_failures',5)
-# serverconfig['security'].setdefault('lockout_delay_min',15)
-# serverconfig['security'].setdefault('registration_delay_min',15)
-
-# if serverconfig['database']['engine'].lower() != 'postgresql':
-# 	print("This script exepects a server config using PostgreSQL. Exiting")
-# 	sys.exit()
+# TODO: create the workspace folder
+# TODO: create the server config folder
+# TODO: save the config file
