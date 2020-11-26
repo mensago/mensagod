@@ -33,7 +33,7 @@ password = ""
 # For servers configured to network registration, this variable sets the subnet(s) to which 
 # account registration is limited. Subnets are expected in CIDR notation and comma-separated.
 # The default setting restricts registration to the private (non-routable) networks. 
-# registration_subnet = 192.168.0.0/24, 172.16.0.0/12, 10.0.0.0/8
+# registration_subnet = 192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8
 # registration_subnet6 = fe80::/10
 # 
 # The default storage quota for a workspace, measured in MiB. 0 means no limit.
