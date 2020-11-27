@@ -52,14 +52,29 @@ def GetKey(keystr : str) -> RetVal:
 	return RetVal().set_value('key', key)
 
 
-def DecryptFile(key : EncodedString, inpath : str, outpath=''):
-	'''Given an EncodedString key, packages passed path to file into a .ejd. If outpath not given,
-		the encoded file will be placed in the same directory as the input file.'''
+def DecryptFile(pubkey : EncodedString, privkey : EncodedString, ejdfile : str, outpath=''):
+	'''Given an EncodedString key, extracts files from the supplied path to the specified 
+	directory. If no directory is given, the current directory is used.'''
+	if not outpath:
+		outpath = os.getcwd()
+	
+	# TODO: Implement
+	# Steps
+	# Read in JSON data
+	# Hash supplied pubkey and compare to KeyHash
+	# Decrypt secret key
+	# Decrypt payload using secret key
+	# Deallocate main file's JSON data to save RAM
+	# Decode each file and write to disk
 
 
-def EncryptFiles(key : EncodedString, infiles : list, outpath=''):
-	'''Given an EncodedString key, packages passed path to file into a .ejd. If outpath not given,
-		the encoded file will be placed in the same directory as the input file.'''
+def EncryptFiles(key : EncodedString, infiles : list, outpath : str):
+	'''Given an EncodedString key, packages the list of files into an .ejd archive. If outpath is 
+		not given, the encoded file will be placed in the same directory as the input file.'''
+	
+	if not outpath:
+		outpath = os.path.join(os.getcwd(), 'encrypted.ejd')
+
 	
 	# Generate a random secret key and nonce and then encrypt the file
 	secretkey = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
@@ -117,6 +132,10 @@ def EncryptFiles(key : EncodedString, infiles : list, outpath=''):
 def HandleArgs():
 	'''Handles command-line arguments and executes functions accordingly'''
 	if debug_mode:
+		pubkey = EncodedString()
+		pubkey.set(r"CURVE25519:yb8L<$2XqCr5HCY@}}xBPWLHyXZdx&l>+xz%p1*W")
+		privkey = EncodedString()
+		privkey.set(r"CURVE25519:7>4ui(`dvGc1}N!EerhNHk0tY`f-joG25Gd81lcw")
 
 		# First, test encryption
 		scriptpath = os.path.dirname(os.path.realpath(__file__))
@@ -124,10 +143,12 @@ def HandleArgs():
 			os.path.join(scriptpath, 'hasher85.py'),
 			os.path.join(scriptpath, 'cardstats.py')
 		]
-		outfile = os.path.join(scriptpath, 'enctest.ejd')
-		testkey = EncodedString()
-		testkey.set(r"CURVE25519:yb8L<$2XqCr5HCY@}}xBPWLHyXZdx&l>+xz%p1*W")
-		EncryptFiles(testkey, infiles, outfile)
+		ejdfile = os.path.join(scriptpath, 'enctest.ejd')
+		EncryptFiles(pubkey, infiles, ejdfile)
+
+		# Now test decryption
+		outdir = os.path.join(scriptpath, 'ejdtest')
+		DecryptFile(pubkey, privkey, ejdfile, outdir)
 		return
 
 	if len(sys.argv) < 2:
