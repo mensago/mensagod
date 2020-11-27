@@ -17,11 +17,13 @@ import nacl.utils
 from pyanselus.keycard import EncodedString, Base85Encoder
 from pyanselus.retval import RetVal, BadParameterValue
 
-debug_encrypt = False
+debug_mode = True
 
 def PrintUsage():
 	'''Prints the usage for the script'''
-	print("Usage: %s (encrypt|decrypt) keyfile input_file [output_file]" % \
+	print("Usage: %s encrypt keyfile output_file input_file [input_file2 ...] " % \
+			os.path.basename(sys.argv[0]))
+	print("Usage: %s decrypt keyfile output_dir input_file" % \
 			os.path.basename(sys.argv[0]))
 	sys.exit(0)
 
@@ -55,23 +57,14 @@ def DecryptFile(key : EncodedString, inpath : str, outpath=''):
 		the encoded file will be placed in the same directory as the input file.'''
 
 
-def EncryptFile(key : EncodedString, inpath : str, outpath=''):
+def EncryptFiles(key : EncodedString, infiles : list, outpath=''):
 	'''Given an EncodedString key, packages passed path to file into a .ejd. If outpath not given,
 		the encoded file will be placed in the same directory as the input file.'''
 	
-	try:
-		f = open(inpath, 'rb')
-		filedata = f.read()
-	except Exception as e:
-		print('Unable to open %s: %s' % (inpath, e))
-		return
-	f.close()
-
 	# Generate a random secret key and nonce and then encrypt the file
 	secretkey = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
 	nonce = nacl.utils.random(nacl.secret.SecretBox.NONCE_SIZE)
 	secretbox = nacl.secret.SecretBox(secretkey)
-	encodedmsg = secretbox.encrypt(filedata, nonce, Base85Encoder)
 	
 	# Generate a hash of the public key passed to the function to enable key identification
 	# NOTE: this is a hash of the encoded string -- the prefix, separator, and Base85-encoded key
@@ -90,37 +83,64 @@ def EncryptFile(key : EncodedString, inpath : str, outpath=''):
 			'KeyHash' : keyhash,
 			'Key' : encryptedkey.decode()
 		},
-		'Payload' : {
-			'Name' : os.path.basename(inpath),
-			'Data' : encodedmsg.ciphertext.decode()
-		}
+		'Payload' : ''
 	}
+
+	payload = list()
+	for inpath in infiles:
+
+		try:
+			f = open(inpath, 'rb')
+			filedata = f.read()
+		except Exception as e:
+			print('Unable to open %s: %s' % (inpath, e))
+			continue
+		f.close()
+
+		payload.append({
+				'Name' : os.path.basename(inpath),
+				'Data' : b85encode(filedata).decode()
+			})
+		
+	outdata['Payload'] = secretbox.encrypt(json.dumps(payload, ensure_ascii=False).encode(), nonce, 
+		Base85Encoder).decode()
 
 	try:
 		f = open(outpath, 'w')
 		json.dump(outdata, f, ensure_ascii=False, indent='\t')
 	except Exception as e:
-		print('Unable to save %s: %s' % (inpath, e))
+		print('Unable to save %s: %s' % (outpath, e))
 		return
 	f.close()
 			
 
 def HandleArgs():
 	'''Handles command-line arguments and executes functions accordingly'''
-	if debug_encrypt:
+	if debug_mode:
+
+		# First, test encryption
 		scriptpath = os.path.dirname(os.path.realpath(__file__))
-		infile = os.path.join(scriptpath, 'hasher85.py')
+		infiles = [
+			os.path.join(scriptpath, 'hasher85.py'),
+			os.path.join(scriptpath, 'cardstats.py')
+		]
 		outfile = os.path.join(scriptpath, 'enctest.ejd')
 		testkey = EncodedString()
 		testkey.set(r"CURVE25519:yb8L<$2XqCr5HCY@}}xBPWLHyXZdx&l>+xz%p1*W")
-		EncryptFile(testkey, infile, outfile)
+		EncryptFiles(testkey, infiles, outfile)
 		return
 
-	if len(sys.argv) not in [4, 5]:
+	if len(sys.argv) < 2:
 		PrintUsage()
 	
 	command = sys.argv[1].lower()
-	if command not in ['encrypt','decrypt']:
+	if command == 'encrypt':
+		if len(sys.argv) < 5:
+			PrintUsage()
+	elif command == 'decrypt':
+		if len(sys.argv) != 4:
+			PrintUsage()
+	else:
 		PrintUsage()
 	
 	status = GetKey(sys.argv[2])
@@ -132,9 +152,9 @@ def HandleArgs():
 		outfile = sys.argv[4]
 	
 	if command == 'encrypt':
-		EncryptFile(status['key'], sys.argv[3], outfile)
+		EncryptFiles(status['key'], sys.argv[4:], outfile)
 	else:
-		DecryptFile(status['key'], sys.argv[3], outfile)
+		DecryptFile(status['key'], sys.argv[4], sys.argv[3])
 	
 
 if __name__ == '__main__':
