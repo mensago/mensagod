@@ -113,12 +113,13 @@ def EncryptFiles(key : EncodedString, infiles : list, outpath : str):
 		f.close()
 
 		payload.append({
+				'Type' : 'file',
 				'Name' : os.path.basename(inpath),
 				'Data' : b85encode(filedata).decode()
 			})
 		
-	outdata['Payload'] = "XSALSA20:" + secretbox.encrypt(json.dumps(payload,
-		ensure_ascii=False).encode(), nonce, Base85Encoder).decode()
+	outdata['Payload'] = secretbox.encrypt(json.dumps(payload, ensure_ascii=False).encode(),
+		nonce, Base85Encoder).decode()
 
 	try:
 		f = open(outpath, 'w')
