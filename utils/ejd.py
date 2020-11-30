@@ -58,11 +58,44 @@ def DecryptFile(pubkey : EncodedString, privkey : EncodedString, ejdfile : str, 
 	if not outpath:
 		outpath = os.getcwd()
 	
-	# TODO: Implement
-	# Steps
 	# Read in JSON data
+	filedata = ''
+	try:
+		with open(ejdfile, 'r') as fhandle:
+			filedata = json.load(fhandle)
+		
+	except Exception as e:
+		print(f"Unable to read file {ejdfile}: {e}")
+		return
+
+	# Check basic schema format
+	if 'Item' not in filedata.keys():
+		print(f"EJD file {ejdfile} is bad: missing Item field")
+		return
+	
+	for field in ['Key','KeyHash','Nonce','Version']:
+		if field not in filedata['Item'].keys():
+			print(f"EJD file {ejdfile} is bad: missing field {field}")
+			return
+
 	# Hash supplied pubkey and compare to KeyHash
-	# Decrypt secret key
+	hasher = hashlib.blake2b(digest_size=32)
+	hasher.update(pubkey.as_string().encode())
+	if filedata['Item']['KeyHash'] != "BLAKE2B-256:" + b85encode(hasher.digest()).decode():
+		print("Public key supplied doesn't match key used for file. Unable to decrypt.")
+		return
+
+	# Decrypt secret key and decode nonce
+	sealedbox = nacl.public.SealedBox(nacl.public.PrivateKey(privkey.raw_data()))
+
+	try:
+		decryptedkey = sealedbox.decrypt(filedata['Item']['Key'], filedata)
+	except:
+		print(f"Unable to decrypt {ejdfile} with supplied private key.")
+		return
+
+	# TODO: Finish implementing DecryptFile
+	
 	# Decrypt payload using secret key
 	# Deallocate main file's JSON data to save RAM
 	# Decode each file and write to disk
