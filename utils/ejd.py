@@ -78,7 +78,7 @@ def DecryptFile(pubkey : EncodedString, privkey : EncodedString, ejdfile : str, 
 			print(f"EJD file {ejdfile} is bad: missing field {field}")
 			return
 
-	if field['Item']['EncryptionType'] != 'XSALSA20':
+	if filedata['Item']['EncryptionType'] != 'XSALSA20':
 		print(f"This utility only supports XSalsa20 encryption right now. Sorry!")
 		return
 
@@ -93,7 +93,7 @@ def DecryptFile(pubkey : EncodedString, privkey : EncodedString, ejdfile : str, 
 	sealedbox = nacl.public.SealedBox(nacl.public.PrivateKey(privkey.raw_data()))
 
 	try:
-		decryptedkey = sealedbox.decrypt(filedata['Item']['Key'], filedata)
+		decryptedkey = sealedbox.decrypt(filedata['Item']['Key'], Base85Encoder)
 	except:
 		print(f"Unable to decrypt the decryption key for {ejdfile} with supplied private key.")
 		return
