@@ -73,10 +73,14 @@ def DecryptFile(pubkey : EncodedString, privkey : EncodedString, ejdfile : str, 
 		print(f"EJD file {ejdfile} is bad: missing Item field")
 		return
 	
-	for field in ['Key','KeyHash','Nonce','Version']:
+	for field in ['Key','KeyHash','Nonce','Version', 'EncryptionType']:
 		if field not in filedata['Item'].keys():
 			print(f"EJD file {ejdfile} is bad: missing field {field}")
 			return
+
+	if field['Item']['EncryptionType'] != 'XSALSA20':
+		print(f"This utility only supports XSalsa20 encryption right now. Sorry!")
+		return
 
 	# Hash supplied pubkey and compare to KeyHash
 	hasher = hashlib.blake2b(digest_size=32)
@@ -91,13 +95,31 @@ def DecryptFile(pubkey : EncodedString, privkey : EncodedString, ejdfile : str, 
 	try:
 		decryptedkey = sealedbox.decrypt(filedata['Item']['Key'], filedata)
 	except:
-		print(f"Unable to decrypt {ejdfile} with supplied private key.")
+		print(f"Unable to decrypt the decryption key for {ejdfile} with supplied private key.")
 		return
+
+	try:
+		nonce = b85decode(filedata['Item']['Nonce'])
+	except:
+		print(f"Unable to decode nonce in file {ejdfile}.")
+		return
+	
+
+	# Decrypt payload using secret key
+	secretbox = nacl.secret.SecretBox(decryptedkey)
+
+	try:
+		payload_json = secretbox.decrypt(filedata['Item']['Payload'], nonce, Base85Encoder)
+	except:
+		print(f"Unable to decrypt {ejdfile}'s payload.")
+		return
+
+	# Deallocate main file's JSON data to save RAM and the key for better security
+	del filedata
+	del decryptedkey
 
 	# TODO: Finish implementing DecryptFile
 	
-	# Decrypt payload using secret key
-	# Deallocate main file's JSON data to save RAM
 	# Decode each file and write to disk
 
 
@@ -129,7 +151,8 @@ def EncryptFiles(key : EncodedString, infiles : list, outpath : str):
 			'Version' : '1.0',
 			'Nonce' : b85encode(nonce).decode(),
 			'KeyHash' : keyhash,
-			'Key' : encryptedkey.decode()
+			'Key' : encryptedkey.decode(),
+			'EncryptionType': 'XSALSA20'
 		},
 		'Payload' : ''
 	}
