@@ -5,8 +5,10 @@
 # Released under the terms of the MIT license
 # ©2020 Jon Yoder <jsyoder@mailfence.com>
 
-from base64 import b85encode
+from base64 import b85encode, b85decode
 import hashlib
+import json
+import os
 
 import nacl.public
 import nacl.secret
@@ -18,12 +20,6 @@ def TestDecrypt(pubkeystr : EncodedString, privkeystr : EncodedString, indata : 
 	
 	secretkeystr = EncodedString(indata['Item']['Key'])
 
-	print("DECRYPTION:")
-	print(f"Public key: {pubkeystr}")
-	print(f"Private key: {privkeystr}")
-	print(f"Encrypted secret key: {secretkeystr}")
-	print(f"Incoming data: {indata}")
-
 	# Hash supplied pubkey and compare to KeyHash
 	hasher = hashlib.blake2b(digest_size=32)
 	hasher.update(pubkeystr.as_string().encode())
@@ -31,8 +27,8 @@ def TestDecrypt(pubkeystr : EncodedString, privkeystr : EncodedString, indata : 
 		print("Public key supplied doesn't match key used for file. Unable to decrypt.")
 		return
 	
-	# Decrypt secret key and decode nonce
-	sealedbox = nacl.public.SealedBox(nacl.public.PrivateKey(privkey.raw_data()))
+	# Decrypt secret key and then decrypt the payload
+	sealedbox = nacl.public.SealedBox(nacl.public.PrivateKey(privkeystr.raw_data()))
 
 	try:
 		decryptedkey = sealedbox.decrypt(secretkeystr.raw_data())
@@ -41,46 +37,64 @@ def TestDecrypt(pubkeystr : EncodedString, privkeystr : EncodedString, indata : 
 		return
 	
 	secretbox = nacl.secret.SecretBox(decryptedkey)
-	decrypted_data = secretbox.decrypt(indata['Payload'])
-	print(decrypted_data.decode())
-
-
-def TestEncrypt(pubkeystr : EncodedString, indata : dict) -> dict:
-	'''Test encryption'''
+	try:
+		decrypted_data = secretbox.decrypt(b85decode(indata['Payload']))
+	except:
+		print(f"Unable to decrypt the file payload.")
+		return
 	
+	payload_data = json.loads(decrypted_data)
+
+	# We've gotten this far, so let's dump the files in the payload
+	for item in payload_data:
+		print(f"File: {item['Name']}")
+		print(b85decode(item['Data']).decode())
+
+
+def TestEncrypt(pubkeystr : EncodedString, infiles : list) -> dict:
+	'''Test encryption'''
+
 	# Generate a random secret key and encrypt the data given to us
 	secretkey = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
 	mynonce = nacl.utils.random(nacl.secret.SecretBox.NONCE_SIZE)
 	secretbox = nacl.secret.SecretBox(secretkey)
-	encrypted_data = secretbox.encrypt(indata, nonce=mynonce)
 
 	# Generate a hash of the public key passed to the function to enable key identification
 	# NOTE: this is a hash of the encoded string -- the prefix, separator, and Base85-encoded key
 	hasher = hashlib.blake2b(digest_size=32)
 	hasher.update(pubkeystr.as_string().encode())
-	keyhash = "BLAKE2B-256:" + b85encode(hasher.digest()).decode()
 
 	# Encrypt the secret key with the public key passed to the function
 	sealedbox = nacl.public.SealedBox(nacl.public.PublicKey(pubkeystr.raw_data()))
 	encryptedkey = 'XSALSA20:' + sealedbox.encrypt(secretkey, Base85Encoder).decode()
 
-	print("ENCRYPTION:")
-	print(f"Public key: {pubkey}")
-	print(f"Incoming data: {indata}")
-	print(f"Encrypted secret key: {encryptedkey}")
-	print(f"Encrypted indata: {encrypted_data}")
+	payload_data = list()
+	for inpath in infiles:
 
-	encryptedkeystr = EncodedString(encryptedkey)
-	if not encryptedkeystr.is_valid():
-		return None
-	
+		try:
+			f = open(inpath, 'rb')
+			filedata = f.read()
+		except Exception as e:
+			print('Unable to open %s: %s' % (inpath, e))
+			continue
+		f.close()
+
+		payload_data.append({
+				'Type' : 'file',
+				'Name' : os.path.basename(inpath),
+				'Data' : b85encode(filedata).decode()
+			})
+		
+	encrypted_data = secretbox.encrypt(json.dumps(payload_data, ensure_ascii=False).encode(),
+		nonce=mynonce)
+
 	outdata = {
 		'Item' : {
 			'Version' : '1.0',
-			'KeyHash' : keyhash,
-			'Key' : encryptedkeystr.as_string(),
+			'KeyHash' : "BLAKE2B-256:" + b85encode(hasher.digest()).decode(),
+			'Key' : EncodedString(encryptedkey).as_string(),
 		},
-		'Payload' : encrypted_data
+		'Payload' : b85encode(encrypted_data).decode()
 	}
 
 	return outdata
@@ -90,6 +104,12 @@ def TestEncrypt(pubkeystr : EncodedString, indata : dict) -> dict:
 if __name__ == '__main__':
 	pubkey = EncodedString(r"CURVE25519:yb8L<$2XqCr5HCY@}}xBPWLHyXZdx&l>+xz%p1*W")
 	privkey = EncodedString(r"CURVE25519:7>4ui(`dvGc1}N!EerhNHk0tY`f-joG25Gd81lcw")
-	data = b'One if by sea, two if by land.'
-	encdata = TestEncrypt(pubkey, data)
+
+	scriptpath = os.path.dirname(os.path.realpath(__file__))
+	filelist = [
+		os.path.join(scriptpath, 'hasher85.py'),
+		os.path.join(scriptpath, 'cardstats.py')
+	]
+	encdata = TestEncrypt(pubkey, filelist)
+	# print(encdata)
 	TestDecrypt(pubkey, privkey, encdata)
