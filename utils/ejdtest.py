@@ -15,7 +15,8 @@ import nacl.secret
 import nacl.utils
 from pyanselus.keycard import EncodedString, Base85Encoder
 
-def TestDecrypt(pubkeystr : EncodedString, privkeystr : EncodedString, indata : dict):
+def TestDecrypt(pubkeystr : EncodedString, privkeystr : EncodedString, indata : dict,
+	outpath : str, overwrite=False):
 	'''Test decryption'''
 	
 	secretkeystr = EncodedString(indata['Item']['Key'])
@@ -47,8 +48,30 @@ def TestDecrypt(pubkeystr : EncodedString, privkeystr : EncodedString, indata : 
 
 	# We've gotten this far, so let's dump the files in the payload
 	for item in payload_data:
-		print(f"File: {item['Name']}")
-		print(b85decode(item['Data']).decode())
+		itempath = os.path.join(outpath,item['Name'])
+
+		if os.path.exists(itempath) and not overwrite:
+			print(f"{itempath} exists. Not overwriting it.")
+			continue
+
+		try:
+			f = open(itempath, 'wb')
+		except Exception as e:
+			print(f"Unable to save file {itempath}: {e}")
+			continue
+		
+		try:
+			f.write(b85decode(item['Data']))
+		except ValueError:
+			print(f"Problem decoding file data for {itempath}")
+			f.close()
+			continue
+		except Exception as e:
+			print(f"Unable to save file {itempath}: {e}")
+			f.close()
+			continue
+		
+		f.close()
 
 
 def TestEncrypt(pubkeystr : EncodedString, infiles : list) -> dict:
@@ -100,16 +123,23 @@ def TestEncrypt(pubkeystr : EncodedString, infiles : list) -> dict:
 	return outdata
 
 
-			
 if __name__ == '__main__':
 	pubkey = EncodedString(r"CURVE25519:yb8L<$2XqCr5HCY@}}xBPWLHyXZdx&l>+xz%p1*W")
 	privkey = EncodedString(r"CURVE25519:7>4ui(`dvGc1}N!EerhNHk0tY`f-joG25Gd81lcw")
 
 	scriptpath = os.path.dirname(os.path.realpath(__file__))
+
 	filelist = [
 		os.path.join(scriptpath, 'hasher85.py'),
 		os.path.join(scriptpath, 'cardstats.py')
 	]
+
+	outpath = ''
+	if 'USERPROFILE' in os.environ:
+		outpath = os.path.join(os.environ['USERPROFILE'], 'Desktop')
+	else:
+		outpath = os.path.join(os.environ['HOME'], 'Desktop')
+
 	encdata = TestEncrypt(pubkey, filelist)
 	# print(encdata)
-	TestDecrypt(pubkey, privkey, encdata)
+	TestDecrypt(pubkey, privkey, encdata, outpath)
