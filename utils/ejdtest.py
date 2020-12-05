@@ -9,33 +9,72 @@ from base64 import b85encode, b85decode
 import hashlib
 import json
 import os
+import sys
 
 import nacl.public
 import nacl.secret
 import nacl.utils
 from pyanselus.keycard import EncodedString, Base85Encoder
+from pyanselus.retval import RetVal, BadParameterValue
+
+debug_mode = True
 
 global_options = {
 	'overwrite' : 'ask',
-	'verbose' : False
+	'verbose' : False,
+	'files' : list(),
+	'mode' : '',
+	'pubkey' : EncodedString(),
+	'privkey' : EncodedString()
 }
 
+def print_usage():
+	'''Prints the usage for the script'''
+	print("Usage: %s encrypt keyfile output_file input_file [input_file2 ...] " % \
+			os.path.basename(sys.argv[0]))
+	print("Usage: %s decrypt keyfile output_dir input_file" % \
+			os.path.basename(sys.argv[0]))
+	sys.exit(0)
 
-def TestDecrypt(pubkeystr : EncodedString, privkeystr : EncodedString, indata : dict,
-	outpath : str):
+
+def get_key(keystr : str) -> RetVal:
+	'''Checks if the passed string is a path or an EncodedString of a key and returns an 
+	EncodedString.'''
+	key = EncodedString()
+	status = key.set(keystr)
+	if not status.error():
+		# Make sure that the encoded string we received is actually the right kind of key
+		if key.prefix() != 'CURVE25519':
+			return RetVal(BadParameterValue, 'key type is not supported')
+		
+		return RetVal().set_value('key', key)
+
+	elif os.path.exists(keystr):
+		with open(keystr, 'r') as f:
+			keyline = f.readline()
+			status = key.set(keyline.strip())
+			if status.error():
+				return status
+	else:
+		return RetVal(BadParameterValue, "key not keystring or keyfile")
+
+	return RetVal().set_value('key', key)
+
+
+def ejd_decrypt(indata : dict, outpath : str):
 	'''Test decryption'''
 	
 	secretkeystr = EncodedString(indata['Item']['Key'])
 
 	# Hash supplied pubkey and compare to KeyHash
 	hasher = hashlib.blake2b(digest_size=32)
-	hasher.update(pubkeystr.as_string().encode())
+	hasher.update(global_options['pubkey'].as_string().encode())
 	if indata['Item']['KeyHash'] != "BLAKE2B-256:" + b85encode(hasher.digest()).decode():
 		print("Public key supplied doesn't match key used for file. Unable to decrypt.")
 		return
 	
 	# Decrypt secret key and then decrypt the payload
-	sealedbox = nacl.public.SealedBox(nacl.public.PrivateKey(privkeystr.raw_data()))
+	sealedbox = nacl.public.SealedBox(nacl.public.PrivateKey(global_options['privkey'].raw_data()))
 
 	try:
 		decryptedkey = sealedbox.decrypt(secretkeystr.raw_data())
@@ -89,7 +128,7 @@ def TestDecrypt(pubkeystr : EncodedString, privkeystr : EncodedString, indata : 
 		f.close()
 
 
-def TestEncrypt(pubkeystr : EncodedString, infiles : list) -> dict:
+def ejd_encrypt() -> dict:
 	'''Test encryption'''
 
 	# Generate a random secret key and encrypt the data given to us
@@ -100,14 +139,14 @@ def TestEncrypt(pubkeystr : EncodedString, infiles : list) -> dict:
 	# Generate a hash of the public key passed to the function to enable key identification
 	# NOTE: this is a hash of the encoded string -- the prefix, separator, and Base85-encoded key
 	hasher = hashlib.blake2b(digest_size=32)
-	hasher.update(pubkeystr.as_string().encode())
+	hasher.update(global_options['pubkey'].as_string().encode())
 
 	# Encrypt the secret key with the public key passed to the function
-	sealedbox = nacl.public.SealedBox(nacl.public.PublicKey(pubkeystr.raw_data()))
+	sealedbox = nacl.public.SealedBox(nacl.public.PublicKey(global_options['pubkey'].raw_data()))
 	encryptedkey = 'XSALSA20:' + sealedbox.encrypt(secretkey, Base85Encoder).decode()
 
 	payload_data = list()
-	for inpath in infiles:
+	for inpath in global_options['files']:
 
 		try:
 			f = open(inpath, 'rb')
@@ -138,16 +177,44 @@ def TestEncrypt(pubkeystr : EncodedString, infiles : list) -> dict:
 	return outdata
 
 
+def HandleArguments():
+	'''Handles command-line arguments and executes functions accordingly'''
+	if len(sys.argv) < 2:
+		print_usage()
+	
+	command = sys.argv[1].lower()
+	if command == 'encrypt':
+		if len(sys.argv) < 5:
+			print_usage()
+	elif command == 'decrypt':
+		if len(sys.argv) != 4:
+			print_usage()
+	else:
+		print_usage()
+	
+	status = get_key(sys.argv[2])
+	if status.error():
+		print('Error processing key: %s' % status.info())
+	
+	outfile = ''
+	if len(sys.argv) == 5:
+		outfile = sys.argv[4]
+
+
 if __name__ == '__main__':
-	pubkey = EncodedString(r"CURVE25519:yb8L<$2XqCr5HCY@}}xBPWLHyXZdx&l>+xz%p1*W")
-	privkey = EncodedString(r"CURVE25519:7>4ui(`dvGc1}N!EerhNHk0tY`f-joG25Gd81lcw")
-
-	scriptpath = os.path.dirname(os.path.realpath(__file__))
-
-	filelist = [
-		os.path.join(scriptpath, 'hasher85.py'),
-		os.path.join(scriptpath, 'cardstats.py')
-	]
+	if debug_mode:
+		scriptpath = os.path.dirname(os.path.realpath(__file__))
+		global_options['files'] = [
+			os.path.join(scriptpath, 'hasher85.py'),
+			os.path.join(scriptpath, 'cardstats.py')
+		]
+		global_options['mode'] = 'encrypt'
+		global_options['pubkey'] = EncodedString(
+			r"CURVE25519:yb8L<$2XqCr5HCY@}}xBPWLHyXZdx&l>+xz%p1*W")
+		global_options['privkey'] = EncodedString(
+			r"CURVE25519:7>4ui(`dvGc1}N!EerhNHk0tY`f-joG25Gd81lcw")
+	else:
+		HandleArguments()
 
 	outpath = ''
 	if 'USERPROFILE' in os.environ:
@@ -155,6 +222,6 @@ if __name__ == '__main__':
 	else:
 		outpath = os.path.join(os.environ['HOME'], 'Desktop')
 
-	encdata = TestEncrypt(pubkey, filelist)
+	encdata = ejd_encrypt()
 	
-	TestDecrypt(pubkey, privkey, encdata, outpath)
+	ejd_decrypt(encdata, outpath)
