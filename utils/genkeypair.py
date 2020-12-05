@@ -8,6 +8,7 @@
 
 import base64
 import hashlib
+import json
 from os import path
 import sys
 
@@ -34,12 +35,15 @@ def generate_encpair(filename):
 		response = input("%s exists. Overwrite? [y/N]: " % filename)
 		if not response or response.casefold()[0] != 'y':
 			return
+	
+	out = {
+		'PublicKey' : 'CURVE25519:' + base64.b85encode(keypair.public_key.encode()).decode(),
+		'PrivateKey' : 'CURVE25519:' + base64.b85encode(keypair.encode()).decode()
+	}
 	try:
-		out = open(filename, 'wb')
-
-		out.write(b'Keypair type: encryption\r\n')
-		out.write(b'public: ' + base64.b85encode(keypair.public_key.encode()) + b'\r\n')
-		out.write(b'private: ' + base64.b85encode(keypair.encode()) + b'\r\n')
+		fhandle = open(filename, 'w')
+		json.dump(out, fhandle, ensure_ascii=False, indent='\t')
+		fhandle.close()
 	except Exception as e:
 		print('Unable to save %s: %s' % (filename, e))
 
@@ -58,12 +62,15 @@ def generate_signpair(filename):
 		response = input("%s exists. Overwrite? [y/N]: " % filename)
 		if not response or response.casefold()[0] != 'y':
 			return
-	try:
-		out = open(filename, 'wb')
 
-		out.write(b'Keypair type: signing\r\n')
-		out.write(b'verify:' + base64.b85encode(keypair.verify_key.encode()) + b'\r\n')
-		out.write(b'sign:' + base64.b85encode(keypair.encode()) + b'\r\n')
+	out = {
+		'VerificationKey' : 'ED25519:' + base64.b85encode(keypair.verify_key.encode()).decode(),
+		'SigningKey' : 'ED25519:' + base64.b85encode(keypair.encode()).decode()
+	}
+	try:
+		fhandle = open(filename, 'w')
+		json.dump(out, fhandle, ensure_ascii=False, indent='\t')
+		fhandle.close()
 	except Exception as e:
 		print('Unable to save %s: %s' % (filename, e))
 
