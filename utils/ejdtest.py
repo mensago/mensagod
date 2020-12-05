@@ -15,8 +15,14 @@ import nacl.secret
 import nacl.utils
 from pyanselus.keycard import EncodedString, Base85Encoder
 
+global_options = {
+	'overwrite' : 'ask',
+	'verbose' : False
+}
+
+
 def TestDecrypt(pubkeystr : EncodedString, privkeystr : EncodedString, indata : dict,
-	outpath : str, overwrite=False):
+	outpath : str):
 	'''Test decryption'''
 	
 	secretkeystr = EncodedString(indata['Item']['Key'])
@@ -50,9 +56,16 @@ def TestDecrypt(pubkeystr : EncodedString, privkeystr : EncodedString, indata : 
 	for item in payload_data:
 		itempath = os.path.join(outpath,item['Name'])
 
-		if os.path.exists(itempath) and not overwrite:
-			print(f"{itempath} exists. Not overwriting it.")
-			continue
+		if os.path.exists(itempath):
+			if global_options['overwrite'] == 'no':
+				print(f"{itempath} exists. Not overwriting it.")
+				continue
+			elif global_options['overwrite'] == 'ask':
+				choice = input(f"{itempath} exists. Overwrite? [y/N/all] ").strip().casefold()
+				if choice in ['a', 'all']:
+					global_options['overwrite'] = 'yes'
+				elif choice in ['n', 'no']:
+					continue
 
 		try:
 			f = open(itempath, 'wb')
@@ -62,6 +75,8 @@ def TestDecrypt(pubkeystr : EncodedString, privkeystr : EncodedString, indata : 
 		
 		try:
 			f.write(b85decode(item['Data']))
+			if global_options['verbose']:
+				print(f"Extracted file {itempath}")
 		except ValueError:
 			print(f"Problem decoding file data for {itempath}")
 			f.close()
@@ -141,5 +156,5 @@ if __name__ == '__main__':
 		outpath = os.path.join(os.environ['HOME'], 'Desktop')
 
 	encdata = TestEncrypt(pubkey, filelist)
-	# print(encdata)
+	
 	TestDecrypt(pubkey, privkey, encdata, outpath)
