@@ -25,7 +25,8 @@ global_options = {
 	'files' : list(),
 	'mode' : '',
 	'pubkey' : EncodedString(),
-	'privkey' : EncodedString()
+	'privkey' : EncodedString(),
+	'ejdfile' : ''
 }
 
 def print_usage():
@@ -128,9 +129,20 @@ def ejd_decrypt(indata : dict, outpath : str):
 		f.close()
 
 
-def ejd_encrypt() -> dict:
+def ejd_encrypt(ejdpath : str) -> dict:
 	'''Test encryption'''
 
+	if os.path.exists(ejdpath):
+		if global_options['overwrite'] == 'no':
+			print(f"{ejdpath} exists. Exiting.")
+			sys.exit(0)
+		elif global_options['overwrite'] == 'ask':
+			choice = input(f"{ejdpath} exists. Overwrite? [y/N] ").strip().casefold()
+			if choice in ['y', 'yes']:
+				pass
+			else:
+				sys.exit(0)
+	
 	# Generate a random secret key and encrypt the data given to us
 	secretkey = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
 	mynonce = nacl.utils.random(nacl.secret.SecretBox.NONCE_SIZE)
@@ -173,6 +185,14 @@ def ejd_encrypt() -> dict:
 		},
 		'Payload' : b85encode(encrypted_data).decode()
 	}
+	
+	try:
+		f = open(ejdpath, 'w')
+		json.dump(outdata, f, ensure_ascii=False, indent='\t')
+	except Exception as e:
+		print('Unable to save %s: %s' % (ejdpath, e))
+		return
+	f.close()
 
 	return outdata
 
@@ -196,9 +216,8 @@ def HandleArguments():
 	if status.error():
 		print('Error processing key: %s' % status.info())
 	
-	outfile = ''
 	if len(sys.argv) == 5:
-		outfile = sys.argv[4]
+		global_options['ejdfile'] = sys.argv[4]
 
 
 if __name__ == '__main__':
@@ -213,15 +232,23 @@ if __name__ == '__main__':
 			r"CURVE25519:yb8L<$2XqCr5HCY@}}xBPWLHyXZdx&l>+xz%p1*W")
 		global_options['privkey'] = EncodedString(
 			r"CURVE25519:7>4ui(`dvGc1}N!EerhNHk0tY`f-joG25Gd81lcw")
+	
+	
+		decryptpath = ''
+		if 'USERPROFILE' in os.environ:
+			decryptpath = os.path.join(os.environ['USERPROFILE'], 'Desktop')
+		else:
+			decryptpath = os.path.join(os.environ['HOME'], 'Desktop')
+
+		if debug_mode:
+			global_options['ejdfile'] = os.path.join(decryptpath, 'test.ejd')
+		
+		encdata = ejd_encrypt(global_options['ejdfile'])
+		ejd_decrypt(encdata, decryptpath)
 	else:
 		HandleArguments()
-
-	outpath = ''
-	if 'USERPROFILE' in os.environ:
-		outpath = os.path.join(os.environ['USERPROFILE'], 'Desktop')
-	else:
-		outpath = os.path.join(os.environ['HOME'], 'Desktop')
-
-	encdata = ejd_encrypt()
 	
-	ejd_decrypt(encdata, outpath)
+	if global_options['mode'] == 'encrypt':
+		ejd_encrypt(global_options['ejdfile'])
+	else:
+		ejd_decrypt(encdata, decryptpath)
