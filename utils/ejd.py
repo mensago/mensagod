@@ -281,7 +281,11 @@ def handle_arguments():
 	
 	keys = load_keyfile(sys.argv[2])
 	global_options['pubkey'] = EncodedString(keys['PublicKey'])
-	global_options['privkey'] = EncodedString(keys['PrivateKey'])
+	if command == 'decrypt':
+		if 'PrivateKey' not in keys:
+			print(f"Private key required for decryption. {sys.argv[2]} does not contain one")
+			sys.exit(-1)
+		global_options['privkey'] = EncodedString(keys['PrivateKey'])
 	
 
 if __name__ == '__main__':
