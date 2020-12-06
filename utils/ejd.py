@@ -6,8 +6,9 @@
 # ©2020 Jon Yoder <jsyoder@mailfence.com>
 
 from base64 import b85encode, b85decode
-import json
 import hashlib
+import json
+import jsonschema
 import os
 import sys
 
@@ -15,150 +16,207 @@ import nacl.public
 import nacl.secret
 import nacl.utils
 from pyanselus.keycard import EncodedString, Base85Encoder
-from pyanselus.retval import RetVal, BadParameterValue
 
-debug_mode = True
+debug_mode = False
 
-def PrintUsage():
+global_options = {
+	'overwrite' : 'ask',
+	'verbose' : False,
+	'files' : list(),
+	'mode' : '',
+	'pubkey' : EncodedString(),
+	'privkey' : EncodedString(),
+	'ejdfile' : '',
+	'outpath' : ''
+}
+
+def print_usage():
 	'''Prints the usage for the script'''
-	print("Usage: %s encrypt keyfile output_file input_file [input_file2 ...] " % \
+	print("Usage: %s encrypt <keyfile> <output_file> <input_file> [<input_file2> ...] " % \
 			os.path.basename(sys.argv[0]))
-	print("Usage: %s decrypt keyfile output_dir input_file" % \
+	print("Usage: %s decrypt <keyfile> <ejd_file> <output_dir> " % \
 			os.path.basename(sys.argv[0]))
 	sys.exit(0)
 
 
-def GetKey(keystr : str) -> RetVal:
-	'''Checks if the passed string is a path or an EncodedString of a key and returns an 
-	EncodedString.'''
-	key = EncodedString()
-	status = key.set(keystr)
-	if not status.error():
-		# Make sure that the encoded string we received is actually the right kind of key
-		if key.prefix() != 'CURVE25519':
-			return RetVal(BadParameterValue, 'key type is not supported')
-		
-		return RetVal().set_value('key', key)
-
-	elif os.path.exists(keystr):
-		with open(keystr, 'r') as f:
-			keyline = f.readline()
-			status = key.set(keyline.strip())
-			if status.error():
-				return status
-	else:
-		return RetVal(BadParameterValue, "key not keystring or keyfile")
-
-	return RetVal().set_value('key', key)
-
-
-def DecryptFile(pubkey : EncodedString, privkey : EncodedString, ejdfile : str, outpath=''):
-	'''Given an EncodedString key, extracts files from the supplied path to the specified 
-	directory. If no directory is given, the current directory is used.'''
-	if not outpath:
-		outpath = os.getcwd()
+def load_keyfile(keypath : str) -> dict:
+	'''Loads keys from the specified keyfile'''
 	
-	# Read in JSON data
-	filedata = ''
+	keydata = dict()
+	if not os.path.exists(keypath):
+		print(f"{keypath} doesn't exist")
+		sys.exit(-1)
+
 	try:
-		with open(ejdfile, 'r') as fhandle:
-			filedata = json.load(fhandle)
-		
+		fhandle = open(keypath, 'r')
 	except Exception as e:
-		print(f"Unable to read file {ejdfile}: {e}")
-		return
+		print(f"Unable to open {keypath}: {e}")
+		sys.exit(-1)
 
-	# Check basic schema format
-	if 'Item' not in filedata.keys():
-		print(f"EJD file {ejdfile} is bad: missing Item field")
-		return
+	try:
+		keydata = json.load(fhandle)
+	except Exception as e:
+		print(f"Unable to process {keypath}: {e}")
+		sys.exit(-1)
 	
-	for field in ['Key','KeyHash','Nonce','Version', 'EncryptionType']:
-		if field not in filedata['Item'].keys():
-			print(f"EJD file {ejdfile} is bad: missing field {field}")
-			return
+	jkey_schema = {
+		'type' : 'object',
+		'properties' : {
+			'PublicKey' : { 'type' : 'string' },
+			'PrivateKey' : { 'type' : 'string' },
+		}
+	}
 
-	if filedata['Item']['EncryptionType'] != 'XSALSA20':
-		print(f"This utility only supports XSalsa20 encryption right now. Sorry!")
-		return
+	try:
+		jsonschema.validate(keydata, jkey_schema)
+	except Exception as e:
+		print(f"Required info missing from {keypath}: {e}")
+		sys.exit(-1)
+	
+	return keydata
+
+
+def load_ejd(inpath : str) -> dict:
+	'''Given a path, loads an .EJD file and returns a dictionary of the JSON data'''
+
+	outdata = dict()
+	if not os.path.exists(inpath):
+		print(f"{inpath} doesn't exist")
+		sys.exit(-1)
+
+	try:
+		fhandle = open(inpath, 'r')
+	except Exception as e:
+		print(f"Unable to open {inpath}: {e}")
+		sys.exit(-1)
+
+	try:
+		outdata = json.load(fhandle)
+	except Exception as e:
+		print(f"Unable to process {inpath}: {e}")
+		sys.exit(-1)
+	
+	ejd_schema = {
+		'type' : 'object',
+		'properties' : {
+			'Item' : {
+				'Version' : { 'type' : 'number' },
+				'KeyHash' : { 'type' : 'string' },
+				'Key' : { 'type' : 'string' },
+			},
+			'Payload' : { 'type' : 'string' },
+		}
+	}
+
+	try:
+		jsonschema.validate(outdata, ejd_schema)
+	except Exception as e:
+		print(f"Required info missing from {inpath}: {e}")
+		sys.exit(-1)
+	
+	return outdata
+
+
+def ejd_decrypt(indata : dict, outpath : str):
+	'''Given the JSON data to decrypt and an output path, use the keys in global_options to 
+	decrypt files in indata to the specified output path.'''
+		
+	secretkeystr = EncodedString(indata['Item']['Key'])
 
 	# Hash supplied pubkey and compare to KeyHash
 	hasher = hashlib.blake2b(digest_size=32)
-	hasher.update(pubkey.as_string().encode())
-	if filedata['Item']['KeyHash'] != "BLAKE2B-256:" + b85encode(hasher.digest()).decode():
+	hasher.update(global_options['pubkey'].as_string().encode())
+	if indata['Item']['KeyHash'] != "BLAKE2B-256:" + b85encode(hasher.digest()).decode():
 		print("Public key supplied doesn't match key used for file. Unable to decrypt.")
 		return
-
-	# Decrypt secret key and decode nonce
-	sealedbox = nacl.public.SealedBox(nacl.public.PrivateKey(privkey.raw_data()))
-
-	try:
-		decryptedkey = sealedbox.decrypt(filedata['Item']['Key'], Base85Encoder)
-	except:
-		print(f"Unable to decrypt the decryption key for {ejdfile} with supplied private key.")
-		return
+	
+	# Decrypt secret key and then decrypt the payload
+	sealedbox = nacl.public.SealedBox(nacl.public.PrivateKey(global_options['privkey'].raw_data()))
 
 	try:
-		nonce = b85decode(filedata['Item']['Nonce'])
+		decryptedkey = sealedbox.decrypt(secretkeystr.raw_data())
 	except:
-		print(f"Unable to decode nonce in file {ejdfile}.")
+		print(f"Unable to decrypt the secret key.")
 		return
 	
-
-	# Decrypt payload using secret key
 	secretbox = nacl.secret.SecretBox(decryptedkey)
-
 	try:
-		payload_json = secretbox.decrypt(filedata['Item']['Payload'], nonce, Base85Encoder)
+		decrypted_data = secretbox.decrypt(b85decode(indata['Payload']))
 	except:
-		print(f"Unable to decrypt {ejdfile}'s payload.")
+		print(f"Unable to decrypt the file payload.")
 		return
-
-	# Deallocate main file's JSON data to save RAM and the key for better security
-	del filedata
-	del decryptedkey
-
-	# TODO: Finish implementing DecryptFile
 	
-	# Decode each file and write to disk
+	payload_data = json.loads(decrypted_data)
+
+	# We've gotten this far, so let's dump the files in the payload
+	for item in payload_data:
+		itempath = os.path.join(outpath,item['Name'])
+
+		if os.path.exists(itempath):
+			if global_options['overwrite'] == 'no':
+				print(f"{itempath} exists. Not overwriting it.")
+				continue
+			
+			if global_options['overwrite'] == 'ask':
+				choice = input(f"{itempath} exists. Overwrite? [y/N/all] ").strip().casefold()
+				if choice in ['a', 'all']:
+					global_options['overwrite'] = 'yes'
+				elif choice in ['n', 'no']:
+					continue
+
+		try:
+			f = open(itempath, 'wb')
+		except Exception as e:
+			print(f"Unable to save file {itempath}: {e}")
+			continue
+		
+		try:
+			f.write(b85decode(item['Data']))
+			if global_options['verbose']:
+				print(f"Extracted file {itempath}")
+		except ValueError:
+			print(f"Problem decoding file data for {itempath}")
+			f.close()
+			continue
+		except Exception as e:
+			print(f"Unable to save file {itempath}: {e}")
+			f.close()
+			continue
+		
+		f.close()
 
 
-def EncryptFiles(key : EncodedString, infiles : list, outpath : str):
-	'''Given an EncodedString key, packages the list of files into an .ejd archive. If outpath is 
-		not given, the encoded file will be placed in the same directory as the input file.'''
+def ejd_encrypt(ejdpath : str) -> dict:
+	'''Given the name and path of the EJD file to create, load files in global_options['files'] and 
+	package them'''
+
+	if os.path.exists(ejdpath):
+		if global_options['overwrite'] == 'no':
+			print(f"{ejdpath} exists. Exiting.")
+			sys.exit(0)
+		elif global_options['overwrite'] == 'ask':
+			choice = input(f"{ejdpath} exists. Overwrite? [y/N] ").strip().casefold()
+			if choice in ['y', 'yes']:
+				pass
+			else:
+				sys.exit(0)
 	
-	if not outpath:
-		outpath = os.path.join(os.getcwd(), 'encrypted.ejd')
-
-	
-	# Generate a random secret key and nonce and then encrypt the file
+	# Generate a random secret key and encrypt the data given to us
 	secretkey = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
-	nonce = nacl.utils.random(nacl.secret.SecretBox.NONCE_SIZE)
+	mynonce = nacl.utils.random(nacl.secret.SecretBox.NONCE_SIZE)
 	secretbox = nacl.secret.SecretBox(secretkey)
-	
+
 	# Generate a hash of the public key passed to the function to enable key identification
 	# NOTE: this is a hash of the encoded string -- the prefix, separator, and Base85-encoded key
 	hasher = hashlib.blake2b(digest_size=32)
-	hasher.update(key.as_string().encode())
-	keyhash = "BLAKE2B-256:" + b85encode(hasher.digest()).decode()
+	hasher.update(global_options['pubkey'].as_string().encode())
 
 	# Encrypt the secret key with the public key passed to the function
-	sealedbox = nacl.public.SealedBox(nacl.public.PublicKey(key.raw_data()))
-	encryptedkey = sealedbox.encrypt(secretkey, Base85Encoder)
+	sealedbox = nacl.public.SealedBox(nacl.public.PublicKey(global_options['pubkey'].raw_data()))
+	encryptedkey = 'XSALSA20:' + sealedbox.encrypt(secretkey, Base85Encoder).decode()
 
-	outdata = {
-		'Item' : {
-			'Version' : '1.0',
-			'Nonce' : b85encode(nonce).decode(),
-			'KeyHash' : keyhash,
-			'Key' : encryptedkey.decode(),
-			'EncryptionType': 'XSALSA20'
-		},
-		'Payload' : ''
-	}
-
-	payload = list()
-	for inpath in infiles:
+	payload_data = list()
+	for inpath in global_options['files']:
 
 		try:
 			f = open(inpath, 'rb')
@@ -168,72 +226,87 @@ def EncryptFiles(key : EncodedString, infiles : list, outpath : str):
 			continue
 		f.close()
 
-		payload.append({
+		payload_data.append({
 				'Type' : 'file',
 				'Name' : os.path.basename(inpath),
 				'Data' : b85encode(filedata).decode()
 			})
 		
-	outdata['Payload'] = secretbox.encrypt(json.dumps(payload, ensure_ascii=False).encode(),
-		nonce, Base85Encoder).decode()
+	encrypted_data = secretbox.encrypt(json.dumps(payload_data, ensure_ascii=False).encode(),
+		nonce=mynonce)
 
+	outdata = {
+		'Item' : {
+			'Version' : '1.0',
+			'KeyHash' : "BLAKE2B-256:" + b85encode(hasher.digest()).decode(),
+			'Key' : EncodedString(encryptedkey).as_string(),
+		},
+		'Payload' : b85encode(encrypted_data).decode()
+	}
+	
 	try:
-		f = open(outpath, 'w')
+		f = open(ejdpath, 'w')
 		json.dump(outdata, f, ensure_ascii=False, indent='\t')
 	except Exception as e:
-		print('Unable to save %s: %s' % (outpath, e))
-		return
+		print('Unable to save %s: %s' % (ejdpath, e))
+		sys.exit(-1)
 	f.close()
-			
 
-def HandleArgs():
+	return outdata
+
+
+def handle_arguments():
 	'''Handles command-line arguments and executes functions accordingly'''
-	if debug_mode:
-		pubkey = EncodedString()
-		pubkey.set(r"CURVE25519:yb8L<$2XqCr5HCY@}}xBPWLHyXZdx&l>+xz%p1*W")
-		privkey = EncodedString()
-		privkey.set(r"CURVE25519:7>4ui(`dvGc1}N!EerhNHk0tY`f-joG25Gd81lcw")
-
-		# First, test encryption
-		scriptpath = os.path.dirname(os.path.realpath(__file__))
-		infiles = [
-			os.path.join(scriptpath, 'hasher85.py'),
-			os.path.join(scriptpath, 'cardstats.py')
-		]
-		ejdfile = os.path.join(scriptpath, 'enctest.ejd')
-		EncryptFiles(pubkey, infiles, ejdfile)
-
-		# Now test decryption
-		outdir = os.path.join(scriptpath, 'ejdtest')
-		DecryptFile(pubkey, privkey, ejdfile, outdir)
-		return
-
-	if len(sys.argv) < 2:
-		PrintUsage()
+	if len(sys.argv) < 5:
+		print_usage()
 	
 	command = sys.argv[1].lower()
 	if command == 'encrypt':
-		if len(sys.argv) < 5:
-			PrintUsage()
+		global_options['ejdfile'] = sys.argv[3]
+		global_options['files'] = sys.argv[4:]
 	elif command == 'decrypt':
-		if len(sys.argv) != 4:
-			PrintUsage()
+		global_options['ejdfile'] = sys.argv[3]
+		global_options['outpath'] = sys.argv[4]
 	else:
-		PrintUsage()
+		print_usage()
+	global_options['mode'] = command
 	
-	status = GetKey(sys.argv[2])
-	if status.error():
-		print('Error processing key: %s' % status.info())
-	
-	outfile = ''
-	if len(sys.argv) == 5:
-		outfile = sys.argv[4]
-	
-	if command == 'encrypt':
-		EncryptFiles(status['key'], sys.argv[4:], outfile)
-	else:
-		DecryptFile(status['key'], sys.argv[4], sys.argv[3])
+	keys = load_keyfile(sys.argv[2])
+	global_options['pubkey'] = EncodedString(keys['PublicKey'])
+	global_options['privkey'] = EncodedString(keys['PrivateKey'])
 	
 
 if __name__ == '__main__':
-	HandleArgs()
+	if debug_mode:
+		scriptpath = os.path.dirname(os.path.realpath(__file__))
+		global_options['files'] = [
+			os.path.join(scriptpath, 'hasher85.py'),
+			os.path.join(scriptpath, 'cardstats.py')
+		]
+		global_options['mode'] = 'encrypt'
+		global_options['pubkey'] = EncodedString(
+			r"CURVE25519:yb8L<$2XqCr5HCY@}}xBPWLHyXZdx&l>+xz%p1*W")
+		global_options['privkey'] = EncodedString(
+			r"CURVE25519:7>4ui(`dvGc1}N!EerhNHk0tY`f-joG25Gd81lcw")
+	
+	
+		decryptpath = ''
+		if 'USERPROFILE' in os.environ:
+			decryptpath = os.path.join(os.environ['USERPROFILE'], 'Desktop')
+		else:
+			decryptpath = os.path.join(os.environ['HOME'], 'Desktop')
+
+		if debug_mode:
+			global_options['ejdfile'] = os.path.join(decryptpath, 'test.ejd')
+		
+		ejd_encrypt(global_options['ejdfile'])
+		encdata = load_ejd(global_options['ejdfile'])
+		ejd_decrypt(encdata, decryptpath)
+	else:
+		handle_arguments()
+	
+	if global_options['mode'] == 'encrypt':
+		ejd_encrypt(global_options['ejdfile'])
+	else:
+		encdata = load_ejd(global_options['ejdfile'])
+		ejd_decrypt(encdata, global_options['outpath'])
