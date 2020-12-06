@@ -59,13 +59,21 @@ def load_keyfile(keypath : str) -> dict:
 		print(f"Unable to process {keypath}: {e}")
 		sys.exit(-1)
 	
-	jkey_schema = {
-		'type' : 'object',
-		'properties' : {
-			'PublicKey' : { 'type' : 'string' },
-			'PrivateKey' : { 'type' : 'string' },
+	if global_options['mode'] == 'decrypt':
+		jkey_schema = {
+			'type' : 'object',
+			'properties' : {
+				'PublicKey' : { 'type' : 'string' },
+				'PrivateKey' : { 'type' : 'string' },
+			}
 		}
-	}
+	else:
+		jkey_schema = {
+			'type' : 'object',
+			'properties' : {
+				'PublicKey' : { 'type' : 'string' }
+			}
+		}
 
 	try:
 		jsonschema.validate(keydata, jkey_schema)
