@@ -7,6 +7,8 @@ BEGIN
 	END LOOP;
 END $$;
 
+-- TODO: update to match schema changes made in setupconfig.py
+
 -- Create new ones
 CREATE TABLE iwkspc_main(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL, 
 	friendly_address VARCHAR(48), password VARCHAR(128) NOT NULL, 
