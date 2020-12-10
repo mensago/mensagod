@@ -344,7 +344,7 @@ config['admin_regcode'] = regcode
 
 # preregister the abuse account if not aliased and put into the serverconfig
 
-if config['separate_abuse'] = 'y':
+if config['separate_abuse'] == 'y':
 	abuse_wid = str(uuid.uuid4())
 	abuse_regcode = make_diceware()
 	cur.execute(f"INSERT INTO prereg(wid, uid, regcode) "
@@ -355,7 +355,7 @@ if config['separate_abuse'] = 'y':
 
 # preregister the support account if not aliased and put into the serverconfig
 
-if config['separate_support'] = 'y':
+if config['separate_support'] == 'y':
 	support_wid = str(uuid.uuid4())
 	support_regcode = make_diceware()
 	cur.execute(f"INSERT INTO prereg(wid, uid, regcode) "
