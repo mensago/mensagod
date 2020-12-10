@@ -342,9 +342,27 @@ cur.execute(f"INSERT INTO prereg(wid, uid, regcode) VALUES('{admin_wid}', 'admin
 config['admin_wid'] = admin_wid
 config['admin_regcode'] = regcode
 
-# TODO: preregister the abuse account if requested and put into the serverconfig
+# preregister the abuse account if not aliased and put into the serverconfig
 
-# TODO: preregister the support account if requested and put into the serverconfig
+if config['separate_abuse'] = 'y':
+	abuse_wid = str(uuid.uuid4())
+	abuse_regcode = make_diceware()
+	cur.execute(f"INSERT INTO prereg(wid, uid, regcode) "
+		f"VALUES('{abuse_wid}', 'abuse', '{abuse_regcode}');")
+
+	config['abuse_wid'] = abuse_wid
+	config['abuse_regcode'] = abuse_regcode
+
+# preregister the support account if not aliased and put into the serverconfig
+
+if config['separate_support'] = 'y':
+	support_wid = str(uuid.uuid4())
+	support_regcode = make_diceware()
+	cur.execute(f"INSERT INTO prereg(wid, uid, regcode) "
+		f"VALUES('{support_wid}', 'support', '{support_regcode}');")
+
+	config['support_wid'] = support_wid
+	config['support_regcode'] = support_regcode
 
 # TODO: create and add the org's root keycard
 
