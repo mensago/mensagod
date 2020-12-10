@@ -209,8 +209,8 @@ cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.
 rows = cur.fetchall()
 if rows[0][0] is False:
 	cur.execute("CREATE TABLE iwkspc_main(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
-				"friendly_address VARCHAR(48), password VARCHAR(128) NOT NULL, "
-				"status VARCHAR(16) NOT NULL);")
+				"uid VARCHAR(32), domain VARCHAR(253) NOT NULL, password VARCHAR(128) NOT NULL, "
+				"status VARCHAR(16) NOT NULL, type VARCHAR(16) NOT NULL);")
 
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
@@ -262,7 +262,7 @@ if rows[0][0] is False:
 
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
-			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'keycards' "
+			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'orgkeys' "
 			"AND c.relkind = 'r');")
 rows = cur.fetchall()
 if rows[0][0] is False:
