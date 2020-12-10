@@ -10,6 +10,7 @@ import base64
 import hashlib
 import os
 import platform
+import re
 import subprocess
 import sys
 import time
@@ -19,6 +20,7 @@ import diceware
 import nacl.public
 import nacl.signing
 import psycopg2
+import pysanselus.keycard as keycard	# pylint: disable=import-error,unused-import
 
 
 def make_diceware():
@@ -95,6 +97,7 @@ else:
 #	- database name
 #	- database username
 #	- database user password
+#	- required keycard fields
 
 config = dict()
 default_workspace_path = '/var/anselus'
@@ -210,6 +213,43 @@ config['db_user'] = tempstr
 
 # database user password
 config['db_password'] = input('Enter the password of this user: ')
+
+# required keycard fields
+
+print("\nNow it is time to enter the organization's information used in the root keycard. This "
+"information cannot be changed without updating the organization's keycard, and the original "
+"information will still be a permanent part of the organization's keycard.")
+print("\nPlease use care when answering.")
+
+config['org_name'] = ''
+while config['org_name'] == '':
+	choice = input(f"Name of organization (max 64 characters): ").strip()
+
+	m = re.match(r'\w+', choice)
+	if m and len(choice) <= 64:
+		config['org_name'] = choice
+
+config['org_domain'] = ''
+while config['org_domain'] == '':
+	choice = input(f"Organization's domain (max 253 characters): ").strip()
+
+	m = re.match(r'([a-zA-Z0-9]+\.)+[a-zA-Z0-9]+', choice)
+	if m and len(choice) <= 253:
+		config['org_domain'] = choice
+
+# set initially to space on-purpose
+config['org_language'] = ' '
+print("The languages used by your organization is optional. Please use two- or three-letter "
+	"language codes. List in order of preference from greatest to least, separated by a comma. "
+	"Up to 10 languages may be specified. Examples: 'en' or 'fr,es'\n"
+	"A complete list may be found at https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes.")
+while config['org_language'] == '':
+	choice = input(f"Language(s) (leave empty to skip): ").strip()
+
+	# TODO: finish validation
+	m = re.match(r'^[a-zA-Z]{2,3}(,[a-zA-Z]{2,3})*?$', choice)
+	if m and len(choice) <= 253:
+		config['org_language'] = choice
 
 print(config)
 
@@ -365,6 +405,7 @@ if config['separate_support'] == 'y':
 	config['support_regcode'] = support_regcode
 
 # TODO: create and add the org's root keycard
+rootentry = keycard.NewOrgEntry()
 
 cur.close()
 conn.commit()
