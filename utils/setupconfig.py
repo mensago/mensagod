@@ -146,9 +146,37 @@ while config['regtype'] == '':
 		config['regtype'] = choice
 		break
 
-# TODO: is separate abuse account desired?
-# TODO: is separate support account desired?
-# TODO: quota size
+config['separate_abuse'] = ''
+print('The built-in abuse account can be a separate workspace or just autoforwarded to admin. '
+	'Small environments will probably want to say "no" here.')
+while config['separate_abuse'] == '':
+	choice = input(f"Do you want to use a separate abuse account? [y/N]: ")
+	choice = choice.lower()
+	if choice in ['yes', 'y']:
+		config['separate_abuse'] = 'y'
+	elif choice in ['n', 'no', '']:
+		config['separate_abuse'] = 'n'
+
+config['separate_support'] = ''
+print('The built-in support account can be a separate workspace or just autoforwarded to admin. '
+	'Small environments will probably want to say "no" here.')
+while config['separate_support'] == '':
+	choice = input(f"Do you want to use a separate support account? [y/N]: ")
+	choice = choice.lower()
+	if choice in ['yes', 'y']:
+		config['separate_support'] = 'y'
+	elif choice in ['n', 'no', '']:
+		config['separate_support'] = 'n'
+
+config['quota_size'] = ''
+print('Disk quotas, if set, set each user at a default value that can be changed later.')
+while config['quota_size'] == '':
+	choice = input(f"Size, in MiB, of default user disk quota (0 = No quota): ")
+	try:
+		tempint = int(choice)
+		config['quota_size'] = choice
+	except:
+		continue
 
 # location of server config
 
