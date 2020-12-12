@@ -246,8 +246,12 @@ print("The languages used by your organization is optional. Please use two- or t
 while config['org_language'] == '':
 	choice = input(f"Language(s) (leave empty to skip): ").strip()
 
-	# TODO: finish validation
 	m = re.match(r'^[a-zA-Z]{2,3}(,[a-zA-Z]{2,3})*?$', choice)
+	count = choice.split(',')
+	if count > 10:
+		print('Too many languages given. Please specify no more than 10.')
+		continue
+	
 	if m and len(choice) <= 253:
 		config['org_language'] = choice
 
@@ -349,6 +353,8 @@ ekey['private'] = "CURVE25519:" + base64.b85encode(key.encode())
 hasher.update(base64.b85encode(key.public_key.encode()))
 ekey['fingerprint'] = "BLAKE2B-256:" + base64.b85encode(hasher.digest())
 ekey['timestamp'] = time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())
+config['org_encrypt'] = ekey['public']
+config['org_decrypt'] = ekey['private']
 
 
 pskey = dict()
@@ -359,6 +365,8 @@ pskey['sign'] = "CURVE25519:" + base64.b85encode(key.encode())
 hasher.update(base64.b85encode(key.verify_key.encode()))
 pskey['fingerprint'] = "BLAKE2B-256:" + base64.b85encode(hasher.digest())
 pskey['timestamp'] = time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())
+config['org_verify'] = pskey['verify']
+config['org_sign'] = pskey['sign']
 
 # Using Python's string substitution to compose SQL commands is normally really, really 
 # dangerous because it enables SQL injection attacks. We're using only our own data generated in 
@@ -373,6 +381,14 @@ cur.execute(f"INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose) "
 			f"'{pskey['fingerprint']}');")
 
 
+rootentry = keycard.NewOrgEntry()
+rootentry.set_fields({
+	'Name' : config['org_name'],
+	'Language' : config['org_language'],
+	'Primary-Verification-Key' : config['org_verify'],
+	'Encryption-Key' : config['org_encrypt']
+})
+
 # preregister the admin account and put into the serverconfig
 
 admin_wid = str(uuid.uuid4())
@@ -381,6 +397,7 @@ cur.execute(f"INSERT INTO prereg(wid, uid, regcode) VALUES('{admin_wid}', 'admin
 
 config['admin_wid'] = admin_wid
 config['admin_regcode'] = regcode
+rootentry.set_field('Contact-Admin', '/'.join([admin_wid,config['org_domain']]))
 
 # preregister the abuse account if not aliased and put into the serverconfig
 
@@ -392,6 +409,7 @@ if config['separate_abuse'] == 'y':
 
 	config['abuse_wid'] = abuse_wid
 	config['abuse_regcode'] = abuse_regcode
+	rootentry.set_field('Contact-Abuse', '/'.join([abuse_wid,config['org_domain']]))
 
 # preregister the support account if not aliased and put into the serverconfig
 
@@ -403,9 +421,38 @@ if config['separate_support'] == 'y':
 
 	config['support_wid'] = support_wid
 	config['support_regcode'] = support_regcode
+	rootentry.set_field('Contact-Support', '/'.join([support_wid,config['org_domain']]))
 
-# TODO: create and add the org's root keycard
-rootentry = keycard.NewOrgEntry()
+status = rootentry.is_data_compliant()
+if status.error():
+	print(f"There was a problem with the organization data: {status.info()}")
+	sys.exit()
+
+status = rootentry.generate_hash('BLAKE2B-256')
+if status.error():
+	print(f"Unable to generate the hash for the org keycard: {status.info()}")
+	sys.exit()
+
+status = rootentry.sign(config['org_sign'], 'Organization')
+if status.error():
+	print(f"Unable to sign the org keycard: {status.info()}")
+	sys.exit()
+
+status = rootentry.generate_hash('BLAKE2B-256')
+if status.error():
+	print(f"Unable to generate the hash for the org keycard: {status.info()}")
+	sys.exit()
+
+status = rootentry.is_compliant()
+if status.error():
+	print(f"There was a problem with the keycard's compliance: {status.info()}")
+	sys.exit()
+
+cur.execute("INSERT INTO keycards(owner, creationtime, index, entry, fingerprint) "
+			"VALUES(%s, %s, %s, %s, %s);",
+			(config['org_domain'], rootentry.fields['Timestamp'], rootentry.fields['Index'],
+				rootentry.as_string(), rootentry.signatures['Hashes'])
+			)
 
 cur.close()
 conn.commit()
@@ -551,3 +598,5 @@ From here, please make sure you
 4) If you are using separate abuse or support accounts, also complete 
    registration for those accounts
 ''')
+
+# TODO: print relevant config info
