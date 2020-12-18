@@ -139,7 +139,7 @@ print('''Registration types:
 
 config['regtype'] = ''
 while config['regtype'] == '':
-	choice = input(f"Registration mode [private]: ")
+	choice = input("Registration mode [private]: ")
 	if choice == '':
 		choice = 'private'
 	else:
@@ -153,7 +153,7 @@ config['separate_abuse'] = ''
 print('The built-in abuse account can be a separate workspace or just autoforwarded to admin. '
 	'Small environments will probably want to say "no" here.')
 while config['separate_abuse'] == '':
-	choice = input(f"Do you want to use a separate abuse account? [y/N]: ")
+	choice = input("Do you want to use a separate abuse account? [y/N]: ")
 	choice = choice.lower()
 	if choice in ['yes', 'y']:
 		config['separate_abuse'] = 'y'
@@ -164,7 +164,7 @@ config['separate_support'] = ''
 print('The built-in support account can be a separate workspace or just autoforwarded to admin. '
 	'Small environments will probably want to say "no" here.')
 while config['separate_support'] == '':
-	choice = input(f"Do you want to use a separate support account? [y/N]: ")
+	choice = input("Do you want to use a separate support account? [y/N]: ")
 	choice = choice.lower()
 	if choice in ['yes', 'y']:
 		config['separate_support'] = 'y'
@@ -174,7 +174,7 @@ while config['separate_support'] == '':
 config['quota_size'] = ''
 print('Disk quotas, if set, set each user at a default value that can be changed later.')
 while config['quota_size'] == '':
-	choice = input(f"Size, in MiB, of default user disk quota (0 = No quota): ")
+	choice = input("Size, in MiB, of default user disk quota (0 = No quota): ")
 	try:
 		tempint = int(choice)
 		config['quota_size'] = choice
@@ -223,7 +223,7 @@ print("\nPlease use care when answering.")
 
 config['org_name'] = ''
 while config['org_name'] == '':
-	choice = input(f"Name of organization (max 64 characters): ").strip()
+	choice = input("Name of organization (max 64 characters): ").strip()
 
 	m = re.match(r'\w+', choice)
 	if m and len(choice) <= 64:
@@ -231,7 +231,7 @@ while config['org_name'] == '':
 
 config['org_domain'] = ''
 while config['org_domain'] == '':
-	choice = input(f"Organization's domain (max 253 characters): ").strip()
+	choice = input("Organization's domain (max 253 characters): ").strip()
 
 	m = re.match(r'([a-zA-Z0-9]+\.)+[a-zA-Z0-9]+', choice)
 	if m and len(choice) <= 253:
@@ -244,7 +244,7 @@ print("The languages used by your organization is optional. Please use two- or t
 	"Up to 10 languages may be specified. Examples: 'en' or 'fr,es'\n"
 	"A complete list may be found at https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes.")
 while config['org_language'] == '':
-	choice = input(f"Language(s) (leave empty to skip): ").strip()
+	choice = input("Language(s) (leave empty to skip): ").strip()
 
 	m = re.match(r'^[a-zA-Z]{2,3}(,[a-zA-Z]{2,3})*?$', choice)
 	count = choice.split(',')
