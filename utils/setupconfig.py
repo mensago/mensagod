@@ -357,7 +357,7 @@ rows = cur.fetchall()
 if rows[0][0] is False:
 	cur.execute("CREATE TABLE keycards(rowid SERIAL PRIMARY KEY, owner VARCHAR(64) NOT NULL, "
 				"creationtime TIMESTAMP NOT NULL, index INTEGER NOT NULL, "
-				"entry VARCHAR(8192) NOT NULL, fingerprint VARCHAR(800) NOT NULL);")
+				"entry VARCHAR(8192) NOT NULL, fingerprint VARCHAR(96) NOT NULL);")
 
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
@@ -367,7 +367,7 @@ rows = cur.fetchall()
 if rows[0][0] is False:
 	cur.execute("CREATE TABLE orgkeys(rowid SERIAL PRIMARY KEY, creationtime TIMESTAMP NOT NULL, "
 				"pubkey VARCHAR(7000), privkey VARCHAR(7000) NOT NULL, "
-				"purpose VARCHAR(8) NOT NULL, fingerprint VARCHAR(800) NOT NULL);")
+				"purpose VARCHAR(8) NOT NULL, fingerprint VARCHAR(96) NOT NULL);")
 
 
 # create the org's keys and put them in the table
@@ -480,7 +480,7 @@ if status.error():
 cur.execute("INSERT INTO keycards(owner, creationtime, index, entry, fingerprint) "
 			"VALUES(%s, %s, %s, %s, %s);",
 			(config['org_domain'], rootentry.fields['Timestamp'], rootentry.fields['Index'],
-				str(rootentry), rootentry.signatures['Hashes'])
+				str(rootentry), rootentry.hash)
 			)
 
 cur.close()
@@ -517,8 +517,7 @@ except Exception as e:
 	print("You will need to find out why and restart this script.")
 	sys.exit(-1)
 
-fhandle.write('''
-# This is an Anselus server config file. Each value listed below is the 
+fhandle.write('''# This is an Anselus server config file. Each value listed below is the 
 # default value. Every effort has been made to set this file to sensible 
 # defaults so that configuration is kept to a minimum. This file is expected
 # to be found in /etc/anselusd/serverconfig.toml or C:\\ProgramData\\anselusd
@@ -555,8 +554,8 @@ fhandle.write('''
 # port = "2001"
 
 [global]
-# The location where workspace data is stored. On Windows, the default is 
-# C:\\ProgramData\\anselus, but for other platforms is "/var/anselus".
+# The location where workspace data is stored. The default for Windows is 
+# "C:\\ProgramData\\anselus", but for other platforms is "/var/anselus".
 # workspace_dir = "/var/anselus"
 ''')
 
@@ -586,7 +585,12 @@ fhandle.write('''
 # 
 # The default storage quota for a workspace, measured in MiB. 0 means no limit.
 # default_quota = 0
+''')
 
+if config['quota_size'] != '0':
+	fhandle.write('default_quota = ' + config['quota_size'] + os.linesep)
+
+fhandle.write('''
 [security]
 # The number of seconds to wait after a login failure before accepting another
 # attempt
@@ -619,7 +623,10 @@ fhandle.write('''
 
 fhandle.close()
 
-print('''Basic setup is complete.
+print('''
+
+==============================================================================
+Basic setup is complete.
 
 From here, please make sure you
 
