@@ -271,10 +271,26 @@ except Exception as e:
 
 # Step 3: set up the database tables
 
-# TODO: detect if tables already exist.
-# If they do, ask the user if they want to reset the database and continue
-
 cur = conn.cursor()
+cur.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER "
+			"BY table_name;")
+rows = cur.fetchall()
+if rows[0][0] is True:
+	print("There is data in the database. To continue, ALL DATA MUST BE DELETED.")
+	choice = input("Do you want to DELETE ALL DATA and continue? [y/N]: ").casefold()
+	if choice not in ['y', 'yes']:
+		sys.exit(0)
+	
+	dropcmd = '''DO $$ DECLARE
+		r RECORD;
+	BEGIN
+		FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = current_schema()) LOOP
+			EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
+		END LOOP;
+	END $$;'''
+	cur.execute(dropcmd)
+
+
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
 			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'iwkspc_main' AND "
 			"c.relkind = 'r');")
@@ -599,4 +615,13 @@ From here, please make sure you
    registration for those accounts
 ''')
 
-# TODO: print relevant config info
+print(f"Administrator workspace: f{config['admin_wid']}/{config['org_domain']}")
+print(f"Administrator reg code: f{config['admin_regcode']}")
+
+if config['separate_abuse'] == 'y':
+	print(f"\nAbuse workspace: f{config['abuse_wid']}/{config['org_domain']}")
+	print(f"Abuse reg code: f{config['abuse_regcode']}")
+
+if config['separate_support'] == 'y':
+	print(f"\nSupport workspace: f{config['support_wid']}/{config['org_domain']}")
+	print(f"Support reg code: f{config['support_regcode']}")
