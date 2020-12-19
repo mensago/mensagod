@@ -20,7 +20,8 @@ import diceware
 import nacl.public
 import nacl.signing
 import psycopg2
-import pysanselus.keycard as keycard	# pylint: disable=import-error,unused-import
+import pyanselus.keycard as keycard	# pylint: disable=import-error,unused-import
+from pyanselus.encodedstring import EncodedString	# pylint: disable=import-error,unused-import
 
 
 def make_diceware():
@@ -63,8 +64,8 @@ def make_diceware():
 # Step 1: Check prerequisites
 
 print("This script generates the necessary baseline configuration for a new anselusd server. "
-	"It will generate a new vanilla server config file. Depending on your environment, you may "
-	"need to perform additional editing of the file once it is generated.\n\n"
+	"It will generate a new vanilla server config file. Depending on the requirements of your "
+	"environment, you may need to perform additional editing of the file once it is generated.\n\n"
 	"Any existing server config file will be renamed to a backup.\n")
 
 server_platform = "posix"
@@ -116,7 +117,7 @@ if not os.path.exists(tempstr):
 	if choice == 'yes' or choice == 'y' or choice == '':
 		try:
 			os.mkdir(tempstr, 0o755)
-			print(f"Created folder f{tempstr}")
+			print(f"Created folder {tempstr}")
 		except Exception as e:
 			print(f"Error creating folder {tempstr}: {e}")
 			choice = input("Do you want to continue? [Y/n]: ")
@@ -128,13 +129,12 @@ config['workspace_path'] = tempstr
 
 # registration type
 
-print('''Registration types:
+print('''\nRegistration types:
   - private (default): administrator must create all accounts manually
   - public: anyone with access can create a new account. Not recommended.
   - network: anyone on a subnet may create a new account. By default this is
         set to the local network (192.168/16, 172.16/12, 10/8)
   - moderated: anyone ask for an account, but admin must approve
-
 ''')
 
 config['regtype'] = ''
@@ -174,7 +174,10 @@ while config['separate_support'] == '':
 config['quota_size'] = ''
 print('Disk quotas, if set, set each user at a default value that can be changed later.')
 while config['quota_size'] == '':
-	choice = input("Size, in MiB, of default user disk quota (0 = No quota): ")
+	choice = input("Size, in MiB, of default user disk quota (0 = No quota, default): ")
+	if choice == '':
+		choice = '0'
+	
 	try:
 		tempint = int(choice)
 		config['quota_size'] = choice
@@ -206,13 +209,18 @@ if tempstr == '':
 	tempstr = 'anselus'
 config['db_name'] = tempstr
 
-tempstr = input('Enter a username which has admin privileges on this database. [anselus]: ')
+tempstr = input('Enter a username which has admin privileges on this database. [anselus]: ').strip()
 if tempstr == '':
 	tempstr = 'anselus'
 config['db_user'] = tempstr
 
 # database user password
-config['db_password'] = input('Enter the password of this user: ')
+config['db_password'] = ''
+while config['db_password'] == '':
+	choice = input('Enter the password of this user (min 8 characters): ').strip()
+
+	if len(choice) <= 64 and len(choice) >= 8:
+		config['db_password'] = choice
 
 # required keycard fields
 
@@ -238,24 +246,27 @@ while config['org_domain'] == '':
 		config['org_domain'] = choice
 
 # set initially to space on-purpose
-config['org_language'] = ' '
-print("The languages used by your organization is optional. Please use two- or three-letter "
-	"language codes. List in order of preference from greatest to least, separated by a comma. "
-	"Up to 10 languages may be specified. Examples: 'en' or 'fr,es'\n"
+config['org_language'] = ''
+print("The languages used by your organization is optional.\n"
+
+	"Please use two- or three-letter language codes in order of preference from greatest to least "
+	"and separated by a comma. You may choose up to 10 languages.\n"
+	"Examples: 'en' or 'fr,es'\n"
 	"A complete list may be found at https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes.")
+
 while config['org_language'] == '':
 	choice = input("Language(s) (leave empty to skip): ").strip()
-
+	if choice == '':
+		break
+	
 	m = re.match(r'^[a-zA-Z]{2,3}(,[a-zA-Z]{2,3})*?$', choice)
-	count = choice.split(',')
+	count = len(choice.split(','))
 	if count > 10:
 		print('Too many languages given. Please specify no more than 10.')
 		continue
 	
 	if m and len(choice) <= 253:
 		config['org_language'] = choice
-
-print(config)
 
 # connectivity check
 try:
@@ -275,7 +286,7 @@ cur = conn.cursor()
 cur.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER "
 			"BY table_name;")
 rows = cur.fetchall()
-if rows[0][0] is True:
+if len(rows) > 0:
 	print("There is data in the database. To continue, ALL DATA MUST BE DELETED.")
 	choice = input("Do you want to DELETE ALL DATA and continue? [y/N]: ").casefold()
 	if choice not in ['y', 'yes']:
@@ -364,10 +375,10 @@ if rows[0][0] is False:
 ekey = dict()
 hasher = hashlib.blake2b(digest_size=32)
 key = nacl.public.PrivateKey.generate()
-ekey['public'] = "CURVE25519:" + base64.b85encode(key.public_key.encode())
-ekey['private'] = "CURVE25519:" + base64.b85encode(key.encode())
+ekey['public'] = "CURVE25519:" + base64.b85encode(key.public_key.encode()).decode()
+ekey['private'] = "CURVE25519:" + base64.b85encode(key.encode()).decode()
 hasher.update(base64.b85encode(key.public_key.encode()))
-ekey['fingerprint'] = "BLAKE2B-256:" + base64.b85encode(hasher.digest())
+ekey['fingerprint'] = "BLAKE2B-256:" + base64.b85encode(hasher.digest()).decode()
 ekey['timestamp'] = time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())
 config['org_encrypt'] = ekey['public']
 config['org_decrypt'] = ekey['private']
@@ -376,10 +387,10 @@ config['org_decrypt'] = ekey['private']
 pskey = dict()
 hasher = hashlib.blake2b(digest_size=32)
 key = nacl.signing.SigningKey.generate()
-pskey['verify'] = "CURVE25519:" + base64.b85encode(key.verify_key.encode())
-pskey['sign'] = "CURVE25519:" + base64.b85encode(key.encode())
+pskey['verify'] = "ED25519:" + base64.b85encode(key.verify_key.encode()).decode()
+pskey['sign'] = "ED25519:" + base64.b85encode(key.encode()).decode()
 hasher.update(base64.b85encode(key.verify_key.encode()))
-pskey['fingerprint'] = "BLAKE2B-256:" + base64.b85encode(hasher.digest())
+pskey['fingerprint'] = "BLAKE2B-256:" + base64.b85encode(hasher.digest()).decode()
 pskey['timestamp'] = time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())
 config['org_verify'] = pskey['verify']
 config['org_sign'] = pskey['sign']
@@ -388,22 +399,24 @@ config['org_sign'] = pskey['sign']
 # dangerous because it enables SQL injection attacks. We're using only our own data generated in 
 # this script, so it's not so terrible
 
-cur.execute(f"INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose) "
+cur.execute(f"INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose, fingerprint) "
 			f"VALUES('{ekey['timestamp']}', '{ekey['public']}', '{ekey['private']}', 'encrypt', "
 			f"'{ekey['fingerprint']}');")
 
-cur.execute(f"INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose) "
-			f"VALUES('{pskey['timestamp']}', '{pskey['public']}', '{pskey['private']}', 'sign', "
+cur.execute(f"INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose, fingerprint) "
+			f"VALUES('{pskey['timestamp']}', '{pskey['verify']}', '{pskey['sign']}', 'sign', "
 			f"'{pskey['fingerprint']}');")
 
 
-rootentry = keycard.NewOrgEntry()
+rootentry = keycard.OrgEntry()
 rootentry.set_fields({
 	'Name' : config['org_name'],
-	'Language' : config['org_language'],
 	'Primary-Verification-Key' : config['org_verify'],
 	'Encryption-Key' : config['org_encrypt']
 })
+
+if 'org_language' in config and len(config['org_language']) > 0:
+	rootentry.set_field('Language', config['org_language'])
 
 # preregister the admin account and put into the serverconfig
 
@@ -449,7 +462,7 @@ if status.error():
 	print(f"Unable to generate the hash for the org keycard: {status.info()}")
 	sys.exit()
 
-status = rootentry.sign(config['org_sign'], 'Organization')
+status = rootentry.sign(EncodedString(config['org_sign']), 'Organization')
 if status.error():
 	print(f"Unable to sign the org keycard: {status.info()}")
 	sys.exit()
@@ -467,7 +480,7 @@ if status.error():
 cur.execute("INSERT INTO keycards(owner, creationtime, index, entry, fingerprint) "
 			"VALUES(%s, %s, %s, %s, %s);",
 			(config['org_domain'], rootentry.fields['Timestamp'], rootentry.fields['Index'],
-				rootentry.as_string(), rootentry.signatures['Hashes'])
+				str(rootentry), rootentry.signatures['Hashes'])
 			)
 
 cur.close()
@@ -475,14 +488,14 @@ conn.commit()
 
 # create the server config folder
 
-try:
-	os.mkdir(config['config_path'], 0o755)
-	print(f"Created server config folder f{config['config_path']}")
-except Exception as e:
-	print(f"Error creating folder {config['config_path']}: {e}")
-	print("You will need to create this folder manually, reset the database, "
-		"and restart this script.")
-	sys.exit(-1)
+if not os.path.exists(config['config_path']):
+	try:
+		os.mkdir(config['config_path'], 0o755)
+		print(f"Created server config folder f{config['config_path']}")
+	except Exception as e:
+		print(f"Error creating folder {config['config_path']}: {e}")
+		print("You will need to create this folder manually and restart this script.")
+		sys.exit(-1)
 
 # Step 4: save the config file
 
@@ -529,8 +542,11 @@ if config['server_port'] != '5432':
 if config['db_name'] != 'anselus':
 	fhandle.write('name = "' + config['db_name'] + '"' + os.linesep)
 
-if config['db_password'] != 'anselus':
+if config['db_user'] != 'anselus':
 	fhandle.write('user = "' + config['db_user'] + '"' + os.linesep)
+
+if config['db_password'] != 'anselus':
+	fhandle.write('password = "' + config['db_password'] + '"' + os.linesep)
 
 fhandle.write('''
 [network]
@@ -609,19 +625,17 @@ From here, please make sure you
 
 1) Make sure port 2001 is open on the firewall
 2) Start the anselusd service
-3) Finish registration of the admin account on a device that is NOT this 
-   server
-4) If you are using separate abuse or support accounts, also complete 
-   registration for those accounts
+3) Finish registration of the admin account on a device that is NOT this server
+4) If you are using separate abuse or support accounts, also complete registration for those accounts
 ''')
 
-print(f"Administrator workspace: f{config['admin_wid']}/{config['org_domain']}")
-print(f"Administrator reg code: f{config['admin_regcode']}")
+print(f"Administrator workspace: {config['admin_wid']}/{config['org_domain']}")
+print(f"Administrator reg code: {config['admin_regcode']}")
 
 if config['separate_abuse'] == 'y':
-	print(f"\nAbuse workspace: f{config['abuse_wid']}/{config['org_domain']}")
-	print(f"Abuse reg code: f{config['abuse_regcode']}")
+	print(f"\nAbuse workspace: {config['abuse_wid']}/{config['org_domain']}")
+	print(f"Abuse reg code: {config['abuse_regcode']}")
 
 if config['separate_support'] == 'y':
-	print(f"\nSupport workspace: f{config['support_wid']}/{config['org_domain']}")
-	print(f"Support reg code: f{config['support_regcode']}")
+	print(f"\nSupport workspace: {config['support_wid']}/{config['org_domain']}")
+	print(f"Support reg code: {config['support_regcode']}")
