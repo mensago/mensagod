@@ -27,7 +27,7 @@ from pyanselus.encodedstring import EncodedString	# pylint: disable=import-error
 def make_diceware():
 	'''Generates a diceware password'''
 	options = argparse.Namespace()
-	options.num = 3
+	options.num = 4
 	options.caps = True
 	options.specials = 0
 	options.delimiter = ''
@@ -68,11 +68,12 @@ def make_diceware():
 # 	"environment, you may need to perform additional editing of the file once it is generated.\n\n"
 # 	"Any existing server config file will be renamed to a backup.\n")
 
-print("""This script generates the baseline configuration for a new anselusd 
-server. Depending on the requirements of your environment, you may need to make
-additional changes afterward.
+print("""This script generates the first-time setup for a new anselusd 
+server. Depending on the requirements of your environment, you may need to edit
+the config file afterward.
 
-Any existing config file will be backed up.
+The database will be emptied and reset, but any existing config file will be
+backed up.
 """)
 
 server_platform = "posix"
@@ -157,7 +158,8 @@ while config['regtype'] == '':
 		config['regtype'] = choice
 		break
 
-print('''Each instance has abuse and support addresses. These can autoforward
+print('''
+Each instance has abuse and support addresses. These can autoforward
 to the admin workspace or be their own separate, distinct workspaces. Smaller
 environments probably will want to say "yes" here.
 ''')
@@ -181,7 +183,7 @@ while config['forward_support'] == '':
 		config['forward_support'] = 'n'
 
 config['quota_size'] = ''
-print('Disk quotas set each user to a default value that can be customized.')
+print('\nDisk quotas set each user to a default value that can be customized.')
 while config['quota_size'] == '':
 	choice = input("Size, in MiB, of default user disk quota (0 = No quota, default): ")
 	if choice == '':
@@ -201,7 +203,7 @@ if server_platform == 'windows':
 
 
 # IP address of postgres server
-tempstr = input('Enter the IP address of the database server. [localhost]: ')
+tempstr = input('\nEnter the IP address of the database server. [localhost]: ')
 if tempstr == '':
 	tempstr = 'localhost'
 config['server_ip'] = tempstr
@@ -238,7 +240,8 @@ Now it is time to enter the organization's information used in the root keycard.
 This information can be changed, but the original information will still be a
 permanent part of the organization's keycard.
 
-Please use care when answering.""")
+Please use care when answering.
+""")
 
 config['org_name'] = ''
 while config['org_name'] == '':
@@ -302,7 +305,14 @@ cur.execute("SELECT table_name FROM information_schema.tables WHERE table_schema
 			"BY table_name;")
 rows = cur.fetchall()
 if len(rows) > 0:
-	print("There is data in the database. To continue, ALL DATA MUST BE DELETED.")
+	print("""
+================================================================================ 
+                      WARNING: the database is not empty!
+================================================================================
+	
+If you continue, ALL DATA WILL BE DELETED FROM THE DATABASE, which means all
+keycards and workspace information will be erased.
+""")
 	choice = input("Do you want to DELETE ALL DATA and continue? [y/N]: ").casefold()
 	if choice not in ['y', 'yes']:
 		sys.exit(0)
@@ -316,6 +326,7 @@ if len(rows) > 0:
 	END $$;'''
 	cur.execute(dropcmd)
 
+print('Performing database first-time setup.\n')
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
 			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'iwkspc_main' AND "
@@ -638,27 +649,29 @@ fhandle.write('''
 
 fhandle.close()
 
-print('''
+print(f"""
 
 ==============================================================================
 Basic setup is complete.
 
 From here, please make sure you
 
-1) Make sure port 2001 is open on the firewall
-2) Start the anselusd service
-3) Finish registration of the admin account on a device that is NOT this server
-4) If you are using separate abuse or support accounts, also complete
-   registration for those accounts
-''')
+1) Review the config file at {config_file_path}.
+2) Make sure port 2001 is open on the firewall.
+3) Start the anselusd service.
+4) Finish registration of the admin account on a device that is NOT this server.
+5) If you are using separate abuse or support accounts, also complete
+   registration for those accounts on a device that is NOT this server.
+
+""")
 
 print(f"Administrator workspace: {config['admin_wid']}/{config['org_domain']}")
-print(f"Administrator reg code: {config['admin_regcode']}")
+print(f"Administrator registration code: {config['admin_regcode']}")
 
 if config['forward_abuse'] == 'y':
 	print(f"\nAbuse workspace: {config['abuse_wid']}/{config['org_domain']}")
-	print(f"Abuse reg code: {config['abuse_regcode']}")
+	print(f"Abuse registration code: {config['abuse_regcode']}")
 
 if config['forward_support'] == 'y':
 	print(f"\nSupport workspace: {config['support_wid']}/{config['org_domain']}")
-	print(f"Support reg code: {config['support_regcode']}")
+	print(f"Support registration code: {config['support_regcode']}")
