@@ -83,9 +83,9 @@ if server_platform == "windows":
 		print("This script requires administrator privileges.")
 		sys.exit(0)
 else:
-	# TODO: handle os.geteuid()
-	pass
-
+	if os.geteuid() != 0:
+		print("This script requires root privileges.")
+		sys.exit(0)
 
 # Step 2: Get necessary information from the user
 #	- location of workspace data
