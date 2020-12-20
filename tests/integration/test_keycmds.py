@@ -37,7 +37,7 @@ def test_orgcard():
 	sock = connect()
 	assert sock, "Connection to server at localhost:2001 failed"
 	
-	sock.send('ORGCARD 1')
+	sock.send(b'ORGCARD 1\r\n')
 	response = sock.recv(8192).decode()
 	print(response)
 
