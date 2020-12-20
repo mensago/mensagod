@@ -1,5 +1,5 @@
 
-from integration_setup import setup_test
+from integration_setup import setup_test, connect
 
 def test_orgcard():
 	'''Tests the server's ORGCARD command'''
@@ -34,6 +34,12 @@ def test_orgcard():
 		(second_entry, r'BLAKE2B-256:5>cWv+qZ^-2aa6NVBKz7h19Fh#9m7r$$7av?6YOM'))
 	conn.commit()
 
+	sock = connect()
+	assert sock, "Connection to server at localhost:2001 failed"
+	
+	sock.send('ORGCARD 1')
+	response = sock.recv(8192).decode()
+	print(response)
 
 
 if __name__ == '__main__':
