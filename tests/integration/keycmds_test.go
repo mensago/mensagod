@@ -3,6 +3,7 @@ package anselusd
 import (
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -69,6 +70,14 @@ func SetupTest() (*sql.DB, error) {
 	err = dbConn.Ping()
 	if err != nil {
 		return nil, err
+	}
+
+	sqldir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	sqlCmds, err := ioutil.ReadFile(filepath.Join(sqldir, "psql_schema.sql"))
+
+	_, err = dbConn.Exec(string(sqlCmds))
+	if err != nil {
+		panic(err)
 	}
 
 	return dbConn, err
