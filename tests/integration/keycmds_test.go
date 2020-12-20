@@ -53,7 +53,7 @@ func readConfig() {
 	}
 }
 
-func TestOrgCard(t *testing.T) {
+func SetupTest() (*sql.DB, error) {
 	readConfig()
 
 	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
@@ -63,11 +63,21 @@ func TestOrgCard(t *testing.T) {
 
 	dbConn, err := sql.Open("postgres", connString)
 	if err != nil {
-		t.Fatalf("TestOrgCard: failed to connect to database: %s\n", err)
+		return nil, err
 	}
 	// Calling Ping() is required because Open() just validates the settings passed
 	err = dbConn.Ping()
 	if err != nil {
+		return nil, err
+	}
+
+	return dbConn, err
+}
+
+func TestOrgCard(t *testing.T) {
+	dbConn, err := SetupTest()
+	if err != nil {
 		t.Fatalf("TestOrgCard: failed to connect to database: %s\n", err)
 	}
+	dbConn.Close()
 }
