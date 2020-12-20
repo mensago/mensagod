@@ -22,6 +22,7 @@ import nacl.signing
 import psycopg2
 import pyanselus.keycard as keycard	# pylint: disable=import-error,unused-import
 from pyanselus.encodedstring import EncodedString	# pylint: disable=import-error,unused-import
+from termcolor import colored
 
 
 def make_diceware():
@@ -88,11 +89,11 @@ if server_platform == "windows":
 		check=False, capture_output=True)
 	is_admin = result.stdout.decode().strip().lower()
 	if is_admin == 'false':
-		print("This script requires administrator privileges.")
+		print(colored("This script requires administrator privileges.",'yellow'))
 		sys.exit(0)
 else:
-	if os.geteuid() != 0:
-		print("This script requires root privileges.")
+	if os.geteuid() != 0:	# pylint: disable=no-member
+		print(colored("This script requires root privileges.", 'yellow'))
 		sys.exit(0)
 
 # Step 2: Get necessary information from the user
@@ -235,12 +236,12 @@ while config['db_password'] == '':
 
 # required keycard fields
 
-print("""
-Now it is time to enter the organization's information used in the root keycard.
+print(f"""
+{colored('NOTE: ','yellow')}Now it is time to enter the organization's information used in the root keycard.
 This information can be changed, but the original information will still be a
 permanent part of the organization's keycard.
 
-Please use care when answering.
+{colored("Please use care when answering",'yellow')}.
 """)
 
 config['org_name'] = ''
@@ -305,12 +306,12 @@ cur.execute("SELECT table_name FROM information_schema.tables WHERE table_schema
 			"BY table_name;")
 rows = cur.fetchall()
 if len(rows) > 0:
-	print("""
-================================================================================ 
+	print(f"""
+{colored("================================================================================", 'red')}
                       WARNING: the database is not empty!
-================================================================================
+{colored("================================================================================", 'red')}
 	
-If you continue, ALL DATA WILL BE DELETED FROM THE DATABASE, which means all
+If you continue, {colored("ALL DATA WILL BE DELETED FROM THE DATABASE",'yellow')}, which means all
 keycards and workspace information will be erased.
 """)
 	choice = input("Do you want to DELETE ALL DATA and continue? [y/N]: ").casefold()
@@ -651,10 +652,10 @@ fhandle.close()
 
 print(f"""
 
-==============================================================================
+{colored('==============================================================================','green')}
 Basic setup is complete.
 
-From here, please make sure you
+From here, please make sure you:
 
 1) Review the config file at {config_file_path}.
 2) Make sure port 2001 is open on the firewall.
@@ -666,12 +667,12 @@ From here, please make sure you
 """)
 
 print(f"Administrator workspace: {config['admin_wid']}/{config['org_domain']}")
-print(f"Administrator registration code: {config['admin_regcode']}")
+print(f"Administrator registration code: {config['admin_regcode']}\n")
 
 if config['forward_abuse'] == 'y':
-	print(f"\nAbuse workspace: {config['abuse_wid']}/{config['org_domain']}")
-	print(f"Abuse registration code: {config['abuse_regcode']}")
+	print(f"Abuse workspace: {config['abuse_wid']}/{config['org_domain']}")
+	print(f"Abuse registration code: {config['abuse_regcode']}\n")
 
 if config['forward_support'] == 'y':
-	print(f"\nSupport workspace: {config['support_wid']}/{config['org_domain']}")
-	print(f"Support registration code: {config['support_regcode']}")
+	print(f"Support workspace: {config['support_wid']}/{config['org_domain']}")
+	print(f"Support registration code: {config['support_regcode']}\n")
