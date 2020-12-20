@@ -338,7 +338,7 @@ if rows[0][0] is False:
 				"uid VARCHAR(32), domain VARCHAR(253) NOT NULL, password VARCHAR(128) NOT NULL, "
 				"status VARCHAR(16) NOT NULL, type VARCHAR(16) NOT NULL);")
 
-
+# TODO: Update columns to use EncodedStrings
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
 			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'iwkspc_folders' "
 			"AND c.relkind = 'r');")
@@ -348,6 +348,7 @@ if rows[0][0] is False:
 				"enc_name VARCHAR(128) NOT NULL, enc_key VARCHAR(64) NOT NULL);")
 
 
+# TODO: Update columns to use EncodedStrings
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
 			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'iwkspc_devices' "
 			"AND c.relkind = 'r');")
