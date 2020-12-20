@@ -63,10 +63,17 @@ def make_diceware():
 
 # Step 1: Check prerequisites
 
-print("This script generates the necessary baseline configuration for a new anselusd server. "
-	"It will generate a new vanilla server config file. Depending on the requirements of your "
-	"environment, you may need to perform additional editing of the file once it is generated.\n\n"
-	"Any existing server config file will be renamed to a backup.\n")
+# print("This script generates the necessary baseline configuration for a new anselusd server. "
+# 	"It will generate a new vanilla server config file. Depending on the requirements of your "
+# 	"environment, you may need to perform additional editing of the file once it is generated.\n\n"
+# 	"Any existing server config file will be renamed to a backup.\n")
+
+print("""This script generates the baseline configuration for a new anselusd 
+server. Depending on the requirements of your environment, you may need to make
+additional changes afterward.
+
+Any existing config file will be backed up.
+""")
 
 server_platform = "posix"
 if platform.system() == "Windows":
@@ -107,7 +114,7 @@ if server_platform == 'windows':
 
 
 # location of workspace data
-tempstr = input(f'Enter the location for the workspace data [{default_workspace_path}]: ')
+tempstr = input(f'Where should workspace data be stored? [{default_workspace_path}]: ')
 if tempstr == '':
 	tempstr = default_workspace_path
 
@@ -129,12 +136,13 @@ config['workspace_path'] = tempstr
 
 # registration type
 
-print('''\nRegistration types:
-  - private (default): administrator must create all accounts manually
+print('''
+Registration types:
+  - private (default): the admin creates all accounts manually.
+  - moderated: anyone can ask for an account, but the admin must approve.
+  - network: anyone on a subnet can create a new account. By default this is
+        set to the local network (192.168/16, 172.16/12, 10/8).
   - public: anyone with access can create a new account. Not recommended.
-  - network: anyone on a subnet may create a new account. By default this is
-        set to the local network (192.168/16, 172.16/12, 10/8)
-  - moderated: anyone ask for an account, but admin must approve
 ''')
 
 config['regtype'] = ''
@@ -149,30 +157,31 @@ while config['regtype'] == '':
 		config['regtype'] = choice
 		break
 
-config['separate_abuse'] = ''
-print('The built-in abuse account can be a separate workspace or just autoforwarded to admin. '
-	'Small environments will probably want to say "no" here.')
-while config['separate_abuse'] == '':
-	choice = input("Do you want to use a separate abuse account? [y/N]: ")
-	choice = choice.lower()
-	if choice in ['yes', 'y']:
-		config['separate_abuse'] = 'y'
-	elif choice in ['n', 'no', '']:
-		config['separate_abuse'] = 'n'
+print('''Each instance has abuse and support addresses. These can autoforward
+to the admin workspace or be their own separate, distinct workspaces. Smaller
+environments probably will want to say "yes" here.
+''')
 
-config['separate_support'] = ''
-print('The built-in support account can be a separate workspace or just autoforwarded to admin. '
-	'Small environments will probably want to say "no" here.')
-while config['separate_support'] == '':
-	choice = input("Do you want to use a separate support account? [y/N]: ")
+config['forward_abuse'] = ''
+while config['forward_abuse'] == '':
+	choice = input("Do you want to autoforward abuse to admin? [Y/n]: ")
 	choice = choice.lower()
-	if choice in ['yes', 'y']:
-		config['separate_support'] = 'y'
-	elif choice in ['n', 'no', '']:
-		config['separate_support'] = 'n'
+	if choice in ['yes', 'y', '']:
+		config['forward_abuse'] = 'y'
+	elif choice in ['n', 'no']:
+		config['forward_abuse'] = 'n'
+
+config['forward_support'] = ''
+while config['forward_support'] == '':
+	choice = input("Do you want to autoforward support to admin? [Y/n]: ")
+	choice = choice.lower()
+	if choice in ['yes', 'y', '']:
+		config['forward_support'] = 'y'
+	elif choice in ['n', 'no']:
+		config['forward_support'] = 'n'
 
 config['quota_size'] = ''
-print('Disk quotas, if set, set each user at a default value that can be changed later.')
+print('Disk quotas set each user to a default value that can be customized.')
 while config['quota_size'] == '':
 	choice = input("Size, in MiB, of default user disk quota (0 = No quota, default): ")
 	if choice == '':
@@ -224,10 +233,12 @@ while config['db_password'] == '':
 
 # required keycard fields
 
-print("\nNow it is time to enter the organization's information used in the root keycard. This "
-"information cannot be changed without updating the organization's keycard, and the original "
-"information will still be a permanent part of the organization's keycard.")
-print("\nPlease use care when answering.")
+print("""
+Now it is time to enter the organization's information used in the root keycard.
+This information can be changed, but the original information will still be a
+permanent part of the organization's keycard.
+
+Please use care when answering.""")
 
 config['org_name'] = ''
 while config['org_name'] == '':
@@ -247,12 +258,16 @@ while config['org_domain'] == '':
 
 # set initially to space on-purpose
 config['org_language'] = ''
-print("The languages used by your organization is optional.\n"
+print("""Specifying the languages used by your organization is optional.
 
-	"Please use two- or three-letter language codes in order of preference from greatest to least "
-	"and separated by a comma. You may choose up to 10 languages.\n"
-	"Examples: 'en' or 'fr,es'\n"
-	"A complete list may be found at https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes.")
+Please use two- or three-letter language codes in order of preference from 
+greatest to least and separated by a comma. You may choose up to 10 languages.
+
+Examples: 'en' or 'fr,es'
+
+A complete list may be found at 
+https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes.
+""")
 
 while config['org_language'] == '':
 	choice = input("Language(s) (leave empty to skip): ").strip()
@@ -430,7 +445,7 @@ rootentry.set_field('Contact-Admin', '/'.join([admin_wid,config['org_domain']]))
 
 # preregister the abuse account if not aliased and put into the serverconfig
 
-if config['separate_abuse'] == 'y':
+if config['forward_abuse'] == 'y':
 	abuse_wid = str(uuid.uuid4())
 	abuse_regcode = make_diceware()
 	cur.execute(f"INSERT INTO prereg(wid, uid, regcode) "
@@ -442,7 +457,7 @@ if config['separate_abuse'] == 'y':
 
 # preregister the support account if not aliased and put into the serverconfig
 
-if config['separate_support'] == 'y':
+if config['forward_support'] == 'y':
 	support_wid = str(uuid.uuid4())
 	support_regcode = make_diceware()
 	cur.execute(f"INSERT INTO prereg(wid, uid, regcode) "
@@ -568,7 +583,7 @@ fhandle.write('''
 # is open to public registration, but an administrator must approve the request
 # before an account can be created. 'network' limits registration to a 
 # specified subnet or IP address. 'private' permits account registration only
-# by an administrator. For most workflows 'private' is the appropriate setting.
+# by an administrator. For most situations 'private' is the appropriate setting.
 # registration = "private"
 ''')
 
@@ -633,16 +648,17 @@ From here, please make sure you
 1) Make sure port 2001 is open on the firewall
 2) Start the anselusd service
 3) Finish registration of the admin account on a device that is NOT this server
-4) If you are using separate abuse or support accounts, also complete registration for those accounts
+4) If you are using separate abuse or support accounts, also complete
+   registration for those accounts
 ''')
 
 print(f"Administrator workspace: {config['admin_wid']}/{config['org_domain']}")
 print(f"Administrator reg code: {config['admin_regcode']}")
 
-if config['separate_abuse'] == 'y':
+if config['forward_abuse'] == 'y':
 	print(f"\nAbuse workspace: {config['abuse_wid']}/{config['org_domain']}")
 	print(f"Abuse reg code: {config['abuse_regcode']}")
 
-if config['separate_support'] == 'y':
+if config['forward_support'] == 'y':
 	print(f"\nSupport workspace: {config['support_wid']}/{config['org_domain']}")
 	print(f"Support reg code: {config['support_regcode']}")
