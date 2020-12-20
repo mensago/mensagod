@@ -345,10 +345,13 @@ func processCommand(session *sessionState) {
 		DELETE
 		DELIVER
 		DOWNLOAD
+		GETENTRIES
 		GETUPDATES
+		ISCURRENT
 		LIST
 		MKDIR
 		MOVE
+		ORGCARD
 		RESUME
 		SELECT
 		SEND
@@ -357,6 +360,7 @@ func processCommand(session *sessionState) {
 		SETADDR
 		UNREGISTER
 		UPLOAD
+		USERCARD
 	*/
 	case "DEVICE":
 		commandDevice(session)
@@ -368,6 +372,8 @@ func processCommand(session *sessionState) {
 		commandLogout(session)
 	case "NOOP":
 		// Do nothing. Just resets the idle counter.
+	case "ORGCARD":
+		commandOrgCard(session)
 	case "PASSWORD":
 		commandPassword(session)
 	case "PREREG":
