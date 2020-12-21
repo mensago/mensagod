@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/darkwyrm/anselusd/dbhandler"
-	"github.com/darkwyrm/anselusd/keycard"
 	"github.com/everlastingbeta/diceware"
 	"github.com/everlastingbeta/diceware/wordlist"
 	_ "github.com/lib/pq"
@@ -351,7 +351,6 @@ func processCommand(session *sessionState) {
 		LIST
 		MKDIR
 		MOVE
-		ORGCARD
 		RESUME
 		SELECT
 		SEND
@@ -387,66 +386,39 @@ func processCommand(session *sessionState) {
 	}
 }
 
-func commandAddEntry(session *sessionState) {
-	// Command syntax:
-	// ADDENTRY
-
-	// Client sends the ADDENTRY command.
-	// When the server is ready, the server responds with 100 CONTINUE.
-	// The client uploads the data for entry, transmitting the entry data between the
-	//	 ----- BEGIN USER KEYCARD ----- header and the ----- END USER KEYCARD ----- footer.
-	// The server then checks compliance of the entry data. Assuming that it complies, the server
-	//	 generates a cryptographic signature and responds with 100 CONTINUE, returning the
-	//	 fingerprint of the data and the hash of the previous entry in the database.
-	// The client verifies the signature against the organization’s verification key
-	// The client appends the hash from the previous entry as the Previous-Hash field
-	// The client generates the hash value for the entry as the Hash field
-	// The client signs the entry as the User-Signature field and then uploads the result to the
-	//	 server using the same header and footer as the first time.
-	// Once uploaded, the server validates the Hash and User-Signature fields, and, assuming that
-	//	 all is well, adds it to the keycard database and returns 200 OK.
-
-	if session.LoginState != loginClientSession {
-		session.WriteClient("401 UNAUTHORIZED\r\n")
-		return
+// setupUpload is for ensuring the synchronous transfer of data
+func setupUpload(session *sessionState, byteCount uint64) (uint64, error) {
+	if byteCount == 0 {
+		return 0, nil
+	}
+	_, err := session.WriteClient(fmt.Sprintf("104 TRANSFER %d\r\n", byteCount))
+	if err != nil {
+		return 0, err
 	}
 
-	if len(session.Tokens) != 1 {
-		session.WriteClient("400 BAD REQUEST\r\n")
-		return
+	response, err := session.ReadClient()
+	if err != nil {
+		return 0, err
 	}
 
-	session.WriteClient("100 CONTINUE\r\n")
-
-	rawstr, err := session.ReadClient()
-
-	// ReadClient can set the IsTerminating flag if the read times out
-	if session.IsTerminating || (err != nil && err.Error() != "EOF") {
-		return
+	pattern := regexp.MustCompile("^\\d{3}( [[:alnum:]]+)+")
+	if !pattern.MatchString(response) {
+		return 0, errors.New("malformed client response")
 	}
 
-	// We've managed to read data from the client. Now for some extensive validation.
-	var entry *keycard.Entry
-	entry, err = keycard.NewEntryFromData(rawstr)
-
-	if err != nil || !entry.IsDataCompliant() {
-		session.WriteClient("411 BAD KEYCARD DATA\r\n")
-		return
+	code, err := strconv.Atoi(response[0:3])
+	if err != nil {
+		return 0, err
 	}
 
-	// IsDataCompliant performs all of the checks we need to ensure that the data given to us by the
-	// client EXCEPT checking the expiration
-	var isExpired bool
-	isExpired, err = entry.IsExpired()
-	if err != nil || isExpired {
-		session.WriteClient("411 BAD KEYCARD DATA\r\n")
-		return
+	if code != 104 || response[0:13] != "104 TRANSFER " {
+		return 0, errors.New(response)
 	}
 
-	// If we managed to get this far, we can (theoretically) trust the initial data set given to us
-	// by the client. Here we sign the data with the organization's signing key
+	parts := strings.Split(response, " ")
+	clientCount, err := strconv.ParseUint(parts[2], 10, 64)
 
-	// TODO: Finish implementing AddEntry()
+	return clientCount, nil
 }
 
 func commandExists(session *sessionState) {
