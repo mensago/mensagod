@@ -533,3 +533,63 @@ func CheckRegCode(id string, wid bool, regcode string) (string, error) {
 	// TODO: Implement CheckRegCode
 	return "", errors.New("Unimplemented")
 }
+
+// GetOrgEntries pulls one or more entries from the database. If an end index is not desired, set
+// it to 0.
+func GetOrgEntries(startIndex int, endIndex int) ([]string, error) {
+	out := make([]string, 0, 10)
+
+	if startIndex < 1 {
+		// If given a 0 or negative number, we return just the current entry.
+		row := dbConn.QueryRow(`SELECT entry FROM keycards WHERE owner = 'organization' ` +
+			`ORDER BY index DESC LIMIT 1`)
+
+		var entry string
+		err := row.Scan(&entry)
+		if err == nil {
+			out = append(out, entry)
+		}
+		return out, err
+
+	} else if endIndex >= 1 {
+		// Given both a start and end index
+		if endIndex < startIndex {
+			return out, nil
+		}
+		rows, err := dbConn.Query(`SELECT entry FROM keycards WHERE owner = 'organization' `+
+			`AND index >= $1 AND index <= $2 ORDER BY index`, startIndex, endIndex)
+		if err != nil {
+			return out, err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var entry string
+			err := rows.Scan(&entry)
+			if err != nil {
+				return out, err
+			}
+			out = append(out, entry)
+		}
+
+	} else {
+		// Given just a start index
+		rows, err := dbConn.Query(`SELECT entry FROM keycards WHERE owner = 'organization' `+
+			`AND index >= $1 ORDER BY index`, startIndex)
+		if err != nil {
+			return out, err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var entry string
+			err := rows.Scan(&entry)
+			if err != nil {
+				return out, err
+			}
+			out = append(out, entry)
+		}
+
+	}
+	return out, nil
+}

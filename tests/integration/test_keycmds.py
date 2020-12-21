@@ -1,4 +1,5 @@
 
+import time
 from integration_setup import setup_test, connect
 
 def test_orgcard():
@@ -38,8 +39,18 @@ def test_orgcard():
 	assert sock, "Connection to server at localhost:2001 failed"
 	
 	sock.send(b'ORGCARD 1\r\n')
+
+	# TODO: This is a hack to get the test to pass -- there is a race condition caused by a lack 
+	# of synchronization between the client and server. The proper fix is a class to handle this
+	# synchronization
+	time.sleep(1)
 	response = sock.recv(8192).decode()
-	print(response)
+	expected_response = ''.join(['102 ITEM 1 2\r\n----- BEGIN ORG ENTRY -----\r\n', first_entry,
+		'----- END ORG ENTRY -----\r\n102 ITEM 2 2\r\n----- BEGIN ORG ENTRY -----\r\n',
+		second_entry, '----- END ORG ENTRY -----\r\n'])
+	assert response == expected_response, 'test_orgcard: bad multi-item response'
+
+	sock.send(b'QUIT\r\n')
 
 
 if __name__ == '__main__':
