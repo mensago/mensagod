@@ -8,10 +8,10 @@
 from base64 import b85encode, b85decode
 import hashlib
 import json
-import jsonschema
 import os
 import sys
 
+import jsonschema
 import nacl.public
 import nacl.secret
 import nacl.utils
@@ -144,14 +144,14 @@ def ejd_decrypt(indata : dict, outpath : str):
 	try:
 		decryptedkey = sealedbox.decrypt(secretkeystr.raw_data())
 	except:
-		print(f"Unable to decrypt the secret key.")
+		print("Unable to decrypt the secret key.")
 		return
 	
 	secretbox = nacl.secret.SecretBox(decryptedkey)
 	try:
 		decrypted_data = secretbox.decrypt(b85decode(indata['Payload']))
 	except:
-		print(f"Unable to decrypt the file payload.")
+		print("Unable to decrypt the file payload.")
 		return
 	
 	payload_data = json.loads(decrypted_data)
