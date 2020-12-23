@@ -385,7 +385,8 @@ func connectionWorker(conn net.Conn) {
 	session.Connection = conn
 	session.LoginState = loginNoSession
 
-	session.WriteClient("{'Name':'Anselus','Version':'0.1','Code':200,'Status':'OK'}\r\n")
+	session.WriteClient("{\"Name\":\"Anselus\",\"Version\":\"0.1\",\"Code\":200," +
+		"\"Status\":\"OK\"}\r\n")
 	for {
 		request, err := session.GetRequest()
 		if err != nil && err.Error() != "EOF" {
