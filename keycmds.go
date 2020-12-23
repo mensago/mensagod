@@ -28,30 +28,29 @@ func commandAddEntry(session *sessionState) {
 	//	 all is well, adds it to the keycard database and returns 200 OK.
 
 	if session.LoginState != loginClientSession {
-		session.WriteClient("401 UNAUTHORIZED\r\n")
+		session.SendStringResponse(401, "UNAUTHORIZED")
 		return
 	}
 
-	if len(session.Tokens) != 1 {
-		session.WriteClient("400 BAD REQUEST\r\n")
-		return
-	}
+	session.SendStringResponse(100, "CONTINUE")
 
-	session.WriteClient("100 CONTINUE\r\n")
-
-	rawstr, err := session.ReadClient()
+	request, err := session.GetRequest()
 
 	// ReadClient can set the IsTerminating flag if the read times out
 	if session.IsTerminating || (err != nil && err.Error() != "EOF") {
 		return
 	}
 
+	if request.Validate([]string{"Base-Entry"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST")
+	}
+
 	// We've managed to read data from the client. Now for some extensive validation.
 	var entry *keycard.Entry
-	entry, err = keycard.NewEntryFromData(rawstr)
+	entry, err = keycard.NewEntryFromData(request.Data["Base-Entry"])
 
 	if err != nil || !entry.IsDataCompliant() {
-		session.WriteClient("411 BAD KEYCARD DATA\r\n")
+		session.SendStringResponse(411, "BAD KEYCARD DATA")
 		return
 	}
 
@@ -60,7 +59,7 @@ func commandAddEntry(session *sessionState) {
 	var isExpired bool
 	isExpired, err = entry.IsExpired()
 	if err != nil || isExpired {
-		session.WriteClient("411 BAD KEYCARD DATA\r\n")
+		session.SendStringResponse(411, "BAD KEYCARD DATA")
 		return
 	}
 
@@ -72,47 +71,45 @@ func commandAddEntry(session *sessionState) {
 
 func commandOrgCard(session *sessionState) {
 	// command syntax:
-	// ORGCARD start_index [end_index]
+	// ORGCARD(Start-Index, End-Index=0)
+
+	if !session.Message.HasField("Start-Index") {
+		session.SendStringResponse(400, "BAD REQUEST")
+		return
+	}
 
 	var startIndex, endIndex int
 	var err error
-	switch len(session.Tokens) {
-	case 2:
-		startIndex, err = strconv.Atoi(session.Tokens[1])
-		if err != nil {
-			session.WriteClient("400 BAD REQUEST\r\n")
-			return
-		}
-	case 3:
-		startIndex, err = strconv.Atoi(session.Tokens[1])
-		if err != nil {
-			session.WriteClient("400 BAD REQUEST\r\n")
-			return
-		}
-		endIndex, err = strconv.Atoi(session.Tokens[2])
-		if err != nil {
-			session.WriteClient("400 BAD REQUEST\r\n")
-			return
-		}
-	default:
-		session.WriteClient("400 BAD REQUEST\r\n")
+	startIndex, err = strconv.Atoi(session.Message.Data["Start-Index"])
+	if err != nil {
+		session.SendStringResponse(400, "BAD REQUEST")
 		return
 	}
+
+	if session.Message.HasField("End-Index") {
+		endIndex, err = strconv.Atoi(session.Message.Data["End-Index"])
+		if err != nil {
+			session.SendStringResponse(400, "BAD REQUEST")
+			return
+		}
+	}
+
 	entries, err := dbhandler.GetOrgEntries(startIndex, endIndex)
 	entryCount := len(entries)
 	if entryCount > 0 {
 		for i, entry := range entries {
-			_, err = session.WriteClient(fmt.Sprintf("102 ITEM %d %d\r\n", i+1, entryCount))
-			if err != nil {
-				return
-			}
-			_, err = session.WriteClient("----- BEGIN ORG ENTRY -----\r\n" + entry +
-				"----- END ORG ENTRY -----\r\n")
-			if err != nil {
+			var response ServerResponse
+			response.Code = 102
+			response.Status = "ITEM"
+			response.Data["Index"] = fmt.Sprintf("%d", i+1)
+			response.Data["Total"] = fmt.Sprintf("%d", entryCount)
+			response.Data["Entry"] = entry
+
+			if session.SendResponse(response) != nil {
 				return
 			}
 		}
 	} else {
-		session.WriteClient("404 NOT FOUND\r\n")
+		session.SendStringResponse(404, "NOT FOUND")
 	}
 }

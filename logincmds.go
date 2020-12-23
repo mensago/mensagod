@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -16,17 +15,19 @@ import (
 
 func commandDevice(session *sessionState) {
 	// Command syntax:
-	// DEVICE <devid> <key>
+	// DEVICE(Device-ID,Device-Key)
 
-	if len(session.Tokens) != 3 || !dbhandler.ValidateUUID(session.Tokens[1]) ||
+	session.Message.Validate([]string{"Device-ID", "Device-Key"})
+	if !dbhandler.ValidateUUID(session.Message.Data["Device-ID"]) ||
 		session.LoginState != loginAwaitingSessionID {
-		session.WriteClient("400 BAD REQUEST\r\n")
+		session.SendStringResponse(400, "BAD REQUEST")
 		return
 	}
 
-	success, err := dbhandler.CheckDevice(session.WID, session.Tokens[1], session.Tokens[2])
+	success, err := dbhandler.CheckDevice(session.WID, session.Message.Data["Device-ID"],
+		session.Message.Data["Device-Key"])
 	if err != nil {
-		session.WriteClient("400 BAD REQUEST\r\n")
+		session.SendStringResponse(400, "BAD REQUEST")
 		return
 	}
 
@@ -41,41 +42,43 @@ func commandDevice(session *sessionState) {
 			// 6) Upon receipt of denial, log the failure and apply a lockout to the IP
 		} else {
 			// TODO: Check for paranoid mode and reject if enabled
-			dbhandler.AddDevice(session.WID, session.Tokens[1], session.Tokens[2], session.Tokens[3],
-				"active")
+			dbhandler.AddDevice(session.WID, session.Message.Data["Device-ID"], "CURVE25519",
+				session.Message.Data["Device-Key"], "active")
 
 			session.LoginState = loginClientSession
-			session.WriteClient("200 OK\r\n")
+			session.SendStringResponse(200, "OK")
 			return
 		}
 	} else {
 		// The device is part of the workspace already, so now we issue undergo a challenge-response
 		// to ensure that the device really is authorized and the key wasn't stolen by an impostor
 
-		success, err = challengeDevice(session, "curve25519", session.Tokens[2])
+		success, err = challengeDevice(session, "CURVE25519", session.Message.Data["Device-Key"])
 		if success {
 			session.LoginState = loginClientSession
-			session.WriteClient("200 OK\r\n")
+			session.SendStringResponse(200, "OK")
 		} else {
 			dbhandler.LogFailure("device", session.WID, session.Connection.RemoteAddr().String())
-			session.WriteClient("401 UNAUTHORIZED\r\n")
+			session.SendStringResponse(401, "UNAUTHORIZED")
 		}
 	}
 }
 
 func commandLogin(session *sessionState) {
 	// Command syntax:
-	// LOGIN PLAIN WORKSPACE_ID
+	// LOGIN(Login-Type,Workspace-ID)
 
-	// PLAIN authentication is currently the only supported type, so a total of 3 tokens
-	// are required for this command.
-	if len(session.Tokens) != 3 || session.Tokens[1] != "PLAIN" || !dbhandler.ValidateUUID(session.Tokens[2]) ||
+	// PLAIN authentication is currently the only supported type
+	if session.Message.Validate([]string{"Login-Type", "Workspace-ID"}) != nil ||
+		session.Message.Data["Login-Type"] != "PLAIN" ||
+		!dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) ||
 		session.LoginState != loginNoSession {
-		session.WriteClient("400 BAD REQUEST\r\n")
+
+		session.SendStringResponse(400, "BAD REQUEST")
 		return
 	}
 
-	wid := session.Tokens[2]
+	wid := session.Message.Data["Workspace-ID"]
 	var exists bool
 	exists, session.WorkspaceStatus = dbhandler.CheckWorkspace(wid)
 	if exists {
@@ -92,9 +95,12 @@ func commandLogin(session *sessionState) {
 		}
 
 		if len(lockTime) > 0 {
-			// The only time that lockTime with be greater than 0 is if the account
-			// is currently locked.
-			session.WriteClient(strings.Join([]string{"407 UNAVAILABLE ", lockTime, "\r\n"}, " "))
+			// The account is locked if lockTime is greater than 0
+			var response ServerResponse
+			response.Code = 407
+			response.Status = "UNAVAILABLE"
+			response.Data["Lock-Time"] = lockTime
+			session.SendResponse(response)
 			return
 		}
 
@@ -111,10 +117,14 @@ func commandLogin(session *sessionState) {
 		// means that although there has been a failure, the count for this IP address is
 		// still under the limit.
 		if len(lockTime) > 0 {
-			session.WriteClient(strings.Join([]string{"405 TERMINATED ", lockTime, "\r\n"}, " "))
+			var response ServerResponse
+			response.Code = 404
+			response.Status = "TERMINATED"
+			response.Data["Lock-Time"] = lockTime
+			session.SendResponse(response)
 			session.IsTerminating = true
 		} else {
-			session.WriteClient("404 NOT FOUND\r\n")
+			session.SendStringResponse(404, "NOT FOUND")
 		}
 		return
 	}
@@ -129,36 +139,35 @@ func commandLogin(session *sessionState) {
 	case "active", "approved":
 		session.LoginState = loginAwaitingPassword
 		session.WID = wid
-		session.WriteClient("100 CONTINUE\r\n")
+		session.SendStringResponse(100, "CONTINUE")
 	default:
-		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR")
 	}
 }
 
 func commandLogout(session *sessionState) {
 	// command syntax:
 	// LOGOUT
-	session.WriteClient("200 OK\r\n")
+	session.SendStringResponse(200, "OK")
 	session.IsTerminating = true
 }
 
 func commandPassword(session *sessionState) {
 	// Command syntax:
-	// PASSWORD <pwhash>
+	// PASSWORD(Password-Hash)
 
 	// This command takes a numeric hash of the user's password and compares it to what is submitted
 	// by the user.
-	if len(session.Tokens) != 2 || len(session.Tokens[1]) > 150 ||
-		session.LoginState != loginAwaitingPassword {
-		session.WriteClient("400 BAD REQUEST\r\n")
+	if !session.Message.HasField("Password-Hash") || session.LoginState != loginAwaitingPassword {
+		session.SendStringResponse(400, "BAD REQUEST")
 		return
 	}
 
-	match, err := dbhandler.CheckPassword(session.WID, session.Tokens[1])
+	match, err := dbhandler.CheckPassword(session.WID, session.Message.Data["Password-Hash"])
 	if err == nil {
 		if match {
 			session.LoginState = loginAwaitingSessionID
-			session.WriteClient("100 CONTINUE\r\n")
+			session.SendStringResponse(100, "CONTINUE")
 			return
 		}
 
@@ -175,10 +184,14 @@ func commandPassword(session *sessionState) {
 		// means that although there has been a failure, the count for this IP address is
 		// still under the limit.
 		if len(lockTime) > 0 {
-			session.WriteClient(strings.Join([]string{"405 TERMINATED ", lockTime, "\r\n"}, " "))
+			var response ServerResponse
+			response.Code = 407
+			response.Status = "UNAVAILABLE"
+			response.Data["Lock-Time"] = lockTime
+			session.SendResponse(response)
 			session.IsTerminating = true
 		} else {
-			session.WriteClient("402 AUTHENTICATION FAILURE\r\n")
+			session.SendStringResponse(402, "AUTHENTICATION FAILURE")
 
 			var d time.Duration
 			delayString := viper.GetString("security.failure_delay_sec") + "s"
@@ -191,7 +204,7 @@ func commandPassword(session *sessionState) {
 			time.Sleep(d)
 		}
 	} else {
-		session.WriteClient("400 BAD REQUEST\r\n")
+		session.SendStringResponse(400, "BAD REQUEST")
 	}
 }
 
@@ -211,7 +224,7 @@ func challengeDevice(session *sessionState, keytype string, devkey string) (bool
 	// We Base85-encode the random run of bytes this so that when we receive the response, it
 	// should just be a matter of doing a string comparison to determine success
 	challenge := b85.Encode(randBytes)
-	if keytype != "curve25519" {
+	if keytype != "CURVE25519" {
 		return false, errors.New("unsupported key type")
 	}
 
@@ -223,30 +236,41 @@ func challengeDevice(session *sessionState, keytype string, devkey string) (bool
 	copy(devKeyAdapter, devkeyDecoded)
 	var encryptedChallenge []byte
 	encryptedChallenge, err = box.SealAnonymous(nil, []byte(challenge), &devkeyArray, nil)
+
+	var response ServerResponse
 	if err != nil {
-		session.WriteClient(fmt.Sprintf("300 INTERNAL SERVER ERROR %s", err))
+		response.Code = 300
+		response.Status = "INTERNAL SERVER ERROR"
+		response.Data["Error"] = err.Error()
+		session.SendResponse(response)
 		return false, err
 	}
-	session.WriteClient(fmt.Sprintf("100 CONTINUE %s", b85.Encode(encryptedChallenge)))
 
-	// Challenge has been issued. Get client response
-	buffer := make([]byte, MaxCommandLength)
-	bytesRead, err := session.Connection.Read(buffer)
+	response.Code = 100
+	response.Status = "CONTINUE"
+	response.Data["Challenge"] = b85.Encode(encryptedChallenge)
+	err = session.SendResponse(response)
 	if err != nil {
-		return false, errors.New("connection timeout")
+		return false, err
 	}
 
-	pattern := regexp.MustCompile("\"[^\"]+\"|\"[^\"]+$|[\\S\\[\\]]+")
-	trimmedString := strings.TrimSpace(string(buffer[:bytesRead]))
-	tokens := pattern.FindAllString(trimmedString, -1)
-	if len(tokens) != 4 || tokens[0] != "DEVICE" || tokens[2] != devkey {
+	// Challenge has been issued. Get client response
+	request, err := session.GetRequest()
+	if err != nil {
+		return false, err
+	}
+	if request.Action != "DEVICE" ||
+		request.Validate([]string{"Device-ID", "Device-Key", "Response"}) != nil ||
+		request.Data["Device-Key"] != devkey {
+
+		session.SendStringResponse(400, "BAD REQUEST")
 		return false, nil
 	}
 
 	// Validate client response
-	var response []byte
-	response, err = b85.Decode(tokens[3])
-	if challenge != string(response) {
+	var decodedResponse []byte
+	decodedResponse, err = b85.Decode(request.Data["Response"])
+	if challenge != string(decodedResponse) {
 		return false, nil
 	}
 

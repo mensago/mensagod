@@ -8,7 +8,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -52,31 +51,49 @@ const (
 type sessionState struct {
 	PasswordFailures int
 	Connection       net.Conn
-	Tokens           []string
+	Message          ClientRequest
 	LoginState       loginStatus
 	IsTerminating    bool
 	WID              string
 	WorkspaceStatus  string
 }
 
-// Request is for encapsulating requests from the client.
-type Request struct {
+// ClientRequest is for encapsulating requests from the client.
+type ClientRequest struct {
 	Action string
 	Data   map[string]string
 }
 
-// Response is for encapsulating messages to the client. We use the request-response paradigm, so
-// all messages will actually be responses. All responses require a message code and accompanying
+// ServerResponse is for encapsulating messages to the client. We use the request-response paradigm,
+// so all messages will actually be responses. All responses require a message code and accompanying
 // status string.
-type Response struct {
+type ServerResponse struct {
 	Code   int
 	Status string
 	Data   map[string]string
 }
 
+// HasField is syntactic sugar for checking if a request contains a particular field.
+func (r *ClientRequest) HasField(fieldname string) bool {
+	_, exists := r.Data[fieldname]
+	return exists
+}
+
+// Validate performs schema validation for the request. Given a slice of strings containing the
+// required Data keys, it returns an error if any of them are missing
+func (r *ClientRequest) Validate(fieldlist []string) error {
+	for _, fieldname := range fieldlist {
+		_, exists := r.Data[fieldname]
+		if !exists {
+			return fmt.Errorf("missing field %s", fieldname)
+		}
+	}
+	return nil
+}
+
 // GetRequest reads a request from a client from the socket
-func (s *sessionState) GetRequest() (Request, error) {
-	var out Request
+func (s *sessionState) GetRequest() (ClientRequest, error) {
+	var out ClientRequest
 	buffer := make([]byte, MaxCommandLength)
 	bytesRead, err := s.Connection.Read(buffer)
 	if err != nil {
@@ -98,7 +115,7 @@ func (s *sessionState) GetRequest() (Request, error) {
 }
 
 // SendResponse sends a JSON response message to the client
-func (s sessionState) SendResponse(msg Response) (err error) {
+func (s sessionState) SendResponse(msg ServerResponse) (err error) {
 	out, err := json.Marshal(msg)
 	if err != nil {
 		return err
@@ -106,6 +123,11 @@ func (s sessionState) SendResponse(msg Response) (err error) {
 
 	_, err = s.Connection.Write([]byte(out))
 	return nil
+}
+
+// SendStringResponse sends a response with no data attached -- just syntactic sugar
+func (s sessionState) SendStringResponse(code int, status string) (err error) {
+	return s.SendResponse(ServerResponse{code, status, map[string]string{}})
 }
 
 func (s *sessionState) ReadClient() (string, error) {
@@ -363,22 +385,19 @@ func connectionWorker(conn net.Conn) {
 	session.Connection = conn
 	session.LoginState = loginNoSession
 
-	pattern := regexp.MustCompile("\"[^\"]+\"|\"[^\"]+$|[\\S\\[\\]]+")
-
-	session.WriteClient("{'name':'Anselus','version':'0.1','code':200,'status':'OK'}\r\n")
+	session.WriteClient("{'Name':'Anselus','Version':'0.1','Code':200,'Status':'OK'}\r\n")
 	for {
-		clientString, err := session.ReadClient()
+		request, err := session.GetRequest()
 		if err != nil && err.Error() != "EOF" {
 			break
 		}
-		session.Tokens = pattern.FindAllString(clientString, -1)
+		session.Message = request
 
-		if len(session.Tokens) > 0 {
-			if session.Tokens[0] == "QUIT" {
-				break
-			}
-			processCommand(&session)
+		if request.Action == "QUIT" {
+			break
 		}
+		processCommand(&session)
+
 		if session.IsTerminating {
 			break
 		}
@@ -388,7 +407,7 @@ func connectionWorker(conn net.Conn) {
 }
 
 func processCommand(session *sessionState) {
-	switch session.Tokens[0] {
+	switch session.Message.Action {
 	/*
 		Commands to Implement:
 		COPY
@@ -441,60 +460,54 @@ func setupUpload(session *sessionState, byteCount uint64) (uint64, error) {
 	if byteCount == 0 {
 		return 0, nil
 	}
-	_, err := session.WriteClient(fmt.Sprintf("104 TRANSFER %d\r\n", byteCount))
+
+	var response ServerResponse
+	response.Code = 104
+	response.Status = "TRANSFER"
+	response.Data["Size"] = fmt.Sprintf("%d", byteCount)
+	err := session.SendResponse(response)
 	if err != nil {
 		return 0, err
 	}
 
-	response, err := session.ReadClient()
+	request, err := session.GetRequest()
 	if err != nil {
 		return 0, err
 	}
 
-	pattern := regexp.MustCompile("^\\d{3}( [[:alnum:]]+)+")
-	if !pattern.MatchString(response) {
-		return 0, errors.New("malformed client response")
+	if request.Action != "TRANSFER" || request.Validate([]string{"Size"}) != nil {
+		return 0, errors.New("invalid client transfer acknowledgement")
 	}
 
-	code, err := strconv.Atoi(response[0:3])
-	if err != nil {
-		return 0, err
-	}
-
-	if code != 104 || response[0:13] != "104 TRANSFER " {
-		return 0, errors.New(response)
-	}
-
-	parts := strings.Split(response, " ")
-	clientCount, err := strconv.ParseUint(parts[2], 10, 64)
+	clientCount, err := strconv.ParseUint(request.Data["Size"], 10, 64)
 
 	return clientCount, nil
 }
 
 func commandExists(session *sessionState) {
 	// Command syntax:
-	// EXISTS <path>
+	// EXISTS(Path)
 
 	if session.LoginState != loginClientSession {
-		session.WriteClient("401 UNAUTHORIZED\r\n")
+		session.SendStringResponse(401, "UNAUTHORIZED")
 		return
 	}
 
-	if len(session.Tokens) < 2 {
-		session.WriteClient("400 BAD REQUEST\r\n")
+	if !session.Message.HasField("Path") {
+		session.SendStringResponse(400, "BAD REQUEST")
 		return
 	}
 
 	fsPath := filepath.Join(viper.GetString("global.workspace_dir"), session.WID,
-		strings.Join(session.Tokens[1:], string(os.PathSeparator)))
+		session.Message.Data["Path"])
 	_, err := os.Stat(fsPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			session.WriteClient("404 NOT FOUND\r\n")
+			session.SendStringResponse(404, "NOT FOUND")
 		} else {
-			session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR")
 		}
 	} else {
-		session.WriteClient("200 OK\r\n")
+		session.SendStringResponse(200, "OK")
 	}
 }
