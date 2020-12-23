@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -58,8 +59,53 @@ type sessionState struct {
 	WorkspaceStatus  string
 }
 
-func (s sessionState) WriteClient(msg string) (n int, err error) {
-	return s.Connection.Write([]byte(msg))
+// Request is for encapsulating requests from the client.
+type Request struct {
+	Action string
+	Data   map[string]string
+}
+
+// Response is for encapsulating messages to the client. We use the request-response paradigm, so
+// all messages will actually be responses. All responses require a message code and accompanying
+// status string.
+type Response struct {
+	Code   int
+	Status string
+	Data   map[string]string
+}
+
+// GetRequest reads a request from a client from the socket
+func (s *sessionState) GetRequest() (Request, error) {
+	var out Request
+	buffer := make([]byte, MaxCommandLength)
+	bytesRead, err := s.Connection.Read(buffer)
+	if err != nil {
+		ne, ok := err.(*net.OpError)
+		if ok && ne.Timeout() {
+			s.IsTerminating = true
+			return out, errors.New("connection timed out")
+		}
+
+		if err.Error() != "EOF" {
+			fmt.Println("Error reading from client: ", err.Error())
+		}
+		return out, err
+	}
+
+	err = json.Unmarshal(buffer[:bytesRead], &out)
+
+	return out, nil
+}
+
+// SendResponse sends a JSON response message to the client
+func (s sessionState) SendResponse(msg Response) (err error) {
+	out, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.Connection.Write([]byte(out))
+	return nil
 }
 
 func (s *sessionState) ReadClient() (string, error) {
@@ -79,6 +125,10 @@ func (s *sessionState) ReadClient() (string, error) {
 	}
 
 	return strings.TrimSpace(string(buffer[:bytesRead])), nil
+}
+
+func (s sessionState) WriteClient(msg string) (n int, err error) {
+	return s.Connection.Write([]byte(msg))
 }
 
 // -------------------------------------------------------------------------------------------
@@ -315,7 +365,7 @@ func connectionWorker(conn net.Conn) {
 
 	pattern := regexp.MustCompile("\"[^\"]+\"|\"[^\"]+$|[\\S\\[\\]]+")
 
-	session.WriteClient("Anselus v0.1\r\n200 OK\r\n")
+	session.WriteClient("{'name':'Anselus','version':'0.1','code':200,'status':'OK'}\r\n")
 	for {
 		clientString, err := session.ReadClient()
 		if err != nil && err.Error() != "EOF" {
