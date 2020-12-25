@@ -96,14 +96,27 @@ func commandOrgCard(session *sessionState) {
 
 	entries, err := dbhandler.GetOrgEntries(startIndex, endIndex)
 	entryCount := len(entries)
+	var response ServerResponse
 	if entryCount > 0 {
+		response.Code = 104
+		response.Status = "TRANSFER"
+		response.Data = make(map[string]string)
+		response.Data["Item-Count"] = fmt.Sprintf("%d", entryCount)
+		response.Data["Next-Item-Size"] = fmt.Sprintf("%d", len(entries[0]))
+		if session.SendResponse(response) != nil {
+			return
+		}
+
+		response.Code = 102
+		response.Status = "ITEM"
 		for i, entry := range entries {
-			var response ServerResponse
-			response.Code = 102
-			response.Status = "ITEM"
+			response.Data = make(map[string]string)
 			response.Data["Index"] = fmt.Sprintf("%d", i+1)
 			response.Data["Total"] = fmt.Sprintf("%d", entryCount)
-			response.Data["Entry"] = entry
+			response.Data["Item"] = entry
+			if i+1 < len(entries) {
+				response.Data["Next-Item-Size"] = fmt.Sprintf("%d", len(entries[i+1]))
+			}
 
 			if session.SendResponse(response) != nil {
 				return
