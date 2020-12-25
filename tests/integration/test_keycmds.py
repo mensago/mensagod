@@ -1,6 +1,22 @@
 
-import time
-from integration_setup import setup_test, connect
+from integration_setup import setup_test, ServerNetworkConnection
+
+server_response = {
+	'title' : 'Anselus Server Response',
+	'type' : 'object',
+	'required' : [ 'Code', 'Status', 'Data' ],
+	'properties' : {
+		'Code' : {
+			'type' : 'integer'
+		},
+		'Status' : {
+			'type' : 'string'
+		},
+		'Data' : {
+			'type' : 'object'
+		}
+	}
+}
 
 def test_orgcard():
 	'''Tests the server's ORGCARD command'''
@@ -35,22 +51,19 @@ def test_orgcard():
 		(second_entry, r'BLAKE2B-256:5>cWv+qZ^-2aa6NVBKz7h19Fh#9m7r$$7av?6YOM'))
 	conn.commit()
 
-	sock = connect()
-	assert sock, "Connection to server at localhost:2001 failed"
+	sock = ServerNetworkConnection()
+	assert sock.connect(), "Connection to server at localhost:2001 failed"
 	
-	sock.send(b'ORGCARD 1\r\n')
+	sock.send_message({
+		'Action' : "ORGCARD",
+		'Start-Index' : '1'
+	})
 
-	# TODO: This is a hack to get the test to pass -- there is a race condition caused by a lack 
-	# of synchronization between the client and server. The proper fix is a class to handle this
-	# synchronization
-	time.sleep(1)
-	response = sock.recv(8192).decode()
-	expected_response = ''.join(['102 ITEM 1 2\r\n----- BEGIN ORG ENTRY -----\r\n', first_entry,
-		'----- END ORG ENTRY -----\r\n102 ITEM 2 2\r\n----- BEGIN ORG ENTRY -----\r\n',
-		second_entry, '----- END ORG ENTRY -----\r\n'])
-	assert response == expected_response, 'test_orgcard: bad multi-item response'
+	response = sock.read_response(server_response)
 
-	sock.send(b'QUIT\r\n')
+	print(response)
+
+	sock.send_message({'Action' : "QUIT"})
 
 
 if __name__ == '__main__':

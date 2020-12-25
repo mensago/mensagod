@@ -1,9 +1,11 @@
 import base64
+import json
 import os.path
 import re
 import socket
 import sys
 
+import jsonschema
 import nacl.secret
 import psycopg2
 import toml
@@ -125,32 +127,6 @@ def add_workspace(account: dict, dbconn):
 	dbconn.commit()
 
 
-def connect():
-	'''Creates a connection to the server.'''
-	try:
-		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		# Set a short timeout in case the server doesn't respond immediately,
-		# which is the expectation as soon as a client connects.
-		sock.settimeout(10.0)
-	except:
-		return None
-	
-	try:
-		sock.connect(('127.0.0.1', 2001))
-		
-		# absorb the hello string
-		_ = sock.recv(8192)
-
-	except Exception as e:
-		print("Connection failed: %s" % e)
-		sock.close()
-		return None
-
-	# Set a timeout of 30 minutes
-	sock.settimeout(1800.0)
-	return sock
-
-
 def validate_uuid(indata):
 	'''Validates a UUID's basic format. Does not check version information.'''
 
@@ -165,3 +141,66 @@ def validate_uuid(indata):
 		return False
 	
 	return True
+
+class ServerNetworkConnection:
+	'''Mini class to simplify network communications for integration tests'''
+	def __init__(self):
+		self.socket = None
+	
+	def connect(self) -> bool:
+		'''Creates a connection to the server.'''
+		try:
+			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			# Set a short timeout in case the server doesn't respond immediately,
+			# which is the expectation as soon as a client connects.
+			sock.settimeout(10.0)
+		except:
+			return None
+		
+		try:
+			sock.connect(('127.0.0.1', 2001))
+			
+			# absorb the hello string
+			_ = sock.recv(8192)
+
+		except Exception as e:
+			print("Connection failed: %s" % e)
+			sock.close()
+			return False
+
+		# Set a timeout of 30 minutes
+		sock.settimeout(1800.0)
+		
+		self.socket = sock
+		return True
+
+	def send_message(self, command : dict) -> bool:
+		'''Sends a message to the server with command sent as JSON data'''
+		cmdstr = json.dumps(command) + '\r\n'
+		
+		if not self.socket:
+			return False
+		
+		try:
+			self.socket.send(cmdstr.encode())
+		except:
+			self.socket.close()
+			return False
+		
+		return True
+
+	def read_response(self, schema: dict) -> dict:
+		'''Reads a server response and returns a separated code and string'''
+		
+		if not self.socket:
+			return None
+		
+		# We don't actually handle the possible exceptions because we *want* to have them crash --
+		# the test will fail and give us the cause of the exception. If we have a successful test, 
+		# exceptions weren't thrown
+		rawdata = self.socket.recv(8192)
+		rawstring = rawdata.decode()
+		response = json.loads(rawstring)
+		jsonschema.validate(response, schema)
+
+		return response
