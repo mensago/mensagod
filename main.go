@@ -73,6 +73,13 @@ type ServerResponse struct {
 	Data   map[string]string
 }
 
+// NewServerResponse creates a new server response which is fully initialized and ready to use
+func NewServerResponse() *ServerResponse {
+	var r ServerResponse
+	r.Data = make(map[string]string)
+	return &r
+}
+
 // HasField is syntactic sugar for checking if a request contains a particular field.
 func (r *ClientRequest) HasField(fieldname string) bool {
 	_, exists := r.Data[fieldname]
