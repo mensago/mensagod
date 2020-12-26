@@ -204,3 +204,12 @@ class ServerNetworkConnection:
 		jsonschema.validate(response, schema)
 
 		return response
+	
+	def read(self) -> str:
+		'''Reads a string from the network connection'''
+		
+		if not self.socket:
+			return None
+		
+		rawdata = self.socket.recv(8192)
+		return rawdata.decode()
