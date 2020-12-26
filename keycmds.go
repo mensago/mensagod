@@ -98,29 +98,36 @@ func commandOrgCard(session *sessionState) {
 	entryCount := len(entries)
 	var response ServerResponse
 	if entryCount > 0 {
+		transmissionSize := uint64(0)
+		for _, entry := range entries {
+			// 56 is the size of the header and footer and accompanying line terminators
+			transmissionSize += uint64(len(entry) + len("----- BEGIN ORG ENTRY -----\r\n") + len("----- END ORG ENTRY -----\r\n"))
+		}
+
 		response.Code = 104
 		response.Status = "TRANSFER"
 		response.Data = make(map[string]string)
 		response.Data["Item-Count"] = fmt.Sprintf("%d", entryCount)
-		response.Data["Next-Item-Size"] = fmt.Sprintf("%d", len(entries[0]))
+		response.Data["Total-Size"] = fmt.Sprintf("%d", transmissionSize)
 		if session.SendResponse(response) != nil {
 			return
 		}
 
-		response.Code = 102
-		response.Status = "ITEM"
-		for i, entry := range entries {
-			response.Data = make(map[string]string)
-			response.Data["Index"] = fmt.Sprintf("%d", i+1)
-			response.Data["Total"] = fmt.Sprintf("%d", entryCount)
-			response.Data["Item"] = entry
-			if i+1 < len(entries) {
-				response.Data["Next-Item-Size"] = fmt.Sprintf("%d", len(entries[i+1]))
-			}
+		request, err := session.GetRequest()
+		if err != nil || request.Action != "TRANSFER" {
+			session.SendStringResponse(400, "BAD REQUEST")
+			return
+		}
 
-			if session.SendResponse(response) != nil {
+		totalBytes := 0
+		for _, entry := range entries {
+			fmt.Printf("----- BEGIN ORG ENTRY -----\r\n" + entry + "----- END ORG ENTRY -----\r\n")
+			bytesWritten, err := session.WriteClient("----- BEGIN ORG ENTRY -----\r\n" + entry +
+				"----- END ORG ENTRY -----\r\n")
+			if err != nil {
 				return
 			}
+			totalBytes += bytesWritten
 		}
 	} else {
 		session.SendStringResponse(404, "NOT FOUND")

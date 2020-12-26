@@ -56,12 +56,37 @@ def test_orgcard():
 	
 	sock.send_message({
 		'Action' : "ORGCARD",
-		'Start-Index' : '1'
+		'Data' : { 'Start-Index' : '1' }
 	})
 
 	response = sock.read_response(server_response)
+	assert response['Code'] == 104 and response['Status'] == 'TRANSFER' and \
+		response['Data']['Item-Count'] == '2', 'test_orgcard: server returned wrong number of items'
+	data_size = int(response['Data']['Total-Size'])
+	sock.send_message({'Action':'TRANSFER'})
 
-	print(response)
+	chunks = list()
+	tempstr = sock.read()
+	data_read = len(tempstr)
+	chunks.append(tempstr)
+	while data_read < data_size:
+		tempstr = sock.read()
+		data_read = data_read + len(tempstr)
+		chunks.append(tempstr)
+	
+	assert data_read == data_size, 'test_orgcard: size mismatch'
+	
+	# Now that the data has been downloaded, we put it together and split it properly. We should
+	# have two entries
+	entries = ''.join(chunks).split('----- END ORG ENTRY -----\r\n')
+	if entries[-1] == '':
+		entries.pop()
+	
+	assert len(entries) == 2, "test_orgcard: server did not send 2 entries"
+	assert entries[0] == '----- BEGIN ORG ENTRY -----\r\n' + first_entry, \
+		"test_orgcard: first entry didn't match"
+	assert entries[1] == '----- BEGIN ORG ENTRY -----\r\n' + second_entry, \
+		"test_orgcard: first entry didn't match"
 
 	sock.send_message({'Action' : "QUIT"})
 
