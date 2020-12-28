@@ -593,3 +593,16 @@ func GetOrgEntries(startIndex int, endIndex int) ([]string, error) {
 	}
 	return out, nil
 }
+
+// GetPrimarySigningKey obtains the organization's primary signing key as an CryptoString
+func GetPrimarySigningKey() (string, error) {
+	row := dbConn.QueryRow(`SELECT privkey FROM orgkeys WHERE purpose = 'sign' ` +
+		`ORDER BY creationtime DESC LIMIT 1`)
+
+	var psk string
+	err := row.Scan(&psk)
+	if err == nil {
+		return psk, nil
+	}
+	return "", err
+}
