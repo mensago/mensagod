@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/anselusd/dbhandler"
 	"github.com/darkwyrm/anselusd/keycard"
 )
@@ -12,42 +13,32 @@ func commandAddEntry(session *sessionState) {
 	// Command syntax:
 	// ADDENTRY
 
-	// Client sends the ADDENTRY command.
-	// When the server is ready, the server responds with 100 CONTINUE.
-	// The client uploads the data for entry, transmitting the entry data between the
-	//	 ----- BEGIN USER KEYCARD ----- header and the ----- END USER KEYCARD ----- footer.
-	// The server then checks compliance of the entry data. Assuming that it complies, the server
-	//	 generates a cryptographic signature and responds with 100 CONTINUE, returning the
-	//	 fingerprint of the data and the hash of the previous entry in the database.
-	// The client verifies the signature against the organization’s verification key
-	// The client appends the hash from the previous entry as the Previous-Hash field
-	// The client generates the hash value for the entry as the Hash field
-	// The client signs the entry as the User-Signature field and then uploads the result to the
-	//	 server using the same header and footer as the first time.
-	// Once uploaded, the server validates the Hash and User-Signature fields, and, assuming that
-	//	 all is well, adds it to the keycard database and returns 200 OK.
+	// 1) Client sends the `ADDENTRY` command, attaching the entry data.
+	// 2) The server then checks compliance of the entry data. Assuming that it complies, the server
+	//    generates a cryptographic signature and responds with `100 CONTINUE`, returning the
+	//    signature, the hash of the data, and the hash of the previous entry in the database.
+	// 3) The client verifies the signature against the organization’s verification key. This has
+	//    the added benefit of ensuring that none of the fields were altered by the server and that
+	//    the signature is valid.
+	// 4) The client appends the hash from the previous entry as the `Previous-Hash` field
+	// 5) The client verifies the hash value for the entry from the server and sets the `Hash` field
+	// 6) The client signs the entry as the `User-Signature` field and then uploads the result to
+	//    the server.
+	// 7) Once uploaded, the server validates the `Hash` and `User-Signature` fields, and,
+	//    assuming that all is well, adds it to the keycard database and returns `200 OK`.
 
 	if session.LoginState != loginClientSession {
 		session.SendStringResponse(401, "UNAUTHORIZED")
 		return
 	}
 
-	session.SendStringResponse(100, "CONTINUE")
-
-	request, err := session.GetRequest()
-
-	// ReadClient can set the IsTerminating flag if the read times out
-	if session.IsTerminating || (err != nil && err.Error() != "EOF") {
-		return
-	}
-
-	if request.Validate([]string{"Base-Entry"}) != nil {
+	if session.Message.Validate([]string{"Base-Entry"}) != nil {
 		session.SendStringResponse(400, "BAD REQUEST")
 	}
 
 	// We've managed to read data from the client. Now for some extensive validation.
 	var entry *keycard.Entry
-	entry, err = keycard.NewEntryFromData(request.Data["Base-Entry"])
+	entry, err := keycard.NewEntryFromData(session.Message.Data["Base-Entry"])
 
 	if err != nil || !entry.IsDataCompliant() {
 		session.SendStringResponse(411, "BAD KEYCARD DATA")
@@ -65,6 +56,21 @@ func commandAddEntry(session *sessionState) {
 
 	// If we managed to get this far, we can (theoretically) trust the initial data set given to us
 	// by the client. Here we sign the data with the organization's signing key
+
+	pskstring, err := dbhandler.GetPrimarySigningKey()
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
+		ServerLog.Println("ERROR AddEntry: missing primary signing key in database.")
+		fmt.Println("ERROR AddEntry: missing primary signing key in database.")
+	}
+
+	var psk cryptostring.CryptoString
+	err = psk.Set(pskstring)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
+		ServerLog.Println("ERROR AddEntry: corrupted primary signing key in database.")
+		fmt.Println("ERROR AddEntry: corrupted primary signing key in database.")
+	}
 
 	// TODO: Finish implementing AddEntry()
 }
