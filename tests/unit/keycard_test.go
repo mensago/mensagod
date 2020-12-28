@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/anselusd/keycard"
 )
 
@@ -116,7 +117,7 @@ func TestSign(t *testing.T) {
 		"Organization-Signature": "1111111111",
 		"User-Signature":         "2222222222"})
 
-	var signingKey, orgSigningKey keycard.EncodedString
+	var signingKey, orgSigningKey cryptostring.CryptoString
 
 	err := signingKey.Set("ED25519:p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+")
 	if err != nil {
@@ -167,7 +168,7 @@ func TestSign(t *testing.T) {
 }
 
 func TestVerify(t *testing.T) {
-	var signingKey, orgSigningKey, verifyKey keycard.EncodedString
+	var signingKey, orgSigningKey, verifyKey cryptostring.CryptoString
 
 	err := signingKey.Set("ED25519:p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+")
 	if err != nil {
@@ -251,7 +252,7 @@ func TestVerify(t *testing.T) {
 }
 
 func TestIsCompliantUser(t *testing.T) {
-	var signingKey, orgSigningKey, verifyKey keycard.EncodedString
+	var signingKey, orgSigningKey, verifyKey cryptostring.CryptoString
 
 	err := signingKey.Set("ED25519:p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+")
 	if err != nil {
@@ -341,7 +342,7 @@ func TestIsCompliantUser(t *testing.T) {
 
 func TestIsCompliantOrg(t *testing.T) {
 	entry := keycard.NewOrgEntry()
-	var orgSigningKey keycard.EncodedString
+	var orgSigningKey cryptostring.CryptoString
 
 	err := orgSigningKey.Set("ED25519:msvXw(nII<Qm6oBHc+92xwRI3>VFF-RcZ=7DEu3|")
 	if err != nil {
@@ -384,7 +385,7 @@ func TestIsCompliantOrg(t *testing.T) {
 		t.Fatalf("TestIsCompliantOrg: org signing failure: %s\n", err)
 	}
 
-	var verifyKey keycard.EncodedString
+	var verifyKey cryptostring.CryptoString
 	err = verifyKey.Set("ED25519:)8id(gE02^S<{3H>9B;X4{DuYcb`%wo^mC&1lN88")
 	if err != nil {
 		t.Fatalf("TestIsCompliantOrg: verify key decoding failure: %s\n", err)
@@ -407,7 +408,7 @@ func TestIsCompliantOrg(t *testing.T) {
 
 func TestOrgChain(t *testing.T) {
 	entry := keycard.NewOrgEntry()
-	var orgSigningKey keycard.EncodedString
+	var orgSigningKey cryptostring.CryptoString
 
 	err := orgSigningKey.Set("ED25519:msvXw(nII<Qm6oBHc+92xwRI3>VFF-RcZ=7DEu3|")
 	if err != nil {
@@ -442,7 +443,7 @@ func TestOrgChain(t *testing.T) {
 		t.Fatalf("TestOrgChain: org signing failure: %s\n", err)
 	}
 
-	var verifyKey keycard.EncodedString
+	var verifyKey cryptostring.CryptoString
 	err = verifyKey.Set("ED25519:)8id(gE02^S<{3H>9B;X4{DuYcb`%wo^mC&1lN88")
 	if err != nil {
 		t.Fatalf("TestOrgChain: verify key decoding failure: %s\n", err)
@@ -463,7 +464,7 @@ func TestOrgChain(t *testing.T) {
 	}
 
 	var newEntry *keycard.Entry
-	var newKeys map[string]keycard.EncodedString
+	var newKeys map[string]cryptostring.CryptoString
 	newEntry, newKeys, err = entry.Chain(orgSigningKey, true)
 	if err != nil {
 		t.Fatalf("TestOrgChain: chain failure error: %s\n", err)
@@ -493,7 +494,7 @@ func TestOrgChain(t *testing.T) {
 }
 
 func TestUserChain(t *testing.T) {
-	var signingKey, crSigningKey, orgSigningKey, verifyKey keycard.EncodedString
+	var signingKey, crSigningKey, orgSigningKey, verifyKey cryptostring.CryptoString
 
 	err := signingKey.Set("ED25519:p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+")
 	if err != nil {
@@ -585,7 +586,7 @@ func TestUserChain(t *testing.T) {
 	}
 
 	var newEntry *keycard.Entry
-	var newKeys map[string]keycard.EncodedString
+	var newKeys map[string]cryptostring.CryptoString
 	newEntry, newKeys, err = entry.Chain(crSigningKey, true)
 	if err != nil {
 		t.Fatalf("TestUserChain: chain failure error: %s\n", err)

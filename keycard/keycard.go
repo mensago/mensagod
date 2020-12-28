@@ -15,6 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/b85"
 	"github.com/darkwyrm/gostringlist"
 	"github.com/zeebo/blake3"
@@ -22,64 +23,6 @@ import (
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/sha3"
 )
-
-// EncodedString encapsulates a Base85-encoded binary string and its associated algorithm.
-// Algorithms are expected to utilize capital letters, dashes, and numbers and be no more than
-// 16 characters, not including the colon separator.
-// Example: ED25519:p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+
-type EncodedString struct {
-	Prefix string
-	Data   string
-}
-
-// Set assigns an EncodedString-formatted string to the object
-func (as *EncodedString) Set(data string) error {
-	if len(data) < 1 {
-		as.Prefix = ""
-		as.Data = ""
-		return nil
-	}
-
-	parts := strings.SplitN(data, ":", 2)
-	if len(parts) != 2 {
-		return errors.New("bad string format")
-	}
-	as.Prefix = parts[0]
-	as.Data = parts[1]
-
-	return nil
-}
-
-// SetBytes initializes the EncodedString from an array of bytes
-func (as *EncodedString) SetBytes(data []byte) error {
-	return as.Set(string(data))
-}
-
-// AsBytes returns the EncodedString as a byte array
-func (as EncodedString) AsBytes() []byte {
-	return []byte(as.Prefix + ":" + as.Data)
-}
-
-// AsString returns the EncodedString as a complete string
-func (as EncodedString) AsString() string {
-	return as.Prefix + ":" + as.Data
-}
-
-// IsValid returns true if the object contains valid data
-func (as EncodedString) IsValid() bool {
-	return (len(as.Prefix) > 0 && len(as.Data) > 0)
-}
-
-// RawData returns the raw data held in the string
-func (as EncodedString) RawData() ([]byte, error) {
-	return b85.Decode(as.Data)
-}
-
-// MakeEmpty clears the EncodedString's internal data
-func (as *EncodedString) MakeEmpty() {
-	as.Prefix = ""
-	as.Data = ""
-}
 
 // KeyInfo describes the encryption and signing key fields for an Entry object
 type KeyInfo struct {
@@ -465,7 +408,7 @@ func (entry *Entry) SetExpiration(numdays int16) error {
 // Adding a particular signature causes those that must follow it to be cleared. The Entry's
 // cryptographic hash counts as a signature in this matter. Thus, if an Organization signature is
 // added to the entry, the instance's hash and User signatures are both cleared.
-func (entry *Entry) Sign(signingKey EncodedString, sigtype string) error {
+func (entry *Entry) Sign(signingKey cryptostring.CryptoString, sigtype string) error {
 	if !signingKey.IsValid() {
 		return errors.New("bad signing key")
 	}
@@ -493,9 +436,9 @@ func (entry *Entry) Sign(signingKey EncodedString, sigtype string) error {
 		return errors.New("bad signature type")
 	}
 
-	signkeyDecoded, err := signingKey.RawData()
-	if err != nil {
-		return err
+	signkeyDecoded := signingKey.RawData()
+	if signkeyDecoded == nil {
+		return errors.New("base signing key")
 	}
 
 	// We bypass the nacl/sign module because it requires a 64-bit private key. We, however, pass
@@ -557,7 +500,7 @@ func (entry *Entry) GenerateHash(algorithm string) error {
 
 // VerifySignature cryptographically verifies the entry against the key provided, given the
 // specific signature to verify.
-func (entry Entry) VerifySignature(verifyKey EncodedString, sigtype string) (bool, error) {
+func (entry Entry) VerifySignature(verifyKey cryptostring.CryptoString, sigtype string) (bool, error) {
 
 	if !verifyKey.IsValid() {
 		return false, errors.New("bad verification key")
@@ -580,7 +523,7 @@ func (entry Entry) VerifySignature(verifyKey EncodedString, sigtype string) (boo
 		return false, errors.New("specified signature empty")
 	}
 
-	var sig EncodedString
+	var sig cryptostring.CryptoString
 	err := sig.Set(entry.Signatures[sigtype])
 	if err != nil {
 		return false, err
@@ -588,14 +531,14 @@ func (entry Entry) VerifySignature(verifyKey EncodedString, sigtype string) (boo
 	if sig.Prefix != "ED25519" {
 		return false, errors.New("signature uses unsupported signing algorithm")
 	}
-	digest, err := sig.RawData()
-	if err != nil {
+	digest := sig.RawData()
+	if digest == nil {
 		return false, errors.New("decoding error in signature")
 	}
 
-	verifyKeyDecoded, err := verifyKey.RawData()
-	if err != nil {
-		return false, err
+	verifyKeyDecoded := verifyKey.RawData()
+	if verifyKeyDecoded == nil {
+		return false, errors.New("decoding error in verification key")
 	}
 
 	verifyStatus := ed25519.Verify(verifyKeyDecoded, entry.MakeByteString(sigInfo.Level-1), digest)
@@ -604,16 +547,16 @@ func (entry Entry) VerifySignature(verifyKey EncodedString, sigtype string) (boo
 }
 
 // Chain creates a new Entry object with new keys and a custody signature. It requires the
-// previous contact request signing key passed as an EncodedString. The new keys are returned with the
+// previous contact request signing key passed as an cryptostring.CryptoString. The new keys are returned with the
 // string '.private' or '.public' appended to the key's field name, e.g.
 // Primary-Encryption-Key.public.
 //
 // Note that a user's public encryption keys and an organization's alternate verification key are
 // not required to be updated during entry rotation so that they can be rotated on a different
 // schedule from the other keys.
-func (entry *Entry) Chain(key EncodedString, rotateOptional bool) (*Entry, map[string]EncodedString, error) {
+func (entry *Entry) Chain(key cryptostring.CryptoString, rotateOptional bool) (*Entry, map[string]cryptostring.CryptoString, error) {
 	var newEntry *Entry
-	var outKeys map[string]EncodedString
+	var outKeys map[string]cryptostring.CryptoString
 
 	switch entry.Type {
 	case "User":
@@ -807,13 +750,12 @@ func (entry Entry) validateOrgEntry() (bool, error) {
 
 	// Required field: Primary Verification Key
 	// We can't actually verify the key data, but we can ensure that it at least decodes from Base85
-	var keystr EncodedString
+	var keystr cryptostring.CryptoString
 	err = keystr.Set(entry.Fields["Primary-Verification-Key"])
 	if err != nil {
 		return false, errors.New("bad primary verification key")
 	}
-	_, err = keystr.RawData()
-	if err != nil {
+	if keystr.RawData() == nil {
 		return false, errors.New("bad primary verification key")
 	}
 
@@ -822,8 +764,7 @@ func (entry Entry) validateOrgEntry() (bool, error) {
 	if err != nil {
 		return false, errors.New("bad encryption key")
 	}
-	_, err = keystr.RawData()
-	if err != nil {
+	if keystr.RawData() == nil {
 		return false, errors.New("bad encryption key")
 	}
 
@@ -909,8 +850,7 @@ func (entry Entry) validateOrgEntry() (bool, error) {
 		if err != nil {
 			return false, errors.New("bad secondary verification key")
 		}
-		_, err = keystr.RawData()
-		if err != nil {
+		if keystr.RawData() == nil {
 			return false, errors.New("bad secondary verification key")
 		}
 	}
@@ -1013,13 +953,12 @@ func (entry Entry) validateUserEntry() (bool, error) {
 
 	// Required field: Contact Request Verification Key
 	// We can't actually verify the key data, but we can ensure that it at least decodes from Base85
-	var keystr EncodedString
+	var keystr cryptostring.CryptoString
 	err = keystr.Set(entry.Fields["Contact-Request-Verification-Key"])
 	if err != nil {
 		return false, errors.New("bad contact request verification key")
 	}
-	_, err = keystr.RawData()
-	if err != nil {
+	if keystr.RawData() == nil {
 		return false, errors.New("bad contact request verification key")
 	}
 
@@ -1028,8 +967,7 @@ func (entry Entry) validateUserEntry() (bool, error) {
 	if err != nil {
 		return false, errors.New("bad contact request encryption key")
 	}
-	_, err = keystr.RawData()
-	if err != nil {
+	if keystr.RawData() == nil {
 		return false, errors.New("bad contact request encryption key")
 	}
 
@@ -1038,8 +976,7 @@ func (entry Entry) validateUserEntry() (bool, error) {
 	if err != nil {
 		return false, errors.New("bad public encryption key")
 	}
-	_, err = keystr.RawData()
-	if err != nil {
+	if keystr.RawData() == nil {
 		return false, errors.New("bad public encryption key")
 	}
 
@@ -1135,8 +1072,7 @@ func (entry Entry) validateUserEntry() (bool, error) {
 		if err != nil {
 			return false, errors.New("bad alt encryption key")
 		}
-		_, err = keystr.RawData()
-		if err != nil {
+		if keystr.RawData() == nil {
 			return false, errors.New("bad alt encryption key")
 		}
 	}
@@ -1186,12 +1122,12 @@ func isValidDate(m int, d int, y int) (bool, error) {
 
 // GenerateOrgKeys generates a set of cryptographic keys for user entries, optionally including
 // non-required keys
-func GenerateOrgKeys(rotateOptional bool) (map[string]EncodedString, error) {
-	var outKeys map[string]EncodedString
+func GenerateOrgKeys(rotateOptional bool) (map[string]cryptostring.CryptoString, error) {
+	var outKeys map[string]cryptostring.CryptoString
 	if rotateOptional {
-		outKeys = make(map[string]EncodedString, 10)
+		outKeys = make(map[string]cryptostring.CryptoString, 10)
 	} else {
-		outKeys = make(map[string]EncodedString, 6)
+		outKeys = make(map[string]cryptostring.CryptoString, 6)
 	}
 
 	var err error
@@ -1203,17 +1139,19 @@ func GenerateOrgKeys(rotateOptional bool) (map[string]EncodedString, error) {
 	if err != nil {
 		return outKeys, err
 	}
-	outKeys["Encryption-Key.public"] = EncodedString{"CURVE25519", b85.Encode(ePublicKey[:])}
-	outKeys["Encryption-Key.private"] = EncodedString{"CURVE25519", b85.Encode(ePrivateKey[:])}
+	outKeys["Encryption-Key.public"] = cryptostring.NewCryptoString("CURVE25519:" +
+		b85.Encode(ePublicKey[:]))
+	outKeys["Encryption-Key.private"] = cryptostring.NewCryptoString("CURVE25519:" +
+		b85.Encode(ePrivateKey[:]))
 
 	sPublicKey, sPrivateKey, err = ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return outKeys, err
 	}
-	outKeys["Primary-Verification-Key.public"] = EncodedString{"ED25519",
-		b85.Encode(sPublicKey[:])}
-	outKeys["Primary-Verification-Key.private"] = EncodedString{"ED25519",
-		b85.Encode(sPrivateKey.Seed())}
+	outKeys["Primary-Verification-Key.public"] = cryptostring.NewCryptoString("ED25519:" +
+		b85.Encode(sPublicKey[:]))
+	outKeys["Primary-Verification-Key.private"] = cryptostring.NewCryptoString("ED25519:" +
+		b85.Encode(sPrivateKey.Seed()))
 
 	if rotateOptional {
 		var asPublicKey ed25519.PublicKey
@@ -1222,10 +1160,10 @@ func GenerateOrgKeys(rotateOptional bool) (map[string]EncodedString, error) {
 		if err != nil {
 			return outKeys, err
 		}
-		outKeys["Secondary-Verification-Key.public"] = EncodedString{"ED25519",
-			b85.Encode(asPublicKey[:])}
-		outKeys["Secondary-Verification-Key.private"] = EncodedString{"ED25519",
-			b85.Encode(asPrivateKey.Seed())}
+		outKeys["Secondary-Verification-Key.public"] = cryptostring.NewCryptoString("ED25519:" +
+			b85.Encode(asPublicKey[:]))
+		outKeys["Secondary-Verification-Key.private"] = cryptostring.NewCryptoString("ED25519:" +
+			b85.Encode(asPrivateKey.Seed()))
 	}
 
 	return outKeys, nil
@@ -1233,12 +1171,12 @@ func GenerateOrgKeys(rotateOptional bool) (map[string]EncodedString, error) {
 
 // GenerateUserKeys generates a set of cryptographic keys for user entries, optionally including
 // non-required keys
-func GenerateUserKeys(rotateOptional bool) (map[string]EncodedString, error) {
-	var outKeys map[string]EncodedString
+func GenerateUserKeys(rotateOptional bool) (map[string]cryptostring.CryptoString, error) {
+	var outKeys map[string]cryptostring.CryptoString
 	if rotateOptional {
-		outKeys = make(map[string]EncodedString, 10)
+		outKeys = make(map[string]cryptostring.CryptoString, 10)
 	} else {
-		outKeys = make(map[string]EncodedString, 6)
+		outKeys = make(map[string]cryptostring.CryptoString, 6)
 	}
 
 	var err error
@@ -1250,26 +1188,28 @@ func GenerateUserKeys(rotateOptional bool) (map[string]EncodedString, error) {
 	if err != nil {
 		return outKeys, err
 	}
-	outKeys["Primary-Verification-Key.public"] = EncodedString{"ED25519", b85.Encode(sPublicKey[:])}
-	outKeys["Primary-Verification-Key.private"] = EncodedString{"ED25519", b85.Encode(sPrivateKey.Seed())}
+	outKeys["Primary-Verification-Key.public"] = cryptostring.NewCryptoString("ED25519:" +
+		b85.Encode(sPublicKey[:]))
+	outKeys["Primary-Verification-Key.private"] = cryptostring.NewCryptoString("ED25519:" +
+		b85.Encode(sPrivateKey.Seed()))
 
 	crePublicKey, crePrivateKey, err = box.GenerateKey(rand.Reader)
 	if err != nil {
 		return outKeys, err
 	}
-	outKeys["Contact-Request-Encryption-Key.public"] = EncodedString{"CURVE25519",
-		b85.Encode(crePublicKey[:])}
-	outKeys["Contact-Request-Encryption-Key.private"] = EncodedString{"CURVE25519",
-		b85.Encode(crePrivateKey[:])}
+	outKeys["Contact-Request-Encryption-Key.public"] = cryptostring.NewCryptoString("CURVE25519:" +
+		b85.Encode(crePublicKey[:]))
+	outKeys["Contact-Request-Encryption-Key.private"] = cryptostring.NewCryptoString("CURVE25519:" +
+		b85.Encode(crePrivateKey[:]))
 
 	crsPublicKey, crsPrivateKey, err = ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return outKeys, err
 	}
-	outKeys["Contact-Request-Verification-Key.public"] = EncodedString{"ED25519",
-		b85.Encode(crsPublicKey[:])}
-	outKeys["Contact-Request-Verification-Key.private"] = EncodedString{"ED25519",
-		b85.Encode(crsPrivateKey.Seed())}
+	outKeys["Contact-Request-Verification-Key.public"] = cryptostring.NewCryptoString("ED25519:" +
+		b85.Encode(crsPublicKey[:]))
+	outKeys["Contact-Request-Verification-Key.private"] = cryptostring.NewCryptoString("ED25519:" +
+		b85.Encode(crsPrivateKey.Seed()))
 
 	if rotateOptional {
 		var ePublicKey, ePrivateKey, altePublicKey, altePrivateKey *[32]byte
@@ -1278,21 +1218,21 @@ func GenerateUserKeys(rotateOptional bool) (map[string]EncodedString, error) {
 		if err != nil {
 			return outKeys, err
 		}
-		outKeys["Public-Encryption-Key.public"] = EncodedString{"CURVE25519",
-			b85.Encode(ePublicKey[:])}
-		outKeys["Public-Encryption-Key.private"] = EncodedString{"CURVE25519",
-			b85.Encode(ePrivateKey[:])}
+		outKeys["Public-Encryption-Key.public"] = cryptostring.NewCryptoString("CURVE25519:" +
+			b85.Encode(ePublicKey[:]))
+		outKeys["Public-Encryption-Key.private"] = cryptostring.NewCryptoString("CURVE25519:" +
+			b85.Encode(ePrivateKey[:]))
 
 		altePublicKey, altePrivateKey, err = box.GenerateKey(rand.Reader)
 		if err != nil {
 			return outKeys, err
 		}
-		outKeys["Alternate-Encryption-Key.public"] = EncodedString{"CURVE25519",
-			b85.Encode(altePublicKey[:])}
-		outKeys["Alternate-Encryption-Key.private"] = EncodedString{"CURVE25519",
-			b85.Encode(altePrivateKey[:])}
+		outKeys["Alternate-Encryption-Key.public"] = cryptostring.NewCryptoString("CURVE25519:" +
+			b85.Encode(altePublicKey[:]))
+		outKeys["Alternate-Encryption-Key.private"] = cryptostring.NewCryptoString("CURVE25519:" +
+			b85.Encode(altePrivateKey[:]))
 	} else {
-		var emptyKey EncodedString
+		var emptyKey cryptostring.CryptoString
 		outKeys["Public-Encryption-Key.public"] = emptyKey
 		outKeys["Public-Encryption-Key.private"] = emptyKey
 		outKeys["Alternate-Encryption-Key.public"] = emptyKey
@@ -1349,7 +1289,7 @@ func (entry Entry) VerifyChain(previous *Entry) (bool, error) {
 		return false, errors.New("entry index compliance failure")
 	}
 
-	var key EncodedString
+	var key cryptostring.CryptoString
 	err = key.Set(previous.Fields[verifyField])
 	if err != nil {
 		return false, errors.New("bad signing key in previous entry")

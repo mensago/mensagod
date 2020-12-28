@@ -3,13 +3,14 @@ package anselusd
 import (
 	"testing"
 
+	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/anselusd/keycard"
 )
 
 func TestEntrySize(t *testing.T) {
 	var card keycard.Keycard
 
-	var signingKey, crSigningKey, orgSigningKey, verifyKey keycard.EncodedString
+	var signingKey, crSigningKey, orgSigningKey, verifyKey cryptostring.CryptoString
 
 	err := signingKey.Set("ED25519:p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+")
 	if err != nil {
@@ -82,7 +83,7 @@ func TestEntrySize(t *testing.T) {
 	var maxEntrySize int
 	for index := 0; index < 10; index++ {
 		var newEntry *keycard.Entry
-		var newKeys map[string]keycard.EncodedString
+		var newKeys map[string]cryptostring.CryptoString
 		newEntry, newKeys, err = entry.Chain(crSigningKey, true)
 		if err != nil {
 			t.Fatalf("BenchmarkEntrySize: chain failure error: %s\n", err)
