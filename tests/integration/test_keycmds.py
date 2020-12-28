@@ -1,6 +1,6 @@
 
 from integration_setup import setup_test, ServerNetworkConnection
-from pyanselus.encodedstring import EncodedString
+from pyanselus.cryptostring import CryptoString
 import pyanselus.keycard as keycard
 
 # Keys used in the various tests. 
@@ -206,12 +206,12 @@ def test_addentry():
 	assert not status.error(), f"test_addentry(): hash didn't verify: {status.info()}"
 
 	# User sign and verify
-	skey = EncodedString('ED25519:p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+')
+	skey = CryptoString('ED25519:p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+')
 	assert skey.is_valid(), "test_addentry(): failed to set user signing key"
 	status = usercard.sign(skey, 'User')
 	assert not status.error(), "test_addentry(): failed to user sign"
 
-	vkey = EncodedString('ED25519:6|HBWrxMY6-?r&Sm)_^PLPerpqOj#b&x#N_#C3}p')
+	vkey = CryptoString('ED25519:6|HBWrxMY6-?r&Sm)_^PLPerpqOj#b&x#N_#C3}p')
 	assert vkey.is_valid(), "test_addentry(): failed to set user verification key"
 	status = usercard.verify_signature(vkey, 'User')
 

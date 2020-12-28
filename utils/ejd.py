@@ -15,7 +15,7 @@ import jsonschema
 import nacl.public
 import nacl.secret
 import nacl.utils
-from pyanselus.keycard import EncodedString, Base85Encoder
+from pyanselus.keycard import CryptoString, Base85Encoder
 
 debug_mode = False
 
@@ -24,8 +24,8 @@ global_options = {
 	'verbose' : False,
 	'files' : list(),
 	'mode' : '',
-	'pubkey' : EncodedString(),
-	'privkey' : EncodedString(),
+	'pubkey' : CryptoString(),
+	'privkey' : CryptoString(),
 	'ejdfile' : '',
 	'outpath' : ''
 }
@@ -129,7 +129,7 @@ def ejd_decrypt(indata : dict, outpath : str):
 	'''Given the JSON data to decrypt and an output path, use the keys in global_options to 
 	decrypt files in indata to the specified output path.'''
 		
-	secretkeystr = EncodedString(indata['Item']['Key'])
+	secretkeystr = CryptoString(indata['Item']['Key'])
 
 	# Hash supplied pubkey and compare to KeyHash
 	hasher = hashlib.blake2b(digest_size=32)
@@ -247,7 +247,7 @@ def ejd_encrypt(ejdpath : str) -> dict:
 		'Item' : {
 			'Version' : '1.0',
 			'KeyHash' : "BLAKE2B-256:" + b85encode(hasher.digest()).decode(),
-			'Key' : EncodedString(encryptedkey).as_string(),
+			'Key' : CryptoString(encryptedkey).as_string(),
 		},
 		'Payload' : b85encode(encrypted_data).decode()
 	}
@@ -280,12 +280,12 @@ def handle_arguments():
 	global_options['mode'] = command
 	
 	keys = load_keyfile(sys.argv[2])
-	global_options['pubkey'] = EncodedString(keys['PublicKey'])
+	global_options['pubkey'] = CryptoString(keys['PublicKey'])
 	if command == 'decrypt':
 		if 'PrivateKey' not in keys:
 			print(f"Private key required for decryption. {sys.argv[2]} does not contain one")
 			sys.exit(-1)
-		global_options['privkey'] = EncodedString(keys['PrivateKey'])
+		global_options['privkey'] = CryptoString(keys['PrivateKey'])
 	
 
 if __name__ == '__main__':
@@ -296,9 +296,9 @@ if __name__ == '__main__':
 			os.path.join(scriptpath, 'cardstats.py')
 		]
 		global_options['mode'] = 'encrypt'
-		global_options['pubkey'] = EncodedString(
+		global_options['pubkey'] = CryptoString(
 			r"CURVE25519:yb8L<$2XqCr5HCY@}}xBPWLHyXZdx&l>+xz%p1*W")
-		global_options['privkey'] = EncodedString(
+		global_options['privkey'] = CryptoString(
 			r"CURVE25519:7>4ui(`dvGc1}N!EerhNHk0tY`f-joG25Gd81lcw")
 	
 	
