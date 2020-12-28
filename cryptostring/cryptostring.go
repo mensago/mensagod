@@ -23,6 +23,13 @@ type CryptoString struct {
 	Data   string
 }
 
+// NewCryptoString is just syntactic sugar for generating a quickie CryptoString from a string
+func NewCryptoString(cstring string) CryptoString {
+	var out CryptoString
+	out.Set(cstring)
+	return out
+}
+
 // Set takes a CryptoString-formatted string and sets the object to it.
 func (cs *CryptoString) Set(cstring string) error {
 	cs.Prefix = ""
@@ -35,7 +42,7 @@ func (cs *CryptoString) Set(cstring string) error {
 		return errors.New("bad data given")
 	}
 
-	parts := strings.SplitN(cstring, ":", 1)
+	parts := strings.SplitN(cstring, ":", 2)
 	if len(parts) != 2 || len(parts[1]) < 1 {
 		return errors.New("crypto data missing")
 	}
@@ -63,6 +70,11 @@ func (cs *CryptoString) RawData() []byte {
 		return nil
 	}
 	return out
+}
+
+// AsBytes returns the CryptoString as a byte array
+func (cs *CryptoString) AsBytes() []byte {
+	return []byte(cs.Prefix + ":" + cs.Data)
 }
 
 // MakeEmpty returns the object to an uninitialized state
