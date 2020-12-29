@@ -74,8 +74,10 @@ type ServerResponse struct {
 }
 
 // NewServerResponse creates a new server response which is fully initialized and ready to use
-func NewServerResponse() *ServerResponse {
+func NewServerResponse(code int, status string) *ServerResponse {
 	var r ServerResponse
+	r.Code = code
+	r.Status = status
 	r.Data = make(map[string]string)
 	return &r
 }
