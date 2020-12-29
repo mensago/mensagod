@@ -1,12 +1,14 @@
 package main
 
 import (
+	"crypto/ed25519"
 	"fmt"
 	"strconv"
 
 	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/anselusd/dbhandler"
 	"github.com/darkwyrm/anselusd/keycard"
+	"github.com/darkwyrm/b85"
 )
 
 func commandAddEntry(session *sessionState) {
@@ -32,16 +34,23 @@ func commandAddEntry(session *sessionState) {
 		return
 	}
 
-	if session.Message.Validate([]string{"Base-Entry"}) != nil {
+	// The User-Signature field can only be part of the message once the AddEntry command has
+	// started and the org signature and hashes have been added. If present, it constitutes an
+	// out-of-order request
+	if session.Message.Validate([]string{"Base-Entry"}) != nil ||
+		session.Message.HasField("User-Signature") {
 		session.SendStringResponse(400, "BAD REQUEST")
 	}
 
 	// We've managed to read data from the client. Now for some extensive validation.
 	var entry *keycard.Entry
 	entry, err := keycard.NewEntryFromData(session.Message.Data["Base-Entry"])
-
-	if err != nil || !entry.IsDataCompliant() {
+	if err != nil {
 		session.SendStringResponse(411, "BAD KEYCARD DATA")
+		return
+	}
+	if !entry.IsDataCompliant() {
+		session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA")
 		return
 	}
 
@@ -49,10 +58,16 @@ func commandAddEntry(session *sessionState) {
 	// client EXCEPT checking the expiration
 	var isExpired bool
 	isExpired, err = entry.IsExpired()
-	if err != nil || isExpired {
+	if err != nil {
 		session.SendStringResponse(411, "BAD KEYCARD DATA")
 		return
 	}
+	if isExpired {
+		session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA")
+		return
+	}
+
+	// TODO: Validate chain of trust to previous entry
 
 	// If we managed to get this far, we can (theoretically) trust the initial data set given to us
 	// by the client. Here we sign the data with the organization's signing key
@@ -62,17 +77,88 @@ func commandAddEntry(session *sessionState) {
 		session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
 		ServerLog.Println("ERROR AddEntry: missing primary signing key in database.")
 		fmt.Println("ERROR AddEntry: missing primary signing key in database.")
+		return
 	}
 
 	var psk cryptostring.CryptoString
 	err = psk.Set(pskstring)
-	if err != nil {
+	if err != nil || psk.RawData() == nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
 		ServerLog.Println("ERROR AddEntry: corrupted primary signing key in database.")
 		fmt.Println("ERROR AddEntry: corrupted primary signing key in database.")
+		return
 	}
 
-	// TODO: Finish implementing AddEntry()
+	// We bypass the nacl/sign module because it requires a 64-bit private key. We, however, pass
+	// around the 32-bit ed25519 seeds used to generate the keys. Thus, we have to skip using
+	// nacl.Sign() and go directly to the equivalent code in the ed25519 module.
+	pskBytes := ed25519.NewKeyFromSeed(psk.RawData())
+	rawSignature := ed25519.Sign(pskBytes, entry.MakeByteString(-1))
+	if rawSignature == nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
+		ServerLog.Println("ERROR AddEntry: failed to org sign entry.")
+		fmt.Println("ERROR AddEntry: failed to org sign entry.")
+		return
+	}
+	signature := b85.Encode(rawSignature)
+	entry.Signatures["Organization"] = signature
+
+	rawLastEntry, err := dbhandler.GetLastEntry()
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
+		ServerLog.Println("ERROR AddEntry: failed to obtain last entry.")
+		fmt.Println("ERROR AddEntry: failed to obtain last entry.")
+		return
+	}
+
+	lastEntry, err := keycard.NewEntryFromData(rawLastEntry)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
+		ServerLog.Println("ERROR AddEntry: failed to create entry from last entry data.")
+		fmt.Println("ERROR AddEntry: failed to create entry from last entry data.")
+		return
+	}
+	entry.PrevHash = lastEntry.Hash
+
+	err = entry.GenerateHash("BLAKE2B-256")
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
+		ServerLog.Println("ERROR AddEntry: failed to hash entry.")
+		fmt.Println("ERROR AddEntry: failed to hash entry.")
+	}
+
+	response := NewServerResponse(100, "CONTINUE")
+	response.Data["Hash"] = entry.Hash
+	response.Data["Previous-Hash"] = entry.PrevHash
+	response.Data["Organization-Signature"] = signature
+	err = session.SendResponse(*response)
+	if err != nil {
+		return
+	}
+
+	request, err := session.GetRequest()
+	if err != nil {
+		return
+	}
+	if request.Action != "ADDENTRY" ||
+		session.Message.Validate([]string{"User-Signature"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST")
+		return
+	}
+
+	entry.Signatures["User-Signature"] = session.Message.Data["User-Signature"]
+	if !entry.IsCompliant() {
+		session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA")
+	}
+
+	err = dbhandler.AddEntry(entry)
+	if err == nil {
+		session.SendStringResponse(200, "OK")
+	} else {
+		session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
+		ServerLog.Println("ERROR AddEntry: failed to add entry.")
+		fmt.Println("ERROR AddEntry: failed to add entry.")
+	}
 }
 
 func commandOrgCard(session *sessionState) {

@@ -19,6 +19,7 @@ import (
 
 	"database/sql"
 
+	"github.com/darkwyrm/anselusd/keycard"
 	"github.com/darkwyrm/b85"
 	"github.com/everlastingbeta/diceware"
 	"github.com/lib/pq"
@@ -592,6 +593,26 @@ func GetOrgEntries(startIndex int, endIndex int) ([]string, error) {
 
 	}
 	return out, nil
+}
+
+// GetLastEntry returns the last entry in the database
+func GetLastEntry() (string, error) {
+	row := dbConn.QueryRow(`SELECT entry FROM keycards ORDER BY creationtime DESC LIMIT 1`)
+
+	var entry string
+	err := row.Scan(&entry)
+	return entry, err
+}
+
+// AddEntry adds an entry to the database. The caller is responsible for validation of *ALL* data
+// passed to this command.
+func AddEntry(entry *keycard.Entry) error {
+	owner := entry.Fields["Workspace-ID"] + "/" + entry.Fields["Domain"]
+	var err error
+	_, err = dbConn.Exec(`INSERT INTO keycards(owner, creationtime, index, entry, fingerprint) `+
+		`VALUES($1, $2, $3, $4, $5)`, owner, entry.Fields["Timestamp"], entry.Fields["Index"],
+		string(entry.MakeByteString(-1)), entry.Hash)
+	return err
 }
 
 // GetPrimarySigningKey obtains the organization's primary signing key as an CryptoString
