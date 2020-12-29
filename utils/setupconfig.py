@@ -383,7 +383,7 @@ cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.
 			"AND c.relkind = 'r');")
 rows = cur.fetchall()
 if rows[0][0] is False:
-	cur.execute("CREATE TABLE keycards(rowid SERIAL PRIMARY KEY, owner VARCHAR(64) NOT NULL, "
+	cur.execute("CREATE TABLE keycards(rowid SERIAL PRIMARY KEY, owner VARCHAR(292) NOT NULL, "
 				"creationtime TIMESTAMP NOT NULL, index INTEGER NOT NULL, "
 				"entry VARCHAR(8192) NOT NULL, fingerprint VARCHAR(96) NOT NULL);")
 
