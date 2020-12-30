@@ -40,6 +40,7 @@ func commandAddEntry(session *sessionState) {
 	if session.Message.Validate([]string{"Base-Entry"}) != nil ||
 		session.Message.HasField("User-Signature") {
 		session.SendStringResponse(400, "BAD REQUEST")
+		return
 	}
 
 	// We've managed to read data from the client. Now for some extensive validation.
@@ -67,7 +68,26 @@ func commandAddEntry(session *sessionState) {
 		return
 	}
 
-	// TODO: Validate chain of trust to previous entry
+	tempStr, err := dbhandler.GetUserEntries(entry.Fields["Workspace-ID"], 0, 0)
+	if len(tempStr) != 0 && err == nil {
+
+		// If there are previous entries for the workspace, the chain of trust must be validated.
+		prevEntry, err := keycard.NewEntryFromData(tempStr[0])
+		if err != nil {
+			session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
+			ServerLog.Println(fmt.Sprintf("ERROR AddEntry: previous keycard entry invalid for "+
+				"workspace %s", entry.Fields["Workspace-ID"]))
+			fmt.Println(fmt.Sprintf("ERROR AddEntry: previous keycard entry invalid for "+
+				"workspace %s", entry.Fields["Workspace-ID"]))
+			return
+		}
+
+		isOK, err := entry.VerifyChain(prevEntry)
+		if !isOK || err != nil {
+			session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA")
+			return
+		}
+	}
 
 	// If we managed to get this far, we can (theoretically) trust the initial data set given to us
 	// by the client. Here we sign the data with the organization's signing key
