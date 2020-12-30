@@ -52,9 +52,13 @@ def generate_signpair(filename):
 	'''Creates a asymmetric signing keypair and saves it to a file in Base85 encoding'''
 	keypair = nacl.signing.SigningKey.generate()
 	
+	hasher=hashlib.blake2b(digest_size=32)
+	hasher.update(keypair.verify_key.encode())
+	verifyHash = "BLAKE2B-256:" + base64.b85encode(hasher.digest()).decode()
 	if not filename:
 		print('Keypair type: signing\r\n')
 		print('verify: %s' % base64.b85encode(keypair.verify_key.encode()).decode())
+		print('verify hash: %s' % verifyHash)
 		print('signing: %s' % base64.b85encode(keypair.encode()).decode())
 		return
 	
