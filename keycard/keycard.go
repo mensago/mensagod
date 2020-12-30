@@ -328,17 +328,24 @@ func (entry *Entry) Set(data []byte) error {
 
 	stripHeader := false
 	if entry.Type == "Organization" {
-		if lines[0] != "----- BEGIN ORG ENTRY -----" ||
-			lines[len(lines)-1] != "----- END ORG ENTRY -----" {
-			return errors.New("bad entry header/footer")
+		if lines[0] == "----- BEGIN ORG ENTRY -----" {
+			if lines[len(lines)-1] != "----- END ORG ENTRY -----" {
+				return errors.New("bad entry header/footer")
+			}
+			stripHeader = true
+		} else if lines[0] != "Type:Organization" {
+			return errors.New("entry type-data type mismatch")
 		}
-		stripHeader = true
+
 	} else if entry.Type == "User" {
-		if lines[0] != "----- BEGIN USER ENTRY -----" ||
-			lines[len(lines)-1] != "----- END USER ENTRY -----" {
-			return errors.New("bad entry header/footer")
+		if lines[0] == "----- BEGIN USER ENTRY -----" {
+			if lines[len(lines)-1] != "----- END USER ENTRY -----" {
+				return errors.New("bad entry header/footer")
+			}
+			stripHeader = true
+		} else if lines[0] != "Type:User" {
+			return errors.New("entry type-data type mismatch")
 		}
-		stripHeader = true
 	} else {
 		return errors.New("bad entry type")
 	}
@@ -625,31 +632,15 @@ func NewEntryFromData(textBlock string) (*Entry, error) {
 	}
 
 	var outEntry *Entry
-	if lines[0] == "----- BEGIN USER ENTRY -----" {
-		if lines[len(lines)-1] != "----- END USER ENTRY -----" {
-			return nil, errors.New("bad entry header/footer")
-		}
-
-		// 9 required fields for User entries + header/footer lines + Type line
-		if len(lines) < 12 {
+	if lines[0] == "Type:User" {
+		// 9 required fields for User entries + Type line
+		if len(lines) < 10 {
 			return nil, errors.New("entry too short")
-		}
-
-		if lines[1] != "Type:User" {
-			return nil, errors.New("bad entry Type line")
 		}
 
 		outEntry = NewUserEntry()
 
-	} else if lines[0] == "----- BEGIN ORG ENTRY -----" {
-		if lines[len(lines)-1] != "----- END ORG ENTRY -----" {
-			return nil, errors.New("bad entry header/footer")
-		}
-
-		if lines[1] != "Type:Organization" {
-			return nil, errors.New("bad entry Type line")
-		}
-
+	} else if lines[0] == "Type:Organization" {
 		outEntry = NewOrgEntry()
 	} else {
 		return nil, errors.New("bad entry data")
