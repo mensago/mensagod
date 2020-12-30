@@ -602,7 +602,7 @@ func GetUserEntries(wid string, startIndex int, endIndex int) ([]string, error) 
 
 	if startIndex < 1 {
 		// If given a 0 or negative number, we return just the current entry.
-		row := dbConn.QueryRow(`SELECT entry FROM keycards WHERE owner = '$1' `+
+		row := dbConn.QueryRow(`SELECT entry FROM keycards WHERE owner = $1 `+
 			`ORDER BY index DESC LIMIT 1`, wid)
 
 		var entry string
@@ -617,7 +617,7 @@ func GetUserEntries(wid string, startIndex int, endIndex int) ([]string, error) 
 		if endIndex < startIndex {
 			return out, nil
 		}
-		rows, err := dbConn.Query(`SELECT entry FROM keycards WHERE owner = '$1' `+
+		rows, err := dbConn.Query(`SELECT entry FROM keycards WHERE owner = $1 `+
 			`AND index >= $2 AND index <= $3 ORDER BY index`, wid, startIndex, endIndex)
 		if err != nil {
 			return out, err
@@ -635,7 +635,7 @@ func GetUserEntries(wid string, startIndex int, endIndex int) ([]string, error) 
 
 	} else {
 		// Given just a start index
-		rows, err := dbConn.Query(`SELECT entry FROM keycards WHERE owner = '$1' `+
+		rows, err := dbConn.Query(`SELECT entry FROM keycards WHERE owner = $1 `+
 			`AND index >= $2 ORDER BY index`, wid, startIndex)
 		if err != nil {
 			return out, err
