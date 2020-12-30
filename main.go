@@ -440,6 +440,8 @@ func processCommand(session *sessionState) {
 		UPLOAD
 		USERCARD
 	*/
+	case "ADDENTRY":
+		commandAddEntry(session)
 	case "DEVICE":
 		commandDevice(session)
 	case "EXISTS":
