@@ -31,7 +31,7 @@ def make_diceware():
 	options.num = 4
 	options.caps = True
 	options.specials = 0
-	options.delimiter = ''
+	options.delimiter = '-'
 	options.randomsource = 'system'
 	options.wordlist = 'en_eff'
 	options.infile = None

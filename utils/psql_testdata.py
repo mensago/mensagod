@@ -24,9 +24,6 @@ import nacl.utils
 import psycopg2
 import toml
 
-# TODO: Update this to work with schema changes made in setupconfig.py
-
-
 # Function definitions
 def generate_password():
 	'''Wrapper around diceware, which isn't very friendly as a module'''
@@ -34,7 +31,7 @@ def generate_password():
 	options.num = 3
 	options.caps = True
 	options.specials = 0
-	options.delimiter = ''
+	options.delimiter = '-'
 	options.randomsource = 'system'
 	options.wordlist = 'en_eff'
 	options.infile = None
