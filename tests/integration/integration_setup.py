@@ -191,6 +191,9 @@ def config_server(dbconn):
 
 	status = card.chain(initial_oskey, True)
 	assert not status.error(), f'keycard chain failed: {status}'
+
+	# Save the keys to a separate RetVal so we can keep using status for return codes
+	keys = status
 	
 	new_entry = status['entry']
 	new_entry.prev_hash = root_entry.hash
@@ -205,12 +208,26 @@ def config_server(dbconn):
 		(new_entry.fields['Timestamp'],new_entry.fields['Index'],
 			new_entry.makebytestring(-1).decode(), new_entry.hash))
 
-	# TODO: dump new keys into the key table
+	cur.execute("INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose, fingerprint) "
+				"VALUES(%s,%s,%s,'encrypt',%s);",
+				new_entry.fields['Timestamp'], keys['sign.public'].as_string(),
+				keys['sign.private'].as_string(), keys['sign.pubhash'].as_string())
+
+	cur.execute("INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose, fingerprint) "
+				"VALUES(%s,%s,%s,'encrypt',%s);",
+				new_entry.fields['Timestamp'], keys['encrypt.public'].as_string(),
+				keys['encrypt.private'].as_string(), keys['encrypt.pubhash'].as_string())
+	
+	if 'altsign.public' in keys.fields:
+		cur.execute("INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose, fingerprint) "
+					"VALUES(%s,%s,%s,'encrypt',%s);",
+					new_entry.fields['Timestamp'], keys['altsign.public'].as_string(),
+					keys['altsign.private'].as_string(), keys['altsign.pubhash'].as_string())
 
 
 	# Prereg the admin account
 	admin_wid = 'ae406c5e-2673-4d3e-af20-91325d9623ca'
-	regcode = 'CringeUsherArmbandCoffee'
+	regcode = 'Undamaged Shining Amaretto Improve Scuttle Uptake'
 	cur.execute(f"INSERT INTO prereg(wid, uid, regcode) VALUES('{admin_wid}', 'admin', '{regcode}');")
 
 	cur.close()
