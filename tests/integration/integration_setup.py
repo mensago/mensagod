@@ -238,7 +238,9 @@ def config_server(dbconn) -> dict:
 		'oekey' : keys['encrypt.public'],
 		'odkey' : keys['encrypt.private'],
 		'admin_wid' : admin_wid,
-		'admin_regcode' : regcode
+		'admin_regcode' : regcode,
+		'root_org_entry' : root_entry,
+		'second_org_entry' : new_entry
 	}
 
 
