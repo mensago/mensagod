@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
@@ -465,35 +464,6 @@ func processCommand(session *sessionState) {
 	default:
 		commandUnrecognized(session)
 	}
-}
-
-// setupUpload is for ensuring the synchronous transfer of data
-func setupUpload(session *sessionState, byteCount uint64) (uint64, error) {
-	if byteCount == 0 {
-		return 0, nil
-	}
-
-	var response ServerResponse
-	response.Code = 104
-	response.Status = "TRANSFER"
-	response.Data["Size"] = fmt.Sprintf("%d", byteCount)
-	err := session.SendResponse(response)
-	if err != nil {
-		return 0, err
-	}
-
-	request, err := session.GetRequest()
-	if err != nil {
-		return 0, err
-	}
-
-	if request.Action != "TRANSFER" || request.Validate([]string{"Size"}) != nil {
-		return 0, errors.New("invalid client transfer acknowledgement")
-	}
-
-	clientCount, err := strconv.ParseUint(request.Data["Size"], 10, 64)
-
-	return clientCount, nil
 }
 
 func commandExists(session *sessionState) {
