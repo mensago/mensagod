@@ -112,7 +112,7 @@ def test_orgcard():
 def test_addentry():
 	'''Tests the ADDENTRY command process'''
 	dbconn = setup_test()
-	config_server(dbconn)
+	config_data = config_server(dbconn)
 
 	# Test setup is complete. Create a test keycard and do ADDENTRY
 
@@ -163,7 +163,7 @@ def test_addentry():
 	# verification key. Because this is just an integration test, we skip all that and just use
 	# the known verification key from earlier in the test.
 	status = usercard.verify_signature(
-		CryptoString('ED25519:#|S__!gz0405wh_S-^mh9;h%%0cH!qTzhj<y@K=0d'), 'Organization')
+		CryptoString(config_data['ovkey']), 'Organization')
 	assert not status.error(), f"test_addentry(): org signature didn't verify: {status.info()}"
 	
 	usercard.prev_hash = response['Data']['Previous-Hash']

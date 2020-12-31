@@ -127,8 +127,9 @@ def setup_test():
 	return db_setup(config, schema_path)
 
 
-def config_server(dbconn):
-	'''Adds basic data to the database as if setupconfig had been run.'''
+def config_server(dbconn) -> dict:
+	'''Adds basic data to the database as if setupconfig had been run. Returns data needed for 
+	tests, such as the keys'''
 	
 	# Start off by generating the org's root keycard entry and add to the database
 
@@ -176,13 +177,13 @@ def config_server(dbconn):
 
 	cur.execute("INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose, fingerprint) "
 				"VALUES(%s,%s,%s,'encrypt',%s);",
-				root_entry.fields['Timestamp'], initial_epubkey.as_string(),
-				initial_eprivkey.as_string(), initial_epubhash.as_string())
+				(root_entry.fields['Timestamp'], initial_epubkey.as_string(),
+				initial_eprivkey.as_string(), initial_epubhash.as_string()))
 
 	cur.execute("INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose, fingerprint) "
 				"VALUES(%s,%s,%s,'sign',%s);",
-				root_entry.fields['Timestamp'], initial_ovkey.as_string(),
-				initial_oskey.as_string(), initial_ovhash.as_string())
+				(root_entry.fields['Timestamp'], initial_ovkey.as_string(),
+				initial_oskey.as_string(), initial_ovhash.as_string()))
 
 	# Sleep for 1 second in order for the new entry's timestamp to be useful
 	time.sleep(1)
@@ -206,23 +207,23 @@ def config_server(dbconn):
 	cur.execute("INSERT INTO keycards(owner,creationtime,index,entry,fingerprint) " \
 		"VALUES('organization',%s,%s,%s,%s);",
 		(new_entry.fields['Timestamp'],new_entry.fields['Index'],
-			new_entry.makebytestring(-1).decode(), new_entry.hash))
+			new_entry.make_bytestring(-1).decode(), new_entry.hash))
 
 	cur.execute("INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose, fingerprint) "
 				"VALUES(%s,%s,%s,'encrypt',%s);",
-				new_entry.fields['Timestamp'], keys['sign.public'].as_string(),
-				keys['sign.private'].as_string(), keys['sign.pubhash'].as_string())
+				(new_entry.fields['Timestamp'], keys['sign.public'],
+				keys['sign.private'], keys['sign.pubhash']))
 
 	cur.execute("INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose, fingerprint) "
 				"VALUES(%s,%s,%s,'encrypt',%s);",
-				new_entry.fields['Timestamp'], keys['encrypt.public'].as_string(),
-				keys['encrypt.private'].as_string(), keys['encrypt.pubhash'].as_string())
+				(new_entry.fields['Timestamp'], keys['encrypt.public'],
+				keys['encrypt.private'], keys['encrypt.pubhash']))
 	
-	if 'altsign.public' in keys.fields:
+	if keys.has_value('altsign.public'):
 		cur.execute("INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose, fingerprint) "
 					"VALUES(%s,%s,%s,'encrypt',%s);",
-					new_entry.fields['Timestamp'], keys['altsign.public'].as_string(),
-					keys['altsign.private'].as_string(), keys['altsign.pubhash'].as_string())
+					(new_entry.fields['Timestamp'], keys['altsign.public'],
+					keys['altsign.private'], keys['altsign.pubhash']))
 
 
 	# Prereg the admin account
@@ -232,6 +233,15 @@ def config_server(dbconn):
 
 	cur.close()
 	dbconn.commit()	
+
+	return {
+		'ovkey' : keys['sign.public'],
+		'oskey' : keys['sign.private'],
+		'oekey' : keys['encrypt.public'],
+		'odkey' : keys['encrypt.private'],
+		'admin_wid' : admin_wid,
+		'admin_regcode' : regcode
+	}
 
 
 def add_workspace(account: dict, dbconn):

@@ -122,7 +122,7 @@ func commandAddEntry(session *sessionState) {
 		fmt.Println("ERROR AddEntry: failed to org sign entry.")
 		return
 	}
-	signature := b85.Encode(rawSignature)
+	signature := "ED25519:" + b85.Encode(rawSignature)
 	entry.Signatures["Organization"] = signature
 
 	rawLastEntry, err := dbhandler.GetLastEntry()
