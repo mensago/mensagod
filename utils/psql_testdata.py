@@ -165,11 +165,10 @@ def reset_database(dbconn):
 					"friendly_address VARCHAR(48), password VARCHAR(128) NOT NULL, "
 					"status VARCHAR(16) NOT NULL);")
 	cursor.execute("CREATE TABLE iwkspc_folders(rowid SERIAL PRIMARY KEY, fid char(36) NOT NULL, "
-					"wid char(36) NOT NULL, enc_name VARCHAR(128) NOT NULL, "
-					"enc_key VARCHAR(64) NOT NULL);")
+					"wid char(36) NOT NULL, enc_key VARCHAR(1000) NOT NULL);")
 	cursor.execute("CREATE TABLE iwkspc_devices(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
-					"devid CHAR(36) NOT NULL, keytype VARCHAR(16) NOT NULL, "
-					"devkey VARCHAR(1000) NOT NULL, status VARCHAR(16) NOT NULL);")
+					"devid CHAR(36) NOT NULL, devkey VARCHAR(1000) NOT NULL, "
+					"status VARCHAR(16) NOT NULL);")
 	cursor.execute("CREATE TABLE failure_log(rowid SERIAL PRIMARY KEY, type VARCHAR(16) NOT NULL, "
 				"id VARCHAR(36), source VARCHAR(36) NOT NULL, count INTEGER, "
 				"last_failure TIMESTAMP NOT NULL, lockout_until TIMESTAMP);")
@@ -199,20 +198,20 @@ def add_account_to_db(account, dbconn):
 	
 	box = nacl.secret.SecretBox(account['keys'][4]['key'])
 	for folder_name,fid in account['folder_map'].items():
-		cmd = ("INSERT INTO iwkspc_folders(wid, fid, enc_name, enc_key) "
+		cmd = ("INSERT INTO iwkspc_folders(wid, fid, enc_key) "
 					"VALUES('%s','%s','%s',$$%s$$);" % 
 					( account['wid'], fid,
-					base64.b85encode(box.encrypt(bytes(folder_name, 'utf8'))).decode('utf8'),
+					'XSALSA20:' + base64.b85encode(
+							box.encrypt(bytes(folder_name, 'utf8'))).decode('utf8'),
 					account['keys'][4]['id']))
 		cursor.execute(cmd)
 
 	i = 0
 	while i < len(account['devices']):
-		cmd =	(	"INSERT INTO iwkspc_devices(wid, devid, keytype, devkey, status) "
-					"VALUES('%s','%s','%s','%s','active');" % (
+		cmd =	(	"INSERT INTO iwkspc_devices(wid, devid, devkey, status) "
+					"VALUES('%s','%s','%s','active');" % (
 						account['wid'], account['devices'][i]['id'], 
-						account['devices'][i]['keytype'],
-						account['devices'][i]['public_b85']
+						account['devices'][i]['keytype'] + ':' + account['devices'][i]['public_b85']
 					)
 				)
 		cursor.execute(cmd)

@@ -7,19 +7,16 @@ BEGIN
 	END LOOP;
 END $$;
 
--- TODO: update to match schema changes made in setupconfig.py
-
 -- Create new ones
 CREATE TABLE iwkspc_main(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL, 
 	uid VARCHAR(48), domain VARCHAR(253) NOT NULL, password VARCHAR(128) NOT NULL, 
 	status VARCHAR(16) NOT NULL, type VARCHAR(16) NOT NULL);
 
 CREATE TABLE iwkspc_folders(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL, 
-	enc_name VARCHAR(128) NOT NULL, enc_key VARCHAR(64) NOT NULL);
+	enc_key VARCHAR(64) NOT NULL);
 
 CREATE TABLE iwkspc_devices(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
-	devid CHAR(36) NOT NULL, keytype VARCHAR(16) NOT NULL,
-	devkey VARCHAR(1000) NOT NULL, status VARCHAR(16) NOT NULL);
+	devid CHAR(36) NOT NULL, devkey VARCHAR(1000) NOT NULL, status VARCHAR(16) NOT NULL);
 
 CREATE TABLE failure_log(rowid SERIAL PRIMARY KEY, type VARCHAR(16) NOT NULL,
 	id VARCHAR(36), source VARCHAR(36) NOT NULL, count INTEGER,

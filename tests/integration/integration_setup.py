@@ -1,4 +1,3 @@
-import base64
 import json
 import os.path
 import re
@@ -7,7 +6,6 @@ import sys
 import time
 
 import jsonschema
-import nacl.secret
 import psycopg2
 import toml
 
@@ -242,47 +240,6 @@ def config_server(dbconn) -> dict:
 		'admin_wid' : admin_wid,
 		'admin_regcode' : regcode
 	}
-
-
-def add_workspace(account: dict, dbconn):
-	'''Creates a workspace using the supplied information in the parameter `account`'''
-	
-	cursor = dbconn.cursor()
-	cmdparts = ["INSERT INTO iwkspc_main(wid,friendly_address,password,status) VALUES('",
-				account['wid'],
-				"',"]
-	if account['uid']:
-		cmdparts.extend(["'",account['uid'],"',"])
-	else:
-		cmdparts.append("'',")
-	
-	cmdparts.extend(["'", account['serverpwhash'],"','", account['status'], "');"])
-	cmd = ''.join(cmdparts)
-	cursor.execute(cmd)
-	
-	box = nacl.secret.SecretBox(account['keys'][4]['key'])
-	for folder_name,fid in account['folder_map'].items():
-		cmd = ("INSERT INTO iwkspc_folders(wid, fid, enc_name, enc_key) "
-					"VALUES('%s','%s','%s',$$%s$$);" % 
-					( account['wid'], fid,
-					base64.b85encode(box.encrypt(bytes(folder_name, 'utf8'))).decode('utf8'),
-					account['keys'][4]['id']))
-		cursor.execute(cmd)
-
-	i = 0
-	while i < len(account['devices']):
-		cmd =	(	"INSERT INTO iwkspc_devices(wid, devid, keytype, devkey, status) "
-					"VALUES('%s','%s','%s','%s','active');" % (
-						account['wid'], account['devices'][i]['id'], 
-						account['devices'][i]['keytype'],
-						account['devices'][i]['public_b85']
-					)
-				)
-		cursor.execute(cmd)
-		i = i + 1
-	
-	cursor.close()
-	dbconn.commit()
 
 
 def validate_uuid(indata):
