@@ -235,7 +235,6 @@ func commandOrgCard(session *sessionState) {
 
 		totalBytes := 0
 		for _, entry := range entries {
-			fmt.Printf("----- BEGIN ORG ENTRY -----\r\n" + entry + "----- END ORG ENTRY -----\r\n")
 			bytesWritten, err := session.WriteClient("----- BEGIN ORG ENTRY -----\r\n" + entry +
 				"----- END ORG ENTRY -----\r\n")
 			if err != nil {
