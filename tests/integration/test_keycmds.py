@@ -168,7 +168,7 @@ def test_addentry():
 
 	sock.send_message({
 		'Action' : "ADDENTRY",
-		'Data' : { 'Signed-Entry' : str(usercard.make_bytestring(-1)) }
+		'Data' : { 'User-Signature' : usercard.make_bytestring(-1).decode() }
 	})
 	
 	response = sock.read_response(server_response)
@@ -181,5 +181,5 @@ def test_addentry():
 
 
 if __name__ == '__main__':
-	#test_addentry()
-	test_orgcard()
+	#test_orgcard()
+	test_addentry()
