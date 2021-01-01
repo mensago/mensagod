@@ -88,7 +88,9 @@ func (r *ClientRequest) HasField(fieldname string) bool {
 }
 
 // Validate performs schema validation for the request. Given a slice of strings containing the
-// required Data keys, it returns an error if any of them are missing
+// required Data keys, it returns an error if any of them are missing. While HasField() can be
+// used to accomplish the same task, Validate() is for ensuring that all required data fields in
+// a client request exist in one call.
 func (r *ClientRequest) Validate(fieldlist []string) error {
 	for _, fieldname := range fieldlist {
 		_, exists := r.Data[fieldname]
