@@ -174,6 +174,18 @@ func commandAddEntry(session *sessionState) {
 		return
 	}
 
+	var crkey cryptostring.CryptoString
+	err = crkey.Set(entry.Fields["Contact-Request-Verification-Key"])
+	if err != nil {
+		session.SendStringResponse(413, "INVALID SIGNATURE")
+		return
+	}
+	verified, err := entry.VerifySignature(crkey, "User")
+	if err != nil || !verified {
+		session.SendStringResponse(413, "INVALID SIGNATURE")
+		return
+	}
+
 	err = dbhandler.AddEntry(entry)
 	if err == nil {
 		session.SendStringResponse(200, "OK")
