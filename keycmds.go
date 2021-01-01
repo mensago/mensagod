@@ -270,17 +270,14 @@ func commandUserCard(session *sessionState) {
 	}
 
 	var owner string
-	if dbhandler.ValidateAddress(session.Message.Data["Owner"]) {
-		wid := dbhandler.ResolveAddress(session.Message.Data["Owner"])
-		if wid == "" {
-			session.SendStringResponse(404, "NOT FOUND")
-			return
-		}
-		owner = wid
-	} else if dbhandler.ValidateUUID(session.Message.Data["Owner"]) {
-		owner = session.Message.Data["Owner"]
-	} else {
+	if dbhandler.GetAnselusAddressType(session.Message.Data["Owner"]) == 0 {
 		session.SendStringResponse(400, "BAD REQUEST")
+		return
+	}
+
+	wid := dbhandler.ResolveAddress(session.Message.Data["Owner"])
+	if wid == "" {
+		session.SendStringResponse(404, "NOT FOUND")
 		return
 	}
 

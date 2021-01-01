@@ -240,10 +240,32 @@ func ValidateUUID(uuid string) bool {
 	return pattern.MatchString(uuid)
 }
 
-// ValidateAddress returns whether or not a string is a valid Anselus address
-func ValidateAddress(addr string) bool {
+// GetAnselusAddressType returns the type of address given to it. It returns 0 when there is an
+// error, 1 when given a valid workspace address, and 2 when given a valid Anselus address
+func GetAnselusAddressType(addr string) int {
 	// TODO: Implement
-	return false
+
+	parts := strings.Split(addr, "/")
+	if len(parts) != 2 {
+		return 0
+	}
+
+	// Validate the domain portion of the address
+	pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
+	if !pattern.MatchString(parts[1]) {
+		return 0
+	}
+
+	// Is this a workspace addresses?
+	if ValidateUUID(parts[0]) {
+		return 1
+	}
+
+	pattern = regexp.MustCompile("[\\\"]|[[:space:]]")
+	if pattern.MatchString(parts[0]) {
+		return 0
+	}
+	return 2
 }
 
 // ResolveAddress returns the WID corresponding to an Anselus address
