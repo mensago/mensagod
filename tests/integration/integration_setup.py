@@ -183,6 +183,10 @@ def config_server(dbconn) -> dict:
 				(root_entry.fields['Timestamp'], initial_ovkey.as_string(),
 				initial_oskey.as_string(), initial_ovhash.as_string()))
 
+	cur.close()
+	dbconn.commit()	
+	cur = dbconn.cursor()
+
 	# Sleep for 1 second in order for the new entry's timestamp to be useful
 	time.sleep(1)
 
@@ -208,7 +212,7 @@ def config_server(dbconn) -> dict:
 			new_entry.make_bytestring(-1).decode(), new_entry.hash))
 
 	cur.execute("INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose, fingerprint) "
-				"VALUES(%s,%s,%s,'encrypt',%s);",
+				"VALUES(%s,%s,%s,'sign',%s);",
 				(new_entry.fields['Timestamp'], keys['sign.public'],
 				keys['sign.private'], keys['sign.pubhash']))
 
@@ -219,7 +223,7 @@ def config_server(dbconn) -> dict:
 	
 	if keys.has_value('altsign.public'):
 		cur.execute("INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose, fingerprint) "
-					"VALUES(%s,%s,%s,'encrypt',%s);",
+					"VALUES(%s,%s,%s,'altsign',%s);",
 					(new_entry.fields['Timestamp'], keys['altsign.public'],
 					keys['altsign.private'], keys['altsign.pubhash']))
 
@@ -315,10 +319,14 @@ class ServerNetworkConnection:
 		# We don't actually handle the possible exceptions because we *want* to have them crash --
 		# the test will fail and give us the cause of the exception. If we have a successful test, 
 		# exceptions weren't thrown
-		rawdata = self.socket.recv(8192)
-		rawstring = rawdata.decode()
-		response = json.loads(rawstring)
-		jsonschema.validate(response, schema)
+		try:
+			rawdata = self.socket.recv(8192)
+			rawstring = rawdata.decode()
+			response = json.loads(rawstring)
+			jsonschema.validate(response, schema)
+		except Exception as e:
+			print(f"Exception thrown in read_response(): {e}")
+			return None
 
 		return response
 	
