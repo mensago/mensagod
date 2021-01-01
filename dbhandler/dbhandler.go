@@ -657,7 +657,7 @@ func GetUserEntries(wid string, startIndex int, endIndex int) ([]string, error) 
 
 // GetLastEntry returns the last entry in the database
 func GetLastEntry() (string, error) {
-	row := dbConn.QueryRow(`SELECT entry FROM keycards ORDER BY creationtime DESC LIMIT 1`)
+	row := dbConn.QueryRow(`SELECT entry FROM keycards ORDER BY rowid DESC LIMIT 1`)
 
 	var entry string
 	err := row.Scan(&entry)
@@ -678,7 +678,7 @@ func AddEntry(entry *keycard.Entry) error {
 // GetPrimarySigningKey obtains the organization's primary signing key as an CryptoString
 func GetPrimarySigningKey() (string, error) {
 	row := dbConn.QueryRow(`SELECT privkey FROM orgkeys WHERE purpose = 'sign' ` +
-		`ORDER BY creationtime DESC LIMIT 1`)
+		`ORDER BY rowid DESC LIMIT 1`)
 
 	var psk string
 	err := row.Scan(&psk)
