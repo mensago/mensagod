@@ -667,7 +667,13 @@ func GetLastEntry() (string, error) {
 // AddEntry adds an entry to the database. The caller is responsible for validation of *ALL* data
 // passed to this command.
 func AddEntry(entry *keycard.Entry) error {
-	owner := entry.Fields["Workspace-ID"] + "/" + entry.Fields["Domain"]
+	var owner string
+	if entry.Fields["Type"] == "Organization" {
+		owner = "organization"
+	} else {
+		owner = entry.Fields["Workspace-ID"]
+	}
+
 	var err error
 	_, err = dbConn.Exec(`INSERT INTO keycards(owner, creationtime, index, entry, fingerprint) `+
 		`VALUES($1, $2, $3, $4, $5)`, owner, entry.Fields["Timestamp"], entry.Fields["Index"],
