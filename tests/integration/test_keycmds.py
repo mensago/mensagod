@@ -216,12 +216,12 @@ def test_addentry_usercard():
 	status = second_user_entry.verify_hash()
 	assert not status.error(), f"test_addentry(): hash didn't verify: {status.info()}"
 
-	skey = CryptoString(newkeys['sign.private'])
+	skey = CryptoString(newkeys['crsign.private'])
 	assert skey.is_valid(), "test_addentry(): failed to set user signing key"
 	status = second_user_entry.sign(skey, 'User')
 	assert not status.error(), "test_addentry(): failed to user sign"
 
-	vkey = CryptoString(newkeys['sign.public'])
+	vkey = CryptoString(newkeys['crsign.public'])
 	assert vkey.is_valid(), "test_addentry(): failed to set user verification key"
 	status = second_user_entry.verify_signature(vkey, 'User')
 
