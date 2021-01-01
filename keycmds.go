@@ -163,14 +163,15 @@ func commandAddEntry(session *sessionState) {
 		return
 	}
 	if request.Action != "ADDENTRY" ||
-		session.Message.Validate([]string{"User-Signature"}) != nil {
+		request.Validate([]string{"User-Signature"}) != nil {
 		session.SendStringResponse(400, "BAD REQUEST")
 		return
 	}
 
-	entry.Signatures["User-Signature"] = session.Message.Data["User-Signature"]
+	entry.Signatures["User"] = request.Data["User-Signature"]
 	if !entry.IsCompliant() {
 		session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA")
+		return
 	}
 
 	err = dbhandler.AddEntry(entry)
