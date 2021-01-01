@@ -91,8 +91,8 @@ def test_orgcard():
 	sock.send_message({'Action' : "QUIT"})
 
 
-def test_addentry():
-	'''Tests the ADDENTRY command process'''
+def test_addentry_usercard():
+	'''Tests the ADDENTRY and USERCARD command processes'''
 	dbconn = setup_test()
 	config_data = config_server(dbconn)
 
@@ -112,6 +112,15 @@ def test_addentry():
 	#    the server.
 	# 7) Once uploaded, the server validates the `Hash` and `User-Signature` fields, and,
 	#    assuming that all is well, adds it to the keycard database and returns `200 OK`.
+	#
+	# Once that monster of a process completes, the card should be successfully added, but we're not
+	# done yet. From there, create a new user entry, chain it to the first, and upload it. This will
+	# test the chaining code in the AddEntry command processing.
+	#
+	# Finally, once that entire mess is complete, send a USERCARD command and verify what is 
+	# returned against the data set up so far. It doesn't seem like piggybacking a test for a
+	# different command off another is the right thing to do, but in this case, it's the perfect
+	# setup to confirm that a user's entire keycard is handled properly.
 
 	usercard = keycard.UserEntry()
 	usercard.set_fields({
@@ -154,13 +163,13 @@ def test_addentry():
 	assert not status.error(), f"test_addentry(): hash didn't verify: {status.info()}"
 
 	# User sign and verify
-	skey = CryptoString('ED25519:p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+')
-	assert skey.is_valid(), "test_addentry(): failed to set user signing key"
+	skey = CryptoString('ED25519:ip52{ps^jH)t$k-9bc_RzkegpIW?}FFe~BX&<V}9')
+	assert skey.is_valid(), "test_addentry(): failed to set user's cr signing key"
 	status = usercard.sign(skey, 'User')
 	assert not status.error(), "test_addentry(): failed to user sign"
 
-	vkey = CryptoString('ED25519:6|HBWrxMY6-?r&Sm)_^PLPerpqOj#b&x#N_#C3}p')
-	assert vkey.is_valid(), "test_addentry(): failed to set user verification key"
+	vkey = CryptoString('ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D')
+	assert vkey.is_valid(), "test_addentry(): failed to set user's cr verification key"
 	status = usercard.verify_signature(vkey, 'User')
 
 	status = usercard.is_compliant()
@@ -168,18 +177,71 @@ def test_addentry():
 
 	sock.send_message({
 		'Action' : "ADDENTRY",
-		'Data' : { 'User-Signature' : usercard.make_bytestring(-1).decode() }
+		'Data' : { 'User-Signature' : usercard.signatures['User'] }
 	})
 	
 	response = sock.read_response(server_response)
 	assert response['Code'] == 200 and \
 		response['Status'] == 'OK', f"test_addentry(): final upload server error {response}"
 
-	# TODO: Create and add a second entry to properly test entry chaining
+
+	# Now to test ADDENTRY with a chained entry. Hold on tight!
+
+	# Submit the chained entry
+	newkeys = usercard.chain(skey, True)
+	assert not newkeys.error(), f"test_addentry(): new entry failed to chain: {newkeys.info()}"
+
+	second_user_entry = newkeys['entry']
+	sock.send_message({
+		'Action' : "ADDENTRY",
+		'Data' : { 'Base-Entry' : second_user_entry.make_bytestring(1).decode() }
+	})
+
+	response = sock.read_response(server_response)
+	assert response['Code'] == 100 and \
+		response['Status'] == 'CONTINUE' and \
+		'Organization-Signature' in response['Data'] and \
+		'Hash' in response['Data'] and \
+		'Previous-Hash' in response['Data'], 'test_addentry(): server did return all needed fields'
+
+	second_user_entry.signatures['Organization'] =  response['Data']['Organization-Signature']
+	
+	# Verify the server's signature, add and verify the hashes, sign, and upload
+	status = second_user_entry.verify_signature(
+		CryptoString(config_data['ovkey']), 'Organization')
+	assert not status.error(), f"test_addentry(): org signature didn't verify: {status.info()}"
+	
+	second_user_entry.prev_hash = response['Data']['Previous-Hash']
+	second_user_entry.hash = response['Data']['Hash']
+	status = second_user_entry.verify_hash()
+	assert not status.error(), f"test_addentry(): hash didn't verify: {status.info()}"
+
+	skey = CryptoString(newkeys['sign.private'])
+	assert skey.is_valid(), "test_addentry(): failed to set user signing key"
+	status = second_user_entry.sign(skey, 'User')
+	assert not status.error(), "test_addentry(): failed to user sign"
+
+	vkey = CryptoString(newkeys['sign.public'])
+	assert vkey.is_valid(), "test_addentry(): failed to set user verification key"
+	status = second_user_entry.verify_signature(vkey, 'User')
+
+	status = second_user_entry.is_compliant()
+	assert not status.error(), f"test_addentry(): compliance error: {str(status)}"
+
+	sock.send_message({
+		'Action' : "ADDENTRY",
+		'Data' : { 'User-Signature' : second_user_entry.signatures['User'] }
+	})
+	
+	response = sock.read_response(server_response)
+	assert response['Code'] == 200 and \
+		response['Status'] == 'OK', f"test_addentry(): final upload server error {response}"
+	
+	# TODO: Test USERCARD
 
 	sock.send_message({'Action' : "QUIT"})
 
 
 if __name__ == '__main__':
 	#test_orgcard()
-	test_addentry()
+	test_addentry_usercard()
