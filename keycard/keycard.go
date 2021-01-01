@@ -379,6 +379,13 @@ func (entry *Entry) Set(data []byte) error {
 			}
 
 			entry.Signatures[sigNameParts[0]] = parts[1]
+
+		} else if parts[0] == "Hash" {
+			entry.Hash = parts[1]
+
+		} else if parts[0] == "Previous-Hash" {
+			entry.PrevHash = parts[1]
+
 		} else {
 			entry.Fields[parts[0]] = parts[1]
 		}
