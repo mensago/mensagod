@@ -439,7 +439,6 @@ func processCommand(session *sessionState) {
 		SETADDR
 		UNREGISTER
 		UPLOAD
-		USERCARD
 	*/
 	case "ADDENTRY":
 		commandAddEntry(session)
@@ -463,6 +462,8 @@ func processCommand(session *sessionState) {
 		commandRegCode(session)
 	case "REGISTER":
 		commandRegister(session)
+	case "USERCARD":
+		commandUserCard(session)
 	default:
 		commandUnrecognized(session)
 	}

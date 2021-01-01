@@ -240,6 +240,18 @@ func ValidateUUID(uuid string) bool {
 	return pattern.MatchString(uuid)
 }
 
+// ValidateAddress returns whether or not a string is a valid Anselus address
+func ValidateAddress(addr string) bool {
+	// TODO: Implement
+	return false
+}
+
+// ResolveAddress returns the WID corresponding to an Anselus address
+func ResolveAddress(addr string) string {
+	// TODO: Implement
+	return ""
+}
+
 // GenerateRandomString creates a randomly-generated device session string.
 func GenerateRandomString(length int) string {
 

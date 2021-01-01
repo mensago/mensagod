@@ -259,3 +259,82 @@ func commandOrgCard(session *sessionState) {
 		session.SendStringResponse(404, "NOT FOUND")
 	}
 }
+
+func commandUserCard(session *sessionState) {
+	// command syntax:
+	// USERCARD(Owner, Start-Index, End-Index=0)
+
+	if session.Message.Validate([]string{"Owner", "Start-Index"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST")
+		return
+	}
+
+	var owner string
+	if dbhandler.ValidateAddress(session.Message.Data["Owner"]) {
+		wid := dbhandler.ResolveAddress(session.Message.Data["Owner"])
+		if wid == "" {
+			session.SendStringResponse(404, "NOT FOUND")
+			return
+		}
+		owner = wid
+	} else if dbhandler.ValidateUUID(session.Message.Data["Owner"]) {
+		owner = session.Message.Data["Owner"]
+	} else {
+		session.SendStringResponse(400, "BAD REQUEST")
+		return
+	}
+
+	var startIndex, endIndex int
+	var err error
+	startIndex, err = strconv.Atoi(session.Message.Data["Start-Index"])
+	if err != nil {
+		session.SendStringResponse(400, "BAD REQUEST")
+		return
+	}
+
+	if session.Message.HasField("End-Index") {
+		endIndex, err = strconv.Atoi(session.Message.Data["End-Index"])
+		if err != nil {
+			session.SendStringResponse(400, "BAD REQUEST")
+			return
+		}
+	}
+
+	entries, err := dbhandler.GetUserEntries(owner, startIndex, endIndex)
+	entryCount := len(entries)
+	var response ServerResponse
+	if entryCount > 0 {
+		transmissionSize := uint64(0)
+		for _, entry := range entries {
+			// 56 is the size of the header and footer and accompanying line terminators
+			transmissionSize += uint64(len(entry) + len("----- BEGIN USER ENTRY -----\r\n") + len("----- END USER ENTRY -----\r\n"))
+		}
+
+		response.Code = 104
+		response.Status = "TRANSFER"
+		response.Data = make(map[string]string)
+		response.Data["Item-Count"] = fmt.Sprintf("%d", entryCount)
+		response.Data["Total-Size"] = fmt.Sprintf("%d", transmissionSize)
+		if session.SendResponse(response) != nil {
+			return
+		}
+
+		request, err := session.GetRequest()
+		if err != nil || request.Action != "TRANSFER" {
+			session.SendStringResponse(400, "BAD REQUEST")
+			return
+		}
+
+		totalBytes := 0
+		for _, entry := range entries {
+			bytesWritten, err := session.WriteClient("----- BEGIN USER ENTRY -----\r\n" + entry +
+				"----- END USER ENTRY -----\r\n")
+			if err != nil {
+				return
+			}
+			totalBytes += bytesWritten
+		}
+	} else {
+		session.SendStringResponse(404, "NOT FOUND")
+	}
+}
