@@ -344,7 +344,7 @@ cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.
 rows = cur.fetchall()
 if rows[0][0] is False:
 	cur.execute("CREATE TABLE aliases(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, "
-		"target CHAR(36) NOT NULL);")
+		"target CHAR(292) NOT NULL);")
 
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
@@ -486,6 +486,9 @@ rootentry.set_field('Contact-Abuse', '/'.join([abuse_wid,config['org_domain']]))
 if config['forward_abuse'] == 'y':
 	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{abuse_wid}', 'abuse', "
 		f"'{config['org_domain']}', 'alias');")
+	
+	cur.execute(f"INSERT INTO aliases(wid, target) VALUES('{abuse_wid}', "
+		f"'{'/'.join([admin_wid, config['org_domain']])}');")
 else:
 	abuse_regcode = make_diceware()
 	cur.execute(f"INSERT INTO prereg(wid, uid, domain, regcode) "
@@ -505,6 +508,9 @@ rootentry.set_field('Contact-Support', '/'.join([support_wid,config['org_domain'
 if config['forward_support'] == 'y':
 	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{support_wid}', "
 		f"'support', '{config['org_domain']}', 'alias');")
+	
+	cur.execute(f"INSERT INTO aliases(wid, target) VALUES('{support_wid}', "
+		f"'{'/'.join([admin_wid, config['org_domain']])}');")
 else:
 	support_regcode = make_diceware()
 	cur.execute(f"INSERT INTO prereg(wid, uid, domain, regcode) "
