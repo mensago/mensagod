@@ -275,14 +275,13 @@ func commandUserCard(session *sessionState) {
 		return
 	}
 
-	wid := dbhandler.ResolveAddress(session.Message.Data["Owner"])
+	wid, err := dbhandler.ResolveAddress(session.Message.Data["Owner"])
 	if wid == "" {
 		session.SendStringResponse(404, "NOT FOUND")
 		return
 	}
 
 	var startIndex, endIndex int
-	var err error
 	startIndex, err = strconv.Atoi(session.Message.Data["Start-Index"])
 	if err != nil {
 		session.SendStringResponse(400, "BAD REQUEST")
