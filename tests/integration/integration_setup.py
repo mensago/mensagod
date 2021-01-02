@@ -136,10 +136,10 @@ def config_server(dbconn) -> dict:
 	
 	root_entry = keycard.OrgEntry()
 	root_entry.set_fields({
-		'Name':'Acme Widgets, Inc.',
+		'Name':'Example, Inc.',
 		'Contact-Admin':'c590b44c-798d-4055-8d72-725a7942f3f6/acme.com',
 		'Language':'en',
-		'Domain':'acme.com',
+		'Domain':'example.com',
 		'Primary-Verification-Key':'ED25519:r#r*RiXIN-0n)BzP3bv`LA&t4LFEQNF0Q@$N~RF*',
 		'Encryption-Key':'CURVE25519:SNhj2K`hgBd8>G>lW$!pXiM7S-B!Fbd9jT2&{{Az'
 	})
@@ -231,8 +231,24 @@ def config_server(dbconn) -> dict:
 	# Prereg the admin account
 	admin_wid = 'ae406c5e-2673-4d3e-af20-91325d9623ca'
 	regcode = 'Undamaged Shining Amaretto Improve Scuttle Uptake'
-	cur.execute(f"INSERT INTO prereg(wid, uid, regcode) VALUES('{admin_wid}', 'admin', '{regcode}');")
+	cur.execute(f"INSERT INTO prereg(wid, uid, domain, regcode) VALUES('{admin_wid}', 'admin', "
+		f"'example.com', '{regcode}');")
+	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{admin_wid}', 'admin', "
+		f"'example.com', 'individual');")
+	
+	# Set up abuse/support forwarding to admin
+	abuse_wid = 'f8cfdbdf-62fe-4275-b490-736f5fdc82e3'
+	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{abuse_wid}', 'abuse', "
+		f"'example.com', 'alias');")
+	cur.execute(f"INSERT INTO aliases(wid, target) VALUES('{abuse_wid}', "
+		f"'{'/'.join([admin_wid, 'example.com'])}');")
 
+	support_wid = 'f0309ef1-a155-4655-836f-55173cc1bc3b'
+	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{support_wid}', "
+		f"'support', 'example.com', 'alias');")
+	cur.execute(f"INSERT INTO aliases(wid, target) VALUES('{support_wid}', "
+		f"'{'/'.join([admin_wid, 'example.com'])}');")
+	
 	cur.close()
 	dbconn.commit()	
 
