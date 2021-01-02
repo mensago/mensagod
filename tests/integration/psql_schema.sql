@@ -12,7 +12,7 @@ END $$;
 -- Lookup table for all workspaces. When any workspace is created, its wid is added here. userid is
 -- optional. wtype can be 'individual', 'shared', or 'alias'
 CREATE TABLE workspaces(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
-	userid VARCHAR(64), domain VARCHAR(255) NOT NULL, wtype VARCHAR(32) NOT NULL);
+	uid VARCHAR(64), domain VARCHAR(255) NOT NULL, wtype VARCHAR(32) NOT NULL);
 
 CREATE TABLE aliases(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, target CHAR(36) NOT NULL);
 
@@ -21,7 +21,7 @@ CREATE TABLE failure_log(rowid SERIAL PRIMARY KEY, type VARCHAR(16) NOT NULL,
 	last_failure TIMESTAMP NOT NULL, lockout_until TIMESTAMP);
 
 CREATE TABLE prereg(rowid SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE,
-	uid VARCHAR(128) NOT NULL, regcode VARCHAR(128));
+	uid VARCHAR(128) NOT NULL, domain VARCHAR(255) NOT NULL, regcode VARCHAR(128));
 
 CREATE TABLE keycards(rowid SERIAL PRIMARY KEY, owner VARCHAR(292) NOT NULL,
 	creationtime TIMESTAMP NOT NULL, index INTEGER NOT NULL,

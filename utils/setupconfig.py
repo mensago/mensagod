@@ -274,9 +274,9 @@ https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes.
 """)
 
 while config['org_language'] == '':
-	choice = input("Language(s) (leave empty to skip): ").strip()
+	choice = input("Language(s) [en]: ").strip()
 	if choice == '':
-		break
+		choice = 'en'
 	
 	m = re.match(r'^[a-zA-Z]{2,3}(,[a-zA-Z]{2,3})*?$', choice)
 	count = len(choice.split(','))
@@ -330,13 +330,31 @@ keycards and workspace information will be erased.
 print('Performing database first-time setup.\n')
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
+			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'workspaces' AND "
+			"c.relkind = 'r');")
+rows = cur.fetchall()
+if rows[0][0] is False:
+	cur.execute("CREATE TABLE workspaces(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, "
+		"uid VARCHAR(64), domain VARCHAR(255) NOT NULL, wtype VARCHAR(32) NOT NULL);")
+
+
+cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
+			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'aliases' AND "
+			"c.relkind = 'r');")
+rows = cur.fetchall()
+if rows[0][0] is False:
+	cur.execute("CREATE TABLE aliases(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, "
+		"target CHAR(36) NOT NULL);")
+
+
+cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
 			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'iwkspc_main' AND "
 			"c.relkind = 'r');")
 rows = cur.fetchall()
 if rows[0][0] is False:
 	cur.execute("CREATE TABLE iwkspc_main(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
 				"uid VARCHAR(32), domain VARCHAR(253) NOT NULL, password VARCHAR(128) NOT NULL, "
-				"status VARCHAR(16) NOT NULL, type VARCHAR(16) NOT NULL);")
+				"status VARCHAR(16) NOT NULL);")
 
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
@@ -374,7 +392,7 @@ cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.
 rows = cur.fetchall()
 if rows[0][0] is False:
 	cur.execute("CREATE TABLE prereg(rowid SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE, "
-				"uid VARCHAR(128) NOT NULL, regcode VARCHAR(128));")
+				"uid VARCHAR(128) NOT NULL, domain VARCHAR(255) NOT NULL, regcode VARCHAR(128));")
 
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
@@ -449,35 +467,52 @@ if 'org_language' in config and len(config['org_language']) > 0:
 
 admin_wid = str(uuid.uuid4())
 regcode = make_diceware()
-cur.execute(f"INSERT INTO prereg(wid, uid, regcode) VALUES('{admin_wid}', 'admin', '{regcode}');")
+cur.execute(f"INSERT INTO prereg(wid, uid, domain, regcode) VALUES('{admin_wid}', 'admin', "
+	f"'{config['org_domain']}', '{regcode}');")
 
 config['admin_wid'] = admin_wid
 config['admin_regcode'] = regcode
 rootentry.set_field('Contact-Admin', '/'.join([admin_wid,config['org_domain']]))
 
+cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{admin_wid}', 'admin', "
+	f"'{config['org_domain']}', 'individual');")
+
 # preregister the abuse account if not aliased and put into the serverconfig
 
-if config['forward_abuse'] == 'y':
-	abuse_wid = str(uuid.uuid4())
-	abuse_regcode = make_diceware()
-	cur.execute(f"INSERT INTO prereg(wid, uid, regcode) "
-		f"VALUES('{abuse_wid}', 'abuse', '{abuse_regcode}');")
+abuse_wid = str(uuid.uuid4())
+config['abuse_wid'] = abuse_wid
+rootentry.set_field('Contact-Abuse', '/'.join([abuse_wid,config['org_domain']]))
 
-	config['abuse_wid'] = abuse_wid
+if config['forward_abuse'] == 'y':
+	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{abuse_wid}', 'abuse', "
+		f"'{config['org_domain']}', 'alias');")
+else:
+	abuse_regcode = make_diceware()
+	cur.execute(f"INSERT INTO prereg(wid, uid, domain, regcode) "
+		f"VALUES('{abuse_wid}', 'abuse', '{config['org_domain']}', '{abuse_regcode}');")
+	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{abuse_wid}', 'abuse', "
+		f"'{config['org_domain']}', 'individual');")
+
 	config['abuse_regcode'] = abuse_regcode
-	rootentry.set_field('Contact-Abuse', '/'.join([abuse_wid,config['org_domain']]))
+
 
 # preregister the support account if not aliased and put into the serverconfig
 
-if config['forward_support'] == 'y':
-	support_wid = str(uuid.uuid4())
-	support_regcode = make_diceware()
-	cur.execute(f"INSERT INTO prereg(wid, uid, regcode) "
-		f"VALUES('{support_wid}', 'support', '{support_regcode}');")
+support_wid = str(uuid.uuid4())
+config['support_wid'] = support_wid
+rootentry.set_field('Contact-Support', '/'.join([support_wid,config['org_domain']]))
 
-	config['support_wid'] = support_wid
+if config['forward_support'] == 'y':
+	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{support_wid}', "
+		f"'support', '{config['org_domain']}', 'alias');")
+else:
+	support_regcode = make_diceware()
+	cur.execute(f"INSERT INTO prereg(wid, uid, domain, regcode) "
+		f"VALUES('{support_wid}', 'support', '{config['org_domain']}', '{support_regcode}');")
+	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{support_wid}', "
+		f"'support', '{config['org_domain']}', 'individual');")
+
 	config['support_regcode'] = support_regcode
-	rootentry.set_field('Contact-Support', '/'.join([support_wid,config['org_domain']]))
 
 status = rootentry.is_data_compliant()
 if status.error():
@@ -518,7 +553,7 @@ conn.commit()
 if not os.path.exists(config['config_path']):
 	try:
 		os.mkdir(config['config_path'], 0o755)
-		print(f"Created server config folder f{config['config_path']}")
+		print(f"Created server config folder {config['config_path']}")
 	except Exception as e:
 		print(f"Error creating folder {config['config_path']}: {e}")
 		print("You will need to create this folder manually and restart this script.")
@@ -529,7 +564,7 @@ if not os.path.exists(config['config_path']):
 config_file_path = os.path.join(config['config_path'], 'serverconfig.toml')
 if os.path.exists(config_file_path):
 	backup_name = 'serverconfig.toml.' + time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())
-	print(f"Config file f{config_file_path} exists. Renaming to f{backup_name}.")
+	print(f"Config file {config_file_path} exists. Renaming to {backup_name}.")
 	try:
 		os.rename(config_file_path, os.path.join(config['config_path'], backup_name))
 	except Exception as e:
@@ -669,10 +704,10 @@ From here, please make sure you:
 print(f"Administrator workspace: {config['admin_wid']}/{config['org_domain']}")
 print(f"Administrator registration code: {config['admin_regcode']}\n")
 
-if config['forward_abuse'] == 'y':
+if config['forward_abuse'] != 'y':
 	print(f"Abuse workspace: {config['abuse_wid']}/{config['org_domain']}")
 	print(f"Abuse registration code: {config['abuse_regcode']}\n")
 
-if config['forward_support'] == 'y':
+if config['forward_support'] != 'y':
 	print(f"Support workspace: {config['support_wid']}/{config['org_domain']}")
 	print(f"Support registration code: {config['support_regcode']}\n")
