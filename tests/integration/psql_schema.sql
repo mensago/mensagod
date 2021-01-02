@@ -8,15 +8,13 @@ BEGIN
 END $$;
 
 -- Create new ones
-CREATE TABLE iwkspc_main(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL, 
-	uid VARCHAR(48), domain VARCHAR(253) NOT NULL, password VARCHAR(128) NOT NULL, 
-	status VARCHAR(16) NOT NULL, type VARCHAR(16) NOT NULL);
 
-CREATE TABLE iwkspc_folders(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL, 
-	enc_key VARCHAR(64) NOT NULL);
+-- Lookup table for all workspaces. When any workspace is created, its wid is added here. userid is
+-- optional. wtype can be 'individual', 'shared', or 'alias'
+CREATE TABLE workspaces(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
+	userid VARCHAR(64), domain VARCHAR(255) NOT NULL, wtype VARCHAR(32) NOT NULL);
 
-CREATE TABLE iwkspc_devices(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
-	devid CHAR(36) NOT NULL, devkey VARCHAR(1000) NOT NULL, status VARCHAR(16) NOT NULL);
+CREATE TABLE aliases(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, target CHAR(36) NOT NULL);
 
 CREATE TABLE failure_log(rowid SERIAL PRIMARY KEY, type VARCHAR(16) NOT NULL,
 	id VARCHAR(36), source VARCHAR(36) NOT NULL, count INTEGER,
@@ -32,3 +30,16 @@ CREATE TABLE keycards(rowid SERIAL PRIMARY KEY, owner VARCHAR(292) NOT NULL,
 CREATE TABLE orgkeys(rowid SERIAL PRIMARY KEY, creationtime TIMESTAMP NOT NULL, 
 	pubkey VARCHAR(7000), privkey VARCHAR(7000) NOT NULL, 
 	purpose VARCHAR(8) NOT NULL, fingerprint VARCHAR(96) NOT NULL);
+
+-- Information about individual workspaces
+
+CREATE TABLE iwkspc_main(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL, 
+	uid VARCHAR(48), domain VARCHAR(253) NOT NULL, password VARCHAR(128) NOT NULL, 
+	status VARCHAR(16) NOT NULL);
+
+CREATE TABLE iwkspc_folders(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL, 
+	enc_key VARCHAR(64) NOT NULL);
+
+CREATE TABLE iwkspc_devices(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
+	devid CHAR(36) NOT NULL, devkey VARCHAR(1000) NOT NULL, status VARCHAR(16) NOT NULL);
+
