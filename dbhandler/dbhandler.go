@@ -243,7 +243,6 @@ func ValidateUUID(uuid string) bool {
 // GetAnselusAddressType returns the type of address given to it. It returns 0 when there is an
 // error, 1 when given a valid workspace address, and 2 when given a valid Anselus address
 func GetAnselusAddressType(addr string) int {
-	// TODO: Implement
 
 	parts := strings.Split(addr, "/")
 	if len(parts) != 2 {
@@ -256,7 +255,7 @@ func GetAnselusAddressType(addr string) int {
 		return 0
 	}
 
-	// Is this a workspace addresses?
+	// Is this a workspace address?
 	if ValidateUUID(parts[0]) {
 		return 1
 	}
@@ -268,10 +267,77 @@ func GetAnselusAddressType(addr string) int {
 	return 2
 }
 
-// ResolveAddress returns the WID corresponding to an Anselus address
-func ResolveAddress(addr string) string {
-	// TODO: Implement
-	return ""
+// ResolveAddress returns the WID corresponding to an Anselus address.
+func ResolveAddress(addr string) (string, error) {
+	parts := strings.Split(addr, "/")
+	if len(parts) != 2 {
+		return "", errors.New("invalid address")
+	}
+
+	// Validate the domain portion of the address
+	pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
+	if !pattern.MatchString(parts[1]) {
+		return "", errors.New("invalid domain")
+	}
+
+	// Is this a workspace address?
+	isWid := ValidateUUID(parts[0])
+
+	pattern = regexp.MustCompile("[\\\"]|[[:space:]]")
+	if pattern.MatchString(parts[0]) {
+		return "", errors.New("invalid user id")
+	}
+
+	if isWid {
+		// If the address is a workspace address, then all we have to do is confirm that the
+		// workspace exists -- workspace IDs are unique across an organization, not just a domain
+		row := dbConn.QueryRow(`SELECT wtype FROM workspaces WHERE wid=$1`, parts[0])
+		var wtype string
+		err := row.Scan(&wtype)
+
+		if err != nil {
+			if err == sql.ErrNoRows {
+				// No entry in the table
+				return "", errors.New("workspace not found")
+			}
+			return "", err
+		}
+
+		if wtype == "alias" {
+			row := dbConn.QueryRow(`SELECT target FROM aliases WHERE wid=$1`, parts[0])
+			var targetAddr string
+			err := row.Scan(&targetAddr)
+			if err != nil {
+				return "", err
+			}
+
+			return targetAddr, nil
+		}
+		return addr, nil
+	}
+
+	row := dbConn.QueryRow(`SELECT wid,domain FROM workspaces WHERE uid=$1`, parts[0])
+	var wid, domain string
+
+	err := row.Scan(&wid)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// No entry in the table
+			return "", errors.New("workspace not found")
+		}
+		return "", err
+	}
+
+	err = row.Scan(&domain)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// No entry in the table
+			return "", errors.New("workspace not found")
+		}
+		return "", err
+	}
+
+	return strings.Join([]string{wid, domain}, "/"), nil
 }
 
 // GenerateRandomString creates a randomly-generated device session string.
