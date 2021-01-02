@@ -340,18 +340,6 @@ func ResolveAddress(addr string) (string, error) {
 	return strings.Join([]string{wid, domain}, "/"), nil
 }
 
-// GenerateRandomString creates a randomly-generated device session string.
-func GenerateRandomString(length int) string {
-
-	byteList := make([]byte, length)
-	_, err := rand.Read(byteList)
-	if err != nil {
-		panic(err)
-	}
-
-	return b85.Encode(byteList)
-}
-
 // CheckLockout corresponds to LogFailure() in that it checks to see if said
 // source has a lockout timestamp and returns it if there is or an empty string if not.
 // It also has the added benefit of resetting a counter to 0 if there is an expired
