@@ -49,7 +49,3 @@ func TestGetAnselusAddressType(t *testing.T) {
 			"invalid characters")
 	}
 }
-
-func TestResolveAddress(t *testing.T) {
-	// TODO: Implement
-}
