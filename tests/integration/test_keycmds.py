@@ -96,6 +96,15 @@ def test_addentry_usercard():
 	dbconn = setup_test()
 	config_data = config_server(dbconn)
 
+	# Add dummy user info to database
+	cur = dbconn.cursor()
+
+	cur.execute("INSERT INTO workspaces(wid,uid,domain,wtype) VALUES(%s,%s,%s,%s)",
+		('4418bf6c-000b-4bb3-8111-316e72030468', 'csimons', 'example.com', 'individual'))
+
+	cur.close()
+	dbconn.commit()
+
 	# Test setup is complete. Create a test keycard and do ADDENTRY
 
 	# 1) Client sends the `ADDENTRY` command, attaching the entry data between the
@@ -242,7 +251,7 @@ def test_addentry_usercard():
 	sock.send_message({
 		'Action' : "USERCARD",
 		'Data' : { 
-			'Owner' : 'csmith/example.com',
+			'Owner' : 'csimons/example.com',
 			'Start-Index' : '1'
 		}
 	})
