@@ -616,12 +616,11 @@ if config['db_password'] != 'anselus':
 	fhandle.write('password = "' + config['db_password'] + '"' + os.linesep)
 
 fhandle.write('''
-[network]
-# The interface and port to listen on
-# listen_ip = "127.0.0.1"
-# port = "2001"
-
 [global]
+# The domain for the organization.
+''' + 'domain = "' + config['org_domain'] + '"' + os.linesep)
+
+fhandle.write('''
 # The location where workspace data is stored. The default for Windows is 
 # "C:\\ProgramData\\anselus", but for other platforms is "/var/anselus".
 # workspace_dir = "/var/anselus"
@@ -659,6 +658,11 @@ if config['quota_size'] != '0':
 	fhandle.write('default_quota = ' + config['quota_size'] + os.linesep)
 
 fhandle.write('''
+[network]
+# The interface and port to listen on
+# listen_ip = "127.0.0.1"
+# port = "2001"
+
 [security]
 # The number of seconds to wait after a login failure before accepting another
 # attempt
