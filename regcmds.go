@@ -13,14 +13,14 @@ import (
 
 func commandPreregister(session *sessionState) {
 	// command syntax:
-	// PREREG(User-ID="")
+	// PREREG(User-ID="",Workspace-ID="",Domain="")
 
 	// Just do some basic syntax checks on the user ID
 	userID := ""
 	if session.Message.HasField("User-ID") {
 		userID = session.Message.Data["User-ID"]
 		if strings.ContainsAny(userID, "/\"") || dbhandler.ValidateUUID(userID) {
-			session.SendStringResponse(400, "BAD REQUEST")
+			session.SendStringResponse(400, "BAD REQUEST", "Bad User-ID")
 			return
 		}
 	}
@@ -37,7 +37,7 @@ func commandPreregister(session *sessionState) {
 	mIP6, _ := regexp.MatchString("(::1):[0-9]+", session.Connection.RemoteAddr().String())
 
 	if !mIP6 && (remoteIP4 == "" || remoteIP4 != "127.0.0.1") {
-		session.SendStringResponse(401, "UNAUTHORIZED")
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
@@ -52,11 +52,11 @@ func commandPreregister(session *sessionState) {
 		viper.GetInt("global.registration_wordcount"))
 	if err != nil {
 		if err.Error() == "uid exists" {
-			session.SendStringResponse(408, "RESOURCE EXISTS")
+			session.SendStringResponse(408, "RESOURCE EXISTS", "")
 			return
 		}
 		ServerLog.Printf("Internal server error. commandPreregister.PreregWorkspace. Error: %s\n", err)
-		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 
@@ -73,10 +73,12 @@ func commandRegCode(session *sessionState) {
 	// REGCODE(Workspace-ID, Reg-Code, Password-Hash, Device-ID, Device-KeyType, Device-Key)
 
 	if session.Message.Validate([]string{"Reg-Code", "Password-Hash", "Device-ID", "Device-KeyType",
-		"Device-Key"}) != nil ||
-		!dbhandler.ValidateUUID(session.Message.Data["Device-ID"]) {
-
-		session.SendStringResponse(400, "BAD REQUEST")
+		"Device-Key"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+	if !dbhandler.ValidateUUID(session.Message.Data["Device-ID"]) {
+		session.SendStringResponse(400, "BAD REQUEST", "Invalid Device-ID")
 		return
 	}
 
@@ -84,16 +86,16 @@ func commandRegCode(session *sessionState) {
 
 	if session.Message.HasField("User-ID") {
 		if strings.ContainsAny(session.Message.Data["User-ID"], "/\"") {
-			session.SendStringResponse(400, "BAD REQUEST")
+			session.SendStringResponse(400, "BAD REQUEST", "Invalid User-ID")
 			return
 		}
 	} else if session.Message.HasField("Workspace-ID") {
 		if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
-			session.SendStringResponse(400, "BAD REQUEST")
+			session.SendStringResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
 			return
 		}
 	} else {
-		session.SendStringResponse(400, "BAD REQUEST")
+		session.SendStringResponse(400, "BAD REQUEST", "")
 		return
 	}
 
@@ -118,13 +120,13 @@ func commandRegCode(session *sessionState) {
 	}
 
 	if session.Message.Data["Device-KeyType"] != "CURVE25519" {
-		session.SendStringResponse(309, "ENCRYPTION TYPE NOT SUPPORTED")
+		session.SendStringResponse(309, "ENCRYPTION TYPE NOT SUPPORTED", "Supported: CURVE25519")
 		return
 	}
 
 	_, err = b85.Decode(session.Message.Data["Device-Key"])
 	if err != nil {
-		session.SendStringResponse(400, "BAD REQUEST")
+		session.SendStringResponse(400, "BAD REQUEST", "Device-Key Base85 decoding error")
 		return
 	}
 
@@ -158,7 +160,7 @@ func commandRegCode(session *sessionState) {
 	err = dbhandler.AddWorkspace(wid, session.Message.Data["Password-Hash"], "active")
 	if err != nil {
 		ServerLog.Printf("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR")
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 	}
 
 	devid := uuid.New().String()
@@ -172,7 +174,7 @@ func commandRegCode(session *sessionState) {
 		session.SendResponse(response)
 	}
 
-	session.SendStringResponse(201, "REGISTERED")
+	session.SendStringResponse(201, "REGISTERED", "")
 }
 
 func commandRegister(session *sessionState) {
@@ -180,9 +182,12 @@ func commandRegister(session *sessionState) {
 	// REGISTER(Workspace-ID, Password-Hash, Device-KeyType, Device-Key)
 
 	if session.Message.Validate([]string{"Workspace-ID", "Password-Hash", "Device-KeyType",
-		"Device-Key"}) != nil ||
-		!dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
-		session.SendStringResponse(400, "BAD REQUEST")
+		"Device-Key"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+	if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
+		session.SendStringResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
 		return
 	}
 
@@ -201,14 +206,14 @@ func commandRegister(session *sessionState) {
 		mIP6, _ := regexp.MatchString("(::1):[0-9]+", session.Connection.RemoteAddr().String())
 
 		if !mIP6 && (remoteIP4 == "" || remoteIP4 != "127.0.0.1") {
-			session.SendStringResponse(304, "REGISTRATION CLOSED")
+			session.SendStringResponse(304, "REGISTRATION CLOSED", "")
 			return
 		}
 	}
 
 	success, _ := dbhandler.CheckWorkspace(session.Message.Data["Workspace-ID"])
 	if success {
-		session.SendStringResponse(408, "RESOURCE EXISTS")
+		session.SendStringResponse(408, "RESOURCE EXISTS", "")
 		return
 	}
 
@@ -218,7 +223,8 @@ func commandRegister(session *sessionState) {
 	switch regType {
 	case "network":
 		// TODO: Check that remote address is within permitted subnet
-		session.SendStringResponse(301, "NOT IMPLEMENTED")
+		session.SendStringResponse(301, "NOT IMPLEMENTED",
+			"Network registration mode not implemented. Sorry!")
 		return
 	case "moderated":
 		workspaceStatus = "pending"
@@ -227,7 +233,7 @@ func commandRegister(session *sessionState) {
 	}
 
 	if session.Message.Data["Device-KeyType"] != "CURVE25519" {
-		session.SendStringResponse(309, "ENCRYPTION TYPE NOT SUPPORTED")
+		session.SendStringResponse(309, "ENCRYPTION TYPE NOT SUPPORTED", "Supported: CURVE25519")
 		return
 	}
 
@@ -235,7 +241,7 @@ func commandRegister(session *sessionState) {
 	// make sure that the encoding is valid.
 	_, err := b85.Decode(session.Message.Data["Device-Key"])
 	if err != nil {
-		session.SendStringResponse(400, "BAD REQUEST")
+		session.SendStringResponse(400, "BAD REQUEST", "Device-Key Base85 decoding error")
 		return
 	}
 
@@ -243,7 +249,7 @@ func commandRegister(session *sessionState) {
 		session.Message.Data["Password-Hash"], workspaceStatus)
 	if err != nil {
 		ServerLog.Printf("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
-		session.WriteClient("300 INTERNAL SERVER ERROR\r\n")
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 	}
 
 	devid := uuid.New().String()
@@ -251,11 +257,11 @@ func commandRegister(session *sessionState) {
 		session.Message.Data["Device-Key"], "active")
 	if err != nil {
 		ServerLog.Printf("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR")
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 	}
 
 	if regType == "moderated" {
-		session.SendStringResponse(101, "PENDING")
+		session.SendStringResponse(101, "PENDING", "")
 	} else {
 		var response ServerResponse
 		response.Code = 201
@@ -267,5 +273,5 @@ func commandRegister(session *sessionState) {
 
 func commandUnrecognized(session *sessionState) {
 	// command used when not recognized
-	session.SendStringResponse(400, "BAD REQUEST")
+	session.SendStringResponse(400, "BAD REQUEST", "Unrecognized command")
 }

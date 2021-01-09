@@ -135,9 +135,10 @@ func (s sessionState) SendResponse(msg ServerResponse) (err error) {
 	return nil
 }
 
-// SendStringResponse sends a response with no data attached -- just syntactic sugar
-func (s sessionState) SendStringResponse(code int, status string) (err error) {
-	return s.SendResponse(ServerResponse{code, status, map[string]string{}})
+// SendStringResponse is a syntactic sugar command for quickly sending error responses. The Info
+// field can contain additional information related to the return code
+func (s sessionState) SendStringResponse(code int, status string, info string) (err error) {
+	return s.SendResponse(ServerResponse{code, status, map[string]string{"Info": info}})
 }
 
 func (s *sessionState) ReadClient() (string, error) {
@@ -474,12 +475,12 @@ func commandExists(session *sessionState) {
 	// EXISTS(Path)
 
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED")
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
 	if !session.Message.HasField("Path") {
-		session.SendStringResponse(400, "BAD REQUEST")
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
@@ -488,11 +489,11 @@ func commandExists(session *sessionState) {
 	_, err := os.Stat(fsPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			session.SendStringResponse(404, "NOT FOUND")
+			session.SendStringResponse(404, "NOT FOUND", "")
 		} else {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR")
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 		}
 	} else {
-		session.SendStringResponse(200, "OK")
+		session.SendStringResponse(200, "OK", "")
 	}
 }

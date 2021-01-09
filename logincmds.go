@@ -20,14 +20,14 @@ func commandDevice(session *sessionState) {
 	session.Message.Validate([]string{"Device-ID", "Device-Key"})
 	if !dbhandler.ValidateUUID(session.Message.Data["Device-ID"]) ||
 		session.LoginState != loginAwaitingSessionID {
-		session.SendStringResponse(400, "BAD REQUEST")
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
 	success, err := dbhandler.CheckDevice(session.WID, session.Message.Data["Device-ID"],
 		session.Message.Data["Device-Key"])
 	if err != nil {
-		session.SendStringResponse(400, "BAD REQUEST")
+		session.SendStringResponse(400, "BAD REQUEST", "Bad Device-ID or Device-Key")
 		return
 	}
 
@@ -46,7 +46,7 @@ func commandDevice(session *sessionState) {
 				session.Message.Data["Device-Key"], "active")
 
 			session.LoginState = loginClientSession
-			session.SendStringResponse(200, "OK")
+			session.SendStringResponse(200, "OK", "")
 			return
 		}
 	} else {
@@ -56,10 +56,10 @@ func commandDevice(session *sessionState) {
 		success, err = challengeDevice(session, "CURVE25519", session.Message.Data["Device-Key"])
 		if success {
 			session.LoginState = loginClientSession
-			session.SendStringResponse(200, "OK")
+			session.SendStringResponse(200, "OK", "")
 		} else {
 			dbhandler.LogFailure("device", session.WID, session.Connection.RemoteAddr().String())
-			session.SendStringResponse(401, "UNAUTHORIZED")
+			session.SendStringResponse(401, "UNAUTHORIZED", "")
 		}
 	}
 }
@@ -69,12 +69,23 @@ func commandLogin(session *sessionState) {
 	// LOGIN(Login-Type,Workspace-ID)
 
 	// PLAIN authentication is currently the only supported type
-	if session.Message.Validate([]string{"Login-Type", "Workspace-ID"}) != nil ||
-		session.Message.Data["Login-Type"] != "PLAIN" ||
-		!dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) ||
-		session.LoginState != loginNoSession {
+	if session.Message.Validate([]string{"Login-Type", "Workspace-ID"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
 
-		session.SendStringResponse(400, "BAD REQUEST")
+	if session.Message.Data["Login-Type"] != "PLAIN" {
+		session.SendStringResponse(400, "BAD REQUEST", "Invalid login type")
+		return
+	}
+
+	if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
+		session.SendStringResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
+		return
+	}
+
+	if session.LoginState != loginNoSession {
+		session.SendStringResponse(400, "BAD REQUEST", "Session state mismatch")
 		return
 	}
 
@@ -124,7 +135,7 @@ func commandLogin(session *sessionState) {
 			session.SendResponse(response)
 			session.IsTerminating = true
 		} else {
-			session.SendStringResponse(404, "NOT FOUND")
+			session.SendStringResponse(404, "NOT FOUND", "")
 		}
 		return
 	}
@@ -139,16 +150,16 @@ func commandLogin(session *sessionState) {
 	case "active", "approved":
 		session.LoginState = loginAwaitingPassword
 		session.WID = wid
-		session.SendStringResponse(100, "CONTINUE")
+		session.SendStringResponse(100, "CONTINUE", "")
 	default:
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR")
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 	}
 }
 
 func commandLogout(session *sessionState) {
 	// command syntax:
 	// LOGOUT
-	session.SendStringResponse(200, "OK")
+	session.SendStringResponse(200, "OK", "")
 	session.IsTerminating = true
 }
 
@@ -158,8 +169,13 @@ func commandPassword(session *sessionState) {
 
 	// This command takes a numeric hash of the user's password and compares it to what is submitted
 	// by the user.
-	if !session.Message.HasField("Password-Hash") || session.LoginState != loginAwaitingPassword {
-		session.SendStringResponse(400, "BAD REQUEST")
+	if !session.Message.HasField("Password-Hash") {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	if session.LoginState != loginAwaitingPassword {
+		session.SendStringResponse(400, "BAD REQUEST", "Sessino state mismatch")
 		return
 	}
 
@@ -167,7 +183,7 @@ func commandPassword(session *sessionState) {
 	if err == nil {
 		if match {
 			session.LoginState = loginAwaitingSessionID
-			session.SendStringResponse(100, "CONTINUE")
+			session.SendStringResponse(100, "CONTINUE", "")
 			return
 		}
 
@@ -191,7 +207,7 @@ func commandPassword(session *sessionState) {
 			session.SendResponse(response)
 			session.IsTerminating = true
 		} else {
-			session.SendStringResponse(402, "AUTHENTICATION FAILURE")
+			session.SendStringResponse(402, "AUTHENTICATION FAILURE", "")
 
 			var d time.Duration
 			delayString := viper.GetString("security.failure_delay_sec") + "s"
@@ -204,7 +220,7 @@ func commandPassword(session *sessionState) {
 			time.Sleep(d)
 		}
 	} else {
-		session.SendStringResponse(400, "BAD REQUEST")
+		session.SendStringResponse(400, "BAD REQUEST", "Password check error")
 	}
 }
 
@@ -259,11 +275,16 @@ func challengeDevice(session *sessionState, keytype string, devkey string) (bool
 	if err != nil {
 		return false, err
 	}
-	if request.Action != "DEVICE" ||
-		request.Validate([]string{"Device-ID", "Device-Key", "Response"}) != nil ||
-		request.Data["Device-Key"] != devkey {
-
-		session.SendStringResponse(400, "BAD REQUEST")
+	if request.Action != "DEVICE" {
+		session.SendStringResponse(400, "BAD REQUEST", "Session state mismatch")
+		return false, nil
+	}
+	if request.Validate([]string{"Device-ID", "Device-Key", "Response"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return false, nil
+	}
+	if request.Data["Device-Key"] != devkey {
+		session.SendStringResponse(400, "BAD REQUEST", "Device key mismatch")
 		return false, nil
 	}
 

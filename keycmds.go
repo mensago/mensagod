@@ -13,7 +13,7 @@ import (
 
 func commandAddEntry(session *sessionState) {
 	// Command syntax:
-	// ADDENTRY
+	// ADDENTRY(Base-Entry)
 
 	// 1) Client sends the `ADDENTRY` command, attaching the entry data.
 	// 2) The server then checks compliance of the entry data. Assuming that it complies, the server
@@ -38,9 +38,13 @@ func commandAddEntry(session *sessionState) {
 	// The User-Signature field can only be part of the message once the AddEntry command has
 	// started and the org signature and hashes have been added. If present, it constitutes an
 	// out-of-order request
-	if session.Message.Validate([]string{"Base-Entry"}) != nil ||
-		session.Message.HasField("User-Signature") {
-		session.SendStringResponse(400, "BAD REQUEST")
+	if session.Message.Validate([]string{"Base-Entry"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing Base-Entry field")
+		return
+	}
+
+	if session.Message.HasField("User-Signature") {
+		session.SendStringResponse(400, "BAD REQUEST", "Received out-of-order User-Signature field")
 		return
 	}
 
@@ -49,11 +53,11 @@ func commandAddEntry(session *sessionState) {
 	var entry *keycard.Entry
 	entry, err := keycard.NewEntryFromData(session.Message.Data["Base-Entry"])
 	if err != nil {
-		session.SendStringResponse(411, "BAD KEYCARD DATA")
+		session.SendStringResponse(411, "BAD KEYCARD DATA", "")
 		return
 	}
 	if !entry.IsDataCompliant() {
-		session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA")
+		session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA", "")
 		return
 	}
 
@@ -62,11 +66,11 @@ func commandAddEntry(session *sessionState) {
 	var isExpired bool
 	isExpired, err = entry.IsExpired()
 	if err != nil {
-		session.SendStringResponse(411, "BAD KEYCARD DATA")
+		session.SendStringResponse(411, "BAD KEYCARD DATA", err.Error())
 		return
 	}
 	if isExpired {
-		session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA")
+		session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA", "Keycard entry is expired")
 		return
 	}
 
@@ -76,7 +80,8 @@ func commandAddEntry(session *sessionState) {
 		// If there are previous entries for the workspace, the chain of trust must be validated.
 		prevEntry, err := keycard.NewEntryFromData(tempStr[0])
 		if err != nil {
-			session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
+			session.SendStringResponse(300, "INTERNAL SERVER ERRROR",
+				"Failure to create entry from data")
 			ServerLog.Println(fmt.Sprintf("ERROR AddEntry: previous keycard entry invalid for "+
 				"workspace %s", entry.Fields["Workspace-ID"]))
 			fmt.Println(fmt.Sprintf("ERROR AddEntry: previous keycard entry invalid for "+
@@ -86,7 +91,8 @@ func commandAddEntry(session *sessionState) {
 
 		isOK, err := entry.VerifyChain(prevEntry)
 		if !isOK || err != nil {
-			session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA")
+			session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA",
+				"Entry failed to chain verify")
 			return
 		}
 	}
@@ -96,7 +102,7 @@ func commandAddEntry(session *sessionState) {
 
 	pskstring, err := dbhandler.GetPrimarySigningKey()
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
+		session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
 		ServerLog.Println("ERROR AddEntry: missing primary signing key in database.")
 		fmt.Println("ERROR AddEntry: missing primary signing key in database.")
 		return
@@ -105,7 +111,7 @@ func commandAddEntry(session *sessionState) {
 	var psk cryptostring.CryptoString
 	err = psk.Set(pskstring)
 	if err != nil || psk.RawData() == nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
+		session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
 		ServerLog.Println("ERROR AddEntry: corrupted primary signing key in database.")
 		fmt.Println("ERROR AddEntry: corrupted primary signing key in database.")
 		return
@@ -117,7 +123,7 @@ func commandAddEntry(session *sessionState) {
 	pskBytes := ed25519.NewKeyFromSeed(psk.RawData())
 	rawSignature := ed25519.Sign(pskBytes, entry.MakeByteString(-1))
 	if rawSignature == nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
+		session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
 		ServerLog.Println("ERROR AddEntry: failed to org sign entry.")
 		fmt.Println("ERROR AddEntry: failed to org sign entry.")
 		return
@@ -127,7 +133,7 @@ func commandAddEntry(session *sessionState) {
 
 	rawLastEntry, err := dbhandler.GetLastEntry()
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
+		session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
 		ServerLog.Println("ERROR AddEntry: failed to obtain last entry.")
 		fmt.Println("ERROR AddEntry: failed to obtain last entry.")
 		return
@@ -135,7 +141,7 @@ func commandAddEntry(session *sessionState) {
 
 	lastEntry, err := keycard.NewEntryFromData(rawLastEntry)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
+		session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
 		ServerLog.Println("ERROR AddEntry: failed to create entry from last entry data.")
 		fmt.Println("ERROR AddEntry: failed to create entry from last entry data.")
 		return
@@ -144,7 +150,7 @@ func commandAddEntry(session *sessionState) {
 
 	err = entry.GenerateHash("BLAKE2B-256")
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
+		session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
 		ServerLog.Println("ERROR AddEntry: failed to hash entry.")
 		fmt.Println("ERROR AddEntry: failed to hash entry.")
 	}
@@ -164,33 +170,33 @@ func commandAddEntry(session *sessionState) {
 	}
 	if request.Action != "ADDENTRY" ||
 		request.Validate([]string{"User-Signature"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST")
+		session.SendStringResponse(400, "BAD REQUEST", "Missing User-Signature field")
 		return
 	}
 
 	entry.Signatures["User"] = request.Data["User-Signature"]
 	if !entry.IsCompliant() {
-		session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA")
+		session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA", "")
 		return
 	}
 
 	var crkey cryptostring.CryptoString
 	err = crkey.Set(entry.Fields["Contact-Request-Verification-Key"])
 	if err != nil {
-		session.SendStringResponse(413, "INVALID SIGNATURE")
+		session.SendStringResponse(413, "INVALID SIGNATURE", "Bad Contact-Request-Verification-Key")
 		return
 	}
 	verified, err := entry.VerifySignature(crkey, "User")
 	if err != nil || !verified {
-		session.SendStringResponse(413, "INVALID SIGNATURE")
+		session.SendStringResponse(413, "INVALID SIGNATURE", "User-Signature failed to verify")
 		return
 	}
 
 	err = dbhandler.AddEntry(entry)
 	if err == nil {
-		session.SendStringResponse(200, "OK")
+		session.SendStringResponse(200, "OK", "")
 	} else {
-		session.SendStringResponse(300, "INTERNAL SERVER ERRROR")
+		session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
 		ServerLog.Println("ERROR AddEntry: failed to add entry.")
 		fmt.Println("ERROR AddEntry: failed to add entry.")
 	}
@@ -201,7 +207,7 @@ func commandOrgCard(session *sessionState) {
 	// ORGCARD(Start-Index, End-Index=0)
 
 	if !session.Message.HasField("Start-Index") {
-		session.SendStringResponse(400, "BAD REQUEST")
+		session.SendStringResponse(400, "BAD REQUEST", "Missing Start-Index")
 		return
 	}
 
@@ -209,14 +215,14 @@ func commandOrgCard(session *sessionState) {
 	var err error
 	startIndex, err = strconv.Atoi(session.Message.Data["Start-Index"])
 	if err != nil {
-		session.SendStringResponse(400, "BAD REQUEST")
+		session.SendStringResponse(400, "BAD REQUEST", "Bad Start-Index")
 		return
 	}
 
 	if session.Message.HasField("End-Index") {
 		endIndex, err = strconv.Atoi(session.Message.Data["End-Index"])
 		if err != nil {
-			session.SendStringResponse(400, "BAD REQUEST")
+			session.SendStringResponse(400, "BAD REQUEST", "Bad End-Index")
 			return
 		}
 	}
@@ -228,7 +234,8 @@ func commandOrgCard(session *sessionState) {
 		transmissionSize := uint64(0)
 		for _, entry := range entries {
 			// 56 is the size of the header and footer and accompanying line terminators
-			transmissionSize += uint64(len(entry) + len("----- BEGIN ORG ENTRY -----\r\n") + len("----- END ORG ENTRY -----\r\n"))
+			transmissionSize += uint64(len(entry) + len("----- BEGIN ORG ENTRY -----\r\n") +
+				len("----- END ORG ENTRY -----\r\n"))
 		}
 
 		response.Code = 104
@@ -242,7 +249,7 @@ func commandOrgCard(session *sessionState) {
 
 		request, err := session.GetRequest()
 		if err != nil || request.Action != "TRANSFER" {
-			session.SendStringResponse(400, "BAD REQUEST")
+			session.SendStringResponse(400, "BAD REQUEST", "")
 			return
 		}
 
@@ -256,7 +263,7 @@ func commandOrgCard(session *sessionState) {
 			totalBytes += bytesWritten
 		}
 	} else {
-		session.SendStringResponse(404, "NOT FOUND")
+		session.SendStringResponse(404, "NOT FOUND", "")
 	}
 }
 
@@ -265,32 +272,32 @@ func commandUserCard(session *sessionState) {
 	// USERCARD(Owner, Start-Index, End-Index=0)
 
 	if session.Message.Validate([]string{"Owner", "Start-Index"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST")
+		session.SendStringResponse(400, "BAD REQUEST", "Missing Start-Index")
 		return
 	}
 
 	if dbhandler.GetAnselusAddressType(session.Message.Data["Owner"]) == 0 {
-		session.SendStringResponse(400, "BAD REQUEST")
+		session.SendStringResponse(400, "BAD REQUEST", "Missing Owner")
 		return
 	}
 
 	wid, err := dbhandler.ResolveAddress(session.Message.Data["Owner"])
 	if wid == "" {
-		session.SendStringResponse(404, "NOT FOUND")
+		session.SendStringResponse(404, "NOT FOUND", "")
 		return
 	}
 
 	var startIndex, endIndex int
 	startIndex, err = strconv.Atoi(session.Message.Data["Start-Index"])
 	if err != nil {
-		session.SendStringResponse(400, "BAD REQUEST")
+		session.SendStringResponse(400, "BAD REQUEST", "Bad Start-Index")
 		return
 	}
 
 	if session.Message.HasField("End-Index") {
 		endIndex, err = strconv.Atoi(session.Message.Data["End-Index"])
 		if err != nil {
-			session.SendStringResponse(400, "BAD REQUEST")
+			session.SendStringResponse(400, "BAD REQUEST", "Bad End-Index")
 			return
 		}
 	}
@@ -302,7 +309,8 @@ func commandUserCard(session *sessionState) {
 		transmissionSize := uint64(0)
 		for _, entry := range entries {
 			// 56 is the size of the header and footer and accompanying line terminators
-			transmissionSize += uint64(len(entry) + len("----- BEGIN USER ENTRY -----\r\n") + len("----- END USER ENTRY -----\r\n"))
+			transmissionSize += uint64(len(entry) + len("----- BEGIN USER ENTRY -----\r\n") +
+				len("----- END USER ENTRY -----\r\n"))
 		}
 
 		response.Code = 104
@@ -316,7 +324,7 @@ func commandUserCard(session *sessionState) {
 
 		request, err := session.GetRequest()
 		if err != nil || request.Action != "TRANSFER" {
-			session.SendStringResponse(400, "BAD REQUEST")
+			session.SendStringResponse(400, "BAD REQUEST", "")
 			return
 		}
 
@@ -330,6 +338,6 @@ func commandUserCard(session *sessionState) {
 			totalBytes += bytesWritten
 		}
 	} else {
-		session.SendStringResponse(404, "NOT FOUND")
+		session.SendStringResponse(404, "NOT FOUND", "")
 	}
 }
