@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/anselusd/dbhandler"
 	"github.com/darkwyrm/b85"
 	"github.com/spf13/viper"
@@ -24,8 +25,14 @@ func commandDevice(session *sessionState) {
 		return
 	}
 
+	var devkey cryptostring.CryptoString
+	if devkey.Set(session.Message.Data["Device-Key"]) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Bad Device-Key")
+		return
+	}
+
 	success, err := dbhandler.CheckDevice(session.WID, session.Message.Data["Device-ID"],
-		session.Message.Data["Device-Key"])
+		devkey.AsString())
 	if err != nil {
 		session.SendStringResponse(400, "BAD REQUEST", "Bad Device-ID or Device-Key")
 		return
@@ -42,8 +49,7 @@ func commandDevice(session *sessionState) {
 			// 6) Upon receipt of denial, log the failure and apply a lockout to the IP
 		} else {
 			// TODO: Check for paranoid mode and reject if enabled
-			dbhandler.AddDevice(session.WID, session.Message.Data["Device-ID"], "CURVE25519",
-				session.Message.Data["Device-Key"], "active")
+			dbhandler.AddDevice(session.WID, session.Message.Data["Device-ID"], devkey, "active")
 
 			session.LoginState = loginClientSession
 			session.SendStringResponse(200, "OK", "")

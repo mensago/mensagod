@@ -19,6 +19,7 @@ import (
 
 	"database/sql"
 
+	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/anselusd/keycard"
 	"github.com/darkwyrm/b85"
 	"github.com/everlastingbeta/diceware"
@@ -426,11 +427,11 @@ func SetWorkspaceStatus(wid string, status string) error {
 // AddDevice is used for adding a device to a workspace. It generates a new session string for the
 // device, adds it to the device table, sets the device status, and returns the session string for
 // the new device.
-func AddDevice(wid string, devid string, keytype string, devkey string, status string) error {
+func AddDevice(wid string, devid string, devkey cryptostring.CryptoString, status string) error {
 	var err error
-	sqlStatement := `INSERT INTO iwkspc_devices(wid, devid, keytype, devkey, status) ` +
-		`VALUES($1, $2, $3, $4, $5)`
-	_, err = dbConn.Exec(sqlStatement, wid, devid, keytype, devkey, status)
+	sqlStatement := `INSERT INTO iwkspc_devices(wid, devid, devkey, status) ` +
+		`VALUES($1, $2, $3, $4)`
+	_, err = dbConn.Exec(sqlStatement, wid, devid, devkey.AsString(), status)
 	if err != nil {
 		return err
 	}
@@ -502,12 +503,13 @@ func UpdateDevice(wid string, devid string, sessionString string) (bool, string,
 // the workspace in the filesystem. Note that this function is strictly for adding workspaces for
 // individuals. Shared workspaces are not yet supported/implemented. Status may be 'active',
 // 'pending', or 'disabled'.
-func AddWorkspace(wid string, password string, status string) error {
+func AddWorkspace(wid string, domain string, password string, status string) error {
 	passString := hashPassword(password)
 
 	var err error
-	_, err = dbConn.Exec(`INSERT INTO iwkspc_main(wid, password, status) VALUES($1, $2, $3)`,
-		wid, passString, status)
+	_, err = dbConn.Exec(`INSERT INTO iwkspc_main(wid, domain, password, status) `+
+		`VALUES($1, $2, $3, $4)`,
+		wid, domain, passString, status)
 	return err
 }
 

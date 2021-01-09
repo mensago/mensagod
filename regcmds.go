@@ -4,8 +4,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/anselusd/dbhandler"
-	"github.com/darkwyrm/b85"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
@@ -106,8 +106,8 @@ func commandPreregister(session *sessionState) {
 
 func commandRegCode(session *sessionState) {
 	// command syntax:
-	// REGCODE(User-ID, Reg-Code, Password-Hash, Device-ID, Device-KeyType, Device-Key)
-	// REGCODE(Workspace-ID, Reg-Code, Password-Hash, Device-ID, Device-KeyType, Device-Key)
+	// REGCODE(User-ID, Reg-Code, Password-Hash, Device-ID, Device-Key, Domain="")
+	// REGCODE(Workspace-ID, Reg-Code, Password-Hash, Device-ID, Device-Key, Domain="")
 
 	if session.Message.Validate([]string{"Reg-Code", "Password-Hash", "Device-ID", "Device-KeyType",
 		"Device-Key"}) != nil {
@@ -136,6 +136,19 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
+	domain := ""
+	if session.Message.HasField("Domain") {
+		domain = session.Message.Data["Domain"]
+		pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
+		if !pattern.MatchString(domain) {
+			session.SendStringResponse(400, "BAD REQUEST", "Bad Domain")
+			return
+		}
+	}
+	if domain == "" {
+		domain = viper.GetString("global.domain")
+	}
+
 	// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
 	// At this point, the connection should be terminated. However, an empty lockTime
 	// means that although there has been a failure, the count for this IP address is
@@ -156,14 +169,14 @@ func commandRegCode(session *sessionState) {
 		session.IsTerminating = true
 	}
 
-	if session.Message.Data["Device-KeyType"] != "CURVE25519" {
-		session.SendStringResponse(309, "ENCRYPTION TYPE NOT SUPPORTED", "Supported: CURVE25519")
+	var devkey cryptostring.CryptoString
+	if devkey.Set(session.Message.Data["Device-Key"]) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Bad Device-Key")
 		return
 	}
 
-	_, err = b85.Decode(session.Message.Data["Device-Key"])
-	if err != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Device-Key Base85 decoding error")
+	if devkey.Prefix != "CURVE25519" {
+		session.SendStringResponse(309, "ENCRYPTION TYPE NOT SUPPORTED", "Supported: CURVE25519")
 		return
 	}
 
@@ -194,15 +207,14 @@ func commandRegCode(session *sessionState) {
 		}
 	}
 
-	err = dbhandler.AddWorkspace(wid, session.Message.Data["Password-Hash"], "active")
+	err = dbhandler.AddWorkspace(wid, domain, session.Message.Data["Password-Hash"], "active")
 	if err != nil {
 		ServerLog.Printf("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 	}
 
 	devid := uuid.New().String()
-	err = dbhandler.AddDevice(wid, devid, "CURVE25519", session.Message.Data["Device-Key"],
-		"active")
+	err = dbhandler.AddDevice(wid, devid, devkey, "active")
 	if err != nil {
 		var response ServerResponse
 		response.Code = 300
@@ -216,9 +228,9 @@ func commandRegCode(session *sessionState) {
 
 func commandRegister(session *sessionState) {
 	// command syntax:
-	// REGISTER(Workspace-ID, Password-Hash, Device-KeyType, Device-Key)
+	// REGISTER(Workspace-ID, Password-Hash, Device-ID, Device-Key)
 
-	if session.Message.Validate([]string{"Workspace-ID", "Password-Hash", "Device-KeyType",
+	if session.Message.Validate([]string{"Workspace-ID", "Password-Hash", "Device-ID",
 		"Device-Key"}) != nil {
 		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
 		return
@@ -269,29 +281,26 @@ func commandRegister(session *sessionState) {
 		workspaceStatus = "active"
 	}
 
-	if session.Message.Data["Device-KeyType"] != "CURVE25519" {
+	var devkey cryptostring.CryptoString
+	if devkey.Set(session.Message.Data["Device-Key"]) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Bad Device-Key")
+		return
+	}
+
+	if devkey.Prefix != "CURVE25519" {
 		session.SendStringResponse(309, "ENCRYPTION TYPE NOT SUPPORTED", "Supported: CURVE25519")
 		return
 	}
 
-	// An encryption key can be basically anything for validation purposes, but we can at least
-	// make sure that the encoding is valid.
-	_, err := b85.Decode(session.Message.Data["Device-Key"])
-	if err != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Device-Key Base85 decoding error")
-		return
-	}
-
-	err = dbhandler.AddWorkspace(session.Message.Data["Workspace-ID"],
-		session.Message.Data["Password-Hash"], workspaceStatus)
+	err := dbhandler.AddWorkspace(session.Message.Data["Workspace-ID"],
+		viper.GetString("global.domain"), session.Message.Data["Password-Hash"], workspaceStatus)
 	if err != nil {
 		ServerLog.Printf("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 	}
 
 	devid := uuid.New().String()
-	err = dbhandler.AddDevice(session.Message.Data["Workspace-ID"], devid, "CURVE25519",
-		session.Message.Data["Device-Key"], "active")
+	err = dbhandler.AddDevice(session.Message.Data["Workspace-ID"], devid, devkey, "active")
 	if err != nil {
 		ServerLog.Printf("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
@@ -300,11 +309,9 @@ func commandRegister(session *sessionState) {
 	if regType == "moderated" {
 		session.SendStringResponse(101, "PENDING", "")
 	} else {
-		var response ServerResponse
-		response.Code = 201
-		response.Status = "REGISTERED"
+		response := NewServerResponse(201, "REGISTERED")
 		response.Data["Device-ID"] = devid
-		session.SendResponse(response)
+		session.SendResponse(*response)
 	}
 }
 
