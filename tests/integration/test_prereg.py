@@ -22,7 +22,7 @@ def test_prereg():
 	'''Tests the server's PREREG command with failure conditions'''
 
 	dbconn = setup_test()
-	server_config = config_server(dbconn)
+	config_server(dbconn)
 
 	uid = 'TestUserID'
 	wid = '11111111-1111-1111-1111-111111111111'
