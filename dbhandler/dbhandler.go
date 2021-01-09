@@ -571,7 +571,9 @@ func CheckWorkspace(wid string) (bool, string) {
 // a randomly-generated registration code needed to authenticate the first login. Registration
 // codes are stored in the clear, but that's merely because if an attacker already has access to
 // the server to see the codes, the attacker can easily create new workspaces.
-func PreregWorkspace(wid string, uid string, wordList *diceware.Wordlist, wordcount int) (string, error) {
+func PreregWorkspace(wid string, uid string, domain string, wordList *diceware.Wordlist,
+	wordcount int) (string, error) {
+
 	if len(wid) > 36 || len(uid) > 128 {
 		return "", errors.New("Bad parameter length")
 	}
@@ -598,8 +600,8 @@ func PreregWorkspace(wid string, uid string, wordList *diceware.Wordlist, wordco
 
 	regcode, err := diceware.RollWords(wordcount, "-", *wordList)
 
-	_, err = dbConn.Exec(`INSERT INTO prereg(wid, uid, regcode) VALUES($1, $2, $3)`,
-		wid, uid, regcode)
+	_, err = dbConn.Exec(`INSERT INTO prereg(wid, uid, domain, regcode) VALUES($1, $2, $3, $4)`,
+		wid, uid, domain, regcode)
 
 	return regcode, err
 }

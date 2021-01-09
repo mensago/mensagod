@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -277,12 +278,20 @@ func setupConfig() *os.File {
 		os.Exit(1)
 	}
 
+	pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
+	if viper.GetString("global.domain") == "" ||
+		!pattern.MatchString(viper.GetString("global.domain")) {
+		ServerLog.Println("Missing or invalid domain in config file. Exiting.")
+		fmt.Printf("Missing or invalid domain in config file. Exiting.\n")
+		os.Exit(1)
+	}
+
 	switch viper.GetString("global.registration") {
 	case "private", "public", "network", "moderated":
 		// Do nothing. Legitimate values.
 	default:
 		ServerLog.Println("Invalid registration mode in config file. Exiting.")
-		fmt.Printf("Invalid registration mode '%s'in config file. Exiting.\n",
+		fmt.Printf("Invalid registration mode '%s' in config file. Exiting.\n",
 			viper.GetString("global.registration"))
 		os.Exit(1)
 	}

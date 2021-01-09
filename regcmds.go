@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -16,13 +15,40 @@ func commandPreregister(session *sessionState) {
 	// PREREG(User-ID="",Workspace-ID="",Domain="")
 
 	// Just do some basic syntax checks on the user ID
-	userID := ""
+	uid := ""
 	if session.Message.HasField("User-ID") {
-		userID = session.Message.Data["User-ID"]
-		if strings.ContainsAny(userID, "/\"") || dbhandler.ValidateUUID(userID) {
+		uid = session.Message.Data["User-ID"]
+		if strings.ContainsAny(uid, "/\"") {
 			session.SendStringResponse(400, "BAD REQUEST", "Bad User-ID")
 			return
 		}
+	}
+
+	// If the client submits a workspace ID as the user ID, it is considered a request for that
+	// specific workspace ID and the user ID is considered blank.
+	wid := ""
+	if dbhandler.ValidateUUID(uid) {
+		wid = uid
+		uid = ""
+	} else if session.Message.HasField("Workspace-ID") {
+		wid = session.Message.Data["Workspace-ID"]
+		if !dbhandler.ValidateUUID(wid) {
+			session.SendStringResponse(400, "BAD REQUEST", "Bad Workspace-ID")
+			return
+		}
+	}
+
+	domain := ""
+	if session.Message.HasField("Domain") {
+		domain = session.Message.Data["Domain"]
+		pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
+		if !pattern.MatchString(domain) {
+			session.SendStringResponse(400, "BAD REQUEST", "Bad Domain")
+			return
+		}
+	}
+	if domain == "" {
+		domain = viper.GetString("global.domain")
 	}
 
 	ipv4Pat := regexp.MustCompile("([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}):[0-9]+")
@@ -41,14 +67,22 @@ func commandPreregister(session *sessionState) {
 		return
 	}
 
-	haswid := true
-	var wid string
-	for haswid {
-		wid = uuid.New().String()
+	var haswid bool
+	if wid != "" {
 		haswid, _ = dbhandler.CheckWorkspace(wid)
+		if haswid {
+			session.SendStringResponse(408, "RESOURCE EXISTS", "")
+			return
+		}
+	} else {
+		haswid = true
+		for haswid {
+			wid = uuid.New().String()
+			haswid, _ = dbhandler.CheckWorkspace(wid)
+		}
 	}
 
-	regcode, err := dbhandler.PreregWorkspace(wid, userID, &gRegWordList,
+	regcode, err := dbhandler.PreregWorkspace(wid, uid, domain, &gRegWordList,
 		viper.GetInt("global.registration_wordcount"))
 	if err != nil {
 		if err.Error() == "uid exists" {
@@ -60,11 +94,14 @@ func commandPreregister(session *sessionState) {
 		return
 	}
 
-	if userID != "" {
-		session.WriteClient(fmt.Sprintf("200 OK %s %s %s\r\n", wid, regcode, userID))
-	} else {
-		session.WriteClient(fmt.Sprintf("200 OK %s %s\r\n", wid, regcode))
+	response := NewServerResponse(200, "OK")
+	if uid != "" {
+		response.Data["User-ID"] = uid
 	}
+	response.Data["Workspace-ID"] = wid
+	response.Data["Domain"] = domain
+	response.Data["Reg-Code"] = regcode
+	session.SendResponse(*response)
 }
 
 func commandRegCode(session *sessionState) {
