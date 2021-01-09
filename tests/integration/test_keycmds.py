@@ -96,6 +96,15 @@ def test_addentry_usercard():
 	dbconn = setup_test()
 	config_data = config_server(dbconn)
 
+	# Add dummy user info to database
+	cur = dbconn.cursor()
+
+	cur.execute("INSERT INTO workspaces(wid,uid,domain,wtype) VALUES(%s,%s,%s,%s)",
+		('4418bf6c-000b-4bb3-8111-316e72030468', 'csimons', 'example.com', 'individual'))
+
+	cur.close()
+	dbconn.commit()
+
 	# Test setup is complete. Create a test keycard and do ADDENTRY
 
 	# 1) Client sends the `ADDENTRY` command, attaching the entry data between the
@@ -238,6 +247,45 @@ def test_addentry_usercard():
 		response['Status'] == 'OK', f"test_addentry(): final upload server error {response}"
 	
 	# TODO: Test USERCARD
+
+	sock.send_message({
+		'Action' : "USERCARD",
+		'Data' : { 
+			'Owner' : 'csimons/example.com',
+			'Start-Index' : '1'
+		}
+	})
+
+	response = sock.read_response(server_response)
+	assert response['Code'] == 104 and response['Status'] == 'TRANSFER' and \
+		response['Data']['Item-Count'] == '1', \
+		'test_addentry.usercard: server returned wrong number of items'
+	data_size = int(response['Data']['Total-Size'])
+	sock.send_message({'Action':'TRANSFER'})
+
+	chunks = list()
+	tempstr = sock.read()
+	data_read = len(tempstr)
+	chunks.append(tempstr)
+	while data_read < data_size:
+		tempstr = sock.read()
+		data_read = data_read + len(tempstr)
+		chunks.append(tempstr)
+	
+	assert data_read == data_size, 'test_orgcard.usercard: size mismatch'
+	
+	# Now that the data has been downloaded, we put it together and split it properly. We should
+	# have two entries
+	entries = ''.join(chunks).split('----- END ORG ENTRY -----\r\n')
+	if entries[-1] == '':
+		entries.pop()
+	
+	# These entries are added to the database in config_server(). The insert operations are not
+	# done here because the two org entries are needed for other tests, as well.
+	assert len(entries) == 1, "test_orgcard.usercard: server did not send the expected entry"
+	assert entries[0] == '----- BEGIN ORG ENTRY -----\r\n' + \
+		second_user_entry.make_bytestring(-1).decode(), \
+		"test_orgcard.usercard: entry didn't match"
 
 	sock.send_message({'Action' : "QUIT"})
 

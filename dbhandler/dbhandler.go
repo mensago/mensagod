@@ -319,16 +319,7 @@ func ResolveAddress(addr string) (string, error) {
 	row := dbConn.QueryRow(`SELECT wid,domain FROM workspaces WHERE uid=$1`, parts[0])
 	var wid, domain string
 
-	err := row.Scan(&wid)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			// No entry in the table
-			return "", errors.New("workspace not found")
-		}
-		return "", err
-	}
-
-	err = row.Scan(&domain)
+	err := row.Scan(&wid, &domain)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// No entry in the table
