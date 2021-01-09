@@ -246,8 +246,6 @@ def test_addentry_usercard():
 	assert response['Code'] == 200 and \
 		response['Status'] == 'OK', f"test_addentry(): final upload server error {response}"
 	
-	# TODO: Test USERCARD
-
 	sock.send_message({
 		'Action' : "USERCARD",
 		'Data' : { 
@@ -258,7 +256,7 @@ def test_addentry_usercard():
 
 	response = sock.read_response(server_response)
 	assert response['Code'] == 104 and response['Status'] == 'TRANSFER' and \
-		response['Data']['Item-Count'] == '1', \
+		response['Data']['Item-Count'] == '2', \
 		'test_addentry.usercard: server returned wrong number of items'
 	data_size = int(response['Data']['Total-Size'])
 	sock.send_message({'Action':'TRANSFER'})
@@ -276,14 +274,14 @@ def test_addentry_usercard():
 	
 	# Now that the data has been downloaded, we put it together and split it properly. We should
 	# have two entries
-	entries = ''.join(chunks).split('----- END ORG ENTRY -----\r\n')
+	entries = ''.join(chunks).split('----- END USER ENTRY -----\r\n')
 	if entries[-1] == '':
 		entries.pop()
 	
 	# These entries are added to the database in config_server(). The insert operations are not
 	# done here because the two org entries are needed for other tests, as well.
-	assert len(entries) == 1, "test_orgcard.usercard: server did not send the expected entry"
-	assert entries[0] == '----- BEGIN ORG ENTRY -----\r\n' + \
+	assert len(entries) == 2, "test_orgcard.usercard: server did not send the expected entry"
+	assert entries[1] == '----- BEGIN USER ENTRY -----\r\n' + \
 		second_user_entry.make_bytestring(-1).decode(), \
 		"test_orgcard.usercard: entry didn't match"
 

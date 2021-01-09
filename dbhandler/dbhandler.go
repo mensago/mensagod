@@ -328,7 +328,7 @@ func ResolveAddress(addr string) (string, error) {
 		return "", err
 	}
 
-	return strings.Join([]string{wid, domain}, "/"), nil
+	return wid, nil
 }
 
 // CheckLockout corresponds to LogFailure() in that it checks to see if said

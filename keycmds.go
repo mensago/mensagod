@@ -269,7 +269,6 @@ func commandUserCard(session *sessionState) {
 		return
 	}
 
-	var owner string
 	if dbhandler.GetAnselusAddressType(session.Message.Data["Owner"]) == 0 {
 		session.SendStringResponse(400, "BAD REQUEST")
 		return
@@ -296,7 +295,7 @@ func commandUserCard(session *sessionState) {
 		}
 	}
 
-	entries, err := dbhandler.GetUserEntries(owner, startIndex, endIndex)
+	entries, err := dbhandler.GetUserEntries(wid, startIndex, endIndex)
 	entryCount := len(entries)
 	var response ServerResponse
 	if entryCount > 0 {
