@@ -24,16 +24,14 @@ def test_register():
 
 	dbconn = setup_test()
 	config_server(dbconn)
+	sock = ServerNetworkConnection()
+	assert sock.connect(), "Connection to server at localhost:2001 failed"
 
 	wid = '11111111-1111-1111-1111-111111111111'
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
 				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
 	devkey = 'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'
-
-	sock = ServerNetworkConnection()
-	assert sock.connect(), "Connection to server at localhost:2001 failed"
-
 	
 	# Subtest #1: Regular registration that is supposed to succeed
 	sock.send_message({
@@ -77,14 +75,13 @@ def test_register_failures():
 
 	dbconn = setup_test()
 	config_server(dbconn)
+	sock = ServerNetworkConnection()
+	assert sock.connect(), "Connection to server at localhost:2001 failed"
 
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
 				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
 
-	sock = ServerNetworkConnection()
-	assert sock.connect(), "Connection to server at localhost:2001 failed"
-	
 	# Test #1: Attempt registration with unsupported encryption type
 
 	sock.send_message({
