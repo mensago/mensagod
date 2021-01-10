@@ -53,98 +53,97 @@ def test_register():
 		'test_register: bad device ID in subtest #1'
 
 	
-# 	# Test #2: Attempt registration of existing WID
-
-# 	cmd = ' '.join([ "REGISTER", wid, pwhash, algorithm, devkey, "\r\n" ])
-# 	print('Duplicate registration\n--------------------------')
-# 	print('CLIENT: %s' % cmd)
-# 	sock.send(cmd.encode())
-
-# 	response = sock.recv(8192).decode()
-# 	print('SERVER: %s\n' % response)
+	# Subtest #2: Attempt registration of existing WID
 	
-# 	parts = response.split(' ')
-# 	assert parts[0] == '408' and parts[1] == 'RESOURCE', 'Failed to catch duplicate registration'
+	sock.send_message({
+		'Action' : "REGISTER",
+		'Data' : {
+			'Workspace-ID' : wid,
+			'Password-Hash' : pwhash,
+			'Device-ID' : '11111111-1111-1111-1111-111111111111',
+			'Device-Key' : devkey
+		}
+	})
 
-# 	sock.send(b'QUIT\r\n')
+	response = sock.read_response(server_response)
+	assert response['Code'] == 408 and response['Status'] == 'RESOURCE EXISTS', \
+		'test_register: subtest #2 failed to catch duplicate registration'
+
+	sock.send_message({'Action' : "QUIT"})
 
 
-# def test_register_failures():
-# 	'''Tests the server's REGISTER command with failure conditions'''
+def test_register_failures():
+	'''Tests the server's REGISTER command with failure conditions'''
 
-# 	setup_test()
+	dbconn = setup_test()
+	config_server(dbconn)
 
-# 	wid = '11111111-1111-1111-1111-111111111111'
-# 	# password is 'SandstoneAgendaTricycle'
-# 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
-# 				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
-# 	algorithm = 'curve25519'
-# 	devkey = '@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
 
-# 	sock = connect()
-# 	assert sock, "Connection to server at localhost:2001 failed"
-
+	sock = ServerNetworkConnection()
+	assert sock.connect(), "Connection to server at localhost:2001 failed"
 	
-# 	# Test #1: Attempt registration with unsupported encryption type
+	# Test #1: Attempt registration with unsupported encryption type
 
-# 	wid = '11111111-1111-1111-1111-222222222222'
-# 	cmd = ' '.join([ "REGISTER", wid, pwhash, '3DES', devkey, "\r\n" ])
-# 	print('Bad encryption algorithm\n--------------------------')
-# 	print('CLIENT: %s' % cmd)
-# 	sock.send(cmd.encode())
+	sock.send_message({
+		'Action' : "REGISTER",
+		'Data' : {
+			'Workspace-ID' : '11111111-1111-1111-1111-222222222222',
+			'Password-Hash' : pwhash,
+			'Device-ID' : '11111111-1111-1111-1111-111111111111',
+			'Device-Key' : '3DES:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'
+		}
+	})
 
-# 	response = sock.recv(8192).decode()
-# 	print('SERVER: %s' % response)
-	
-# 	parts = response.split(' ')
-# 	assert parts[0] == '309' and parts[1] == 'ENCRYPTION', 'Failed to catch unsupported algorithm'
+	response = sock.read_response(server_response)
+	assert response['Code'] == 309 and response['Status'] == 'ENCRYPTION TYPE NOT SUPPORTED', \
+		'test_register_failures: subtest #1 failed to catch unsupported encryption'
+
+	# Test #2: Send bad WID
+
+	sock.send_message({
+		'Action' : "REGISTER",
+		'Data' : {
+			'Workspace-ID' : 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+			'Password-Hash' : pwhash,
+			'Device-ID' : '11111111-1111-1111-1111-111111111111',
+			'Device-Key' : 'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'
+		}
+	})
+
+	response = sock.read_response(server_response)
+	assert response['Code'] == 400 and response['Status'] == 'BAD REQUEST', \
+		'test_register_failures: subtest #2 failed to catch a bad WID'
+
+	sock.send_message({'Action' : "QUIT"})
 
 
-# 	# Test #2: Send bad WID
+def test_overflow():
+	'''Tests the server's command handling for commands greater than 8K'''
 
-# 	wid = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
-# 	cmd = ' '.join([ "REGISTER", wid, pwhash, algorithm, devkey, "\r\n" ])
-# 	print('Bad WID\n--------------------------')
-# 	print('CLIENT: %s' % cmd)
-# 	sock.send(cmd.encode())
+	dbconn = setup_test()
+	config_server(dbconn)
+	sock = ServerNetworkConnection()
+	assert sock.connect(), "Connection to server at localhost:2001 failed"
 
-# 	response = sock.recv(8192).decode()
-# 	print('SERVER: %s' % response)
-	
-# 	parts = response.split(' ')
-# 	assert parts[0] == '400' and parts[1] == 'BAD', 'Failed to catch bad WID'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
 
-# 	sock.send(b'QUIT\r\n')
+	sock.send_message({
+		'Action' : "REGISTER",
+		'Data' : {
+			'Workspace-ID' : 'A' * 10240,
+			'Password-Hash' : pwhash,
+			'Device-ID' : '11111111-1111-1111-1111-111111111111',
+			'Device-Key' : 'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'
+		}
+	})
 
-
-# def test_overflow():
-# 	'''Tests the server's command handling for commands greater than 8K'''
-
-# 	print("Test: Command Overflow")
-# 	setup_test()
-
-# 	wid = '11111111-1111-1111-1111-111111111111'
-# 	# password is 'SandstoneAgendaTricycle'
-# 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
-# 				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
-# 	algorithm = 'curve25519'
-# 	devkey = '@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'
-
-# 	sock = connect()
-# 	assert sock, "Connection to server at localhost:2001 failed"
-
-# 	wid = 'A' * 10240
-# 	cmd = ' '.join([ "REGISTER", wid, pwhash, algorithm, devkey, "\r\n" ])
-# 	print('Overflow\n--------------------------')
-# 	print('CLIENT: %s' % cmd)
-# 	sock.send(cmd.encode())
-
-# 	response = sock.recv(8192).decode()
-# 	print('SERVER: %s' % response)
-	
-# 	parts = response.split(' ')
-# 	assert parts[0] == '400' and parts[1] == 'BAD', 'Failed to catch overflow'
-
+	response = sock.read_response(server_response)
+	assert response['Code'] == 400 and response['Status'] == 'BAD REQUEST', \
+		'test_overflow: failed to catch overflow'
 
 	sock.send_message({'Action' : "QUIT"})
 
