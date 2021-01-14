@@ -5,6 +5,8 @@ import (
 	"errors"
 
 	"github.com/darkwyrm/anselusd/cryptostring"
+	"github.com/darkwyrm/b85"
+	"golang.org/x/crypto/blake2b"
 )
 
 // This module creates some classes which make working with Twisted Edwards Curve encryption
@@ -19,7 +21,6 @@ type CryptoKey interface {
 // VerificationKey is an object to represent just a verification key, not a key pair
 type VerificationKey struct {
 	PublicHash     string
-	PrivateHash    string
 	encryptionType string
 	keyType        string
 	key            cryptostring.CryptoString
@@ -76,5 +77,29 @@ func (vkey *VerificationKey) Set(key cryptostring.CryptoString) error {
 		return errors.New("unsupported signing algorithm")
 	}
 	vkey.key = key
+
+	sum := blake2b.Sum256([]byte(vkey.key.AsString()))
+	vkey.PublicHash = "BLAKE2B-256:" + b85.Encode(sum[:])
+
 	return nil
+}
+
+// KeyPair defines an asymmetric encryption keypair
+type KeyPair struct {
+	PublicHash     string
+	PrivateHash    string
+	encryptionType string
+	keyType        string
+	pubkey         cryptostring.CryptoString
+	privkey        cryptostring.CryptoString
+}
+
+// SigningPair defines an asymmetric signing keypair
+type SigningPair struct {
+	PublicHash     string
+	PrivateHash    string
+	encryptionType string
+	keyType        string
+	pubkey         cryptostring.CryptoString
+	privkey        cryptostring.CryptoString
 }
