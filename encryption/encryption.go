@@ -8,6 +8,7 @@ import (
 	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/b85"
 	"golang.org/x/crypto/blake2b"
+	"golang.org/x/crypto/nacl/box"
 )
 
 // This module creates some classes which make working with Twisted Edwards Curve encryption
@@ -185,4 +186,55 @@ type KeyPair struct {
 	keyType        string
 	PublicKey      cryptostring.CryptoString
 	PrivateKey     cryptostring.CryptoString
+}
+
+// GetEncryptionType returns the algorithm used by the key
+func (kpair KeyPair) GetEncryptionType() string {
+	return kpair.encryptionType
+}
+
+// GetType returns the type of key -- asymmetric or symmetric
+func (kpair KeyPair) GetType() string {
+	return kpair.keyType
+}
+
+// Set assigns a pair of CryptoString values to the keypair
+func (kpair *KeyPair) Set(pubkey cryptostring.CryptoString,
+	privkey cryptostring.CryptoString) error {
+
+	if pubkey.Prefix != "CURVE25519" || privkey.Prefix != "CURVE25519" {
+		return errors.New("unsupported encryption algorithm")
+	}
+	kpair.PublicKey = pubkey
+	kpair.PrivateKey = privkey
+
+	sum := blake2b.Sum256([]byte(pubkey.AsString()))
+	kpair.PublicHash = "BLAKE2B-256:" + b85.Encode(sum[:])
+	sum = blake2b.Sum256([]byte(privkey.AsString()))
+	kpair.PrivateHash = "BLAKE2B-256:" + b85.Encode(sum[:])
+
+	return nil
+}
+
+// Generate initializes the object to a new key pair
+func (kpair KeyPair) Generate() error {
+	pubkey, privkey, err := box.GenerateKey(rand.Reader)
+	if err != nil {
+		return err
+	}
+
+	return kpair.Set(cryptostring.NewCryptoString("CURVE25519:"+b85.Encode(pubkey[:])),
+		cryptostring.NewCryptoString("CURVE25519:"+b85.Encode(privkey[:])))
+}
+
+// Encrypt encrypts byte slice using the internal public key. It returns the resulting encrypted
+// data as a Base85-encoded string that amounts to a CryptoString without the prefix.
+func (kpair KeyPair) Encrypt(data []byte) (string, error) {
+	return "", errors.New("unimplemented")
+}
+
+// Decrypt decrypts a string of encrypted data which is Base85 encoded using the internal private
+// key.
+func (kpair KeyPair) Decrypt(data string) ([]byte, error) {
+	return nil, errors.New("unimplemented")
 }
