@@ -96,6 +96,17 @@ type SigningPair struct {
 	PrivateKey     cryptostring.CryptoString
 }
 
+// NewSigningPair creates a new SigningPair object from two CryptoString objects
+func NewSigningPair(pubkey cryptostring.CryptoString,
+	privkey cryptostring.CryptoString) *SigningPair {
+	var newpair SigningPair
+	if newpair.Set(pubkey, privkey) != nil {
+		return nil
+	}
+
+	return &newpair
+}
+
 // GetEncryptionType returns the algorithm used by the key
 func (spair SigningPair) GetEncryptionType() string {
 	return spair.encryptionType
@@ -186,6 +197,16 @@ type KeyPair struct {
 	keyType        string
 	PublicKey      cryptostring.CryptoString
 	PrivateKey     cryptostring.CryptoString
+}
+
+// NewKeyPair creates a new KeyPair object from two CryptoString objects
+func NewKeyPair(pubkey cryptostring.CryptoString, privkey cryptostring.CryptoString) *KeyPair {
+	var newpair KeyPair
+	if newpair.Set(pubkey, privkey) != nil {
+		return nil
+	}
+
+	return &newpair
 }
 
 // GetEncryptionType returns the algorithm used by the key
