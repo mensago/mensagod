@@ -141,8 +141,8 @@ func (spair SigningPair) Generate() error {
 	if err != nil {
 		return err
 	}
-	return spair.Set(cryptostring.NewCryptoString("ED25519:"+b85.Encode(verkey[:])),
-		cryptostring.NewCryptoString("ED25519:"+b85.Encode(signkey.Seed())))
+	return spair.Set(cryptostring.New("ED25519:"+b85.Encode(verkey[:])),
+		cryptostring.New("ED25519:"+b85.Encode(signkey.Seed())))
 }
 
 // Sign cryptographically signs a byte slice.
@@ -246,8 +246,8 @@ func (kpair EncryptionPair) Generate() error {
 		return err
 	}
 
-	return kpair.Set(cryptostring.NewCryptoString("CURVE25519:"+b85.Encode(pubkey[:])),
-		cryptostring.NewCryptoString("CURVE25519:"+b85.Encode(privkey[:])))
+	return kpair.Set(cryptostring.New("CURVE25519:"+b85.Encode(pubkey[:])),
+		cryptostring.New("CURVE25519:"+b85.Encode(privkey[:])))
 }
 
 // Encrypt encrypts byte slice using the internal public key. It returns the resulting encrypted
@@ -264,7 +264,7 @@ func (kpair EncryptionPair) Encrypt(data []byte) (string, error) {
 
 	// This kind of stupid is why this class is even necessary
 	var tempPtr [32]byte
-	ptrAdapter := pubKeyDecoded[0:32]
+	ptrAdapter := tempPtr[0:32]
 	copy(ptrAdapter, pubKeyDecoded)
 
 	encryptedData, err := box.SealAnonymous(nil, data, &tempPtr, rand.Reader)
@@ -288,7 +288,7 @@ func (kpair EncryptionPair) Decrypt(data string) ([]byte, error) {
 	}
 	var pubKeyPtr [32]byte
 
-	ptrAdapter := pubKeyDecoded[0:32]
+	ptrAdapter := pubKeyPtr[0:32]
 	copy(ptrAdapter, pubKeyDecoded)
 
 	privKeyDecoded := kpair.PrivateKey.RawData()
@@ -297,7 +297,7 @@ func (kpair EncryptionPair) Decrypt(data string) ([]byte, error) {
 	}
 	var privKeyPtr [32]byte
 
-	ptrAdapter = privKeyDecoded[0:32]
+	ptrAdapter = privKeyPtr[0:32]
 	copy(ptrAdapter, privKeyDecoded)
 
 	decodedData, err := b85.Decode(data)
