@@ -95,7 +95,8 @@ def test_login():
 	response = sock.read_response(server_response)
 	assert response['Code'] == 100 and response['Status'] == 'CONTINUE', \
 		'test_login: failed to log in'
-	assert response['Response'] == challenge.decode(), 'test_login: server failed identity response'
+	assert response['Data']['Response'] == challenge.decode(), \
+		'test_login: server failed identity response'
 
 	# Phase 2: PASSWORD
 	sock.send_message({
@@ -130,7 +131,7 @@ def test_login():
 		'Data' : { 
 			'Device-ID' : devid,
 			'Device-Key' : devpair.public.as_string(),
-			'Response' : status['data'].encode()
+			'Response' : status['data']
 		}
 	})
 

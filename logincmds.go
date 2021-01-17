@@ -9,9 +9,9 @@ import (
 
 	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/anselusd/dbhandler"
+	"github.com/darkwyrm/anselusd/ezcrypt"
 	"github.com/darkwyrm/b85"
 	"github.com/spf13/viper"
-	"golang.org/x/crypto/nacl/box"
 )
 
 func commandDevice(session *sessionState) {
@@ -47,26 +47,26 @@ func commandDevice(session *sessionState) {
 			// 4) Return 101 PENDING and close the connection
 			// 5) Upon receipt of authorization approval, update the device status in the database
 			// 6) Upon receipt of denial, log the failure and apply a lockout to the IP
+
+			// This code exists to at least enable the server to work until device checking can
+			// be implemented.
+			dbhandler.AddDevice(session.WID, session.Message.Data["Device-ID"], devkey, "active")
 		} else {
 			// TODO: Check for paranoid mode and reject if enabled
 			dbhandler.AddDevice(session.WID, session.Message.Data["Device-ID"], devkey, "active")
-
-			session.LoginState = loginClientSession
-			session.SendStringResponse(200, "OK", "")
-			return
 		}
+	}
+
+	// The device is part of the workspace, so now we issue undergo a challenge-response
+	// to ensure that the device really is authorized and the key wasn't stolen by an impostor
+
+	success, err = challengeDevice(session, "CURVE25519", session.Message.Data["Device-Key"])
+	if success {
+		session.LoginState = loginClientSession
+		session.SendStringResponse(200, "OK", "")
 	} else {
-		// The device is part of the workspace already, so now we issue undergo a challenge-response
-		// to ensure that the device really is authorized and the key wasn't stolen by an impostor
-
-		success, err = challengeDevice(session, "CURVE25519", session.Message.Data["Device-Key"])
-		if success {
-			session.LoginState = loginClientSession
-			session.SendStringResponse(200, "OK", "")
-		} else {
-			dbhandler.LogFailure("device", session.WID, session.Connection.RemoteAddr().String())
-			session.SendStringResponse(401, "UNAUTHORIZED", "")
-		}
+		dbhandler.LogFailure("device", session.WID, session.Connection.RemoteAddr().String())
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
 	}
 }
 
@@ -75,7 +75,7 @@ func commandLogin(session *sessionState) {
 	// LOGIN(Login-Type,Workspace-ID)
 
 	// PLAIN authentication is currently the only supported type
-	if session.Message.Validate([]string{"Login-Type", "Workspace-ID"}) != nil {
+	if session.Message.Validate([]string{"Login-Type", "Workspace-ID", "Challenge"}) != nil {
 		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
@@ -113,11 +113,9 @@ func commandLogin(session *sessionState) {
 
 		if len(lockTime) > 0 {
 			// The account is locked if lockTime is greater than 0
-			var response ServerResponse
-			response.Code = 407
-			response.Status = "UNAVAILABLE"
+			response := NewServerResponse(407, "UNAVAILABLE")
 			response.Data["Lock-Time"] = lockTime
-			session.SendResponse(response)
+			session.SendResponse(*response)
 			return
 		}
 
@@ -134,11 +132,9 @@ func commandLogin(session *sessionState) {
 		// means that although there has been a failure, the count for this IP address is
 		// still under the limit.
 		if len(lockTime) > 0 {
-			var response ServerResponse
-			response.Code = 404
-			response.Status = "TERMINATED"
+			response := NewServerResponse(404, "TERMINATED")
 			response.Data["Lock-Time"] = lockTime
-			session.SendResponse(response)
+			session.SendResponse(*response)
 			session.IsTerminating = true
 		} else {
 			session.SendStringResponse(404, "NOT FOUND", "")
@@ -150,16 +146,33 @@ func commandLogin(session *sessionState) {
 	case "disabled":
 		session.WriteClient("411 ACCOUNT DISABLED\r\n")
 		session.IsTerminating = true
+		return
 	case "awaiting":
 		session.WriteClient("101 PENDING\r\n")
 		session.IsTerminating = true
+		return
 	case "active", "approved":
-		session.LoginState = loginAwaitingPassword
-		session.WID = wid
-		session.SendStringResponse(100, "CONTINUE", "")
+		break
 	default:
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		return
 	}
+
+	// We got this far, so decrypt the challenge and send it to the client
+	keypair, err := dbhandler.GetEncryptionPair()
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+	}
+	decryptedChallenge, err := keypair.Decrypt(session.Message.Data["Challenge"])
+	if err != nil {
+		session.SendStringResponse(306, "KEY FAILURE", "Challenge decryption failure")
+	}
+
+	session.LoginState = loginAwaitingPassword
+	session.WID = wid
+	response := NewServerResponse(100, "CONTINUE")
+	response.Data["Response"] = string(decryptedChallenge)
+	session.SendResponse(*response)
 }
 
 func commandLogout(session *sessionState) {
@@ -230,7 +243,7 @@ func commandPassword(session *sessionState) {
 	}
 }
 
-func challengeDevice(session *sessionState, keytype string, devkey string) (bool, error) {
+func challengeDevice(session *sessionState, keytype string, devkeystr string) (bool, error) {
 	// 1) Generate a 32-byte random string of bytes
 	// 2) Encode string in base85
 	// 3) Encrypt said string, encode in base85, and return it as part of 100 CONTINUE response
@@ -250,28 +263,17 @@ func challengeDevice(session *sessionState, keytype string, devkey string) (bool
 		return false, errors.New("unsupported key type")
 	}
 
-	// Oy, the typing system in Golang can make things... difficult at times. :/
-	devkeyDecoded, err := b85.Decode(devkey)
+	devkey := ezcrypt.NewEncryptionKey(cryptostring.New(devkeystr))
+	encryptedChallenge, err := devkey.Encrypt([]byte(challenge))
 
-	var devkeyArray [32]byte
-	devKeyAdapter := devkeyArray[0:32]
-	copy(devKeyAdapter, devkeyDecoded)
-	var encryptedChallenge []byte
-	encryptedChallenge, err = box.SealAnonymous(nil, []byte(challenge), &devkeyArray, nil)
-
-	var response ServerResponse
 	if err != nil {
-		response.Code = 300
-		response.Status = "INTERNAL SERVER ERROR"
-		response.Data["Error"] = err.Error()
-		session.SendResponse(response)
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 		return false, err
 	}
 
-	response.Code = 100
-	response.Status = "CONTINUE"
-	response.Data["Challenge"] = b85.Encode(encryptedChallenge)
-	err = session.SendResponse(response)
+	response := NewServerResponse(100, "CONTINUE")
+	response.Data["Challenge"] = encryptedChallenge
+	err = session.SendResponse(*response)
 	if err != nil {
 		return false, err
 	}
@@ -289,15 +291,13 @@ func challengeDevice(session *sessionState, keytype string, devkey string) (bool
 		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
 		return false, nil
 	}
-	if request.Data["Device-Key"] != devkey {
+	if request.Data["Device-Key"] != devkeystr {
 		session.SendStringResponse(400, "BAD REQUEST", "Device key mismatch")
 		return false, nil
 	}
 
 	// Validate client response
-	var decodedResponse []byte
-	decodedResponse, err = b85.Decode(request.Data["Response"])
-	if challenge != string(decodedResponse) {
+	if challenge != request.Data["Response"] {
 		return false, nil
 	}
 
