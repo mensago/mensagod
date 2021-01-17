@@ -238,7 +238,6 @@ func commandRegCode(session *sessionState) {
 	}
 
 	session.SendStringResponse(201, "REGISTERED", "")
-	session.IsTerminating = true
 }
 
 func commandRegister(session *sessionState) {
