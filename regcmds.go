@@ -109,13 +109,28 @@ func commandRegCode(session *sessionState) {
 	// REGCODE(User-ID, Reg-Code, Password-Hash, Device-ID, Device-Key, Domain="")
 	// REGCODE(Workspace-ID, Reg-Code, Password-Hash, Device-ID, Device-Key, Domain="")
 
-	if session.Message.Validate([]string{"Reg-Code", "Password-Hash", "Device-ID", "Device-KeyType",
+	if session.Message.Validate([]string{"Reg-Code", "Password-Hash", "Device-ID",
 		"Device-Key"}) != nil {
 		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 	if !dbhandler.ValidateUUID(session.Message.Data["Device-ID"]) {
 		session.SendStringResponse(400, "BAD REQUEST", "Invalid Device-ID")
+		return
+	}
+
+	if len(session.Message.Data["Reg-Code"]) > 128 {
+		session.SendStringResponse(400, "BAD REQUEST", "Invalid reg code")
+		return
+	}
+
+	// The password field is expected to contain an Argon2id password hash
+	if !strings.HasPrefix(session.Message.Data["Password-Hash"], "$argon2id") {
+		session.SendStringResponse(400, "BAD REQUEST", "Invalid password hash")
+		return
+	}
+	if len(session.Message.Data["Password-Hash"]) > 128 {
+		session.SendStringResponse(400, "BAD REQUEST", "Password hash too long")
 		return
 	}
 
@@ -161,11 +176,9 @@ func commandRegCode(session *sessionState) {
 	}
 
 	if len(lockTime) > 0 {
-		var response ServerResponse
-		response.Code = 405
-		response.Status = "TERMINATED"
+		response := NewServerResponse(405, "TERMINATED")
 		response.Data["Lock-Time"] = lockTime
-		session.SendResponse(response)
+		session.SendResponse(*response)
 		session.IsTerminating = true
 	}
 
@@ -182,10 +195,10 @@ func commandRegCode(session *sessionState) {
 
 	var wid string
 	if session.Message.HasField("Workspace-ID") {
-		wid, err = dbhandler.CheckRegCode(session.Message.Data["Workspace-ID"], true,
+		wid, err = dbhandler.CheckRegCode(session.Message.Data["Workspace-ID"], domain, true,
 			session.Message.Data["Reg-Code"])
 	} else {
-		wid, err = dbhandler.CheckRegCode(session.Message.Data["User-ID"], true,
+		wid, err = dbhandler.CheckRegCode(session.Message.Data["User-ID"], domain, false,
 			session.Message.Data["Reg-Code"])
 	}
 
@@ -205,6 +218,7 @@ func commandRegCode(session *sessionState) {
 			session.IsTerminating = true
 			return
 		}
+		return
 	}
 
 	err = dbhandler.AddWorkspace(wid, domain, session.Message.Data["Password-Hash"], "active")
@@ -224,6 +238,7 @@ func commandRegCode(session *sessionState) {
 	}
 
 	session.SendStringResponse(201, "REGISTERED", "")
+	session.IsTerminating = true
 }
 
 func commandRegister(session *sessionState) {

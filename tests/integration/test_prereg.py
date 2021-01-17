@@ -1,3 +1,4 @@
+from pyanselus.encryption import EncryptionPair, Password
 from integration_setup import setup_test, config_server, validate_uuid, \
 	ServerNetworkConnection
 
@@ -52,8 +53,34 @@ def test_prereg():
 	assert len(response['Data']['Workspace-ID']) <= 128, \
 		'Server returned a regcode longer than allowed'
 
+	# REGCODE subtest setup
+	regdata = response
+	pwd = Password()
+	status = pwd.Set('ShrivelCommuteGottenAgonizingElbowQuiver')
+	assert not status.error(), 'test_prereg: Failed to set password'
+	devid = '0e6406e3-1831-4352-9fbe-0de8faebf0f0'
+	devkey = EncryptionPair()
 
-	# Subtest #2: Plain prereg
+
+	# Subtest #2: Regcode with User ID and domain
+	sock.send_message({
+		'Action' : "REGCODE",
+		'Data' : {
+			'User-ID' : regdata['Data']['User-ID'],
+			'Domain' : regdata['Data']['Domain'],
+			'Reg-Code' : regdata['Data']['Reg-Code'],
+			'Password-Hash' : pwd.hashstring,
+			'Device-ID' : devid,
+			'Device-Key' : devkey.get_public_key()
+		}
+	})
+
+	response = sock.read_response(server_response)
+	assert response['Code'] == 201 and response['Status'] == 'REGISTERED', \
+		'test_prereg: subtest #2 returned an error'
+
+
+	# Subtest #3: Plain prereg
 	sock.send_message({
 		'Action' : "PREREG",
 		'Data' : { }
@@ -66,8 +93,25 @@ def test_prereg():
 	assert len(response['Data']['Workspace-ID']) <= 128, \
 		'Server returned a regcode longer than allowed'
 
+	# Subtest #4: Plain regcode
+	regdata = response
+	sock.send_message({
+		'Action' : "REGCODE",
+		'Data' : {
+			'Workspace-ID' : regdata['Data']['Workspace-ID'],
+			'Reg-Code' : regdata['Data']['Reg-Code'],
+			'Password-Hash' : pwd.hashstring,
+			'Device-ID' : devid,
+			'Device-Key' : devkey.get_public_key()
+		}
+	})
 
-	# Subtest #3: duplicate user ID
+	response = sock.read_response(server_response)
+	assert response['Code'] == 201 and response['Status'] == 'REGISTERED', \
+		'test_prereg: subtest #4 returned an error'
+
+
+	# Subtest #5: duplicate user ID
 	sock.send_message({
 		'Action' : "PREREG",
 		'Data' : {
@@ -81,7 +125,7 @@ def test_prereg():
 		'test_prereg: subtest #3 failed to catch duplicate user'
 
 
-	# Subtest #4: WID as user ID
+	# Subtest #6: WID as user ID
 	sock.send_message({
 		'Action' : "PREREG",
 		'Data' : { 'User-ID' : wid }
@@ -95,7 +139,7 @@ def test_prereg():
 		'Server returned a regcode longer than allowed'
 
 
-	# Subtest #5: Specify WID
+	# Subtest #7: Specify WID
 	wid = '22222222-2222-2222-2222-222222222222'
 	sock.send_message({
 		'Action' : "PREREG",
@@ -110,7 +154,7 @@ def test_prereg():
 		'Server returned a regcode longer than allowed'
 
 
-	# Subtest #6: Specify User ID only.
+	# Subtest #8: Specify User ID only.
 	uid = 'TestUserID2'
 	sock.send_message({
 		'Action' : "PREREG",
