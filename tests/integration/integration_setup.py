@@ -152,14 +152,14 @@ def config_server(dbconn) -> dict:
 	initial_eprivkey = CryptoString(r'CURVE25519:WSHgOhi+bg=<bO^4UoJGF-z9`+TBN{ds?7RZ;w3o')
 	initial_epubhash = CryptoString(r'BLAKE2B-256:-Zz4O7J;m#-rB)2llQ*xTHjtblwm&kruUVa_v(&W')
 	
-	# Organization sign, hash, and verify
-
-	rv = root_entry.sign(initial_oskey, 'Organization')
-	assert not rv.error(), 'Unexpected RetVal error %s' % rv.error()
-	assert root_entry.signatures['Organization'], 'entry failed to user sign'
+	# Organization hash, sign, and verify
 
 	rv = root_entry.generate_hash('BLAKE2B-256')
 	assert not rv.error(), 'entry failed to hash'
+
+	rv = root_entry.sign(initial_oskey, 'Organization')
+	assert not rv.error(), 'Unexpected RetVal error %s' % rv.error()
+	assert root_entry.signatures['Organization'], 'entry failed to org sign'
 
 	rv = root_entry.verify_signature(initial_ovkey, 'Organization')
 	assert not rv.error(), 'org entry failed to verify'
