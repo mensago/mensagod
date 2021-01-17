@@ -1,6 +1,7 @@
-
+from pyanselus.encryption import EncryptionPair
+from pyanselus.cryptostring import CryptoString
 from integration_setup import setup_test, config_server, validate_uuid, \
-	ServerNetworkConnection
+	ServerNetworkConnection, regcode_admin, login_admin
 
 server_response = {
 	'title' : 'Anselus Server Response',
@@ -23,9 +24,25 @@ def test_register():
 	'''Tests the server's REGISTER command - success and duplicate WID condition'''
 
 	dbconn = setup_test()
-	config_server(dbconn)
+	server_config = config_server(dbconn)
 	sock = ServerNetworkConnection()
 	assert sock.connect(), "Connection to server at localhost:2001 failed"
+	
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	server_config['pwhash'] = pwhash
+	server_config['devid'] = devid
+	server_config['devpair'] = devpair
+	
+	regcode_admin(server_config, sock)
+	login_admin(server_config, sock)
+
+
 
 	wid = '11111111-1111-1111-1111-111111111111'
 	# password is 'SandstoneAgendaTricycle'
@@ -74,13 +91,23 @@ def test_register_failures():
 	'''Tests the server's REGISTER command with failure conditions'''
 
 	dbconn = setup_test()
-	config_server(dbconn)
+	server_config = config_server(dbconn)
 	sock = ServerNetworkConnection()
 	assert sock.connect(), "Connection to server at localhost:2001 failed"
 
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
 				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	server_config['pwhash'] = pwhash
+	server_config['devid'] = devid
+	server_config['devpair'] = devpair
+	
+	regcode_admin(server_config, sock)
+	login_admin(server_config, sock)
 
 	# Test #1: Attempt registration with unsupported encryption type
 
@@ -121,12 +148,23 @@ def test_overflow():
 	'''Tests the server's command handling for commands greater than 8K'''
 
 	dbconn = setup_test()
-	config_server(dbconn)
+	server_config = config_server(dbconn)
 	sock = ServerNetworkConnection()
 	assert sock.connect(), "Connection to server at localhost:2001 failed"
 
+	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
 				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	server_config['pwhash'] = pwhash
+	server_config['devid'] = devid
+	server_config['devpair'] = devpair
+	
+	regcode_admin(server_config, sock)
+	login_admin(server_config, sock)
 
 	sock.send_message({
 		'Action' : "REGISTER",
@@ -147,5 +185,5 @@ def test_overflow():
 
 if __name__ == '__main__':
 	test_register()
-	# test_register_failures()
-	# test_overflow()
+	test_register_failures()
+	test_overflow()
