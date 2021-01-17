@@ -134,6 +134,10 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
+	if !dbhandler.ValidateUUID(session.Message.Data["Device-ID"]) {
+		session.SendStringResponse(400, "BAD REQUEST", "Bad device ID")
+		return
+	}
 	// check to see if this is a workspace ID
 
 	if session.Message.HasField("User-ID") {
@@ -227,8 +231,7 @@ func commandRegCode(session *sessionState) {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 	}
 
-	devid := uuid.New().String()
-	err = dbhandler.AddDevice(wid, devid, devkey, "active")
+	err = dbhandler.AddDevice(wid, session.Message.Data["Device-ID"], devkey, "active")
 	if err != nil {
 		var response ServerResponse
 		response.Code = 300
