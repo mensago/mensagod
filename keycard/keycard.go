@@ -1137,18 +1137,18 @@ func GenerateOrgKeys(rotateOptional bool) (map[string]cryptostring.CryptoString,
 	if err != nil {
 		return outKeys, err
 	}
-	outKeys["Encryption-Key.public"] = cryptostring.NewCryptoString("CURVE25519:" +
+	outKeys["Encryption-Key.public"] = cryptostring.New("CURVE25519:" +
 		b85.Encode(ePublicKey[:]))
-	outKeys["Encryption-Key.private"] = cryptostring.NewCryptoString("CURVE25519:" +
+	outKeys["Encryption-Key.private"] = cryptostring.New("CURVE25519:" +
 		b85.Encode(ePrivateKey[:]))
 
 	sPublicKey, sPrivateKey, err = ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return outKeys, err
 	}
-	outKeys["Primary-Verification-Key.public"] = cryptostring.NewCryptoString("ED25519:" +
+	outKeys["Primary-Verification-Key.public"] = cryptostring.New("ED25519:" +
 		b85.Encode(sPublicKey[:]))
-	outKeys["Primary-Verification-Key.private"] = cryptostring.NewCryptoString("ED25519:" +
+	outKeys["Primary-Verification-Key.private"] = cryptostring.New("ED25519:" +
 		b85.Encode(sPrivateKey.Seed()))
 
 	if rotateOptional {
@@ -1158,9 +1158,9 @@ func GenerateOrgKeys(rotateOptional bool) (map[string]cryptostring.CryptoString,
 		if err != nil {
 			return outKeys, err
 		}
-		outKeys["Secondary-Verification-Key.public"] = cryptostring.NewCryptoString("ED25519:" +
+		outKeys["Secondary-Verification-Key.public"] = cryptostring.New("ED25519:" +
 			b85.Encode(asPublicKey[:]))
-		outKeys["Secondary-Verification-Key.private"] = cryptostring.NewCryptoString("ED25519:" +
+		outKeys["Secondary-Verification-Key.private"] = cryptostring.New("ED25519:" +
 			b85.Encode(asPrivateKey.Seed()))
 	}
 
@@ -1186,27 +1186,27 @@ func GenerateUserKeys(rotateOptional bool) (map[string]cryptostring.CryptoString
 	if err != nil {
 		return outKeys, err
 	}
-	outKeys["Primary-Verification-Key.public"] = cryptostring.NewCryptoString("ED25519:" +
+	outKeys["Primary-Verification-Key.public"] = cryptostring.New("ED25519:" +
 		b85.Encode(sPublicKey[:]))
-	outKeys["Primary-Verification-Key.private"] = cryptostring.NewCryptoString("ED25519:" +
+	outKeys["Primary-Verification-Key.private"] = cryptostring.New("ED25519:" +
 		b85.Encode(sPrivateKey.Seed()))
 
 	crePublicKey, crePrivateKey, err = box.GenerateKey(rand.Reader)
 	if err != nil {
 		return outKeys, err
 	}
-	outKeys["Contact-Request-Encryption-Key.public"] = cryptostring.NewCryptoString("CURVE25519:" +
+	outKeys["Contact-Request-Encryption-Key.public"] = cryptostring.New("CURVE25519:" +
 		b85.Encode(crePublicKey[:]))
-	outKeys["Contact-Request-Encryption-Key.private"] = cryptostring.NewCryptoString("CURVE25519:" +
+	outKeys["Contact-Request-Encryption-Key.private"] = cryptostring.New("CURVE25519:" +
 		b85.Encode(crePrivateKey[:]))
 
 	crsPublicKey, crsPrivateKey, err = ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return outKeys, err
 	}
-	outKeys["Contact-Request-Verification-Key.public"] = cryptostring.NewCryptoString("ED25519:" +
+	outKeys["Contact-Request-Verification-Key.public"] = cryptostring.New("ED25519:" +
 		b85.Encode(crsPublicKey[:]))
-	outKeys["Contact-Request-Verification-Key.private"] = cryptostring.NewCryptoString("ED25519:" +
+	outKeys["Contact-Request-Verification-Key.private"] = cryptostring.New("ED25519:" +
 		b85.Encode(crsPrivateKey.Seed()))
 
 	if rotateOptional {
@@ -1216,18 +1216,18 @@ func GenerateUserKeys(rotateOptional bool) (map[string]cryptostring.CryptoString
 		if err != nil {
 			return outKeys, err
 		}
-		outKeys["Public-Encryption-Key.public"] = cryptostring.NewCryptoString("CURVE25519:" +
+		outKeys["Public-Encryption-Key.public"] = cryptostring.New("CURVE25519:" +
 			b85.Encode(ePublicKey[:]))
-		outKeys["Public-Encryption-Key.private"] = cryptostring.NewCryptoString("CURVE25519:" +
+		outKeys["Public-Encryption-Key.private"] = cryptostring.New("CURVE25519:" +
 			b85.Encode(ePrivateKey[:]))
 
 		altePublicKey, altePrivateKey, err = box.GenerateKey(rand.Reader)
 		if err != nil {
 			return outKeys, err
 		}
-		outKeys["Alternate-Encryption-Key.public"] = cryptostring.NewCryptoString("CURVE25519:" +
+		outKeys["Alternate-Encryption-Key.public"] = cryptostring.New("CURVE25519:" +
 			b85.Encode(altePublicKey[:]))
-		outKeys["Alternate-Encryption-Key.private"] = cryptostring.NewCryptoString("CURVE25519:" +
+		outKeys["Alternate-Encryption-Key.private"] = cryptostring.New("CURVE25519:" +
 			b85.Encode(altePrivateKey[:]))
 	} else {
 		var emptyKey cryptostring.CryptoString

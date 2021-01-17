@@ -23,8 +23,8 @@ type CryptoString struct {
 	Data   string
 }
 
-// NewCryptoString is just syntactic sugar for generating a quickie CryptoString from a string
-func NewCryptoString(cstring string) CryptoString {
+// New is just syntactic sugar for generating a quickie CryptoString from a string
+func New(cstring string) CryptoString {
 	var out CryptoString
 	out.Set(cstring)
 	return out
