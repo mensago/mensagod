@@ -9,6 +9,7 @@ import (
 	"github.com/darkwyrm/anselusd/dbhandler"
 	"github.com/darkwyrm/anselusd/keycard"
 	"github.com/darkwyrm/b85"
+	"github.com/spf13/viper"
 )
 
 func commandAddEntry(session *sessionState) {
@@ -58,6 +59,40 @@ func commandAddEntry(session *sessionState) {
 	if !entry.IsDataCompliant() {
 		session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA", "")
 		return
+	}
+
+	if entry.Fields["Workspace-ID"] != session.WID {
+		session.SendStringResponse(411, "BAD KEYCARD DATA", "Workspace doesn't match login")
+		return
+	}
+
+	// admin, support, and abuse can't change their user IDs
+	adminAddresses := []string{"admin", "support", "abuse"}
+	for _, address := range adminAddresses {
+		currentAddress := address + "/" + viper.GetString("global.domain")
+		currentWid, err := dbhandler.ResolveAddress(currentAddress)
+		if err != nil {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		}
+		if session.WID == currentWid {
+			if entry.Fields["User-ID"] != address {
+				session.SendStringResponse(411, "BAD KEYCARD DATA",
+					"Admin, Support, and Abuse can't change their user IDs")
+				return
+			}
+		}
+	}
+
+	adminAddress := "admin/" + viper.GetString("global.domain")
+	adminWid, err := dbhandler.ResolveAddress(adminAddress)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+	}
+	if session.WID == adminWid {
+		if entry.Fields["User-ID"] != "admin" {
+			session.SendStringResponse(411, "BAD KEYCARD DATA", "Admin can't change its user ID")
+			return
+		}
 	}
 
 	// IsDataCompliant performs all of the checks we need to ensure that the data given to us by the
