@@ -86,7 +86,7 @@ func (vkey *VerificationKey) Set(key cryptostring.CryptoString) error {
 	return nil
 }
 
-// SigningPair defines an asymmetric signing EncryptionPair
+// SigningPair defines an asymmetric signing key pair
 type SigningPair struct {
 	PublicHash     string
 	PrivateHash    string
@@ -311,4 +311,73 @@ func (kpair EncryptionPair) Decrypt(data string) ([]byte, error) {
 		return decryptedData, nil
 	}
 	return nil, errors.New("decryption error")
+}
+
+// EncryptionKey defines an asymmetric encryption EncryptionPair
+type EncryptionKey struct {
+	PublicHash     string
+	encryptionType string
+	keyType        string
+	PublicKey      cryptostring.CryptoString
+}
+
+// NewEncryptionKey creates a new EncryptionKey object from a CryptoString of the public key
+func NewEncryptionKey(pubkey cryptostring.CryptoString) *EncryptionKey {
+	var newkey EncryptionKey
+
+	// All parameter validation is handled in Set
+	if newkey.Set(pubkey) != nil {
+		return nil
+	}
+
+	return &newkey
+}
+
+// GetEncryptionType returns the algorithm used by the key
+func (ekey EncryptionKey) GetEncryptionType() string {
+	return ekey.encryptionType
+}
+
+// GetType returns the type of key -- asymmetric or symmetric
+func (ekey EncryptionKey) GetType() string {
+	return ekey.keyType
+}
+
+// Set assigns a pair of CryptoString values to the EncryptionKey
+func (ekey *EncryptionKey) Set(pubkey cryptostring.CryptoString) error {
+
+	if pubkey.Prefix != "CURVE25519" {
+		return errors.New("unsupported encryption algorithm")
+	}
+	ekey.PublicKey = pubkey
+
+	sum := blake2b.Sum256([]byte(pubkey.AsString()))
+	ekey.PublicHash = "BLAKE2B-256:" + b85.Encode(sum[:])
+
+	return nil
+}
+
+// Encrypt encrypts byte slice using the internal public key. It returns the resulting encrypted
+// data as a Base85-encoded string that amounts to a CryptoString without the prefix.
+func (ekey EncryptionKey) Encrypt(data []byte) (string, error) {
+	if data == nil {
+		return "", nil
+	}
+
+	pubKeyDecoded := ekey.PublicKey.RawData()
+	if pubKeyDecoded == nil {
+		return "", errors.New("decoding error in public key")
+	}
+
+	// This kind of stupid is why this class is even necessary
+	var tempPtr [32]byte
+	ptrAdapter := tempPtr[0:32]
+	copy(ptrAdapter, pubKeyDecoded)
+
+	encryptedData, err := box.SealAnonymous(nil, data, &tempPtr, rand.Reader)
+	if err != nil {
+		return "", err
+	}
+
+	return b85.Encode(encryptedData), nil
 }
