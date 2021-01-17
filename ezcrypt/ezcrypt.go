@@ -304,7 +304,7 @@ func (kpair EncryptionPair) Decrypt(data string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// OpenAnonymous(out, box []byte, publicKey, privateKey *[32]byte) (message []byte, ok bool)
+
 	decryptedData, ok := box.OpenAnonymous(nil, decodedData, &pubKeyPtr, &privKeyPtr)
 
 	if ok {
