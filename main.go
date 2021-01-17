@@ -435,7 +435,6 @@ func processCommand(session *sessionState) {
 		DELETE
 		DELIVER
 		DOWNLOAD
-		GETENTRIES
 		GETUPDATES
 		ISCURRENT
 		LIST
