@@ -1,4 +1,4 @@
-package encryption
+package ezcrypt
 
 import (
 	"crypto/ed25519"
@@ -86,7 +86,7 @@ func (vkey *VerificationKey) Set(key cryptostring.CryptoString) error {
 	return nil
 }
 
-// SigningPair defines an asymmetric signing keypair
+// SigningPair defines an asymmetric signing EncryptionPair
 type SigningPair struct {
 	PublicHash     string
 	PrivateHash    string
@@ -117,7 +117,7 @@ func (spair SigningPair) GetType() string {
 	return spair.keyType
 }
 
-// Set assigns a pair of CryptoString values to the keypair
+// Set assigns a pair of CryptoString values to the EncryptionPair
 func (spair *SigningPair) Set(pubkey cryptostring.CryptoString,
 	privkey cryptostring.CryptoString) error {
 
@@ -189,8 +189,8 @@ func (spair SigningPair) Verify(data []byte, signature cryptostring.CryptoString
 	return verifyStatus, nil
 }
 
-// KeyPair defines an asymmetric encryption keypair
-type KeyPair struct {
+// EncryptionPair defines an asymmetric encryption EncryptionPair
+type EncryptionPair struct {
 	PublicHash     string
 	PrivateHash    string
 	encryptionType string
@@ -199,9 +199,11 @@ type KeyPair struct {
 	PrivateKey     cryptostring.CryptoString
 }
 
-// NewKeyPair creates a new KeyPair object from two CryptoString objects
-func NewKeyPair(pubkey cryptostring.CryptoString, privkey cryptostring.CryptoString) *KeyPair {
-	var newpair KeyPair
+// NewEncryptionPair creates a new EncryptionPair object from two CryptoString objects
+func NewEncryptionPair(pubkey cryptostring.CryptoString, privkey cryptostring.CryptoString) *EncryptionPair {
+	var newpair EncryptionPair
+
+	// All parameter validation is handled in Set
 	if newpair.Set(pubkey, privkey) != nil {
 		return nil
 	}
@@ -210,17 +212,17 @@ func NewKeyPair(pubkey cryptostring.CryptoString, privkey cryptostring.CryptoStr
 }
 
 // GetEncryptionType returns the algorithm used by the key
-func (kpair KeyPair) GetEncryptionType() string {
+func (kpair EncryptionPair) GetEncryptionType() string {
 	return kpair.encryptionType
 }
 
 // GetType returns the type of key -- asymmetric or symmetric
-func (kpair KeyPair) GetType() string {
+func (kpair EncryptionPair) GetType() string {
 	return kpair.keyType
 }
 
-// Set assigns a pair of CryptoString values to the keypair
-func (kpair *KeyPair) Set(pubkey cryptostring.CryptoString,
+// Set assigns a pair of CryptoString values to the EncryptionPair
+func (kpair *EncryptionPair) Set(pubkey cryptostring.CryptoString,
 	privkey cryptostring.CryptoString) error {
 
 	if pubkey.Prefix != "CURVE25519" || privkey.Prefix != "CURVE25519" {
@@ -238,7 +240,7 @@ func (kpair *KeyPair) Set(pubkey cryptostring.CryptoString,
 }
 
 // Generate initializes the object to a new key pair
-func (kpair KeyPair) Generate() error {
+func (kpair EncryptionPair) Generate() error {
 	pubkey, privkey, err := box.GenerateKey(rand.Reader)
 	if err != nil {
 		return err
@@ -250,12 +252,63 @@ func (kpair KeyPair) Generate() error {
 
 // Encrypt encrypts byte slice using the internal public key. It returns the resulting encrypted
 // data as a Base85-encoded string that amounts to a CryptoString without the prefix.
-func (kpair KeyPair) Encrypt(data []byte) (string, error) {
-	return "", errors.New("unimplemented")
+func (kpair EncryptionPair) Encrypt(data []byte) (string, error) {
+	if data == nil {
+		return "", nil
+	}
+
+	pubKeyDecoded := kpair.PublicKey.RawData()
+	if pubKeyDecoded == nil {
+		return "", errors.New("decoding error in public key")
+	}
+
+	// This kind of stupid is why this class is even necessary
+	var tempPtr [32]byte
+	ptrAdapter := pubKeyDecoded[0:32]
+	copy(ptrAdapter, pubKeyDecoded)
+
+	encryptedData, err := box.SealAnonymous(nil, data, &tempPtr, rand.Reader)
+	if err != nil {
+		return "", err
+	}
+
+	return b85.Encode(encryptedData), nil
 }
 
 // Decrypt decrypts a string of encrypted data which is Base85 encoded using the internal private
 // key.
-func (kpair KeyPair) Decrypt(data string) ([]byte, error) {
-	return nil, errors.New("unimplemented")
+func (kpair EncryptionPair) Decrypt(data string) ([]byte, error) {
+	if data == "" {
+		return nil, nil
+	}
+
+	pubKeyDecoded := kpair.PublicKey.RawData()
+	if pubKeyDecoded == nil {
+		return nil, errors.New("decoding error in public key")
+	}
+	var pubKeyPtr [32]byte
+
+	ptrAdapter := pubKeyDecoded[0:32]
+	copy(ptrAdapter, pubKeyDecoded)
+
+	privKeyDecoded := kpair.PrivateKey.RawData()
+	if privKeyDecoded == nil {
+		return nil, errors.New("decoding error in private key")
+	}
+	var privKeyPtr [32]byte
+
+	ptrAdapter = privKeyDecoded[0:32]
+	copy(ptrAdapter, privKeyDecoded)
+
+	decodedData, err := b85.Decode(data)
+	if err != nil {
+		return nil, err
+	}
+	// OpenAnonymous(out, box []byte, publicKey, privateKey *[32]byte) (message []byte, ok bool)
+	decryptedData, ok := box.OpenAnonymous(nil, decodedData, &pubKeyPtr, &privKeyPtr)
+
+	if ok {
+		return decryptedData, nil
+	}
+	return nil, errors.New("decryption error")
 }
