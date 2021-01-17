@@ -698,8 +698,8 @@ func NewOrgEntry() *Entry {
 
 	self.SignatureInfo.Items = []SigInfo{
 		{"Custody", 1, true, SigInfoSignature},
-		{"Organization", 2, false, SigInfoSignature},
-		{"Hashes", 3, false, SigInfoHash}}
+		{"Hashes", 2, false, SigInfoHash},
+		{"Organization", 3, false, SigInfoSignature}}
 
 	self.Fields["Index"] = "1"
 	self.Fields["Time-To-Live"] = "30"
