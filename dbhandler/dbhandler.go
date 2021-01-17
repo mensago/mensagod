@@ -20,6 +20,7 @@ import (
 	"database/sql"
 
 	"github.com/darkwyrm/anselusd/cryptostring"
+	"github.com/darkwyrm/anselusd/ezcrypt"
 	"github.com/darkwyrm/anselusd/keycard"
 	"github.com/darkwyrm/b85"
 	"github.com/everlastingbeta/diceware"
@@ -775,4 +776,19 @@ func GetPrimarySigningKey() (string, error) {
 		return psk, nil
 	}
 	return "", err
+}
+
+// GetEncryptionPair returns the organization's encryption keypair as an EncryptionPair
+func GetEncryptionPair() (*ezcrypt.EncryptionPair, error) {
+	row := dbConn.QueryRow(`SELECT pubkey,privkey FROM orgkeys WHERE purpose = 'encrypt' ` +
+		`ORDER BY rowid DESC LIMIT 1`)
+
+	var pubkey, privkey string
+	err := row.Scan(&pubkey, &privkey)
+	if err == nil {
+		keypair := ezcrypt.NewEncryptionPair(cryptostring.New(pubkey),
+			cryptostring.New(privkey))
+		return keypair, nil
+	}
+	return nil, err
 }
