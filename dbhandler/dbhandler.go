@@ -610,13 +610,42 @@ func PreregWorkspace(wid string, uid string, domain string, wordList *diceware.W
 }
 
 // CheckRegCode handles authenticating a host using a user/workspace ID and registration
-// code provided by PreregWorkspace. Base on authentication it either returns the workspace ID
-// (success) or an empty string (failure). An error is returned only if authentication was
+// code provided by PreregWorkspace. Based on authentication it either returns the workspace ID
+// (success) or an empty string (failure). An error is returned only if authentication was not
 // successful. The caller is still responsible for performing the necessary steps to add the
 // workspace to the database.
-func CheckRegCode(id string, wid bool, regcode string) (string, error) {
-	// TODO: Implement CheckRegCode
-	return "", errors.New("Unimplemented")
+func CheckRegCode(id string, domain string, iswid bool, regcode string) (string, error) {
+	var wid string
+	if iswid {
+		row := dbConn.QueryRow(`SELECT wid FROM prereg WHERE regcode = $1 AND domain = $2`,
+			regcode, domain)
+		err := row.Scan(&wid)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				// No entry in the table
+				return "", errors.New("regcode not found")
+			}
+			return "", err
+		}
+
+		if wid == id {
+			return wid, nil
+		}
+		return "", errors.New("wid mismatch")
+	}
+
+	row := dbConn.QueryRow(`SELECT wid FROM prereg WHERE regcode = $1 AND uid = $2 `+
+		`AND domain = $3`, regcode, id, domain)
+	err := row.Scan(&wid)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// No entry in the table
+			return "", errors.New("regcode not found")
+		}
+		return "", err
+	}
+
+	return wid, nil
 }
 
 // GetOrgEntries pulls one or more entries from the database. If an end index is not desired, set
