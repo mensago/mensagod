@@ -14,6 +14,16 @@ func commandPreregister(session *sessionState) {
 	// command syntax:
 	// PREREG(User-ID="",Workspace-ID="",Domain="")
 
+	adminAddress := "admin/" + viper.GetString("global.domain")
+	adminWid, err := dbhandler.ResolveAddress(adminAddress)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+	}
+
+	if session.LoginState != loginClientSession || session.WID != adminWid {
+		session.SendStringResponse(401, "UNAUTHORIZED", "Only admin can use this")
+	}
+
 	// Just do some basic syntax checks on the user ID
 	uid := ""
 	if session.Message.HasField("User-ID") {
@@ -49,22 +59,6 @@ func commandPreregister(session *sessionState) {
 	}
 	if domain == "" {
 		domain = viper.GetString("global.domain")
-	}
-
-	ipv4Pat := regexp.MustCompile("([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}):[0-9]+")
-	mIP4 := ipv4Pat.FindStringSubmatch(session.Connection.RemoteAddr().String())
-
-	remoteIP4 := ""
-	if len(mIP4) == 2 {
-		remoteIP4 = mIP4[1]
-	}
-
-	// Preregistration must be done from the server itself
-	mIP6, _ := regexp.MatchString("(::1):[0-9]+", session.Connection.RemoteAddr().String())
-
-	if !mIP6 && (remoteIP4 == "" || remoteIP4 != "127.0.0.1") {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
-		return
 	}
 
 	var haswid bool
