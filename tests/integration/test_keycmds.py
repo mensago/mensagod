@@ -1,7 +1,8 @@
-
 from pyanselus.cryptostring import CryptoString
+from pyanselus.encryption import EncryptionPair
 import pyanselus.keycard as keycard
-from integration_setup import setup_test, config_server, ServerNetworkConnection
+from integration_setup import setup_test, config_server, ServerNetworkConnection, regcode_admin, \
+	login_admin
 
 # Keys used in the various tests. 
 # THESE KEYS ARE STORED ON GITHUB! DO NOT USE THESE FOR ANYTHING EXCEPT UNIT TESTS!!
@@ -96,14 +97,22 @@ def test_addentry_usercard():
 	dbconn = setup_test()
 	config_data = config_server(dbconn)
 
-	# Add dummy user info to database
-	cur = dbconn.cursor()
-
-	cur.execute("INSERT INTO workspaces(wid,uid,domain,wtype) VALUES(%s,%s,%s,%s)",
-		('4418bf6c-000b-4bb3-8111-316e72030468', 'csimons', 'example.com', 'individual'))
-
-	cur.close()
-	dbconn.commit()
+	sock = ServerNetworkConnection()
+	assert sock.connect(), "Connection to server at localhost:2001 failed"
+	
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	config_data['pwhash'] = pwhash
+	config_data['devid'] = devid
+	config_data['devpair'] = devpair
+	
+	regcode_admin(config_data, sock)
+	login_admin(config_data, sock)
 
 	# Test setup is complete. Create a test keycard and do ADDENTRY
 
@@ -133,18 +142,15 @@ def test_addentry_usercard():
 
 	usercard = keycard.UserEntry()
 	usercard.set_fields({
-		'Name':'Corbin Simons',
-		'Workspace-ID':'4418bf6c-000b-4bb3-8111-316e72030468',
-		'User-ID':'csimons',
+		'Name':'Test Administrator',
+		'Workspace-ID':config_data['admin_wid'],
+		'User-ID':'admin',
 		'Domain':'example.com',
 		'Contact-Request-Verification-Key':'ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D',
 		'Contact-Request-Encryption-Key':'CURVE25519:yBZ0{1fE9{2<b~#i^R+JT-yh-y5M(Wyw_)}_SZOn',
 		'Public-Encryption-Key':'CURVE25519:_`UC|vltn_%P5}~vwV^)oY){#uvQSSy(dOD_l(yE'
 	})
 
-	sock = ServerNetworkConnection()
-	assert sock.connect(), "Connection to server at localhost:2001 failed"
-	
 	sock.send_message({
 		'Action' : "ADDENTRY",
 		'Data' : { 'Base-Entry' : usercard.make_bytestring(0).decode() }
@@ -249,14 +255,15 @@ def test_addentry_usercard():
 	sock.send_message({
 		'Action' : "USERCARD",
 		'Data' : { 
-			'Owner' : 'csimons/example.com',
+			'Owner' : 'admin/example.com',
 			'Start-Index' : '1'
 		}
 	})
 
 	response = sock.read_response(server_response)
-	assert response['Code'] == 104 and response['Status'] == 'TRANSFER' and \
-		response['Data']['Item-Count'] == '2', \
+	assert response['Code'] == 104 and response['Status'] == 'TRANSFER', \
+		'test_addentry.usercard: server returned %s' % response['Status']
+	assert response['Data']['Item-Count'] == '2', \
 		'test_addentry.usercard: server returned wrong number of items'
 	data_size = int(response['Data']['Total-Size'])
 	sock.send_message({'Action':'TRANSFER'})
