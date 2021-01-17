@@ -1,6 +1,8 @@
+from base64 import b85encode
 import json
 import os.path
 import re
+import secrets
 import socket
 import sys
 import time
@@ -10,6 +12,7 @@ import psycopg2
 import toml
 
 from pyanselus.cryptostring import CryptoString
+from pyanselus.encryption import PublicKey
 import pyanselus.keycard as keycard
 
 # Keys used in the various tests. 
@@ -339,7 +342,8 @@ class ServerNetworkConnection:
 			rawdata = self.socket.recv(8192)
 			rawstring = rawdata.decode()
 			response = json.loads(rawstring)
-			jsonschema.validate(response, schema)
+			if schema:
+				jsonschema.validate(response, schema)
 		except Exception as e:
 			print(f"Exception thrown in read_response(): {e}")
 			return None
@@ -354,3 +358,98 @@ class ServerNetworkConnection:
 		
 		rawdata = self.socket.recv(8192)
 		return rawdata.decode()
+
+
+def regcode_admin(config, conn):
+	'''Registers the admin account from a regcode'''
+
+	conn.send_message({
+	'Action' : "REGCODE",
+		'Data' : {
+			'User-ID' : 'admin',
+			'Reg-Code' : config['admin_regcode'],
+			'Password-Hash' : config['pwhash'],
+			'Device-ID' : config['devid'],
+			'Device-Key' : config['devpair'].public.as_string()
+		}
+	})
+
+	response = conn.read_response(None)
+	assert response['Code'] == 201 and response['Status'] == 'REGISTERED', \
+		'regcode_admin failed to register admin account'
+
+def login_admin(config, conn):
+	'''Logs in as the administrator'''
+	# Phase 1: LOGIN
+	
+	# To ensure that we really are connecting to the server we *think* we are, we'll create a
+	# challenge that the server must decrypt. We'll encrypt the challenge, which is just a string 
+	# of random bytes, using the server's public encryption key obtained from the organization's
+	# keycard. Each workspace ID is unique to the server, so we don't have to submit the domain
+	# associated with it. The best part is that because workspace IDs are arbitrary, submitting
+	# a workspace ID to a malicious server only gives them a UUID associated with an IP address.
+	# This is not anything special and if an APT were to have set up a malicious server, they would 
+	# very likely already have this information anyway.
+
+	# We Base85 encode the challenge because it doesn't change the randomness and it makes the
+	# comparison easier -- comparing strings. :)
+	challenge = b85encode(secrets.token_bytes(32))
+	ekey = PublicKey(CryptoString(config['oekey']))
+	status = ekey.encrypt(challenge)
+	assert not status.error(), 'test_login: failed to encrypt server challenge'
+
+	conn.send_message({
+		'Action' : "LOGIN",
+		'Data' : {
+			'Workspace-ID' : config['admin_wid'],
+			'Login-Type' : 'PLAIN',
+			'Challenge' : status['data']
+		}
+	})
+
+	response = conn.read_response(None)
+	assert response['Code'] == 100 and response['Status'] == 'CONTINUE', \
+		'test_login: failed to log in'
+	assert response['Data']['Response'] == challenge.decode(), \
+		'test_login: server failed identity response'
+
+	# Phase 2: PASSWORD
+	conn.send_message({
+		'Action' : "PASSWORD",
+		'Data' : { 'Password-Hash' : config['pwhash'] }
+	})
+
+	response = conn.read_response(None)
+	assert response['Code'] == 100 and response['Status'] == 'CONTINUE', \
+		'test_login: failed to auth password'
+
+	# Phase 3: DEVICE
+	conn.send_message({
+		'Action' : "DEVICE",
+		'Data' : { 
+			'Device-ID' : config['devid'],
+			'Device-Key' : config['devpair'].public.as_string()
+		}
+	})
+
+	# Receive, decrypt, and return the server challenge
+	response = conn.read_response(None)
+	assert response['Code'] == 100 and response['Status'] == 'CONTINUE', \
+		'test_login: failed to auth device'
+	assert 'Challenge' in response['Data'], 'test_login: server did not return a device challenge'
+	
+	status = config['devpair'].decrypt(response['Data']['Challenge'])
+	assert not status.error(), 'test_login: failed to decrypt device challenge'
+
+	conn.send_message({
+		'Action' : "DEVICE",
+		'Data' : { 
+			'Device-ID' : config['devid'],
+			'Device-Key' : config['devpair'].public.as_string(),
+			'Response' : status['data']
+		}
+	})
+
+	response = conn.read_response(None)
+	assert response['Code'] == 200 and response['Status'] == 'OK', \
+		'Server challenge-response phase failed'
