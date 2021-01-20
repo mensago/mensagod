@@ -254,7 +254,7 @@ func commandRegister(session *sessionState) {
 	regType := strings.ToLower(viper.GetString("global.registration"))
 
 	if regType == "private" {
-		// If registration is set to private, registration must be done from the server itself.
+		// If registration is set to private, only an admin can send this command
 		adminAddress := "admin/" + viper.GetString("global.domain")
 		adminWid, err := dbhandler.ResolveAddress(adminAddress)
 		if err != nil {
