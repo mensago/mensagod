@@ -179,7 +179,9 @@ func commandLogout(session *sessionState) {
 	// command syntax:
 	// LOGOUT
 	session.SendStringResponse(200, "OK", "")
-	session.IsTerminating = true
+	session.LoginState = loginNoSession
+	session.WID = ""
+	session.WorkspaceStatus = ""
 }
 
 func commandPassword(session *sessionState) {
