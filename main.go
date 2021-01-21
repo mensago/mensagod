@@ -429,26 +429,6 @@ func connectionWorker(conn net.Conn) {
 
 func processCommand(session *sessionState) {
 	switch session.Message.Action {
-	/*
-		Commands to Implement:
-		COPY
-		DELETE
-		DELIVER
-		DOWNLOAD
-		GETUPDATES
-		ISCURRENT
-		LIST
-		MKDIR
-		MOVE
-		RESUME
-		SELECT
-		SEND
-		SERVERID
-		SERVERPWD
-		SETADDR
-		UNREGISTER
-		UPLOAD
-	*/
 	case "ADDENTRY":
 		commandAddEntry(session)
 	case "DEVICE":
