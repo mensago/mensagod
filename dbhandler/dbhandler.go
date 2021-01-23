@@ -516,7 +516,10 @@ func AddWorkspace(wid string, uid string, domain string, password string, status
 	return err
 }
 
-// RemoveWorkspace deletes a workspace. It returns an error if unsuccessful.
+// RemoveWorkspace deletes a workspace. It returns an error if unsuccessful. Note that this does
+// not remove all information about the workspace. WIDs and UIDs may not be reused for security
+// purposes, so the uid and wid attached to the workspace will remain in the database for this
+// reason
 func RemoveWorkspace(wid string) error {
 	var sqlCommands = []string{
 		`UPDATE workspaces SET password='-',status='deleted' WHERE wid=$1`,
