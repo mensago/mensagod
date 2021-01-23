@@ -236,19 +236,19 @@ def config_server(dbconn) -> dict:
 	regcode = 'Undamaged Shining Amaretto Improve Scuttle Uptake'
 	cur.execute(f"INSERT INTO prereg(wid, uid, domain, regcode) VALUES('{admin_wid}', 'admin', "
 		f"'example.com', '{regcode}');")
-	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{admin_wid}', 'admin', "
-		f"'example.com', 'individual');")
+	# cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{admin_wid}', 'admin', "
+	# 	f"'example.com', 'individual');")
 	
 	# Set up abuse/support forwarding to admin
 	abuse_wid = 'f8cfdbdf-62fe-4275-b490-736f5fdc82e3'
-	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{abuse_wid}', 'abuse', "
-		f"'example.com', 'alias');")
+	cur.execute("INSERT INTO workspaces(wid, uid, domain, password, status, wtype) "
+		f"VALUES('{abuse_wid}', 'abuse', 'example.com', '-', 'active', 'alias');")
 	cur.execute(f"INSERT INTO aliases(wid, target) VALUES('{abuse_wid}', "
 		f"'{'/'.join([admin_wid, 'example.com'])}');")
 
 	support_wid = 'f0309ef1-a155-4655-836f-55173cc1bc3b'
-	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{support_wid}', "
-		f"'support', 'example.com', 'alias');")
+	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, password, status, wtype) "
+		f"VALUES('{support_wid}', 'support', 'example.com', '-', 'active', 'alias');")
 	cur.execute(f"INSERT INTO aliases(wid, target) VALUES('{support_wid}', "
 		f"'{'/'.join([admin_wid, 'example.com'])}');")
 	

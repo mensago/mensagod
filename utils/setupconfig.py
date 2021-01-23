@@ -335,7 +335,8 @@ cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.
 rows = cur.fetchall()
 if rows[0][0] is False:
 	cur.execute("CREATE TABLE workspaces(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, "
-		"uid VARCHAR(64), domain VARCHAR(255) NOT NULL, wtype VARCHAR(32) NOT NULL);")
+		"uid VARCHAR(64), domain VARCHAR(255) NOT NULL, wtype VARCHAR(32) NOT NULL, "
+		"status VARCHAR(16) NOT NULL, password VARCHAR(128) NOT NULL);")
 
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
@@ -345,16 +346,6 @@ rows = cur.fetchall()
 if rows[0][0] is False:
 	cur.execute("CREATE TABLE aliases(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, "
 		"target CHAR(292) NOT NULL);")
-
-
-cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
-			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'iwkspc_main' AND "
-			"c.relkind = 'r');")
-rows = cur.fetchall()
-if rows[0][0] is False:
-	cur.execute("CREATE TABLE iwkspc_main(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
-				"uid VARCHAR(32), domain VARCHAR(253) NOT NULL, password VARCHAR(128) NOT NULL, "
-				"status VARCHAR(16) NOT NULL);")
 
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "

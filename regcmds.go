@@ -191,12 +191,12 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	var wid string
+	var wid, uid string
 	if session.Message.HasField("Workspace-ID") {
-		wid, err = dbhandler.CheckRegCode(session.Message.Data["Workspace-ID"], domain, true,
+		wid, uid, err = dbhandler.CheckRegCode(session.Message.Data["Workspace-ID"], domain, true,
 			session.Message.Data["Reg-Code"])
 	} else {
-		wid, err = dbhandler.CheckRegCode(session.Message.Data["User-ID"], domain, false,
+		wid, uid, err = dbhandler.CheckRegCode(session.Message.Data["User-ID"], domain, false,
 			session.Message.Data["Reg-Code"])
 	}
 
@@ -219,7 +219,8 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.AddWorkspace(wid, domain, session.Message.Data["Password-Hash"], "active")
+	err = dbhandler.AddWorkspace(wid, uid, domain, session.Message.Data["Password-Hash"], "active",
+		"individual")
 	if err != nil {
 		ServerLog.Printf("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
@@ -239,7 +240,7 @@ func commandRegCode(session *sessionState) {
 
 func commandRegister(session *sessionState) {
 	// command syntax:
-	// REGISTER(Workspace-ID, Password-Hash, Device-ID, Device-Key)
+	// REGISTER(Workspace-ID, Password-Hash, Device-ID, Device-Key, User-ID="", Type="")
 
 	if session.Message.Validate([]string{"Workspace-ID", "Password-Hash", "Device-ID",
 		"Device-Key"}) != nil {
@@ -251,6 +252,30 @@ func commandRegister(session *sessionState) {
 		return
 	}
 
+	// Just do some basic syntax checks on the user ID
+	uid := ""
+	if session.Message.HasField("User-ID") {
+		uid = session.Message.Data["User-ID"]
+		if strings.ContainsAny(uid, "/\"") {
+			session.SendStringResponse(400, "BAD REQUEST", "Bad User-ID")
+			return
+		}
+	}
+
+	wtype := "individual"
+	if session.Message.HasField("Type") {
+		wtype = session.Message.Data["Type"]
+		if wtype != "shared" && wtype != "individual" {
+			session.SendStringResponse(400, "BAD REQUEST", "Bad Type")
+			return
+		}
+
+		// TODO: Eliminate this when shared workspaces are implemented
+		if wtype == "shared" {
+			session.SendStringResponse(301, "NOT IMPLEMENTED", "")
+			return
+		}
+	}
 	regType := strings.ToLower(viper.GetString("global.registration"))
 
 	if regType == "private" {
@@ -299,8 +324,9 @@ func commandRegister(session *sessionState) {
 		return
 	}
 
-	err := dbhandler.AddWorkspace(session.Message.Data["Workspace-ID"],
-		viper.GetString("global.domain"), session.Message.Data["Password-Hash"], workspaceStatus)
+	err := dbhandler.AddWorkspace(session.Message.Data["Workspace-ID"], uid,
+		viper.GetString("global.domain"), session.Message.Data["Password-Hash"], workspaceStatus,
+		wtype)
 	if err != nil {
 		ServerLog.Printf("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
@@ -325,4 +351,8 @@ func commandRegister(session *sessionState) {
 func commandUnrecognized(session *sessionState) {
 	// command used when not recognized
 	session.SendStringResponse(400, "BAD REQUEST", "Unrecognized command")
+}
+
+func commandUnregister(session *sessionState) {
+
 }

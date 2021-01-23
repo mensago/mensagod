@@ -386,7 +386,7 @@ func SetPassword(wid string, password string) error {
 		return errors.New("Password string has a maximum 64 characters")
 	}
 	passHash := hashPassword(password)
-	_, err := dbConn.Exec(`UPDATE iwkspc_main SET password=$1 WHERE wid=$2`, wid, passHash)
+	_, err := dbConn.Exec(`UPDATE workspaces SET password=$1 WHERE wid=$2`, wid, passHash)
 	return err
 }
 
@@ -394,7 +394,7 @@ func SetPassword(wid string, password string) error {
 // if the two hashes match. It does not perform any validity checking of the input--this should be
 // done when the input is received from the user.
 func CheckPassword(wid string, password string) (bool, error) {
-	row := dbConn.QueryRow(`SELECT password FROM iwkspc_main WHERE wid=$1`, wid)
+	row := dbConn.QueryRow(`SELECT password FROM workspaces WHERE wid=$1`, wid)
 
 	var dbhash string
 	err := row.Scan(&dbhash)
@@ -421,7 +421,7 @@ func SetWorkspaceStatus(wid string, status string) error {
 		return fmt.Errorf("%s is not a valid workspace ID", wid)
 	}
 	var err error
-	_, err = dbConn.Exec(`UPDATE iwkspc_main SET status=$1 WHERE wid=$2`, status, wid)
+	_, err = dbConn.Exec(`UPDATE workspaces SET status=$1 WHERE wid=$2`, status, wid)
 	return err
 }
 
@@ -504,20 +504,22 @@ func UpdateDevice(wid string, devid string, sessionString string) (bool, string,
 // the workspace in the filesystem. Note that this function is strictly for adding workspaces for
 // individuals. Shared workspaces are not yet supported/implemented. Status may be 'active',
 // 'pending', or 'disabled'.
-func AddWorkspace(wid string, domain string, password string, status string) error {
+func AddWorkspace(wid string, uid string, domain string, password string, status string,
+	wtype string) error {
 	passString := hashPassword(password)
 
+	// wid, uid, domain, wtype, status, password
 	var err error
-	_, err = dbConn.Exec(`INSERT INTO iwkspc_main(wid, domain, password, status) `+
-		`VALUES($1, $2, $3, $4)`,
-		wid, domain, passString, status)
+	_, err = dbConn.Exec(`INSERT INTO workspaces(wid, uid, domain, password, status, wtype) `+
+		`VALUES($1, $2, $3, $4, $5, $6)`,
+		wid, uid, domain, passString, status, wtype)
 	return err
 }
 
 // RemoveWorkspace deletes a workspace. It returns an error if unsuccessful.
 func RemoveWorkspace(wid string) error {
 	var sqlCommands = []string{
-		`DELETE FROM iwkspc_main WHERE wid=$1`,
+		`UPDATE workspaces SET password='-',status='deleted' WHERE wid=$1`,
 		`DELETE FROM iwkspc_folders WHERE wid=$1`,
 		`DELETE FROM iwkspc_sessions WHERE wid=$1`,
 	}
@@ -537,7 +539,7 @@ func RemoveWorkspace(wid string) error {
 // 'approved'. Note that this function does not check the validity of the WID string passed to it.
 // This should be done when the input is received from the user.
 func CheckWorkspace(wid string) (bool, string) {
-	row := dbConn.QueryRow(`SELECT status FROM iwkspc_main WHERE wid=$1`, wid)
+	row := dbConn.QueryRow(`SELECT status FROM workspaces WHERE wid=$1`, wid)
 
 	var widStatus string
 	err := row.Scan(&widStatus)
@@ -614,38 +616,38 @@ func PreregWorkspace(wid string, uid string, domain string, wordList *diceware.W
 // (success) or an empty string (failure). An error is returned only if authentication was not
 // successful. The caller is still responsible for performing the necessary steps to add the
 // workspace to the database.
-func CheckRegCode(id string, domain string, iswid bool, regcode string) (string, error) {
-	var wid string
+func CheckRegCode(id string, domain string, iswid bool, regcode string) (string, string, error) {
+	var wid, uid string
 	if iswid {
-		row := dbConn.QueryRow(`SELECT wid FROM prereg WHERE regcode = $1 AND domain = $2`,
+		row := dbConn.QueryRow(`SELECT wid,uid FROM prereg WHERE regcode = $1 AND domain = $2`,
 			regcode, domain)
-		err := row.Scan(&wid)
+		err := row.Scan(&wid, &uid)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				// No entry in the table
-				return "", errors.New("regcode not found")
+				return "", "", errors.New("regcode not found")
 			}
-			return "", err
+			return "", "", err
 		}
 
 		if wid == id {
-			return wid, nil
+			return wid, uid, nil
 		}
-		return "", errors.New("wid mismatch")
+		return "", "", errors.New("wid mismatch")
 	}
 
-	row := dbConn.QueryRow(`SELECT wid FROM prereg WHERE regcode = $1 AND uid = $2 `+
+	row := dbConn.QueryRow(`SELECT wid,uid FROM prereg WHERE regcode = $1 AND uid = $2 `+
 		`AND domain = $3`, regcode, id, domain)
-	err := row.Scan(&wid)
+	err := row.Scan(&wid, &uid)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// No entry in the table
-			return "", errors.New("regcode not found")
+			return "", "", errors.New("regcode not found")
 		}
-		return "", err
+		return "", "", err
 	}
 
-	return wid, nil
+	return wid, uid, nil
 }
 
 // GetOrgEntries pulls one or more entries from the database. If an end index is not desired, set
