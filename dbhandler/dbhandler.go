@@ -572,6 +572,41 @@ func CheckWorkspace(wid string) (bool, string) {
 	}
 }
 
+// CheckUserID works the same as CheckWorkspace except that it checks for user IDs
+func CheckUserID(uid string) (bool, string) {
+	row := dbConn.QueryRow(`SELECT status FROM workspaces WHERE uid=$1`, uid)
+
+	var widStatus string
+	err := row.Scan(&widStatus)
+
+	switch err {
+	case sql.ErrNoRows:
+		break
+	case nil:
+		return true, widStatus
+	case err.(*pq.Error):
+		fmt.Println("Server encountered PostgreSQL error ", err)
+		panic(err)
+	default:
+		panic(err)
+	}
+
+	row = dbConn.QueryRow(`SELECT uid FROM prereg WHERE uid=$1`, uid)
+	err = row.Scan(&widStatus)
+
+	switch err {
+	case sql.ErrNoRows:
+		return false, ""
+	case nil:
+		return true, "approved"
+	case err.(*pq.Error):
+		fmt.Println("Server encountered PostgreSQL error ", err)
+		panic(err)
+	default:
+		panic(err)
+	}
+}
+
 // PreregWorkspace preregisters a workspace, adding a specified wid to the database and returns
 // a randomly-generated registration code needed to authenticate the first login. Registration
 // codes are stored in the clear, but that's merely because if an attacker already has access to
