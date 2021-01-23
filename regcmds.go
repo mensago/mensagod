@@ -294,7 +294,13 @@ func commandRegister(session *sessionState) {
 
 	success, _ := dbhandler.CheckWorkspace(session.Message.Data["Workspace-ID"])
 	if success {
-		session.SendStringResponse(408, "RESOURCE EXISTS", "")
+		session.SendStringResponse(408, "RESOURCE EXISTS", "Workspace-ID exists")
+		return
+	}
+
+	success, _ = dbhandler.CheckUserID(session.Message.Data["User-ID"])
+	if success {
+		session.SendStringResponse(408, "RESOURCE EXISTS", "User-ID exists")
 		return
 	}
 
