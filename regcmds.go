@@ -382,6 +382,13 @@ func commandUnregister(session *sessionState) {
 		return
 	}
 
+	regType := strings.ToLower(viper.GetString("global.registration"))
+	if regType == "private" || regType == "moderated" {
+		// TODO: submit admin request to delete workspace
+		session.SendStringResponse(101, "PENDING", "Pending administrator approval")
+		return
+	}
+
 	// This command can be used to unregister other workspaces, but only the admin account is
 	// allowed to do this
 	wid := session.WID
