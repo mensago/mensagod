@@ -671,11 +671,6 @@ fhandle.write('''
 # address. This is to prevent registration spam
 # registration_delay_min = 15
 # 
-# Device checking enables an extra layer of security, checking the identity of
-# a device for a workspace by exchanging a random key which is updated every
-# time that device logs in.
-# device_checking = on
-# 
 # Adjust the password security strength. Argon2id is used for the hash
 # generation algorithm. This setting may be `normal` or `enhanced`. Normal is
 # best for most situations, but for environments which require extra security,

@@ -234,9 +234,6 @@ func setupConfig() *os.File {
 	// can be requested from the same IP address -- for preventing registration spam/DoS.
 	viper.SetDefault("security.registration_delay_min", 15)
 
-	// Is a matching session key required for a device to have access?
-	viper.SetDefault("security.device_checking", "on")
-
 	// Resource usage for password hashing
 	viper.SetDefault("security.password_security", "normal")
 
@@ -351,14 +348,6 @@ func setupConfig() *os.File {
 		viper.Set("security.registration_delay_min", 0)
 		ServerLog.Println("Negative registration delay. Setting to zero.")
 		fmt.Println("Negative registration delay. Setting to zero.")
-	}
-
-	devChecking := strings.ToLower(viper.GetString("security.device_checking"))
-	if devChecking != "on" && devChecking != "off" {
-		viper.Set("security.devChecking", "on")
-		ServerLog.Println("Invalid device checking value. Exiting.")
-		fmt.Println("Invalid device checking value. Exiting.")
-		os.Exit(1)
 	}
 
 	return logHandle
