@@ -431,6 +431,8 @@ func processCommand(session *sessionState) {
 	switch session.Message.Action {
 	case "ADDENTRY":
 		commandAddEntry(session)
+	case "CANCEL":
+		commandCancel(session)
 	case "DEVICE":
 		commandDevice(session)
 	case "EXISTS":
@@ -456,6 +458,13 @@ func processCommand(session *sessionState) {
 	default:
 		commandUnrecognized(session)
 	}
+}
+
+func commandCancel(session *sessionState) {
+	if session.LoginState != loginClientSession {
+		session.LoginState = loginNoSession
+	}
+	session.SendStringResponse(200, "OK", "")
 }
 
 func commandExists(session *sessionState) {

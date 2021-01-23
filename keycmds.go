@@ -230,6 +230,10 @@ func commandAddEntry(session *sessionState) {
 	if err != nil {
 		return
 	}
+	if request.Action == "CANCEL" {
+		session.SendStringResponse(200, "OK", "")
+		return
+	}
 	if request.Action != "ADDENTRY" ||
 		request.Validate([]string{"User-Signature"}) != nil {
 		session.SendStringResponse(400, "BAD REQUEST", "Missing User-Signature field")
@@ -310,7 +314,14 @@ func commandOrgCard(session *sessionState) {
 		}
 
 		request, err := session.GetRequest()
-		if err != nil || request.Action != "TRANSFER" {
+		if err != nil {
+			session.SendStringResponse(400, "BAD REQUEST", "")
+			return
+		}
+		if request.Action == "CANCEL" {
+			return
+		}
+		if request.Action != "TRANSFER" {
 			session.SendStringResponse(400, "BAD REQUEST", "")
 			return
 		}
@@ -385,7 +396,14 @@ func commandUserCard(session *sessionState) {
 		}
 
 		request, err := session.GetRequest()
-		if err != nil || request.Action != "TRANSFER" {
+		if err != nil {
+			session.SendStringResponse(400, "BAD REQUEST", "")
+			return
+		}
+		if request.Action == "CANCEL" {
+			return
+		}
+		if request.Action != "TRANSFER" {
 			session.SendStringResponse(400, "BAD REQUEST", "")
 			return
 		}

@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/darkwyrm/anselusd/cryptostring"
@@ -34,27 +33,28 @@ func commandDevice(session *sessionState) {
 	success, err := dbhandler.CheckDevice(session.WID, session.Message.Data["Device-ID"],
 		devkey.AsString())
 	if err != nil {
+		if err.Error() == "cancel" {
+			session.LoginState = loginNoSession
+			session.SendStringResponse(200, "OK", "")
+			return
+		}
+
 		session.SendStringResponse(400, "BAD REQUEST", "Bad Device-ID or Device-Key")
 		return
 	}
 
 	if !success {
-		if strings.ToLower(viper.GetString("security.device_checking")) == "on" {
-			// TODO: implement device checking:
-			// 1) Check to see if there are multiple devices
-			// 2) If there are multiple devices, push out an authorization message.
-			// 3) Record the session ID in the table as a pending device.
-			// 4) Return 101 PENDING and close the connection
-			// 5) Upon receipt of authorization approval, update the device status in the database
-			// 6) Upon receipt of denial, log the failure and apply a lockout to the IP
+		// TODO: implement device checking:
+		// 1) Check to see if there are multiple devices
+		// 2) If there are multiple devices, push out an authorization message.
+		// 3) Record the session ID in the table as a pending device.
+		// 4) Return 101 PENDING and close the connection
+		// 5) Upon receipt of authorization approval, update the device status in the database
+		// 6) Upon receipt of denial, log the failure and apply a lockout to the IP
 
-			// This code exists to at least enable the server to work until device checking can
-			// be implemented.
-			dbhandler.AddDevice(session.WID, session.Message.Data["Device-ID"], devkey, "active")
-		} else {
-			// TODO: Check for paranoid mode and reject if enabled
-			dbhandler.AddDevice(session.WID, session.Message.Data["Device-ID"], devkey, "active")
-		}
+		// This code exists to at least enable the server to work until device checking can
+		// be implemented.
+		dbhandler.AddDevice(session.WID, session.Message.Data["Device-ID"], devkey, "active")
 	}
 
 	// The device is part of the workspace, so now we issue undergo a challenge-response
@@ -196,7 +196,7 @@ func commandPassword(session *sessionState) {
 	}
 
 	if session.LoginState != loginAwaitingPassword {
-		session.SendStringResponse(400, "BAD REQUEST", "Sessino state mismatch")
+		session.SendStringResponse(400, "BAD REQUEST", "Session state mismatch")
 		return
 	}
 
@@ -285,6 +285,10 @@ func challengeDevice(session *sessionState, keytype string, devkeystr string) (b
 	if err != nil {
 		return false, err
 	}
+	if request.Action == "CANCEL" {
+		return false, errors.New("cancel")
+	}
+
 	if request.Action != "DEVICE" {
 		session.SendStringResponse(400, "BAD REQUEST", "Session state mismatch")
 		return false, nil
