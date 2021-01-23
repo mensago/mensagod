@@ -1,11 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/anselusd/dbhandler"
+	"github.com/darkwyrm/anselusd/fshandler"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
@@ -357,5 +359,70 @@ func commandUnrecognized(session *sessionState) {
 }
 
 func commandUnregister(session *sessionState) {
+	// command syntax:
+	// UNREGISTER(Password-Hash)
+	if !session.Message.HasField("Password-Hash") {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
 
+	if session.LoginState != loginClientSession {
+		session.SendStringResponse(401, "UNAUTHORIZED", "Must be logged in for this command")
+	}
+
+	match, err := dbhandler.CheckPassword(session.WID, session.Message.Data["Password-Hash"])
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		ServerLog.Printf("Unregister: error checking password: %s", err.Error())
+		fmt.Printf("Unregister: error checking password: %s", err.Error())
+		return
+	}
+	if !match {
+		session.SendStringResponse(401, "UNAUTHORIZED", "Password mismatch")
+		return
+	}
+
+	// This command can be used to unregister other workspaces, but only the admin account is
+	// allowed to do this
+	wid := session.WID
+	if session.Message.HasField("Workspace-ID") {
+		if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
+			session.SendStringResponse(400, "BAD REQUEST", "Bad Workspace-ID")
+			return
+		}
+
+		if session.WID != session.Message.Data["Workspace-ID"] {
+			adminAddress := "admin/" + viper.GetString("global.domain")
+			adminWid, err := dbhandler.ResolveAddress(adminAddress)
+			if err != nil {
+				session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+				ServerLog.Println("Unregister: failed to resolve admin account")
+				fmt.Println("Unregister: failed to resolve admin account")
+				return
+			}
+
+			if session.WID != adminWid {
+				session.SendStringResponse(401, "UNAUTHORIZED",
+					"Only admin can unregister other workspaces")
+				return
+			}
+			wid = session.Message.Data["Workspace-ID"]
+		}
+	}
+
+	err = dbhandler.RemoveWorkspace(wid)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		ServerLog.Printf("Unregister: error removing workspace from db: %s", err.Error())
+		fmt.Printf("Unregister: error removing workspace from db: %s", err.Error())
+		return
+	}
+
+	err = fshandler.RemoveWorkspace(wid)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		ServerLog.Printf("Unregister: error removing workspace from filesystem: %s", err.Error())
+		fmt.Printf("Unregister: error removing workspace from filesystem: %s", err.Error())
+		return
+	}
 }
