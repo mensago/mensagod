@@ -113,26 +113,44 @@ func commandAddEntry(session *sessionState) {
 		return
 	}
 
-	tempStr, err := dbhandler.GetUserEntries(entry.Fields["Workspace-ID"], 0, 0)
-	if len(tempStr) != 0 && err == nil {
+	// IsDataCompliant ensures that we actually have a string in the Index field that will convert
+	// into a positive integer
+	currentIndex, _ := strconv.Atoi(entry.Fields["Index"])
 
-		// If there are previous entries for the workspace, the chain of trust must be validated.
-		prevEntry, err := keycard.NewEntryFromData(tempStr[0])
-		if err != nil {
-			session.SendStringResponse(300, "INTERNAL SERVER ERRROR",
-				"Failure to create entry from data")
-			ServerLog.Println(fmt.Sprintf("ERROR AddEntry: previous keycard entry invalid for "+
-				"workspace %s", entry.Fields["Workspace-ID"]))
-			fmt.Println(fmt.Sprintf("ERROR AddEntry: previous keycard entry invalid for "+
-				"workspace %s", entry.Fields["Workspace-ID"]))
-			return
-		}
+	// Passing a 0 as the start index means we'll get just the current entry
+	tempStrList, err := dbhandler.GetUserEntries(entry.Fields["Workspace-ID"], 0, 0)
+	if err == nil {
+		if len(tempStrList) == 0 {
+			if currentIndex != 1 {
+				session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA",
+					"Root entry index must be 1")
+				return
+			}
+		} else {
+			prevEntry, err := keycard.NewEntryFromData(tempStrList[0])
+			if err != nil {
+				session.SendStringResponse(300, "INTERNAL SERVER ERRROR",
+					"Failure to create entry from data")
+				ServerLog.Println(fmt.Sprintf("ERROR AddEntry: previous keycard entry invalid for "+
+					"workspace %s", entry.Fields["Workspace-ID"]))
+				fmt.Println(fmt.Sprintf("ERROR AddEntry: previous keycard entry invalid for "+
+					"workspace %s", entry.Fields["Workspace-ID"]))
+				return
+			}
 
-		isOK, err := entry.VerifyChain(prevEntry)
-		if !isOK || err != nil {
-			session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA",
-				"Entry failed to chain verify")
-			return
+			prevIndex, _ := strconv.Atoi(prevEntry.Fields["Index"])
+			if currentIndex != prevIndex+1 {
+				session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA", "Non-sequential index")
+				return
+			}
+
+			// If there are previous entries for the workspace, the chain of trust must be validated.
+			isOK, err := entry.VerifyChain(prevEntry)
+			if !isOK || err != nil {
+				session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA",
+					"Entry failed to chain verify")
+				return
+			}
 		}
 	}
 
