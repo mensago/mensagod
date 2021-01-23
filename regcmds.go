@@ -285,17 +285,8 @@ func commandRegister(session *sessionState) {
 	regType := strings.ToLower(viper.GetString("global.registration"))
 
 	if regType == "private" {
-		// If registration is set to private, only an admin can send this command
-		adminAddress := "admin/" + viper.GetString("global.domain")
-		adminWid, err := dbhandler.ResolveAddress(adminAddress)
-		if err != nil {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-		}
-
-		if session.LoginState != loginClientSession || session.WID != adminWid {
-			session.SendStringResponse(304, "REGISTRATION CLOSED",
-				"Only admin can register on this server")
-		}
+		session.SendStringResponse(304, "REGISTRATION CLOSED", "Registration is private")
+		return
 	}
 
 	success, _ := dbhandler.CheckWorkspace(session.Message.Data["Workspace-ID"])
