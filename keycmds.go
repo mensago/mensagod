@@ -108,6 +108,11 @@ func commandAddEntry(session *sessionState) {
 		return
 	}
 
+	if entry.Fields["Workspace-ID"] != session.WID {
+		session.SendStringResponse(412, "NONCOMPLIANT KEYCARD DATA", "Workspace ID mismatch")
+		return
+	}
+
 	tempStr, err := dbhandler.GetUserEntries(entry.Fields["Workspace-ID"], 0, 0)
 	if len(tempStr) != 0 && err == nil {
 
