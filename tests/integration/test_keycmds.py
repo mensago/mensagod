@@ -172,6 +172,9 @@ def test_addentry_usercard():
 		CryptoString(config_data['ovkey']), 'Organization')
 	assert not status.error(), f"test_addentry(): org signature didn't verify: {status.info()}"
 	
+	assert response['Data']['Previous-Hash'] == config_data['second_org_entry'].hash, \
+		"test_addentry(): server did not attach correct Previous Hash to root user entry"
+	
 	usercard.prev_hash = response['Data']['Previous-Hash']
 	usercard.hash = response['Data']['Hash']
 	status = usercard.verify_hash()
@@ -227,6 +230,8 @@ def test_addentry_usercard():
 	assert not status.error(), f"test_addentry(): org signature didn't verify: {status.info()}"
 	
 	second_user_entry.prev_hash = response['Data']['Previous-Hash']
+	assert response['Data']['Previous-Hash'] == usercard.hash, \
+		"Server did not return correct chained user entry hash"
 	second_user_entry.hash = response['Data']['Hash']
 	status = second_user_entry.verify_hash()
 	assert not status.error(), f"test_addentry(): hash didn't verify: {status.info()}"

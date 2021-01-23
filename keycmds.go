@@ -188,22 +188,27 @@ func commandAddEntry(session *sessionState) {
 	signature := "ED25519:" + b85.Encode(rawSignature)
 	entry.Signatures["Organization"] = signature
 
-	rawLastEntry, err := dbhandler.GetLastEntry()
-	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
-		ServerLog.Println("ERROR AddEntry: failed to obtain last entry.")
-		fmt.Println("ERROR AddEntry: failed to obtain last entry.")
-		return
+	if currentIndex == 1 {
+		tempStrList, err = dbhandler.GetOrgEntries(0, 0)
+		if err != nil || len(tempStrList) == 0 {
+			session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
+			ServerLog.Println("ERROR AddEntry: failed to obtain last org entry.")
+			fmt.Println("ERROR AddEntry: failed to obtain last org entry.")
+			return
+		}
+		orgEntry, err := keycard.NewEntryFromData(tempStrList[0])
+		if err != nil {
+			session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
+			ServerLog.Println("ERROR AddEntry: failed to create entry from last org entry data.")
+			fmt.Println("ERROR AddEntry: failed to create entry from last org entry data.")
+			return
+		}
+		entry.PrevHash = orgEntry.Hash
+	} else {
+		// tempStrList still contains the user's current entry data
+		prevEntry, _ := keycard.NewEntryFromData(tempStrList[0])
+		entry.PrevHash = prevEntry.Hash
 	}
-
-	lastEntry, err := keycard.NewEntryFromData(rawLastEntry)
-	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
-		ServerLog.Println("ERROR AddEntry: failed to create entry from last entry data.")
-		fmt.Println("ERROR AddEntry: failed to create entry from last entry data.")
-		return
-	}
-	entry.PrevHash = lastEntry.Hash
 
 	err = entry.GenerateHash("BLAKE2B-256")
 	if err != nil {
