@@ -32,6 +32,12 @@ func commandPreregister(session *sessionState) {
 			session.SendStringResponse(400, "BAD REQUEST", "Bad User-ID")
 			return
 		}
+
+		success, _ := dbhandler.CheckUserID(session.Message.Data["User-ID"])
+		if success {
+			session.SendStringResponse(408, "RESOURCE EXISTS", "User-ID exists")
+			return
+		}
 	}
 
 	// If the client submits a workspace ID as the user ID, it is considered a request for that
