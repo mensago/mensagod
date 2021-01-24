@@ -23,6 +23,7 @@ import (
 	"github.com/darkwyrm/anselusd/ezcrypt"
 	"github.com/darkwyrm/anselusd/keycard"
 	"github.com/darkwyrm/b85"
+	"github.com/darkwyrm/gostringlist"
 	"github.com/everlastingbeta/diceware"
 	"github.com/lib/pq"
 	"github.com/spf13/viper"
@@ -306,7 +307,7 @@ func ResolveAddress(addr string) (string, error) {
 		}
 
 		if wtype == "alias" {
-			row := dbConn.QueryRow(`SELECT target FROM aliases WHERE wid=$1`, parts[0])
+			row := dbConn.QueryRow(`SELECT wid FROM aliases WHERE wid=$1`, parts[0])
 			var targetAddr string
 			err := row.Scan(&targetAddr)
 			if err != nil {
@@ -860,4 +861,45 @@ func GetEncryptionPair() (*ezcrypt.EncryptionPair, error) {
 		return keypair, nil
 	}
 	return nil, err
+}
+
+// GetAliases returns a StringList containing the aliases pointing to the specified WID
+func GetAliases(wid string) (gostringlist.StringList, error) {
+	var out gostringlist.StringList
+	rows, err := dbConn.Query(`SELECT alias FROM alias WHERE wid=$1`, wid)
+	if err != nil {
+		return out, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var entry string
+		err := rows.Scan(&entry)
+		if err != nil {
+			return out, err
+		}
+		out.Append(entry)
+	}
+	return out, nil
+}
+
+// IsAlias returns a bool if the specified workspace is an alias or a real account
+func IsAlias(wid string) (bool, error) {
+	row := dbConn.QueryRow(`SELECT alias FROM aliases WHERE wid=$1`, wid)
+
+	var alias string
+	err := row.Scan(&alias)
+
+	switch err {
+	case sql.ErrNoRows:
+		break
+	case nil:
+		return true, nil
+	case err.(*pq.Error):
+		fmt.Println("Server encountered PostgreSQL error ", err)
+		return false, err
+	default:
+		return false, err
+	}
+	return false, nil
 }
