@@ -226,7 +226,7 @@ func commandRegCode(session *sessionState) {
 		}
 
 		if len(lockTime) > 0 {
-			session.WriteClient(strings.Join([]string{"405 TERMINATED ", lockTime, "\r\n"}, " "))
+			session.SendStringResponse(405, "TERMINATED", "")
 			session.IsTerminating = true
 			return
 		}

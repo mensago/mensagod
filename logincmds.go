@@ -150,11 +150,11 @@ func commandLogin(session *sessionState) {
 
 	switch session.WorkspaceStatus {
 	case "disabled":
-		session.WriteClient("411 ACCOUNT DISABLED\r\n")
+		session.SendStringResponse(411, "ACCOUNT DISABLED", "")
 		session.IsTerminating = true
 		return
 	case "awaiting":
-		session.WriteClient("101 PENDING\r\n")
+		session.SendStringResponse(101, "PENDING", "")
 		session.IsTerminating = true
 		return
 	case "active", "approved":
