@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/darkwyrm/anselusd/cryptostring"
+	"github.com/darkwyrm/anselusd/logging"
 	"github.com/darkwyrm/b85"
 	"github.com/darkwyrm/gostringlist"
 	"github.com/zeebo/blake3"
@@ -261,7 +262,8 @@ func (entry Entry) MakeByteString(siglevel int) []byte {
 		}
 
 		if entry.SignatureInfo.Items[i].Type != SigInfoSignature {
-			panic("BUG: invalid signature info type in Entry.MakeByteString")
+			logging.Write("invalid signature info type in Entry.MakeByteString")
+			return nil
 		}
 
 		val, ok := entry.Signatures[entry.SignatureInfo.Items[i].Name]
@@ -491,7 +493,8 @@ func (entry *Entry) GenerateHash(algorithm string) error {
 	}
 
 	if hashLevel < 0 {
-		panic("BUG: SignatureInfo missing hash entry")
+		logging.Write("SignatureInfo missing hash entry")
+		return errors.New("bug: SignatureInfo missing hash entry")
 	}
 
 	switch algorithm {
@@ -614,7 +617,8 @@ func (entry *Entry) Chain(key cryptostring.CryptoString, rotateOptional bool) (*
 		if ok {
 			newEntry.Fields[info.Name] = keyString.AsString()
 		} else if !info.Optional {
-			panic("BUG: missing required keys generated for Chain() ")
+			logging.Write("missing required keys generated for Chain()")
+			return nil, nil, errors.New("missing required keys generated for Chain()")
 		}
 	}
 

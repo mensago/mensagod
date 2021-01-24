@@ -180,7 +180,9 @@ func commandRegCode(session *sessionState) {
 		session.Connection.RemoteAddr().String())
 
 	if err != nil {
-		panic(err)
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandRegCode: error checking lockout: %s", err.Error())
+		return
 	}
 
 	if len(lockTime) > 0 {
@@ -218,7 +220,9 @@ func commandRegCode(session *sessionState) {
 			session.Connection.RemoteAddr().String())
 
 		if err != nil {
-			panic(err)
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			logging.Writef("commandRegCode: error checking lockout: %s", err.Error())
+			return
 		}
 
 		if len(lockTime) > 0 {

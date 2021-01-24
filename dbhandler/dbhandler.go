@@ -22,6 +22,7 @@ import (
 	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/anselusd/ezcrypt"
 	"github.com/darkwyrm/anselusd/keycard"
+	"github.com/darkwyrm/anselusd/logging"
 	"github.com/darkwyrm/b85"
 	"github.com/darkwyrm/gostringlist"
 	"github.com/everlastingbeta/diceware"
@@ -61,7 +62,8 @@ func hashPassword(password string) string {
 	salt := make([]byte, argonSaltLength)
 	_, err := rand.Read(salt)
 	if err != nil {
-		panic(err)
+		logging.Writef("Failure reading random bytes: %s", err.Error())
+		return ""
 	}
 
 	passhash := argon2.IDKey([]byte(password), salt, argonIterations, argonRAM, argonThreads,
@@ -124,11 +126,10 @@ func verifyHash(password string, hashPass string) (bool, error) {
 // Connect utilizes the viper config system and connects to the specified database. Because
 // problems in the connection are almost always fatal to the successful continuation of the server
 // daemon, if there are problems, it logs the problem and exits the main process.
-func Connect(logHandle *log.Logger) {
-	serverLog = logHandle
+func Connect() {
 	if viper.GetString("database.engine") != "postgresql" {
-		logHandle.Println("Database password not set in config file. Exiting.")
-		fmt.Println("Database password not set in config file. Exiting.")
+		logging.Write("Database password not set in config file. Exiting.")
+		logging.Shutdown()
 		os.Exit(1)
 	}
 
@@ -140,12 +141,16 @@ func Connect(logHandle *log.Logger) {
 	var err error
 	dbConn, err = sql.Open("postgres", connString)
 	if err != nil {
-		panic(err)
+		logging.Writef("Failed to open database connection. Exiting. Error: %s", err.Error())
+		logging.Shutdown()
+		os.Exit(1)
 	}
 	// Calling Ping() is required because Open() just validates the settings passed
 	err = dbConn.Ping()
 	if err != nil {
-		panic(err)
+		logging.Writef("Failed to open database connection. Exiting. Error: %s", err.Error())
+		logging.Shutdown()
+		os.Exit(1)
 	}
 	connected = true
 }
@@ -209,7 +214,8 @@ func LogFailure(failType string, id string, source string) error {
 			_, err = dbConn.Exec(sqlStatement, failCount, timeString, lockout.Format(time.RFC3339),
 				failType, source, id)
 			if err != nil {
-				panic(err)
+				logging.Write("dbhandler.LogFailure: failed to update failure log")
+				return err
 			}
 		} else {
 			// Within threshold, so just update values
@@ -219,7 +225,8 @@ func LogFailure(failType string, id string, source string) error {
 				WHERE type=$3 AND source=$4 and wid=$5`
 			_, err = dbConn.Exec(sqlStatement, failCount, timeString, failType, source, id)
 			if err != nil {
-				panic(err)
+				logging.Write("dbhandler.LogFailure: failed to update failure log")
+				return err
 			}
 		}
 	} else {
@@ -227,7 +234,8 @@ func LogFailure(failType string, id string, source string) error {
 			VALUES($1, $2, $3, $4, $5)`
 		_, err = dbConn.Exec(sqlStatement, failType, source, id, failCount, timeString)
 		if err != nil {
-			panic(err)
+			logging.Write("dbhandler.LogFailure: failed to update failure log")
+			return err
 		}
 	}
 
@@ -352,7 +360,8 @@ func CheckLockout(failType string, id string, source string) (string, error) {
 			// No entry in the table, so obviously no lockout
 			return "", nil
 		}
-		panic(err)
+		logging.Write("dbhandler.CheckLockout: db error")
+		return "", err
 	}
 
 	if len(locktime) < 1 {
@@ -362,7 +371,8 @@ func CheckLockout(failType string, id string, source string) (string, error) {
 	var lockstamp time.Time
 	lockstamp, err = time.Parse(time.RFC3339, locktime)
 	if err != nil {
-		panic(err)
+		logging.Write("dbhandler.CheckLockout: bad timestamp in database")
+		return "", err
 	}
 
 	// If there is an expired lockout for this address, delete it
@@ -371,7 +381,8 @@ func CheckLockout(failType string, id string, source string) (string, error) {
 		WHERE failtype=$1 AND source=$2 AND lockout_until=$3 `
 		_, err = dbConn.Exec(sqlStatement, failType, source, locktime)
 		if err != nil {
-			panic(err)
+			logging.Write("dbhandler.CheckLockout: couldn't remove lockout from db")
+			return "", err
 		}
 		return "", nil
 	}
@@ -484,7 +495,8 @@ func UpdateDevice(wid string, devid string, sessionString string) (bool, string,
 	randomBytes := make([]byte, 32)
 	_, err := rand.Read(randomBytes)
 	if err != nil {
-		panic(err)
+		logging.Write("dbhandler.UpdateDevice: couldn't read random bytes")
+		return false, "", err
 	}
 	newSessionString := b85.Encode(randomBytes)
 	_, err = dbConn.Exec(`UPDATE iwkspc_sessions SET session_str=$1 WHERE wid=$2 AND 
@@ -496,7 +508,7 @@ func UpdateDevice(wid string, devid string, sessionString string) (bool, string,
 	case nil:
 		return true, newSessionString, nil
 	default:
-		panic(err)
+		return false, "", err
 	}
 }
 
@@ -554,10 +566,13 @@ func CheckWorkspace(wid string) (bool, string) {
 	case nil:
 		return true, widStatus
 	case err.(*pq.Error):
-		fmt.Println("Server encountered PostgreSQL error ", err)
-		panic(err)
+		logging.Writef("dbhandler.CheckWorkspace: PostgreSQL error reading workspaces: %s",
+			err.Error())
+		return false, ""
 	default:
-		panic(err)
+		logging.Writef("dbhandler.CheckWorkspace: unexpected error reading workspaces: %s",
+			err.Error())
+		return false, ""
 	}
 
 	row = dbConn.QueryRow(`SELECT wid FROM prereg WHERE wid=$1`, wid)
@@ -569,10 +584,13 @@ func CheckWorkspace(wid string) (bool, string) {
 	case nil:
 		return true, "approved"
 	case err.(*pq.Error):
-		fmt.Println("Server encountered PostgreSQL error ", err)
-		panic(err)
+		logging.Writef("dbhandler.CheckWorkspace: PostgreSQL error reading prereg: %s",
+			err.Error())
+		return false, ""
 	default:
-		panic(err)
+		logging.Writef("dbhandler.CheckWorkspace: unexpected error reading prereg: %s",
+			err.Error())
+		return false, ""
 	}
 }
 
@@ -589,10 +607,13 @@ func CheckUserID(uid string) (bool, string) {
 	case nil:
 		return true, widStatus
 	case err.(*pq.Error):
-		fmt.Println("Server encountered PostgreSQL error ", err)
-		panic(err)
+		logging.Writef("dbhandler.CheckUserID: PostgreSQL error reading workspaces: %s",
+			err.Error())
+		return false, ""
 	default:
-		panic(err)
+		logging.Writef("dbhandler.CheckUserID: unexpected error reading workspaces: %s",
+			err.Error())
+		return false, ""
 	}
 
 	row = dbConn.QueryRow(`SELECT uid FROM prereg WHERE uid=$1`, uid)
@@ -604,10 +625,13 @@ func CheckUserID(uid string) (bool, string) {
 	case nil:
 		return true, "approved"
 	case err.(*pq.Error):
-		fmt.Println("Server encountered PostgreSQL error ", err)
-		panic(err)
+		logging.Writef("dbhandler.CheckUserID: PostgreSQL error reading prereg: %s",
+			err.Error())
+		return false, ""
 	default:
-		panic(err)
+		logging.Writef("dbhandler.CheckUserID: unexpected error reading prereg: %s",
+			err.Error())
+		return false, ""
 	}
 }
 
@@ -635,10 +659,13 @@ func PreregWorkspace(wid string, uid string, domain string, wordList *diceware.W
 		case sql.ErrNoRows:
 			break
 		case err.(*pq.Error):
-			fmt.Println("Server encountered PostgreSQL error ", err)
-			panic(err)
+			logging.Writef("dbhandler.PreregWorkspace: PostgreSQL error reading prereg: %s",
+				err.Error())
+			return "", err
 		default:
-			panic(err)
+			logging.Writef("dbhandler.PreregWorkspace: unexpected error reading prereg: %s",
+				err.Error())
+			return "", err
 		}
 	}
 

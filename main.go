@@ -249,7 +249,9 @@ func setupConfig() {
 	if _, err := os.Stat(viper.GetString("global.log_dir")); os.IsNotExist(err) {
 		err = os.Mkdir(viper.GetString("global.log_dir"), 0600)
 		if err != nil {
-			panic(err)
+			fmt.Printf("Unable to create log directory %s. Exiting. Error: %s",
+				viper.GetString("global.log_dir"), err)
+			os.Exit(1)
 		}
 	}
 
@@ -259,7 +261,9 @@ func setupConfig() {
 	if os.IsNotExist(err) {
 		err = os.Mkdir(viper.GetString("global.workspace_dir"), 0600)
 		if err != nil {
-			panic(err)
+			fmt.Printf("Unable to create workspace directory %s. Exiting. Error: %s",
+				viper.GetString("global.workspace_dir"), err)
+			os.Exit(1)
 		}
 	}
 
@@ -340,7 +344,7 @@ func setupConfig() {
 func main() {
 	setupConfig()
 
-	dbhandler.Connect(ServerLog)
+	dbhandler.Connect()
 	if !dbhandler.IsConnected() {
 		fmt.Println("Unable to connect to database server. Quitting.")
 		os.Exit(1)

@@ -101,13 +101,17 @@ func commandLogin(session *sessionState) {
 	if exists {
 		lockTime, err := dbhandler.CheckLockout("workspace", wid, session.Connection.RemoteAddr().String())
 		if err != nil {
-			panic(err)
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			logging.Writef("commandLogin: error checking lockout: %s", err.Error())
+			return
 		}
 
 		if len(lockTime) > 0 {
 			lockTime, err = dbhandler.CheckLockout("password", wid, session.Connection.RemoteAddr().String())
 			if err != nil {
-				panic(err)
+				session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+				logging.Writef("commandLogin: error checking lockout: %s", err.Error())
+				return
 			}
 		}
 
@@ -124,7 +128,9 @@ func commandLogin(session *sessionState) {
 
 		lockTime, err := dbhandler.CheckLockout("workspace", wid, session.Connection.RemoteAddr().String())
 		if err != nil {
-			panic(err)
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			logging.Writef("commandLogin: error checking lockout: %s", err.Error())
+			return
 		}
 
 		// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
@@ -213,7 +219,9 @@ func commandPassword(session *sessionState) {
 		lockTime, err := dbhandler.CheckLockout("password", session.WID,
 			session.Connection.RemoteAddr().String())
 		if err != nil {
-			panic(err)
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			logging.Writef("commandPassword: error checking lockout: %s", err.Error())
+			return
 		}
 
 		// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
@@ -254,7 +262,9 @@ func challengeDevice(session *sessionState, keytype string, devkeystr string) (b
 
 	randBytes := make([]byte, 32)
 	if _, err := rand.Read(randBytes); err != nil {
-		panic(err.Error())
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("challengeDevice: error checking lockout: %s", err.Error())
+		return false, err
 	}
 
 	// We Base85-encode the random run of bytes this so that when we receive the response, it
