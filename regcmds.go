@@ -389,6 +389,22 @@ func commandUnregister(session *sessionState) {
 		return
 	}
 
+	adminAddress, err := dbhandler.ResolveAddress("admin/" + viper.GetString("global.domain"))
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		ServerLog.Println("Unregister: failed to resolve admin account")
+		fmt.Println("Unregister: failed to resolve admin account")
+		return
+	}
+	parts := strings.Split(adminAddress, "/")
+	if len(parts) != 2 {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		ServerLog.Println("Unregister: failed to find admin WID")
+		fmt.Println("Unregister: failed to find admin WID")
+		return
+	}
+	adminWid := parts[0]
+
 	// This command can be used to unregister other workspaces, but only the admin account is
 	// allowed to do this
 	wid := session.WID
@@ -399,14 +415,6 @@ func commandUnregister(session *sessionState) {
 		}
 
 		if session.WID != session.Message.Data["Workspace-ID"] {
-			adminAddress := "admin/" + viper.GetString("global.domain")
-			adminWid, err := dbhandler.ResolveAddress(adminAddress)
-			if err != nil {
-				session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-				ServerLog.Println("Unregister: failed to resolve admin account")
-				fmt.Println("Unregister: failed to resolve admin account")
-				return
-			}
 
 			if session.WID != adminWid {
 				session.SendStringResponse(401, "UNAUTHORIZED",
@@ -414,7 +422,43 @@ func commandUnregister(session *sessionState) {
 				return
 			}
 			wid = session.Message.Data["Workspace-ID"]
+
 		}
+	}
+
+	// You can't unregister the admin account
+	if wid == adminWid {
+		session.SendStringResponse(403, "FORBIDDEN", "Can't unregister the admin account")
+		return
+	}
+
+	// Can't delete support or abuse accounts
+	for _, builtin := range []string{"support", "abuse"} {
+		address, err := dbhandler.ResolveAddress(builtin + "/" + viper.GetString("global.domain"))
+		if err != nil {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			ServerLog.Println("Unregister: failed to resolve account " + builtin)
+			fmt.Println("Unregister: failed to resolve admin account " + builtin)
+			return
+		}
+		parts := strings.Split(address, "/")
+		if len(parts) != 2 {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			ServerLog.Println("Unregister: failed to find WID for " + builtin)
+			fmt.Println("Unregister: failed to find WID for " + builtin)
+			return
+		}
+		if wid == parts[0] {
+			session.SendStringResponse(403, "FORBIDDEN",
+				fmt.Sprintf("Can't unregister the built-in %s account", builtin))
+			return
+		}
+	}
+
+	// You also don't delete aliases with this command
+	isAlias, err := dbhandler.IsAlias(wid)
+	if isAlias {
+		session.SendStringResponse(403, "FORBIDDEN", "Aliases aren't removed with this command")
 	}
 
 	err = dbhandler.RemoveWorkspace(wid)
