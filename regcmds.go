@@ -348,7 +348,7 @@ func commandRegister(session *sessionState) {
 		session.SendStringResponse(101, "PENDING", "")
 	} else {
 		response := NewServerResponse(201, "REGISTERED")
-		response.Data["Device-ID"] = devid
+		response.Data["Domain"] = viper.GetString("global.domain")
 		session.SendResponse(*response)
 	}
 }
