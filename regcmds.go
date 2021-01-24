@@ -293,14 +293,20 @@ func commandRegister(session *sessionState) {
 
 	success, _ := dbhandler.CheckWorkspace(session.Message.Data["Workspace-ID"])
 	if success {
-		session.SendStringResponse(408, "RESOURCE EXISTS", "Workspace-ID exists")
+		response := NewServerResponse(408, "RESOURCE EXISTS")
+		response.Data["Field"] = "Workspace-ID"
+		session.SendResponse(*response)
 		return
 	}
 
-	success, _ = dbhandler.CheckUserID(session.Message.Data["User-ID"])
-	if success {
-		session.SendStringResponse(408, "RESOURCE EXISTS", "User-ID exists")
-		return
+	if session.Message.HasField("User-ID") {
+		success, _ = dbhandler.CheckUserID(session.Message.Data["User-ID"])
+		if success {
+			response := NewServerResponse(408, "RESOURCE EXISTS")
+			response.Data["Field"] = "User-ID"
+			session.SendResponse(*response)
+			return
+		}
 	}
 
 	// TODO: Check number of recent registration requests from this IP
