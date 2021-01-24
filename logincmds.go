@@ -3,12 +3,12 @@ package main
 import (
 	"crypto/rand"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/anselusd/dbhandler"
 	"github.com/darkwyrm/anselusd/ezcrypt"
+	"github.com/darkwyrm/anselusd/logging"
 	"github.com/darkwyrm/b85"
 	"github.com/spf13/viper"
 )
@@ -234,8 +234,7 @@ func commandPassword(session *sessionState) {
 			delayString := viper.GetString("security.failure_delay_sec") + "s"
 			d, err = time.ParseDuration(delayString)
 			if err != nil {
-				ServerLog.Printf("Bad login failure delay string %s. Sleeping 3s.", delayString)
-				fmt.Printf("Bad login failure delay string: %s. Sleeping 3s.", err)
+				logging.Writef("Bad login failure delay string %s. Sleeping 3s.", delayString)
 				d, err = time.ParseDuration("3s")
 			}
 			time.Sleep(d)

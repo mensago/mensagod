@@ -8,6 +8,7 @@ import (
 	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/anselusd/dbhandler"
 	"github.com/darkwyrm/anselusd/keycard"
+	"github.com/darkwyrm/anselusd/logging"
 	"github.com/darkwyrm/b85"
 	"github.com/spf13/viper"
 )
@@ -131,10 +132,8 @@ func commandAddEntry(session *sessionState) {
 			if err != nil {
 				session.SendStringResponse(300, "INTERNAL SERVER ERRROR",
 					"Failure to create entry from data")
-				ServerLog.Println(fmt.Sprintf("ERROR AddEntry: previous keycard entry invalid for "+
-					"workspace %s", entry.Fields["Workspace-ID"]))
-				fmt.Println(fmt.Sprintf("ERROR AddEntry: previous keycard entry invalid for "+
-					"workspace %s", entry.Fields["Workspace-ID"]))
+				logging.Writef("ERROR AddEntry: previous keycard entry invalid for workspace %s",
+					entry.Fields["Workspace-ID"])
 				return
 			}
 
@@ -160,8 +159,7 @@ func commandAddEntry(session *sessionState) {
 	pskstring, err := dbhandler.GetPrimarySigningKey()
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
-		ServerLog.Println("ERROR AddEntry: missing primary signing key in database.")
-		fmt.Println("ERROR AddEntry: missing primary signing key in database.")
+		logging.Write("ERROR AddEntry: missing primary signing key in database.")
 		return
 	}
 
@@ -169,8 +167,7 @@ func commandAddEntry(session *sessionState) {
 	err = psk.Set(pskstring)
 	if err != nil || psk.RawData() == nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
-		ServerLog.Println("ERROR AddEntry: corrupted primary signing key in database.")
-		fmt.Println("ERROR AddEntry: corrupted primary signing key in database.")
+		logging.Write("ERROR AddEntry: corrupted primary signing key in database.")
 		return
 	}
 
@@ -181,8 +178,7 @@ func commandAddEntry(session *sessionState) {
 	rawSignature := ed25519.Sign(pskBytes, entry.MakeByteString(-1))
 	if rawSignature == nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
-		ServerLog.Println("ERROR AddEntry: failed to org sign entry.")
-		fmt.Println("ERROR AddEntry: failed to org sign entry.")
+		logging.Write("ERROR AddEntry: failed to org sign entry.")
 		return
 	}
 	signature := "ED25519:" + b85.Encode(rawSignature)
@@ -192,15 +188,13 @@ func commandAddEntry(session *sessionState) {
 		tempStrList, err = dbhandler.GetOrgEntries(0, 0)
 		if err != nil || len(tempStrList) == 0 {
 			session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
-			ServerLog.Println("ERROR AddEntry: failed to obtain last org entry.")
-			fmt.Println("ERROR AddEntry: failed to obtain last org entry.")
+			logging.Write("ERROR AddEntry: failed to obtain last org entry.")
 			return
 		}
 		orgEntry, err := keycard.NewEntryFromData(tempStrList[0])
 		if err != nil {
 			session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
-			ServerLog.Println("ERROR AddEntry: failed to create entry from last org entry data.")
-			fmt.Println("ERROR AddEntry: failed to create entry from last org entry data.")
+			logging.Write("ERROR AddEntry: failed to create entry from last org entry data.")
 			return
 		}
 		entry.PrevHash = orgEntry.Hash
@@ -213,8 +207,7 @@ func commandAddEntry(session *sessionState) {
 	err = entry.GenerateHash("BLAKE2B-256")
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
-		ServerLog.Println("ERROR AddEntry: failed to hash entry.")
-		fmt.Println("ERROR AddEntry: failed to hash entry.")
+		logging.Write("ERROR AddEntry: failed to hash entry.")
 	}
 
 	response := NewServerResponse(100, "CONTINUE")
@@ -263,8 +256,7 @@ func commandAddEntry(session *sessionState) {
 		session.SendStringResponse(200, "OK", "")
 	} else {
 		session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
-		ServerLog.Println("ERROR AddEntry: failed to add entry.")
-		fmt.Println("ERROR AddEntry: failed to add entry.")
+		logging.Write("ERROR AddEntry: failed to add entry.")
 	}
 }
 

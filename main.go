@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/darkwyrm/anselusd/dbhandler"
+	"github.com/darkwyrm/anselusd/logging"
 	"github.com/everlastingbeta/diceware"
 	"github.com/everlastingbeta/diceware/wordlist"
 	_ "github.com/lib/pq"
@@ -169,7 +170,7 @@ func (s sessionState) WriteClient(msg string) (n int, err error) {
 // Function Definitions
 // -------------------------------------------------------------------------------------------
 
-func setupConfig() *os.File {
+func setupConfig() {
 	// IP and port to listen on
 	viper.SetDefault("network.listen_ip", "127.0.0.1")
 	viper.SetDefault("network.port", "2001")
@@ -252,14 +253,7 @@ func setupConfig() *os.File {
 		}
 	}
 
-	logHandle, err := os.OpenFile(logLocation, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		fmt.Printf("Unable to open log file %s. Aborting.\n", logLocation)
-		fmt.Printf("Error: %s\n", err)
-		os.Exit(1)
-	}
-	defer logHandle.Close()
-	ServerLog = log.New(logHandle, "anselusd:", log.LstdFlags)
+	logging.Init(logLocation, true)
 
 	_, err = os.Stat(viper.GetString("global.workspace_dir"))
 	if os.IsNotExist(err) {
@@ -270,16 +264,16 @@ func setupConfig() *os.File {
 	}
 
 	if viper.GetString("database.password") == "" {
-		ServerLog.Println("Database password not set in config file. Exiting.")
-		fmt.Println("Database password not set in config file. Exiting.")
+		logging.Write("Database password not set in config file. Exiting.")
+		logging.Shutdown()
 		os.Exit(1)
 	}
 
 	pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
 	if viper.GetString("global.domain") == "" ||
 		!pattern.MatchString(viper.GetString("global.domain")) {
-		ServerLog.Println("Missing or invalid domain in config file. Exiting.")
-		fmt.Printf("Missing or invalid domain in config file. Exiting.\n")
+		logging.Write("Missing or invalid domain in config file. Exiting.")
+		logging.Shutdown()
 		os.Exit(1)
 	}
 
@@ -287,9 +281,8 @@ func setupConfig() *os.File {
 	case "private", "public", "network", "moderated":
 		// Do nothing. Legitimate values.
 	default:
-		ServerLog.Println("Invalid registration mode in config file. Exiting.")
-		fmt.Printf("Invalid registration mode '%s' in config file. Exiting.\n",
-			viper.GetString("global.registration"))
+		logging.Write("Invalid registration mode in config file. Exiting.")
+		logging.Shutdown()
 		os.Exit(1)
 	}
 
@@ -304,58 +297,48 @@ func setupConfig() *os.File {
 	case "original":
 		gRegWordList = wordlist.Original
 	default:
-		ServerLog.Println("Invalid word list in config file. Exiting.")
-		fmt.Printf("Invalid word list in config file. Exiting.\n")
+		logging.Write("Invalid word list in config file. Exiting.")
+		logging.Shutdown()
 		os.Exit(1)
 	}
 
 	if viper.GetInt("global.registration_wordcount") < 0 ||
 		viper.GetInt("global.registration_wordcount") > 12 {
 		viper.Set("global.registration_wordcount", 0)
-		ServerLog.Println("Registration wordcount out of bounds in config file. Assuming 6.")
-		fmt.Println("Registration wordcount out of bounds in config file. Assuming 6.")
+		logging.Write("Registration wordcount out of bounds in config file. Assuming 6.")
 	}
 
 	if viper.GetInt("global.default_quota") < 0 {
 		viper.Set("global.default_quota", 0)
-		ServerLog.Println("Negative quota value in config file. Assuming zero.")
-		fmt.Println("Negative quota value in config file. Assuming zero.")
+		logging.Write("Negative quota value in config file. Assuming zero.")
 	}
 
 	if viper.GetInt("security.failure_delay_sec") > 60 {
 		viper.Set("security.failure_delay_sec", 60)
-		ServerLog.Println("Limiting maximum failure delay to 60.")
-		fmt.Println("Limiting maximum failure delay to 60.")
+		logging.Write("Limiting maximum failure delay to 60.")
 	}
 
 	if viper.GetInt("security.max_failures") < 1 {
 		viper.Set("security.max_failures", 1)
-		ServerLog.Println("Invalid login failure maximum. Setting to 1.")
-		fmt.Println("Invalid login failure maximum. Setting to 1.")
+		logging.Write("Invalid login failure maximum. Setting to 1.")
 	} else if viper.GetInt("security.max_failures") > 10 {
 		viper.Set("security.max_failures", 10)
-		ServerLog.Println("Limiting login failure maximum to 10.")
-		fmt.Println("Limiting login failure maximum to 10.")
+		logging.Write("Limiting login failure maximum to 10.")
 	}
 
 	if viper.GetInt("security.lockout_delay_min") < 0 {
 		viper.Set("security.lockout_delay_min", 0)
-		ServerLog.Println("Negative login failure lockout time. Setting to zero.")
-		fmt.Println("Negative login failure lockout time. Setting to zero.")
+		logging.Write("Negative login failure lockout time. Setting to zero.")
 	}
 
 	if viper.GetInt("security.registration_delay_min") < 0 {
 		viper.Set("security.registration_delay_min", 0)
-		ServerLog.Println("Negative registration delay. Setting to zero.")
-		fmt.Println("Negative registration delay. Setting to zero.")
+		logging.Write("Negative registration delay. Setting to zero.")
 	}
-
-	return logHandle
 }
 
 func main() {
-	logHandle := setupConfig()
-	defer logHandle.Close()
+	setupConfig()
 
 	dbhandler.Connect(ServerLog)
 	if !dbhandler.IsConnected() {

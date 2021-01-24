@@ -8,6 +8,7 @@ import (
 	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/anselusd/dbhandler"
 	"github.com/darkwyrm/anselusd/fshandler"
+	"github.com/darkwyrm/anselusd/logging"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
@@ -91,7 +92,8 @@ func commandPreregister(session *sessionState) {
 			session.SendStringResponse(408, "RESOURCE EXISTS", "")
 			return
 		}
-		ServerLog.Printf("Internal server error. commandPreregister.PreregWorkspace. Error: %s\n", err)
+		logging.Write(fmt.Sprintf("Internal server error. commandPreregister.PreregWorkspace. "+
+			"Error: %s\n", err))
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
@@ -230,7 +232,7 @@ func commandRegCode(session *sessionState) {
 	err = dbhandler.AddWorkspace(wid, uid, domain, session.Message.Data["Password-Hash"], "active",
 		"individual")
 	if err != nil {
-		ServerLog.Printf("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
+		logging.Writef("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 	}
 
@@ -339,14 +341,14 @@ func commandRegister(session *sessionState) {
 		viper.GetString("global.domain"), session.Message.Data["Password-Hash"], workspaceStatus,
 		wtype)
 	if err != nil {
-		ServerLog.Printf("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
+		logging.Writef("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 	}
 
 	devid := uuid.New().String()
 	err = dbhandler.AddDevice(session.Message.Data["Workspace-ID"], devid, devkey, "active")
 	if err != nil {
-		ServerLog.Printf("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
+		logging.Writef("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 	}
 
@@ -379,8 +381,7 @@ func commandUnregister(session *sessionState) {
 	match, err := dbhandler.CheckPassword(session.WID, session.Message.Data["Password-Hash"])
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-		ServerLog.Printf("Unregister: error checking password: %s", err.Error())
-		fmt.Printf("Unregister: error checking password: %s", err.Error())
+		logging.Writef("Unregister: error checking password: %s", err.Error())
 		return
 	}
 	if !match {
@@ -398,15 +399,13 @@ func commandUnregister(session *sessionState) {
 	adminAddress, err := dbhandler.ResolveAddress("admin/" + viper.GetString("global.domain"))
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-		ServerLog.Println("Unregister: failed to resolve admin account")
-		fmt.Println("Unregister: failed to resolve admin account")
+		logging.Write("Unregister: failed to resolve admin account")
 		return
 	}
 	parts := strings.Split(adminAddress, "/")
 	if len(parts) != 2 {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-		ServerLog.Println("Unregister: failed to find admin WID")
-		fmt.Println("Unregister: failed to find admin WID")
+		logging.Write("Unregister: failed to find admin WID")
 		return
 	}
 	adminWid := parts[0]
@@ -443,15 +442,13 @@ func commandUnregister(session *sessionState) {
 		address, err := dbhandler.ResolveAddress(builtin + "/" + viper.GetString("global.domain"))
 		if err != nil {
 			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-			ServerLog.Println("Unregister: failed to resolve account " + builtin)
-			fmt.Println("Unregister: failed to resolve admin account " + builtin)
+			logging.Write("Unregister: failed to resolve account " + builtin)
 			return
 		}
 		parts := strings.Split(address, "/")
 		if len(parts) != 2 {
 			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-			ServerLog.Println("Unregister: failed to find WID for " + builtin)
-			fmt.Println("Unregister: failed to find WID for " + builtin)
+			logging.Write("Unregister: failed to find WID for " + builtin)
 			return
 		}
 		if wid == parts[0] {
@@ -470,16 +467,14 @@ func commandUnregister(session *sessionState) {
 	err = dbhandler.RemoveWorkspace(wid)
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-		ServerLog.Printf("Unregister: error removing workspace from db: %s", err.Error())
-		fmt.Printf("Unregister: error removing workspace from db: %s", err.Error())
+		logging.Writef("Unregister: error removing workspace from db: %s", err.Error())
 		return
 	}
 
 	err = fshandler.RemoveWorkspace(wid)
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-		ServerLog.Printf("Unregister: error removing workspace from filesystem: %s", err.Error())
-		fmt.Printf("Unregister: error removing workspace from filesystem: %s", err.Error())
+		logging.Writef("Unregister: error removing workspace from filesystem: %s", err.Error())
 		return
 	}
 }
