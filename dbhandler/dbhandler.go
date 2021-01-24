@@ -23,7 +23,6 @@ import (
 	"github.com/darkwyrm/anselusd/ezcrypt"
 	"github.com/darkwyrm/anselusd/keycard"
 	"github.com/darkwyrm/anselusd/logging"
-	"github.com/darkwyrm/b85"
 	"github.com/darkwyrm/gostringlist"
 	"github.com/everlastingbeta/diceware"
 	"github.com/lib/pq"
@@ -479,36 +478,6 @@ func CheckDevice(wid string, devid string, devkey string) (bool, error) {
 		return true, nil
 	default:
 		return false, err
-	}
-}
-
-// UpdateDevice takes a session string for a workspace, makes sure that it exists, generates a new
-// one, replaces the old with the new, and returns the new session string. If successful, it
-// returns true and the updated session string. On failure, false is returned alongside an empty
-// string.
-func UpdateDevice(wid string, devid string, sessionString string) (bool, string, error) {
-	if len(sessionString) != 40 {
-		return false, "", errors.New("invalid session string")
-	}
-
-	// Generate the new session string
-	randomBytes := make([]byte, 32)
-	_, err := rand.Read(randomBytes)
-	if err != nil {
-		logging.Write("dbhandler.UpdateDevice: couldn't read random bytes")
-		return false, "", err
-	}
-	newSessionString := b85.Encode(randomBytes)
-	_, err = dbConn.Exec(`UPDATE iwkspc_sessions SET session_str=$1 WHERE wid=$2 AND 
-		devid=$3 AND session_str=$4`, newSessionString, wid, devid, sessionString)
-
-	switch err {
-	case sql.ErrNoRows:
-		return false, "", err
-	case nil:
-		return true, newSessionString, nil
-	default:
-		return false, "", err
 	}
 }
 
