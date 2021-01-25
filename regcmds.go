@@ -21,6 +21,7 @@ func commandPreregister(session *sessionState) {
 	adminWid, err := dbhandler.ResolveAddress(adminAddress)
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandPreregister: Error resolving address: %s", err)
 	}
 
 	if session.LoginState != loginClientSession || session.WID != adminWid {

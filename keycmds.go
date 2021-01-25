@@ -74,6 +74,7 @@ func commandAddEntry(session *sessionState) {
 		currentWid, err := dbhandler.ResolveAddress(currentAddress)
 		if err != nil {
 			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			logging.Writef("commandAddEntry: error resolving address: %s", err.Error())
 		}
 		if session.WID == currentWid {
 			if entry.Fields["User-ID"] != address {
@@ -88,6 +89,7 @@ func commandAddEntry(session *sessionState) {
 	adminWid, err := dbhandler.ResolveAddress(adminAddress)
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandAddEntry: error resolving address: %s", err.Error())
 	}
 	if session.WID == adminWid {
 		if entry.Fields["User-ID"] != "admin" {
@@ -130,8 +132,7 @@ func commandAddEntry(session *sessionState) {
 		} else {
 			prevEntry, err := keycard.NewEntryFromData(tempStrList[0])
 			if err != nil {
-				session.SendStringResponse(300, "INTERNAL SERVER ERRROR",
-					"Failure to create entry from data")
+				session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
 				logging.Writef("ERROR AddEntry: previous keycard entry invalid for workspace %s",
 					entry.Fields["Workspace-ID"])
 				return
@@ -286,6 +287,10 @@ func commandOrgCard(session *sessionState) {
 	}
 
 	entries, err := dbhandler.GetOrgEntries(startIndex, endIndex)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandOrgCard: error retrieving org entries: %s", err.Error())
+	}
 	entryCount := len(entries)
 	var response ServerResponse
 	if entryCount > 0 {
@@ -368,6 +373,10 @@ func commandUserCard(session *sessionState) {
 	}
 
 	entries, err := dbhandler.GetUserEntries(wid, startIndex, endIndex)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandUserCard: error retrieving user entries: %s", err.Error())
+	}
 	entryCount := len(entries)
 	var response ServerResponse
 	if entryCount > 0 {

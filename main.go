@@ -465,6 +465,7 @@ func commandExists(session *sessionState) {
 			session.SendStringResponse(404, "NOT FOUND", "")
 		} else {
 			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			logging.Writef("commandExists: Filesystem error %s", err.Error())
 		}
 	} else {
 		session.SendStringResponse(200, "OK", "")
