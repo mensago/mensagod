@@ -13,7 +13,7 @@ END $$;
 -- optional. wtype can be 'individual', 'shared', or 'alias'
 CREATE TABLE workspaces(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
 	uid VARCHAR(64), domain VARCHAR(255) NOT NULL, wtype VARCHAR(32) NOT NULL,
-	status VARCHAR(16) NOT NULL, password VARCHAR(128) NOT NULL);
+	status VARCHAR(16) NOT NULL, password VARCHAR(128));
 
 CREATE TABLE aliases(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, alias CHAR(292) NOT NULL);
 

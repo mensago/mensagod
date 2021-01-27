@@ -336,7 +336,7 @@ rows = cur.fetchall()
 if rows[0][0] is False:
 	cur.execute("CREATE TABLE workspaces(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, "
 		"uid VARCHAR(64), domain VARCHAR(255) NOT NULL, wtype VARCHAR(32) NOT NULL, "
-		"status VARCHAR(16) NOT NULL, password VARCHAR(128) NOT NULL);")
+		"status VARCHAR(16) NOT NULL, password VARCHAR(128));")
 
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
@@ -465,8 +465,8 @@ config['admin_wid'] = admin_wid
 config['admin_regcode'] = regcode
 rootentry.set_field('Contact-Admin', '/'.join([admin_wid,config['org_domain']]))
 
-cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{admin_wid}', 'admin', "
-	f"'{config['org_domain']}', 'individual');")
+cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype, status) VALUES('{admin_wid}', "
+	f"'admin', '{config['org_domain']}', 'individual', 'active');")
 
 # preregister the abuse account if not aliased and put into the serverconfig
 
@@ -475,8 +475,8 @@ config['abuse_wid'] = abuse_wid
 rootentry.set_field('Contact-Abuse', '/'.join([abuse_wid,config['org_domain']]))
 
 if config['forward_abuse'] == 'y':
-	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{abuse_wid}', 'abuse', "
-		f"'{config['org_domain']}', 'alias');")
+	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype, status) VALUES('{abuse_wid}', "
+		f"'abuse', '{config['org_domain']}', 'alias', 'active');")
 	
 	cur.execute(f"INSERT INTO aliases(wid, alias) VALUES('{abuse_wid}', "
 		f"'{'/'.join([admin_wid, config['org_domain']])}');")
@@ -484,8 +484,8 @@ else:
 	abuse_regcode = make_diceware()
 	cur.execute(f"INSERT INTO prereg(wid, uid, domain, regcode) "
 		f"VALUES('{abuse_wid}', 'abuse', '{config['org_domain']}', '{abuse_regcode}');")
-	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{abuse_wid}', 'abuse', "
-		f"'{config['org_domain']}', 'individual');")
+	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype, status) VALUES('{abuse_wid}', "
+		f"'abuse', '{config['org_domain']}', 'individual', 'active');")
 
 	config['abuse_regcode'] = abuse_regcode
 
@@ -497,8 +497,8 @@ config['support_wid'] = support_wid
 rootentry.set_field('Contact-Support', '/'.join([support_wid,config['org_domain']]))
 
 if config['forward_support'] == 'y':
-	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{support_wid}', "
-		f"'support', '{config['org_domain']}', 'alias');")
+	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype, status) VALUES('{support_wid}', "
+		f"'support', '{config['org_domain']}', 'alias', 'active');")
 	
 	cur.execute(f"INSERT INTO aliases(wid, alias) VALUES('{support_wid}', "
 		f"'{'/'.join([admin_wid, config['org_domain']])}');")
@@ -506,8 +506,8 @@ else:
 	support_regcode = make_diceware()
 	cur.execute(f"INSERT INTO prereg(wid, uid, domain, regcode) "
 		f"VALUES('{support_wid}', 'support', '{config['org_domain']}', '{support_regcode}');")
-	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{support_wid}', "
-		f"'support', '{config['org_domain']}', 'individual');")
+	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype, status) VALUES('{support_wid}', "
+		f"'support', '{config['org_domain']}', 'individual', 'active');")
 
 	config['support_regcode'] = support_regcode
 
