@@ -13,6 +13,82 @@ import (
 	"github.com/spf13/viper"
 )
 
+func commandGetWID(session *sessionState) {
+	// command syntax:
+	// GETWID(User-ID, Domain="")
+	if !session.Message.HasField("User-ID") {
+		session.SendStringResponse(400, "BAD REQUEST", "")
+	}
+
+	if strings.ContainsAny(session.Message.Data["User-ID"], "/\"") {
+		session.SendStringResponse(400, "BAD REQUEST", "Bad User-ID")
+		return
+	}
+
+	var domain string
+	if session.Message.HasField("Domain") {
+		domain = session.Message.Data["Domain"]
+		pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
+		if !pattern.MatchString(domain) {
+			session.SendStringResponse(400, "BAD REQUEST", "Bad Domain")
+			return
+		}
+	} else {
+		domain = viper.GetString("global.domain")
+	}
+
+	lockTime, err := dbhandler.CheckLockout("widlookup", "", session.Connection.RemoteAddr().String())
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandLogin: error checking lockout: %s", err.Error())
+		return
+	}
+
+	// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
+	// At this point, the connection should be terminated. However, an empty lockTime
+	// means that although there has been a failure, the count for this IP address is
+	// still under the limit.
+	if len(lockTime) > 0 {
+		response := NewServerResponse(407, "UNAVAILABLE")
+		response.Data["Lock-Time"] = lockTime
+		session.SendResponse(*response)
+		session.IsTerminating = true
+		return
+	}
+
+	address := strings.Join([]string{session.Message.Data["User-ID"], "/", domain}, "")
+	wid, err := dbhandler.ResolveAddress(address)
+	if err != nil {
+		if err.Error() == "workspace not found" {
+			dbhandler.LogFailure("widlookup", "", session.Connection.RemoteAddr().String())
+
+			lockTime, err := dbhandler.CheckLockout("widlookup", "", session.Connection.RemoteAddr().String())
+			if err != nil {
+				session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+				logging.Writef("commandGetWID: error checking lockout: %s", err.Error())
+				return
+			}
+
+			// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
+			// At this point, the connection should be terminated. However, an empty lockTime
+			// means that although there has been a failure, the count for this IP address is
+			// still under the limit.
+			if len(lockTime) > 0 {
+				response := NewServerResponse(404, "TERMINATED")
+				response.Data["Lock-Time"] = lockTime
+				session.SendResponse(*response)
+				session.IsTerminating = true
+			} else {
+				session.SendStringResponse(404, "NOT FOUND", "")
+			}
+			return
+		}
+	}
+	response := NewServerResponse(200, "OK")
+	response.Data["Workspace-ID"] = wid
+	session.SendResponse(*response)
+}
+
 func commandPreregister(session *sessionState) {
 	// command syntax:
 	// PREREG(User-ID="",Workspace-ID="",Domain="")

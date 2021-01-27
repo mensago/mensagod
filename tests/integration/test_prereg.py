@@ -185,5 +185,41 @@ def test_prereg():
 
 	sock.send_message({'Action' : "QUIT"})
 
+def test_getwid():
+	'''Tests user ID -> workspace ID lookups'''
+	dbconn = setup_test()
+	server_config = config_server(dbconn)
+	sock = ServerNetworkConnection()
+	assert sock.connect(), "Connection to server at localhost:2001 failed"
+
+	# Subtest #1: basic lookup
+	sock.send_message({
+		'Action' : "GETWID",
+		'Data' : {
+			'User-ID' : 'support'
+		}
+	})
+
+	response = sock.read_response(server_response)
+	assert response['Code'] == 200 and response['Status'] == 'OK', \
+		'test_getwid: subtest #1 returned an error'
+	assert response['Data']['Workspace-ID'] == server_config['support_wid']
+
+	# Subtest #2: lookup with domain
+	sock.send_message({
+		'Action' : "GETWID",
+		'Data' : {
+			'User-ID' : 'abuse',
+			'Domain' : 'org_domain'
+		}
+	})
+
+	response = sock.read_response(server_response)
+	assert response['Code'] == 200 and response['Status'] == 'OK', \
+		'test_getwid: subtest #1 returned an error'
+	assert response['Data']['Workspace-ID'] == server_config['abuse_wid']
+
+
 if __name__ == '__main__':
 	test_prereg()
+	test_getwid()

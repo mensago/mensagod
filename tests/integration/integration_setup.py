@@ -263,7 +263,10 @@ def config_server(dbconn) -> dict:
 		'admin_wid' : admin_wid,
 		'admin_regcode' : regcode,
 		'root_org_entry' : root_entry,
-		'second_org_entry' : new_entry
+		'second_org_entry' : new_entry,
+		'support_wid' : support_wid,
+		'abuse_wid' : abuse_wid,
+		'org_domain' : 'example.com'
 	}
 
 

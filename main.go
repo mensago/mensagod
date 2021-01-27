@@ -413,6 +413,8 @@ func processCommand(session *sessionState) {
 		commandDevice(session)
 	case "EXISTS":
 		commandExists(session)
+	case "GETWID":
+		commandGetWID(session)
 	case "LOGIN":
 		commandLogin(session)
 	case "LOGOUT":
