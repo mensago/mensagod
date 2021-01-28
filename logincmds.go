@@ -207,48 +207,49 @@ func commandPassword(session *sessionState) {
 	}
 
 	match, err := dbhandler.CheckPassword(session.WID, session.Message.Data["Password-Hash"])
-	if err == nil {
-		if match {
-			session.LoginState = loginAwaitingSessionID
-			session.SendStringResponse(100, "CONTINUE", "")
-			return
-		}
-
-		dbhandler.LogFailure("password", session.WID, session.Connection.RemoteAddr().String())
-
-		lockTime, err := dbhandler.CheckLockout("password", session.WID,
-			session.Connection.RemoteAddr().String())
-		if err != nil {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-			logging.Writef("commandPassword: error checking lockout: %s", err.Error())
-			return
-		}
-
-		// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
-		// At this point, the connection should be terminated. However, an empty lockTime
-		// means that although there has been a failure, the count for this IP address is
-		// still under the limit.
-		if len(lockTime) > 0 {
-			var response ServerResponse
-			response.Code = 407
-			response.Status = "UNAVAILABLE"
-			response.Data["Lock-Time"] = lockTime
-			session.SendResponse(response)
-			session.IsTerminating = true
-		} else {
-			session.SendStringResponse(402, "AUTHENTICATION FAILURE", "")
-
-			var d time.Duration
-			delayString := viper.GetString("security.failure_delay_sec") + "s"
-			d, err = time.ParseDuration(delayString)
-			if err != nil {
-				logging.Writef("Bad login failure delay string %s. Sleeping 3s.", delayString)
-				d, err = time.ParseDuration("3s")
-			}
-			time.Sleep(d)
-		}
-	} else {
+	if err != nil {
 		session.SendStringResponse(400, "BAD REQUEST", "Password check error")
+		return
+	}
+
+	if match {
+		session.LoginState = loginAwaitingSessionID
+		session.SendStringResponse(100, "CONTINUE", "")
+		return
+	}
+
+	dbhandler.LogFailure("password", session.WID, session.Connection.RemoteAddr().String())
+
+	lockTime, err := dbhandler.CheckLockout("password", session.WID,
+		session.Connection.RemoteAddr().String())
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandPassword: error checking lockout: %s", err.Error())
+		return
+	}
+
+	// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
+	// At this point, the connection should be terminated. However, an empty lockTime
+	// means that although there has been a failure, the count for this IP address is
+	// still under the limit.
+	if len(lockTime) > 0 {
+		var response ServerResponse
+		response.Code = 407
+		response.Status = "UNAVAILABLE"
+		response.Data["Lock-Time"] = lockTime
+		session.SendResponse(response)
+		session.IsTerminating = true
+	} else {
+		session.SendStringResponse(402, "AUTHENTICATION FAILURE", "")
+
+		var d time.Duration
+		delayString := viper.GetString("security.failure_delay_sec") + "s"
+		d, err = time.ParseDuration(delayString)
+		if err != nil {
+			logging.Writef("Bad login failure delay string %s. Sleeping 3s.", delayString)
+			d, err = time.ParseDuration("3s")
+		}
+		time.Sleep(d)
 	}
 }
 
