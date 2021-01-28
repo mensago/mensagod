@@ -397,7 +397,7 @@ func SetPassword(wid string, password string) error {
 		return errors.New("Password string has a maximum 128 characters")
 	}
 	passHash := hashPassword(password)
-	_, err := dbConn.Exec(`UPDATE workspaces SET password=$1 WHERE wid=$2`, wid, passHash)
+	_, err := dbConn.Exec(`UPDATE workspaces SET password=$1 WHERE wid=$2`, passHash, wid)
 	return err
 }
 
