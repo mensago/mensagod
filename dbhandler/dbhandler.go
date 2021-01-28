@@ -393,8 +393,8 @@ func CheckLockout(failType string, id string, source string) (string, error) {
 // indicating a match (or lack thereof) and an error state. It will take any input string of up to
 // 64 characters and store it in the database.
 func SetPassword(wid string, password string) error {
-	if len(password) > 64 {
-		return errors.New("Password string has a maximum 64 characters")
+	if len(password) > 128 {
+		return errors.New("Password string has a maximum 128 characters")
 	}
 	passHash := hashPassword(password)
 	_, err := dbConn.Exec(`UPDATE workspaces SET password=$1 WHERE wid=$2`, wid, passHash)
