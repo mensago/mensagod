@@ -326,6 +326,11 @@ func commandRegCode(session *sessionState) {
 		session.SendResponse(response)
 	}
 
+	err = dbhandler.SetWorkspaceStatus(wid, "active")
+	if err != nil {
+		logging.Writef("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+	}
 	session.SendStringResponse(201, "REGISTERED", "")
 }
 
