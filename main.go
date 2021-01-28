@@ -415,6 +415,8 @@ func processCommand(session *sessionState) {
 		commandExists(session)
 	case "GETWID":
 		commandGetWID(session)
+	case "ISCURRENT":
+		commandIsCurrent(session)
 	case "LOGIN":
 		commandLogin(session)
 	case "LOGOUT":

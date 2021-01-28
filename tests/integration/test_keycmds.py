@@ -299,7 +299,35 @@ def test_addentry_usercard():
 
 	sock.send_message({'Action' : "QUIT"})
 
+def test_iscurrent():
+	'''Tests the ISCURRENT command'''
+	
+	dbconn = setup_test()
+	config_server(dbconn)
+
+	sock = ServerNetworkConnection()
+	assert sock.connect(), "Connection to server at localhost:2001 failed"
+	
+	sock.send_message({
+		'Action' : "ISCURRENT",
+		'Data' : { 'Index' : '1' }
+	})
+
+	response = sock.read_response(server_response)
+	assert response['Code'] == 200 and response['Status'] == 'OK' and \
+		response['Data']['Is-Current'] == 'NO', 'test_iscurrent: org failure check failed'
+	
+	sock.send_message({
+		'Action' : "ISCURRENT",
+		'Data' : { 'Index' : '2' }
+	})
+
+	response = sock.read_response(server_response)
+	assert response['Code'] == 200 and response['Status'] == 'OK' and \
+		response['Data']['Is-Current'] == 'YES', 'test_iscurrent: org success check failed'
+
 
 if __name__ == '__main__':
 	#test_orgcard()
-	test_addentry_usercard()
+	#test_addentry_usercard()
+	test_iscurrent()

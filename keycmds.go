@@ -290,6 +290,7 @@ func commandOrgCard(session *sessionState) {
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandOrgCard: error retrieving org entries: %s", err.Error())
+		return
 	}
 	entryCount := len(entries)
 	var response ServerResponse
@@ -421,4 +422,96 @@ func commandUserCard(session *sessionState) {
 	} else {
 		session.SendStringResponse(404, "NOT FOUND", "")
 	}
+}
+
+func commandIsCurrent(session *sessionState) {
+	// command syntax:
+	// ISCURRENT(Index, Workspace-ID="")
+
+	if !session.Message.HasField("Index") {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing Index")
+		return
+	}
+
+	index, err := strconv.Atoi(session.Message.Data["Index"])
+	if err != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Bad Index")
+		return
+	}
+
+	var currentIndex int
+	if session.Message.HasField("Workspace-ID") {
+		wid := session.Message.Data["Workspace-ID"]
+		if !dbhandler.ValidateUUID(wid) {
+			session.SendStringResponse(400, "BAD REQUEST", "Bad Workspace-ID")
+			return
+		}
+
+		entries, err := dbhandler.GetUserEntries(wid, 0, 0)
+		if err != nil {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			logging.Writef("commandIsCurrent: error retrieving user %s entries: %s", wid,
+				err.Error())
+			return
+		}
+
+		entryCount := len(entries)
+		if entryCount < 1 {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			logging.Writef("commandIsCurrent: no user entries found for %s", wid)
+			return
+		}
+
+		orgentry, err := keycard.NewEntryFromData(entries[0])
+		if err != nil {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			logging.Writef("commandIsCurrent: error creating user entry from data for %s: %s",
+				wid, err.Error())
+			return
+		}
+
+		currentIndex, err = strconv.Atoi(orgentry.Fields["Index"])
+		if err != nil {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			logging.Writef("commandIsCurrent: bad index in user entry data for %s: %s",
+				wid, err.Error())
+			return
+		}
+	} else {
+		entries, err := dbhandler.GetOrgEntries(0, 0)
+		if err != nil {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			logging.Writef("commandIsCurrent: error retrieving org entries: %s", err.Error())
+			return
+		}
+
+		entryCount := len(entries)
+		if entryCount < 1 {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			logging.Writef("commandIsCurrent: no org entries found")
+			return
+		}
+
+		orgentry, err := keycard.NewEntryFromData(entries[0])
+		if err != nil {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			logging.Writef("commandIsCurrent: error creating org entry from data: %s", err.Error())
+			return
+		}
+
+		currentIndex, err = strconv.Atoi(orgentry.Fields["Index"])
+		if err != nil {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			logging.Writef("commandIsCurrent: bad index in org entry data: %s", err.Error())
+			return
+		}
+	}
+
+	response := NewServerResponse(200, "OK")
+	if index == currentIndex {
+		response.Data["Is-Current"] = "YES"
+	} else {
+		response.Data["Is-Current"] = "NO"
+	}
+	session.SendResponse(*response)
 }
