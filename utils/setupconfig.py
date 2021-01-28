@@ -20,10 +20,10 @@ import diceware
 import nacl.public
 import nacl.signing
 import psycopg2
-import pyanselus.keycard as keycard	# pylint: disable=import-error,unused-import
-from pyanselus.cryptostring import CryptoString	# pylint: disable=import-error,unused-import
 from termcolor import colored
 
+import pyanselus.keycard as keycard
+from pyanselus.cryptostring import CryptoString	
 
 def make_diceware():
 	'''Generates a diceware password'''
@@ -80,6 +80,11 @@ backed up.
 server_platform = "posix"
 if platform.system() == "Windows":
 	server_platform = "windows"
+
+if server_platform != 'windows':
+	import pwd # pylint: disable=import-error
+	import grp # pylint: disable=import-error
+
 
 # Prerequisite: check for admin privileges
 if server_platform == "windows":
@@ -196,12 +201,23 @@ while config['quota_size'] == '':
 	except:
 		continue
 
-# location of server config
+# location of server config and log files
 
 config['config_path'] = '/etc/anselusd'
 if server_platform == 'windows':
 	config['config_path'] = os.environ['PROGRAMDATA'] + '\\anselusd'
+	config['log_path'] = config['config_path']
+else:
+	config['log_path'] = '/var/log/anselusd'
+	tempstr = input('\nEnter the name of the user to run the server as. [anselus]: ')
+	if tempstr == '':
+		tempstr = 'anselus'
+	config['server_user'] = tempstr
 
+	tempstr = input('\nEnter the name of the group for the server user. [anselus]: ')
+	if tempstr == '':
+		tempstr = 'anselus'
+	config['server_group'] = tempstr
 
 # IP address of postgres server
 tempstr = input('\nEnter the IP address of the database server. [localhost]: ')
@@ -545,7 +561,49 @@ cur.execute("INSERT INTO keycards(owner, creationtime, index, entry, fingerprint
 cur.close()
 conn.commit()
 
-# create the server config folder
+# For POSIX platforms, ensure that the user and group for the server daemon exist
+
+if server_platform != 'windows':
+	create_group = False
+	try:
+		grp.getgrnam(config['server_group'])
+	except:
+		create_group = True
+	
+	if create_group:
+		cmd = ['groupadd', '--system', config['server_group']]
+
+		pipe = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		output, error = pipe.communicate()
+		output = output.strip().decode("utf-8")
+		error = error.decode("utf-8")
+		if pipe.returncode != 0:
+			print(f"Error creating group {config['server_group']}. Error: {error}")
+			print("Please create the group manually as a system group and restart this script.")
+			sys.exit(1)
+
+	create_user = False
+	try:
+		pwd.getpwnam(config['server_user'])
+	except:
+		create_user = True
+	
+	if create_user:
+		cmd = ['useradd', '-d', config['workspace_path'], '-M', '-g', config['server_group'],
+			'--system', '-s', '/bin/false', config['server_user']]
+		
+		pipe = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		output, error = pipe.communicate()
+		output = output.strip().decode("utf-8")
+		error = error.decode("utf-8")
+		if pipe.returncode != 0:
+			print(f"Error creating user {config['server_user']}. Error: {error}")
+			print("Please create the user manually as a system user without a login shell and "
+				"restart this script.")
+			sys.exit(1)
+
+
+# create the server config folder and, for POSIX platforms, the log folder 
 
 if not os.path.exists(config['config_path']):
 	try:
@@ -554,6 +612,26 @@ if not os.path.exists(config['config_path']):
 	except Exception as e:
 		print(f"Error creating folder {config['config_path']}: {e}")
 		print("You will need to create this folder manually and restart this script.")
+		sys.exit(-1)
+
+if not os.path.exists(config['log_path']):
+	try:
+		os.mkdir(config['log_path'], 0o775)
+		print(f"Created log folder {config['log_path']}")
+
+	except Exception as e:
+		print(f"Error creating folder {config['log_path']}: {e}")
+		print("You will need to create this folder manually, set full permissions for the owner "
+			"and group members and restart this script.")
+		sys.exit(-1)
+	
+	try:
+		gid = grp.getgrnam(config['server_group'])
+		os.chown(config['log_path'], -1, gid.gr_gid)
+	except Exception as e:
+		print(f"Error changing group for folder {config['log_path']}: {e}")
+		print(f"You will need to do this manually. Please set the group for {config['log_path']} "
+			f"to {config['server_group']} and restart this script. ")
 		sys.exit(-1)
 
 # Step 4: save the config file
@@ -647,6 +725,13 @@ fhandle.write('''
 
 if config['quota_size'] != '0':
 	fhandle.write('default_quota = ' + config['quota_size'] + os.linesep)
+
+fhandle.write('''
+# Location for log files. This directory requires full permissions for the user anselusd runs as.
+# On Windows, this defaults to the same location as the server config file, i.e. 
+# C:\\ProgramData\\anselusd
+# log_path = /var/log/anselusd
+''')
 
 fhandle.write('''
 [network]
