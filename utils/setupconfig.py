@@ -627,7 +627,7 @@ if not os.path.exists(config['log_path']):
 	
 	try:
 		gid = grp.getgrnam(config['server_group'])
-		os.chown(config['log_path'], -1, gid.gr_gid)
+		os.chown(config['log_path'], -1, gid.gr_gid) # pylint: disable=no-member
 	except Exception as e:
 		print(f"Error changing group for folder {config['log_path']}: {e}")
 		print(f"You will need to do this manually. Please set the group for {config['log_path']} "
