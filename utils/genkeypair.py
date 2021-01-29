@@ -26,9 +26,9 @@ def generate_encpair(filename):
 	publicHash = "BLAKE2B-256:" + base64.b85encode(hasher.digest()).decode()
 	if not filename:
 		print('Keypair type: encryption\r\n')
-		print('public: %s' % base64.b85encode(keypair.public_key.encode()).decode())
+		print('public: CURVE25519:%s' % base64.b85encode(keypair.public_key.encode()).decode())
 		print('public hash: %s' % publicHash)
-		print('private: %s' % base64.b85encode(keypair.encode()).decode())
+		print('private: CURVE25519:%s' % base64.b85encode(keypair.encode()).decode())
 		return
 
 	if path.exists(filename):
@@ -57,9 +57,9 @@ def generate_signpair(filename):
 	verifyHash = "BLAKE2B-256:" + base64.b85encode(hasher.digest()).decode()
 	if not filename:
 		print('Keypair type: signing\r\n')
-		print('verify: %s' % base64.b85encode(keypair.verify_key.encode()).decode())
+		print('verify: ED25519:%s' % base64.b85encode(keypair.verify_key.encode()).decode())
 		print('verify hash: %s' % verifyHash)
-		print('signing: %s' % base64.b85encode(keypair.encode()).decode())
+		print('signing: ED25519:%s' % base64.b85encode(keypair.encode()).decode())
 		return
 	
 	if path.exists(filename):
