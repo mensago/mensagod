@@ -12,8 +12,9 @@ import psycopg2
 import toml
 
 from pyanselus.cryptostring import CryptoString
-from pyanselus.encryption import PublicKey
+from pyanselus.encryption import EncryptionPair, Password, PublicKey, SigningPair
 import pyanselus.keycard as keycard
+import pyanselus.serverconn as serverconn
 
 # Keys used in the various tests. 
 # THESE KEYS ARE STORED ON GITHUB! DO NOT USE THESE FOR ANYTHING EXCEPT UNIT TESTS!!
@@ -33,6 +34,19 @@ import pyanselus.keycard as keycard
 # Initial Organization Encryption Key: SNhj2K`hgBd8>G>lW$!pXiM7S-B!Fbd9jT2&{{Az
 # Initial Organization Encryption Key Hash: BLAKE2B-256:-Zz4O7J;m#-rB)2llQ*xTHjtblwm&kruUVa_v(&W
 # Initial Organization Decryption Key: WSHgOhi+bg=<bO^4UoJGF-z9`+TBN{ds?7RZ;w3o
+
+
+# Test Admin Information
+
+# Initial Admin CR Encryption Key: CURVE25519:mO?WWA-k2B2O|Z%fA`~s3^$iiN{5R->#jxO@cy6{
+# Initial Admin CR Decryption Key: CURVE25519:2bLf2vMA?GA2?L~tv<PA9XOw6e}V~ObNi7C&qek>
+
+# Initial Admin CR Verification Key: ED25519:E?_z~5@+tkQz!iXK?oV<Zx(ec;=27C8Pjm((kRc|
+# Initial Admin CR Signing Key: ED25519:u4#h6LEwM6Aa+f<++?lma4Iy63^}V$JOP~ejYkB;
+
+# Initial Admin General Encryption Key: CURVE25519:Umbw0Y<^cf1DN|>X38HCZO@Je(zSe6crC6X_C_0F
+# Initial Admin General Decryption Key: CURVE25519:Bw`F@ITv#sE)2NnngXWm7RQkxg{TYhZQbebcF5b$
+
 
 # Test User Information
 
@@ -381,8 +395,10 @@ def regcode_admin(config, conn):
 	assert response['Code'] == 201 and response['Status'] == 'REGISTERED', \
 		'regcode_admin failed to register admin account'
 
+
 def login_admin(config, conn):
-	'''Logs in as the administrator'''
+	'''Logs in as the administrator. This function is used for integration test setup and also 
+	doubles as a test for the login process'''
 	# Phase 1: LOGIN
 	
 	# To ensure that we really are connecting to the server we *think* we are, we'll create a
@@ -456,3 +472,46 @@ def login_admin(config, conn):
 	response = conn.read_response(None)
 	assert response['Code'] == 200 and response['Status'] == 'OK', \
 		'Server challenge-response phase failed'
+
+
+def keycard_admin(config, conn) -> dict:
+	'''Uploads a keycard entry for the admin account'''
+
+	conn = serverconn.ServerConnection()
+	status = conn.connect('localhost', 2001)
+	assert not status.error(), f"test_addentry(): failed to connect to server: {status.info()}"
+
+	crepair = EncryptionPair(
+		CryptoString(r'CURVE25519:mO?WWA-k2B2O|Z%fA`~s3^$iiN{5R->#jxO@cy6{'),
+		CryptoString(r'CURVE25519:2bLf2vMA?GA2?L~tv<PA9XOw6e}V~ObNi7C&qek>'	)
+	)
+
+	crspair = SigningPair(
+		CryptoString(r'ED25519:E?_z~5@+tkQz!iXK?oV<Zx(ec;=27C8Pjm((kRc|'),
+		CryptoString(r'ED25519:u4#h6LEwM6Aa+f<++?lma4Iy63^}V$JOP~ejYkB;')
+	)
+
+	epair = EncryptionPair(
+		CryptoString(r'CURVE25519:Umbw0Y<^cf1DN|>X38HCZO@Je(zSe6crC6X_C_0F'),
+		CryptoString(r'CURVE25519:Bw`F@ITv#sE)2NnngXWm7RQkxg{TYhZQbebcF5b$'	)
+	)
+
+	entry = keycard.UserEntry()
+	entry.set_fields({
+		'Name':'Administrator',
+		'Workspace-ID':config['admin_wid'],
+		'User-ID':'admin',
+		'Domain':'example.com',
+		'Contact-Request-Verification-Key':crspair.get_public_key(),
+		'Contact-Request-Encryption-Key':crepair.get_public_key(),
+		'Public-Encryption-Key':epair.get_public_key()
+	})
+
+	status = serverconn.addentry(conn, entry, CryptoString(config['ovkey']), crspair)	
+	assert not status.error(), f"test_addentry: failed to add entry: {status.info()}"
+
+	return {
+		'admin_crepair':crepair,
+		'admin_crspair':crspair,
+		'admin_epair':epair
+	}
