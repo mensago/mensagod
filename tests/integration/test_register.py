@@ -1,7 +1,7 @@
 from pyanselus.encryption import EncryptionPair
 from pyanselus.cryptostring import CryptoString
 from pyanselus.serverconn import ServerConnection
-from integration_setup import setup_test, config_server, validate_uuid, regcode_admin, login_admin
+from integration_setup import setup_test, config_server, regcode_admin, login_admin
 
 server_response = {
 	'title' : 'Anselus Server Response',
@@ -64,9 +64,6 @@ def test_register():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 201 and response['Status'] == 'REGISTERED', \
 		'test_register: subtest #1 returned an error'
-	assert validate_uuid(response['Data']['Device-ID']), \
-		'test_register: bad device ID in subtest #1'
-
 	
 	# Subtest #2: Attempt registration of existing WID
 	
