@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"regexp"
 	"strings"
 
@@ -376,7 +377,7 @@ func commandRegister(session *sessionState) {
 	regType := strings.ToLower(viper.GetString("global.registration"))
 
 	if regType == "private" {
-		session.SendStringResponse(304, "REGISTRATION CLOSED", "Registration is private")
+		session.SendStringResponse(304, "REGISTRATION CLOSED", "")
 		return
 	}
 
@@ -403,10 +404,26 @@ func commandRegister(session *sessionState) {
 	var workspaceStatus string
 	switch regType {
 	case "network":
-		// TODO: Check that remote address is within permitted subnet
-		session.SendStringResponse(301, "NOT IMPLEMENTED",
-			"Network registration mode not implemented. Sorry!")
-		return
+
+		ipParts := strings.Split(session.Connection.RemoteAddr().String(), ":")
+		clientIP := net.ParseIP(ipParts[0])
+
+		parts := strings.Split(viper.GetString("global.registration_subnet"), ",")
+		clientInSubnet := false
+		for _, part := range parts {
+			netstring := strings.TrimSpace(part)
+
+			// Skipping the error checking on the subnet strings because it's done during startup
+			_, subnet, _ := net.ParseCIDR(netstring)
+			if subnet.Contains(clientIP) {
+				clientInSubnet = true
+				break
+			}
+		}
+		if !clientInSubnet {
+			session.SendStringResponse(304, "REGISTRATION CLOSED", "")
+			return
+		}
 	case "moderated":
 		workspaceStatus = "pending"
 	default:
