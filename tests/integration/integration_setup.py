@@ -250,8 +250,8 @@ def config_server(dbconn) -> dict:
 	regcode = 'Undamaged Shining Amaretto Improve Scuttle Uptake'
 	cur.execute(f"INSERT INTO prereg(wid, uid, domain, regcode) VALUES('{admin_wid}', 'admin', "
 		f"'example.com', '{regcode}');")
-	# cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype) VALUES('{admin_wid}', 'admin', "
-	# 	f"'example.com', 'individual');")
+	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype, status) VALUES('{admin_wid}', "
+		f"'admin', 'example.com', 'individual', 'awaiting');")
 	
 	# Set up abuse/support forwarding to admin
 	abuse_wid = 'f8cfdbdf-62fe-4275-b490-736f5fdc82e3'
@@ -298,83 +298,6 @@ def validate_uuid(indata):
 		return False
 	
 	return True
-
-class ServerNetworkConnection:
-	'''Mini class to simplify network communications for integration tests'''
-	def __init__(self):
-		self.socket = None
-	
-	def connect(self) -> bool:
-		'''Creates a connection to the server.'''
-		try:
-			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			# Set a short timeout in case the server doesn't respond immediately,
-			# which is the expectation as soon as a client connects.
-			sock.settimeout(10.0)
-		except:
-			return None
-		
-		try:
-			sock.connect(('127.0.0.1', 2001))
-			
-			# absorb the hello string
-			_ = sock.recv(8192)
-
-		except Exception as e:
-			print("Connection failed: %s" % e)
-			sock.close()
-			return False
-
-		# Set a timeout of 30 minutes
-		sock.settimeout(1800.0)
-		
-		self.socket = sock
-		return True
-
-	def send_message(self, command : dict) -> bool:
-		'''Sends a message to the server with command sent as JSON data'''
-		cmdstr = json.dumps(command) + '\r\n'
-		
-		if not self.socket:
-			return False
-		
-		try:
-			self.socket.send(cmdstr.encode())
-		except:
-			self.socket.close()
-			return False
-		
-		return True
-
-	def read_response(self, schema: dict) -> dict:
-		'''Reads a server response and returns a separated code and string'''
-		
-		if not self.socket:
-			return None
-		
-		# We don't actually handle the possible exceptions because we *want* to have them crash --
-		# the test will fail and give us the cause of the exception. If we have a successful test, 
-		# exceptions weren't thrown
-		try:
-			rawdata = self.socket.recv(8192)
-			rawstring = rawdata.decode()
-			response = json.loads(rawstring)
-			if schema:
-				jsonschema.validate(response, schema)
-		except Exception as e:
-			print(f"Exception thrown in read_response(): {e}")
-			return None
-
-		return response
-	
-	def read(self) -> str:
-		'''Reads a string from the network connection'''
-		
-		if not self.socket:
-			return None
-		
-		rawdata = self.socket.recv(8192)
-		return rawdata.decode()
 
 
 def regcode_admin(config, conn):

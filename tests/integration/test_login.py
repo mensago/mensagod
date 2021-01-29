@@ -1,15 +1,15 @@
 from pyanselus.cryptostring import CryptoString
 from pyanselus.encryption import EncryptionPair
-from integration_setup import setup_test, config_server, ServerNetworkConnection, regcode_admin, \
-	login_admin
+from pyanselus.serverconn import ServerConnection
+from integration_setup import setup_test, config_server, regcode_admin, login_admin
 
 def test_login():
 	'''Performs a basic login intended to be successful'''
 	
 	dbconn = setup_test()
 	server_config = config_server(dbconn)
-	sock = ServerNetworkConnection()
-	assert sock.connect(), "Connection to server at localhost:2001 failed"
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
@@ -25,11 +25,11 @@ def test_login():
 	# Most of the code which was originally written for this test is needed for other tests
 	# because commands like PREREG require being logged in as the administrator. Both of these
 	# functions still perform all the necessary tests that were originally done here.
-	regcode_admin(server_config, sock)
+	regcode_admin(server_config, conn)
 
-	login_admin(server_config, sock)
+	login_admin(server_config, conn)
 
-	sock.send_message({'Action' : "QUIT"})
+	conn.send_message({'Action' : "QUIT"})
 
 
 if __name__ == '__main__':

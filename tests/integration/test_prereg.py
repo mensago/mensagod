@@ -1,7 +1,8 @@
 from pyanselus.encryption import EncryptionPair, Password
 from pyanselus.cryptostring import CryptoString
+from pyanselus.serverconn import ServerConnection
 from integration_setup import setup_test, config_server, validate_uuid, \
-	ServerNetworkConnection, regcode_admin, login_admin
+	regcode_admin, login_admin
 
 server_response = {
 	'title' : 'Anselus Server Response',
@@ -30,8 +31,8 @@ def test_prereg():
 	wid = '11111111-1111-1111-1111-111111111111'
 	domain = 'acme.com'
 
-	sock = ServerNetworkConnection()
-	assert sock.connect(), "Connection to server at localhost:2001 failed"
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
@@ -44,11 +45,11 @@ def test_prereg():
 	server_config['devid'] = devid
 	server_config['devpair'] = devpair
 	
-	regcode_admin(server_config, sock)
-	login_admin(server_config, sock)
+	regcode_admin(server_config, conn)
+	login_admin(server_config, conn)
 	
 	# Subtest #1: Prereg with user ID and domain
-	sock.send_message({
+	conn.send_message({
 		'Action' : "PREREG",
 		'Data' : {
 			'User-ID' : uid,
@@ -56,7 +57,7 @@ def test_prereg():
 		}
 	})
 	
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 200 and response['Status'] == 'OK', \
 		'test_prereg: subtest #1 returned an error'
 	assert response['Data']['User-ID'] == uid, \
@@ -77,7 +78,7 @@ def test_prereg():
 
 
 	# Subtest #2: Regcode with User ID and domain
-	sock.send_message({
+	conn.send_message({
 		'Action' : "REGCODE",
 		'Data' : {
 			'User-ID' : regdata['Data']['User-ID'],
@@ -89,18 +90,18 @@ def test_prereg():
 		}
 	})
 
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 201 and response['Status'] == 'REGISTERED', \
 		'test_prereg: subtest #2 returned an error'
 
 
 	# Subtest #3: Plain prereg
-	sock.send_message({
+	conn.send_message({
 		'Action' : "PREREG",
 		'Data' : { }
 	})
 	
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 200 and response['Status'] == 'OK', \
 		'test_prereg: subtest #2 returned an error'
 	assert validate_uuid(response['Data']['Workspace-ID']), 'Server returned a bad WID'
@@ -109,7 +110,7 @@ def test_prereg():
 
 	# Subtest #4: Plain regcode
 	regdata = response
-	sock.send_message({
+	conn.send_message({
 		'Action' : "REGCODE",
 		'Data' : {
 			'Workspace-ID' : regdata['Data']['Workspace-ID'],
@@ -120,13 +121,13 @@ def test_prereg():
 		}
 	})
 
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 201 and response['Status'] == 'REGISTERED', \
 		'test_prereg: subtest #4 returned an error'
 
 
 	# Subtest #5: duplicate user ID
-	sock.send_message({
+	conn.send_message({
 		'Action' : "PREREG",
 		'Data' : {
 			'User-ID' : uid,
@@ -134,18 +135,18 @@ def test_prereg():
 		}
 	})
 	
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 408 and response['Status'] == 'RESOURCE EXISTS', \
 		'test_prereg: subtest #3 failed to catch duplicate user'
 
 
 	# Subtest #6: WID as user ID
-	sock.send_message({
+	conn.send_message({
 		'Action' : "PREREG",
 		'Data' : { 'User-ID' : wid }
 	})
 	
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 200 and response['Status'] == 'OK', \
 		'test_prereg: subtest #4 returned an error'
 	assert response['Data']['Workspace-ID'] == wid, 'Server returned a bad WID'
@@ -155,12 +156,12 @@ def test_prereg():
 
 	# Subtest #7: Specify WID
 	wid = '22222222-2222-2222-2222-222222222222'
-	sock.send_message({
+	conn.send_message({
 		'Action' : "PREREG",
 		'Data' : { 'Workspace-ID' : wid }
 	})
 	
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 200 and response['Status'] == 'OK', \
 		'test_prereg: subtest #4 returned an error'
 	assert response['Data']['Workspace-ID'] == wid, 'Server returned a bad WID'
@@ -170,12 +171,12 @@ def test_prereg():
 
 	# Subtest #8: Specify User ID only.
 	uid = 'TestUserID2'
-	sock.send_message({
+	conn.send_message({
 		'Action' : "PREREG",
 		'Data' : { 'User-ID' : uid }
 	})
 	
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 200 and response['Status'] == 'OK', \
 		'test_prereg: subtest #6 returned an error'
 	assert response['Data']['User-ID'] == uid , 'Server returned the wrong user ID'
@@ -183,30 +184,30 @@ def test_prereg():
 	assert len(response['Data']['Workspace-ID']) <= 128, \
 		'Server returned a regcode longer than allowed'
 
-	sock.send_message({'Action' : "QUIT"})
+	conn.send_message({'Action' : "QUIT"})
 
 def test_getwid():
 	'''Tests user ID -> workspace ID lookups'''
 	dbconn = setup_test()
 	server_config = config_server(dbconn)
-	sock = ServerNetworkConnection()
-	assert sock.connect(), "Connection to server at localhost:2001 failed"
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
 	# Subtest #1: basic lookup
-	sock.send_message({
+	conn.send_message({
 		'Action' : "GETWID",
 		'Data' : {
 			'User-ID' : 'support'
 		}
 	})
 
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 200 and response['Status'] == 'OK', \
 		'test_getwid: subtest #1 returned an error'
 	assert response['Data']['Workspace-ID'] == server_config['support_wid']
 
 	# Subtest #2: lookup with domain
-	sock.send_message({
+	conn.send_message({
 		'Action' : "GETWID",
 		'Data' : {
 			'User-ID' : 'abuse',
@@ -214,7 +215,7 @@ def test_getwid():
 		}
 	})
 
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 200 and response['Status'] == 'OK', \
 		'test_getwid: subtest #1 returned an error'
 	assert response['Data']['Workspace-ID'] == server_config['abuse_wid']

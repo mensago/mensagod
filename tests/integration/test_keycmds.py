@@ -1,8 +1,8 @@
 from pyanselus.cryptostring import CryptoString
 from pyanselus.encryption import EncryptionPair
 import pyanselus.keycard as keycard
-from integration_setup import setup_test, config_server, ServerNetworkConnection, regcode_admin, \
-	login_admin
+from pyanselus.serverconn import ServerConnection
+from integration_setup import setup_test, config_server, regcode_admin, login_admin
 
 # Keys used in the various tests. 
 # THESE KEYS ARE STORED ON GITHUB! DO NOT USE THESE FOR ANYTHING EXCEPT UNIT TESTS!!
@@ -48,26 +48,26 @@ def test_orgcard():
 	dbconn = setup_test()
 	config_data = config_server(dbconn)
 
-	sock = ServerNetworkConnection()
-	assert sock.connect(), "Connection to server at localhost:2001 failed"
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 	
-	sock.send_message({
+	conn.send_message({
 		'Action' : "ORGCARD",
 		'Data' : { 'Start-Index' : '1' }
 	})
 
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 104 and response['Status'] == 'TRANSFER' and \
 		response['Data']['Item-Count'] == '2', 'test_orgcard: server returned wrong number of items'
 	data_size = int(response['Data']['Total-Size'])
-	sock.send_message({'Action':'TRANSFER'})
+	conn.send_message({'Action':'TRANSFER'})
 
 	chunks = list()
-	tempstr = sock.read()
+	tempstr = conn.read()
 	data_read = len(tempstr)
 	chunks.append(tempstr)
 	while data_read < data_size:
-		tempstr = sock.read()
+		tempstr = conn.read()
 		data_read = data_read + len(tempstr)
 		chunks.append(tempstr)
 	
@@ -89,7 +89,7 @@ def test_orgcard():
 		config_data['second_org_entry'].make_bytestring(-1).decode(), \
 		"test_orgcard: second entry didn't match"
 
-	sock.send_message({'Action' : "QUIT"})
+	conn.send_message({'Action' : "QUIT"})
 
 
 def test_addentry_usercard():
@@ -97,8 +97,8 @@ def test_addentry_usercard():
 	dbconn = setup_test()
 	config_data = config_server(dbconn)
 
-	sock = ServerNetworkConnection()
-	assert sock.connect(), "Connection to server at localhost:2001 failed"
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 	
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
@@ -111,8 +111,8 @@ def test_addentry_usercard():
 	config_data['devid'] = devid
 	config_data['devpair'] = devpair
 	
-	regcode_admin(config_data, sock)
-	login_admin(config_data, sock)
+	regcode_admin(config_data, conn)
+	login_admin(config_data, conn)
 
 	# Test setup is complete. Create a test keycard and do ADDENTRY
 
@@ -151,12 +151,12 @@ def test_addentry_usercard():
 		'Public-Encryption-Key':'CURVE25519:_`UC|vltn_%P5}~vwV^)oY){#uvQSSy(dOD_l(yE'
 	})
 
-	sock.send_message({
+	conn.send_message({
 		'Action' : "ADDENTRY",
 		'Data' : { 'Base-Entry' : usercard.make_bytestring(0).decode() }
 	})
 
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 100 and \
 		response['Status'] == 'CONTINUE' and \
 		'Organization-Signature' in response['Data'] and \
@@ -193,12 +193,12 @@ def test_addentry_usercard():
 	status = usercard.is_compliant()
 	assert not status.error(), f"test_addentry(): compliance error: {str(status)}"
 
-	sock.send_message({
+	conn.send_message({
 		'Action' : "ADDENTRY",
 		'Data' : { 'User-Signature' : usercard.signatures['User'] }
 	})
 	
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 200 and \
 		response['Status'] == 'OK', f"test_addentry(): final upload server error {response}"
 
@@ -210,12 +210,12 @@ def test_addentry_usercard():
 	assert not newkeys.error(), f"test_addentry(): new entry failed to chain: {newkeys.info()}"
 
 	second_user_entry = newkeys['entry']
-	sock.send_message({
+	conn.send_message({
 		'Action' : "ADDENTRY",
 		'Data' : { 'Base-Entry' : second_user_entry.make_bytestring(1).decode() }
 	})
 
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 100 and \
 		response['Status'] == 'CONTINUE' and \
 		'Organization-Signature' in response['Data'] and \
@@ -248,16 +248,16 @@ def test_addentry_usercard():
 	status = second_user_entry.is_compliant()
 	assert not status.error(), f"test_addentry(): compliance error: {str(status)}"
 
-	sock.send_message({
+	conn.send_message({
 		'Action' : "ADDENTRY",
 		'Data' : { 'User-Signature' : second_user_entry.signatures['User'] }
 	})
 	
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 200 and \
 		response['Status'] == 'OK', f"test_addentry(): final upload server error {response}"
 	
-	sock.send_message({
+	conn.send_message({
 		'Action' : "USERCARD",
 		'Data' : { 
 			'Owner' : 'admin/example.com',
@@ -265,20 +265,20 @@ def test_addentry_usercard():
 		}
 	})
 
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 104 and response['Status'] == 'TRANSFER', \
 		'test_addentry.usercard: server returned %s' % response['Status']
 	assert response['Data']['Item-Count'] == '2', \
 		'test_addentry.usercard: server returned wrong number of items'
 	data_size = int(response['Data']['Total-Size'])
-	sock.send_message({'Action':'TRANSFER'})
+	conn.send_message({'Action':'TRANSFER'})
 
 	chunks = list()
-	tempstr = sock.read()
+	tempstr = conn.read()
 	data_read = len(tempstr)
 	chunks.append(tempstr)
 	while data_read < data_size:
-		tempstr = sock.read()
+		tempstr = conn.read()
 		data_read = data_read + len(tempstr)
 		chunks.append(tempstr)
 	
@@ -297,7 +297,7 @@ def test_addentry_usercard():
 		second_user_entry.make_bytestring(-1).decode(), \
 		"test_orgcard.usercard: entry didn't match"
 
-	sock.send_message({'Action' : "QUIT"})
+	conn.send_message({'Action' : "QUIT"})
 
 def test_iscurrent():
 	'''Tests the ISCURRENT command'''
@@ -305,29 +305,29 @@ def test_iscurrent():
 	dbconn = setup_test()
 	config_server(dbconn)
 
-	sock = ServerNetworkConnection()
-	assert sock.connect(), "Connection to server at localhost:2001 failed"
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 	
-	sock.send_message({
+	conn.send_message({
 		'Action' : "ISCURRENT",
 		'Data' : { 'Index' : '1' }
 	})
 
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 200 and response['Status'] == 'OK' and \
 		response['Data']['Is-Current'] == 'NO', 'test_iscurrent: org failure check failed'
 	
-	sock.send_message({
+	conn.send_message({
 		'Action' : "ISCURRENT",
 		'Data' : { 'Index' : '2' }
 	})
 
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 200 and response['Status'] == 'OK' and \
 		response['Data']['Is-Current'] == 'YES', 'test_iscurrent: org success check failed'
 
 
 if __name__ == '__main__':
-	#test_orgcard()
-	#test_addentry_usercard()
+	test_orgcard()
+	test_addentry_usercard()
 	test_iscurrent()

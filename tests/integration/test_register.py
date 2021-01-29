@@ -1,7 +1,7 @@
 from pyanselus.encryption import EncryptionPair
 from pyanselus.cryptostring import CryptoString
-from integration_setup import setup_test, config_server, validate_uuid, \
-	ServerNetworkConnection, regcode_admin, login_admin
+from pyanselus.serverconn import ServerConnection
+from integration_setup import setup_test, config_server, validate_uuid, regcode_admin, login_admin
 
 server_response = {
 	'title' : 'Anselus Server Response',
@@ -25,8 +25,8 @@ def test_register():
 
 	dbconn = setup_test()
 	server_config = config_server(dbconn)
-	sock = ServerNetworkConnection()
-	assert sock.connect(), "Connection to server at localhost:2001 failed"
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 	
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
@@ -39,8 +39,8 @@ def test_register():
 	server_config['devid'] = devid
 	server_config['devpair'] = devpair
 	
-	regcode_admin(server_config, sock)
-	login_admin(server_config, sock)
+	regcode_admin(server_config, conn)
+	login_admin(server_config, conn)
 
 
 
@@ -51,7 +51,7 @@ def test_register():
 	devkey = 'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'
 	
 	# Subtest #1: Regular registration that is supposed to succeed
-	sock.send_message({
+	conn.send_message({
 		'Action' : "REGISTER",
 		'Data' : {
 			'Workspace-ID' : wid,
@@ -61,7 +61,7 @@ def test_register():
 		}
 	})
 
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 201 and response['Status'] == 'REGISTERED', \
 		'test_register: subtest #1 returned an error'
 	assert validate_uuid(response['Data']['Device-ID']), \
@@ -70,7 +70,7 @@ def test_register():
 	
 	# Subtest #2: Attempt registration of existing WID
 	
-	sock.send_message({
+	conn.send_message({
 		'Action' : "REGISTER",
 		'Data' : {
 			'Workspace-ID' : wid,
@@ -80,11 +80,11 @@ def test_register():
 		}
 	})
 
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 408 and response['Status'] == 'RESOURCE EXISTS', \
 		'test_register: subtest #2 failed to catch duplicate registration'
 
-	sock.send_message({'Action' : "QUIT"})
+	conn.send_message({'Action' : "QUIT"})
 
 
 def test_register_failures():
@@ -92,8 +92,8 @@ def test_register_failures():
 
 	dbconn = setup_test()
 	server_config = config_server(dbconn)
-	sock = ServerNetworkConnection()
-	assert sock.connect(), "Connection to server at localhost:2001 failed"
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
@@ -106,12 +106,12 @@ def test_register_failures():
 	server_config['devid'] = devid
 	server_config['devpair'] = devpair
 	
-	regcode_admin(server_config, sock)
-	login_admin(server_config, sock)
+	regcode_admin(server_config, conn)
+	login_admin(server_config, conn)
 
 	# Test #1: Attempt registration with unsupported encryption type
 
-	sock.send_message({
+	conn.send_message({
 		'Action' : "REGISTER",
 		'Data' : {
 			'Workspace-ID' : '11111111-1111-1111-1111-222222222222',
@@ -121,13 +121,13 @@ def test_register_failures():
 		}
 	})
 
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 309 and response['Status'] == 'ENCRYPTION TYPE NOT SUPPORTED', \
 		'test_register_failures: subtest #1 failed to catch unsupported encryption'
 
 	# Test #2: Send bad WID
 
-	sock.send_message({
+	conn.send_message({
 		'Action' : "REGISTER",
 		'Data' : {
 			'Workspace-ID' : 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
@@ -137,11 +137,11 @@ def test_register_failures():
 		}
 	})
 
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 400 and response['Status'] == 'BAD REQUEST', \
 		'test_register_failures: subtest #2 failed to catch a bad WID'
 
-	sock.send_message({'Action' : "QUIT"})
+	conn.send_message({'Action' : "QUIT"})
 
 
 def test_overflow():
@@ -149,8 +149,8 @@ def test_overflow():
 
 	dbconn = setup_test()
 	server_config = config_server(dbconn)
-	sock = ServerNetworkConnection()
-	assert sock.connect(), "Connection to server at localhost:2001 failed"
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
@@ -163,10 +163,10 @@ def test_overflow():
 	server_config['devid'] = devid
 	server_config['devpair'] = devpair
 	
-	regcode_admin(server_config, sock)
-	login_admin(server_config, sock)
+	regcode_admin(server_config, conn)
+	login_admin(server_config, conn)
 
-	sock.send_message({
+	conn.send_message({
 		'Action' : "REGISTER",
 		'Data' : {
 			'Workspace-ID' : 'A' * 10240,
@@ -176,11 +176,11 @@ def test_overflow():
 		}
 	})
 
-	response = sock.read_response(server_response)
+	response = conn.read_response(server_response)
 	assert response['Code'] == 400 and response['Status'] == 'BAD REQUEST', \
 		'test_overflow: failed to catch overflow'
 
-	sock.send_message({'Action' : "QUIT"})
+	conn.send_message({'Action' : "QUIT"})
 
 
 if __name__ == '__main__':
