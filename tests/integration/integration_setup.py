@@ -1,18 +1,16 @@
 from base64 import b85encode
-import json
 import os.path
+import platform
 import re
 import secrets
-import socket
 import sys
 import time
 
-import jsonschema
 import psycopg2
 import toml
 
 from pyanselus.cryptostring import CryptoString
-from pyanselus.encryption import EncryptionPair, Password, PublicKey, SigningPair
+from pyanselus.encryption import EncryptionPair, PublicKey, SigningPair
 import pyanselus.keycard as keycard
 import pyanselus.serverconn as serverconn
 
@@ -134,7 +132,12 @@ def db_setup(serverconfig: dict, schema_path: str):
 
 def setup_test():
 	'''Resets the Postgres test database to be ready for an integration test'''
-	config = load_db_config('/etc/anselusd/serverconfig.toml')
+	
+	config_path = '/etc/anselusd/serverconfig.toml'
+	if platform.system() == 'Windows':
+		config_path = 'C:\\ProgramData\\anselusd\\serverconfig.toml'
+
+	config = load_db_config(config_path)
 
 	schema_path = os.path.abspath(__file__ + '/../')
 	schema_path = os.path.join(schema_path, 'psql_schema.sql')
