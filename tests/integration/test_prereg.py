@@ -1,7 +1,7 @@
 from pyanselus.encryption import EncryptionPair, Password
 from pyanselus.cryptostring import CryptoString
 from pyanselus.serverconn import ServerConnection
-from integration_setup import setup_test, config_server, validate_uuid, \
+from integration_setup import setup_test, init_server, validate_uuid, \
 	regcode_admin, login_admin
 
 server_response = {
@@ -25,7 +25,7 @@ def test_prereg():
 	'''Tests the server's PREREG command with failure conditions'''
 
 	dbconn = setup_test()
-	server_config = config_server(dbconn)
+	dbdata = init_server(dbconn)
 
 	uid = 'TestUserID'
 	wid = '11111111-1111-1111-1111-111111111111'
@@ -41,12 +41,12 @@ def test_prereg():
 	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
 		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
 	
-	server_config['pwhash'] = pwhash
-	server_config['devid'] = devid
-	server_config['devpair'] = devpair
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
 	
-	regcode_admin(server_config, conn)
-	login_admin(server_config, conn)
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
 	
 	# Subtest #1: Prereg with user ID and domain
 	conn.send_message({
@@ -189,7 +189,7 @@ def test_prereg():
 def test_getwid():
 	'''Tests user ID -> workspace ID lookups'''
 	dbconn = setup_test()
-	server_config = config_server(dbconn)
+	dbdata = init_server(dbconn)
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
@@ -204,7 +204,7 @@ def test_getwid():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200 and response['Status'] == 'OK', \
 		'test_getwid: subtest #1 returned an error'
-	assert response['Data']['Workspace-ID'] == server_config['support_wid']
+	assert response['Data']['Workspace-ID'] == dbdata['support_wid']
 
 	# Subtest #2: lookup with domain
 	conn.send_message({
@@ -218,7 +218,7 @@ def test_getwid():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200 and response['Status'] == 'OK', \
 		'test_getwid: subtest #1 returned an error'
-	assert response['Data']['Workspace-ID'] == server_config['abuse_wid']
+	assert response['Data']['Workspace-ID'] == dbdata['abuse_wid']
 
 
 if __name__ == '__main__':

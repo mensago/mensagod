@@ -2,7 +2,7 @@ from pyanselus.cryptostring import CryptoString
 from pyanselus.encryption import EncryptionPair
 import pyanselus.keycard as keycard
 from pyanselus.serverconn import ServerConnection
-from integration_setup import setup_test, config_server, regcode_admin, login_admin
+from integration_setup import setup_test, init_server, regcode_admin, login_admin
 
 # Keys used in the various tests. 
 # THESE KEYS ARE STORED ON GITHUB! DO NOT USE THESE FOR ANYTHING EXCEPT UNIT TESTS!!
@@ -46,7 +46,7 @@ server_response = {
 def test_orgcard():
 	'''Tests the server's ORGCARD command'''
 	dbconn = setup_test()
-	config_data = config_server(dbconn)
+	dbdata = init_server(dbconn)
 
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
@@ -79,14 +79,14 @@ def test_orgcard():
 	if entries[-1] == '':
 		entries.pop()
 	
-	# These entries are added to the database in config_server(). The insert operations are not
+	# These entries are added to the database in init_server(). The insert operations are not
 	# done here because the two org entries are needed for other tests, as well.
 	assert len(entries) == 2, "test_orgcard: server did not send 2 entries"
 	assert entries[0] == '----- BEGIN ORG ENTRY -----\r\n' + \
-		config_data['root_org_entry'].make_bytestring(-1).decode(), \
+		dbdata['root_org_entry'].make_bytestring(-1).decode(), \
 		"test_orgcard: first entry didn't match"
 	assert entries[1] == '----- BEGIN ORG ENTRY -----\r\n' + \
-		config_data['second_org_entry'].make_bytestring(-1).decode(), \
+		dbdata['second_org_entry'].make_bytestring(-1).decode(), \
 		"test_orgcard: second entry didn't match"
 
 	conn.send_message({'Action' : "QUIT"})
@@ -95,7 +95,7 @@ def test_orgcard():
 def test_addentry_usercard():
 	'''Tests the ADDENTRY and USERCARD command processes'''
 	dbconn = setup_test()
-	config_data = config_server(dbconn)
+	dbdata = init_server(dbconn)
 
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
@@ -107,12 +107,12 @@ def test_addentry_usercard():
 	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
 		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
 	
-	config_data['pwhash'] = pwhash
-	config_data['devid'] = devid
-	config_data['devpair'] = devpair
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
 	
-	regcode_admin(config_data, conn)
-	login_admin(config_data, conn)
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
 
 	# Test setup is complete. Create a test keycard and do ADDENTRY
 
@@ -143,7 +143,7 @@ def test_addentry_usercard():
 	usercard = keycard.UserEntry()
 	usercard.set_fields({
 		'Name':'Test Administrator',
-		'Workspace-ID':config_data['admin_wid'],
+		'Workspace-ID':dbdata['admin_wid'],
 		'User-ID':'admin',
 		'Domain':'example.com',
 		'Contact-Request-Verification-Key':'ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D',
@@ -169,10 +169,10 @@ def test_addentry_usercard():
 	# verification key. Because this is just an integration test, we skip all that and just use
 	# the known verification key from earlier in the test.
 	status = usercard.verify_signature(
-		CryptoString(config_data['ovkey']), 'Organization')
+		CryptoString(dbdata['ovkey']), 'Organization')
 	assert not status.error(), f"test_addentry(): org signature didn't verify: {status.info()}"
 	
-	assert response['Data']['Previous-Hash'] == config_data['second_org_entry'].hash, \
+	assert response['Data']['Previous-Hash'] == dbdata['second_org_entry'].hash, \
 		"test_addentry(): server did not attach correct Previous Hash to root user entry"
 	
 	usercard.prev_hash = response['Data']['Previous-Hash']
@@ -226,7 +226,7 @@ def test_addentry_usercard():
 	
 	# Verify the server's signature, add and verify the hashes, sign, and upload
 	status = second_user_entry.verify_signature(
-		CryptoString(config_data['ovkey']), 'Organization')
+		CryptoString(dbdata['ovkey']), 'Organization')
 	assert not status.error(), f"test_addentry(): org signature didn't verify: {status.info()}"
 	
 	second_user_entry.prev_hash = response['Data']['Previous-Hash']
@@ -290,7 +290,7 @@ def test_addentry_usercard():
 	if entries[-1] == '':
 		entries.pop()
 	
-	# These entries are added to the database in config_server(). The insert operations are not
+	# These entries are added to the database in init_server(). The insert operations are not
 	# done here because the two org entries are needed for other tests, as well.
 	assert len(entries) == 2, "test_orgcard.usercard: server did not send the expected entry"
 	assert entries[1] == '----- BEGIN USER ENTRY -----\r\n' + \
@@ -303,7 +303,7 @@ def test_iscurrent():
 	'''Tests the ISCURRENT command'''
 	
 	dbconn = setup_test()
-	config_server(dbconn)
+	init_server(dbconn)
 
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"

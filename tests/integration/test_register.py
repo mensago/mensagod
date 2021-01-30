@@ -1,7 +1,8 @@
 from pyanselus.encryption import EncryptionPair
 from pyanselus.cryptostring import CryptoString
 from pyanselus.serverconn import ServerConnection
-from integration_setup import setup_test, config_server, regcode_admin, login_admin
+from integration_setup import load_server_config_file, setup_test, init_server, regcode_admin, \
+	login_admin
 
 server_response = {
 	'title' : 'Anselus Server Response',
@@ -20,14 +21,20 @@ server_response = {
 	}
 }
 
+
 def test_register():
 	'''Tests the server's REGISTER command - success and duplicate WID condition'''
 
+	# Testing the REGISTER command only works when the server uses either network or public mode
+	serverconfig = load_server_config_file()
+	if serverconfig['global']['registration'] not in ['network', 'public']:
+		return
+	
 	dbconn = setup_test()
-	server_config = config_server(dbconn)
+	dbdata = init_server(dbconn)
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
-	
+
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
 				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
@@ -35,14 +42,12 @@ def test_register():
 	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
 		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
 	
-	server_config['pwhash'] = pwhash
-	server_config['devid'] = devid
-	server_config['devpair'] = devpair
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
 	
-	regcode_admin(server_config, conn)
-	login_admin(server_config, conn)
-
-
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
 
 	wid = '11111111-1111-1111-1111-111111111111'
 	# password is 'SandstoneAgendaTricycle'
@@ -87,8 +92,13 @@ def test_register():
 def test_register_failures():
 	'''Tests the server's REGISTER command with failure conditions'''
 
+	# Testing the REGISTER command only works when the server uses either network or public mode
+	serverconfig = load_server_config_file()
+	if serverconfig['global']['registration'] not in ['network', 'public']:
+		return
+	
 	dbconn = setup_test()
-	server_config = config_server(dbconn)
+	dbdata = init_server(dbconn)
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
@@ -99,12 +109,12 @@ def test_register_failures():
 	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
 		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
 	
-	server_config['pwhash'] = pwhash
-	server_config['devid'] = devid
-	server_config['devpair'] = devpair
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
 	
-	regcode_admin(server_config, conn)
-	login_admin(server_config, conn)
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
 
 	# Test #1: Attempt registration with unsupported encryption type
 
@@ -145,7 +155,7 @@ def test_overflow():
 	'''Tests the server's command handling for commands greater than 8K'''
 
 	dbconn = setup_test()
-	server_config = config_server(dbconn)
+	dbdata = init_server(dbconn)
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
@@ -156,12 +166,12 @@ def test_overflow():
 	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
 		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
 	
-	server_config['pwhash'] = pwhash
-	server_config['devid'] = devid
-	server_config['devpair'] = devpair
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
 	
-	regcode_admin(server_config, conn)
-	login_admin(server_config, conn)
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
 
 	conn.send_message({
 		'Action' : "REGISTER",

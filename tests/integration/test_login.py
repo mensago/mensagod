@@ -1,13 +1,13 @@
 from pyanselus.cryptostring import CryptoString
 from pyanselus.encryption import EncryptionPair
 from pyanselus.serverconn import ServerConnection
-from integration_setup import setup_test, config_server, regcode_admin, login_admin
+from integration_setup import setup_test, init_server, regcode_admin, login_admin
 
 def test_login():
 	'''Performs a basic login intended to be successful'''
 	
 	dbconn = setup_test()
-	server_config = config_server(dbconn)
+	dbdata = init_server(dbconn)
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
@@ -18,16 +18,16 @@ def test_login():
 	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
 		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
 	
-	server_config['pwhash'] = pwhash
-	server_config['devid'] = devid
-	server_config['devpair'] = devpair
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
 
 	# Most of the code which was originally written for this test is needed for other tests
 	# because commands like PREREG require being logged in as the administrator. Both of these
 	# functions still perform all the necessary tests that were originally done here.
-	regcode_admin(server_config, conn)
+	regcode_admin(dbdata, conn)
 
-	login_admin(server_config, conn)
+	login_admin(dbdata, conn)
 
 	conn.send_message({'Action' : "QUIT"})
 

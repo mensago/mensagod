@@ -64,9 +64,13 @@ import pyanselus.serverconn as serverconn
 # Initial User Primary Encryption Key: nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN
 # Initial User Primary Decryption Key: 4A!nTPZSVD#tm78d=-?1OIQ43{ipSpE;@il{lYkg
 
-def load_db_config(config_file_path: str) -> dict:
+def load_server_config_file() -> dict:
 	'''Loads the Anselus server configuration from the config file'''
 	
+	config_file_path = '/etc/anselusd/serverconfig.toml'
+	if platform.system() == 'Windows':
+		config_file_path = 'C:\\ProgramData\\anselusd\\serverconfig.toml'
+
 	if os.path.exists(config_file_path):
 		try:
 			serverconfig = toml.load(config_file_path)
@@ -75,7 +79,7 @@ def load_db_config(config_file_path: str) -> dict:
 			sys.exit(1)
 	else:
 		serverconfig = {}
-
+	
 	serverconfig.setdefault('database', dict())
 	serverconfig['database'].setdefault('engine','postgresql')
 	serverconfig['database'].setdefault('ip','127.0.0.1')
@@ -106,8 +110,12 @@ def load_db_config(config_file_path: str) -> dict:
 	return serverconfig
 
 
-def db_setup(serverconfig: dict, schema_path: str):
-	'''Reset the test database to defaults'''
+def setup_test():
+	'''Resets the Postgres test database to be ready for an integration test'''
+	
+	serverconfig = load_server_config_file()
+
+	# Reset the test database to defaults
 	try:
 		conn = psycopg2.connect(host=serverconfig['database']['ip'],
 								port=serverconfig['database']['port'],
@@ -117,6 +125,9 @@ def db_setup(serverconfig: dict, schema_path: str):
 	except Exception as e:
 		print("Couldn't connect to database: %s" % e)
 		sys.exit(1)
+
+	schema_path = os.path.abspath(__file__ + '/../')
+	schema_path = os.path.join(schema_path, 'psql_schema.sql')
 
 	sqlcmds = ''
 	with open(schema_path, 'r') as f:
@@ -130,22 +141,7 @@ def db_setup(serverconfig: dict, schema_path: str):
 	return conn
 
 
-def setup_test():
-	'''Resets the Postgres test database to be ready for an integration test'''
-	
-	config_path = '/etc/anselusd/serverconfig.toml'
-	if platform.system() == 'Windows':
-		config_path = 'C:\\ProgramData\\anselusd\\serverconfig.toml'
-
-	config = load_db_config(config_path)
-
-	schema_path = os.path.abspath(__file__ + '/../')
-	schema_path = os.path.join(schema_path, 'psql_schema.sql')
-
-	return db_setup(config, schema_path)
-
-
-def config_server(dbconn) -> dict:
+def init_server(dbconn) -> dict:
 	'''Adds basic data to the database as if setupconfig had been run. Returns data needed for 
 	tests, such as the keys'''
 	
