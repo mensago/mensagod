@@ -424,6 +424,7 @@ func commandRegister(session *sessionState) {
 			session.SendStringResponse(304, "REGISTRATION CLOSED", "")
 			return
 		}
+		workspaceStatus = "active"
 	case "moderated":
 		workspaceStatus = "pending"
 	default:
