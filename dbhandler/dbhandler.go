@@ -685,6 +685,21 @@ func CheckRegCode(id string, domain string, iswid bool, regcode string) (string,
 	return wid, uid, nil
 }
 
+// DeleteRegCode removes preregistration data from the database.
+func DeleteRegCode(id string, domain string, iswid bool, regcode string) error {
+
+	var err error
+	if iswid {
+		_, err = dbConn.Exec(`DELETE FROM prereg WHERE wid = $1 AND regcode = $2 AND domain = $3`,
+			id, regcode, domain)
+	} else {
+		_, err = dbConn.Exec(`DELETE FROM prereg WHERE uid = $1 AND regcode = $2 AND domain = $3`,
+			id, regcode, domain)
+	}
+
+	return err
+}
+
 // GetOrgEntries pulls one or more entries from the database. If an end index is not desired, set
 // it to 0. Passing a starting index of 0 will return the current entry for the organization.
 func GetOrgEntries(startIndex int, endIndex int) ([]string, error) {

@@ -326,11 +326,19 @@ func commandRegCode(session *sessionState) {
 
 	err = dbhandler.AddDevice(wid, session.Message.Data["Device-ID"], devkey, "active")
 	if err != nil {
-		var response ServerResponse
-		response.Code = 300
-		response.Status = "INTERNAL SERVER ERROR"
-		response.Data["Error"] = err.Error()
-		session.SendResponse(response)
+		logging.Writef("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+	}
+
+	if session.Message.HasField("Workspace-ID") {
+		err = dbhandler.DeleteRegCode(session.Message.Data["Workspace-ID"], domain, true,
+			session.Message.Data["Reg-Code"])
+	} else {
+		err = dbhandler.DeleteRegCode(session.Message.Data["User-ID"], domain, false,
+			session.Message.Data["Reg-Code"])
+	}
+	if err != nil {
+		logging.Writef("Internal server error. commandRegister.DeleteRegCode. Error: %s\n", err)
 	}
 
 	session.SendStringResponse(201, "REGISTERED", "")
