@@ -716,8 +716,8 @@ fhandle.write('''
 # subnet(s) to which account registration is limited. Subnets are expected in
 # CIDR notation and comma-separated. The default setting restricts registration
 # to the private (non-routable) networks.
-# registration_subnet = 192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8
-# registration_subnet6 = fe80::/10
+# registration_subnet = "192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8, 127.0.0.1/8"
+# registration_subnet6 = "fe80::/10"
 # 
 # The default storage quota for a workspace, measured in MiB. 0 means no limit.
 # default_quota = 0
@@ -730,7 +730,7 @@ fhandle.write('''
 # Location for log files. This directory requires full permissions for the user anselusd runs as.
 # On Windows, this defaults to the same location as the server config file, i.e. 
 # C:\\ProgramData\\anselusd
-# log_path = /var/log/anselusd
+# log_path = "/var/log/anselusd"
 ''')
 
 fhandle.write('''

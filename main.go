@@ -214,7 +214,8 @@ func setupConfig() {
 	viper.SetDefault("global.registration", "private")
 
 	// Subnet(s) used for network registration. Defaults to private networks only.
-	viper.SetDefault("global.registration_subnet", "192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8")
+	viper.SetDefault("global.registration_subnet",
+		"192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8, 127.0.0.1/8")
 	viper.SetDefault("global.registration_subnet6", "fe80::/10")
 	viper.SetDefault("global.registration_wordlist", "eff_short_prefix")
 	viper.SetDefault("global.registration_wordcount", 6)
