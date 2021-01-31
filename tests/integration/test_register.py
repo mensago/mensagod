@@ -1,6 +1,7 @@
-from pyanselus.encryption import EncryptionPair
+from pyanselus.encryption import EncryptionPair, SigningPair
 from pyanselus.cryptostring import CryptoString
-from pyanselus.serverconn import ServerConnection
+import pyanselus.keycard as keycard
+import pyanselus.serverconn as serverconn
 from integration_setup import load_server_config_file, setup_test, init_server, regcode_admin, \
 	login_admin
 
@@ -32,7 +33,7 @@ def test_register():
 	
 	dbconn = setup_test()
 	dbdata = init_server(dbconn)
-	conn = ServerConnection()
+	conn = serverconn.ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
 	# password is 'SandstoneAgendaTricycle'
@@ -99,7 +100,7 @@ def test_register_failures():
 	
 	dbconn = setup_test()
 	dbdata = init_server(dbconn)
-	conn = ServerConnection()
+	conn = serverconn.ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
 	# password is 'SandstoneAgendaTricycle'
@@ -151,12 +152,135 @@ def test_register_failures():
 	conn.send_message({'Action' : "QUIT"})
 
 
+def test_unregister():
+	'''Test the UNREGISTER command'''
+
+	# Testing the UNREGISTER command only works when the server uses either network or public mode
+	serverconfig = load_server_config_file()
+	if serverconfig['global']['registration'] not in ['network', 'public']:
+		return
+	
+	dbconn = setup_test()
+	dbdata = init_server(dbconn)
+	conn = serverconn.ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
+	
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
+
+	userwid = '11111111-1111-1111-1111-111111111111'
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devkey = 'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'
+	
+	conn.send_message({
+		'Action' : "REGISTER",
+		'Data' : {
+			'Workspace-ID' : userwid,
+			'Password-Hash' : pwhash,
+			'Device-ID' : devid,
+			'Device-Key' : devkey
+		}
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 201 and response['Status'] == 'REGISTERED', \
+		f"test_unregister: test user registration failed: {response['Status']}"
+	
+	# Subtest #1: Try to unregister the admin account
+	conn.send_message({
+		'Action' : "UNREGISTER",
+		'Data' : {
+			'Password-Hash' : pwhash
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 403 and response['Status'] == 'FORBIDDEN', \
+		"test_unregister(): failed to properly handle trying to unregister admin account"
+
+	conn.send_message({'Action' : "LOGOUT", 'Data' : {}})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200 and response['Status'] == 'OK'
+
+	# Set up for subtest #2: log in as the user
+	status = serverconn.login(conn, userwid, CryptoString(dbdata['oekey']))
+	assert not status.error(), f"test_unregister(): user login phase failed: {status.info()}"
+
+	status = serverconn.password(conn, userwid, pwhash)
+	assert not status.error(), f"test_unregister(): password phase failed: {status.info()}"
+
+	status = serverconn.device(conn, devid, devpair)
+	assert not status.error(), f"test_unregister(): device phase failed: {status.info()}"
+
+	# As a general rule, these anselusd integration tests don't call the regular pyanselus client 
+	# library calls because we do extra validation. However, we're going to make an exception in 
+	# this test because LOGIN and ADDENTRY are both really big.
+	usercard = keycard.UserEntry()
+	usercard.set_fields({
+		'Name':'Corbin Simons',
+		'Workspace-ID':userwid,
+		'User-ID':'csimons',
+		'Domain':'example.com',
+		'Contact-Request-Verification-Key':'ED25519:E?_z~5@+tkQz!iXK?oV<Zx(ec;=27C8Pjm((kRc|',
+		'Contact-Request-Encryption-Key':'CURVE25519:yBZ0{1fE9{2<b~#i^R+JT-yh-y5M(Wyw_)}_SZOn',
+		'Public-Encryption-Key':'CURVE25519:_`UC|vltn_%P5}~vwV^)oY){#uvQSSy(dOD_l(yE'
+	})
+
+	crspair = SigningPair(
+		CryptoString(r'ED25519:E?_z~5@+tkQz!iXK?oV<Zx(ec;=27C8Pjm((kRc|'),
+		CryptoString(r'ED25519:u4#h6LEwM6Aa+f<++?lma4Iy63^}V$JOP~ejYkB;')
+	)
+
+	status = usercard.is_data_compliant()
+	assert not status.error(), f"test_unregister: user card not compliant: {status.info()}"
+	status = serverconn.addentry(conn, usercard, CryptoString(dbdata['ovkey']), crspair)
+	assert not status.error(), f"test_unregister: addentry() failed: {status.info()}\n" \
+		f"Server Info: {status['Info']}"
+
+
+	# Subtest #2: Unregister regular user from admin account
+	conn.send_message({
+		'Action' : "UNREGISTER",
+		'Data' : {
+			'Workspace-ID' : userwid,
+			'Password-Hash' : pwhash
+		}
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 202 and response['Status'] == 'UNREGISTERED', \
+		f"test_unregister(): user unregistration failed: {response['Status']}"
+	
+	# Check to make sure the database end was handled correctly
+	cur = dbconn.cursor()
+	cur.execute('SELECT password,status FROM workspaces WHERE wid = %s ', (userwid,))
+	row = cur.fetchone()
+	assert row, "test_unregister(): cleanup check query found no rows"
+	assert row[0] == '-' and row[1] == 'deleted', \
+		"test_unregister(): server failed to clean up database properly"
+	
+	conn.send_message({'Action' : "QUIT"})
+
+
+
 def test_overflow():
 	'''Tests the server's command handling for commands greater than 8K'''
 
 	dbconn = setup_test()
 	dbdata = init_server(dbconn)
-	conn = ServerConnection()
+	conn = serverconn.ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
 	# password is 'SandstoneAgendaTricycle'
@@ -191,6 +315,7 @@ def test_overflow():
 
 
 if __name__ == '__main__':
-	test_register()
-	test_register_failures()
-	test_overflow()
+	# test_register()
+	# test_register_failures()
+	# test_overflow()
+	test_unregister()

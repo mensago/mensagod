@@ -71,6 +71,7 @@ type ClientRequest struct {
 type ServerResponse struct {
 	Code   int
 	Status string
+	Info   string
 	Data   map[string]string
 }
 
@@ -140,7 +141,7 @@ func (s sessionState) SendResponse(msg ServerResponse) (err error) {
 // SendStringResponse is a syntactic sugar command for quickly sending error responses. The Info
 // field can contain additional information related to the return code
 func (s sessionState) SendStringResponse(code int, status string, info string) (err error) {
-	return s.SendResponse(ServerResponse{code, status, map[string]string{"Info": info}})
+	return s.SendResponse(ServerResponse{code, status, info, map[string]string{}})
 }
 
 func (s *sessionState) ReadClient() (string, error) {
@@ -434,6 +435,8 @@ func processCommand(session *sessionState) {
 		commandRegCode(session)
 	case "REGISTER":
 		commandRegister(session)
+	case "UNREGISTER":
+		commandUnregister(session)
 	case "USERCARD":
 		commandUserCard(session)
 	default:

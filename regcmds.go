@@ -505,23 +505,17 @@ func commandUnregister(session *sessionState) {
 	regType := strings.ToLower(viper.GetString("global.registration"))
 	if regType == "private" || regType == "moderated" {
 		// TODO: submit admin request to delete workspace
-		session.SendStringResponse(101, "PENDING", "Pending administrator approval")
+		// session.SendStringResponse(101, "PENDING", "Pending administrator approval")
+		session.SendStringResponse(301, "NOT IMPLEMENTED", "Not implemented yet. Sorry!")
 		return
 	}
 
-	adminAddress, err := dbhandler.ResolveAddress("admin/" + viper.GetString("global.domain"))
+	adminWid, err := dbhandler.ResolveAddress("admin/" + viper.GetString("global.domain"))
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Write("Unregister: failed to resolve admin account")
 		return
 	}
-	parts := strings.Split(adminAddress, "/")
-	if len(parts) != 2 {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-		logging.Write("Unregister: failed to find admin WID")
-		return
-	}
-	adminWid := parts[0]
 
 	// This command can be used to unregister other workspaces, but only the admin account is
 	// allowed to do this
@@ -558,13 +552,7 @@ func commandUnregister(session *sessionState) {
 			logging.Write("Unregister: failed to resolve account " + builtin)
 			return
 		}
-		parts := strings.Split(address, "/")
-		if len(parts) != 2 {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-			logging.Write("Unregister: failed to find WID for " + builtin)
-			return
-		}
-		if wid == parts[0] {
+		if wid == address {
 			session.SendStringResponse(403, "FORBIDDEN",
 				fmt.Sprintf("Can't unregister the built-in %s account", builtin))
 			return
@@ -590,4 +578,6 @@ func commandUnregister(session *sessionState) {
 		logging.Writef("Unregister: error removing workspace from filesystem: %s", err.Error())
 		return
 	}
+
+	session.SendStringResponse(202, "UNREGISTERED", "")
 }
