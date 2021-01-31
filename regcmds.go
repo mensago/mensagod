@@ -281,12 +281,20 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	var wid string
+	// var wid string
+	// if session.Message.HasField("Workspace-ID") {
+	// 	wid, _, err = dbhandler.CheckRegCode(session.Message.Data["Workspace-ID"], domain, true,
+	// 		session.Message.Data["Reg-Code"])
+	// } else {
+	// 	wid, _, err = dbhandler.CheckRegCode(session.Message.Data["User-ID"], domain, false,
+	// 		session.Message.Data["Reg-Code"])
+	// }
+	var wid, uid string
 	if session.Message.HasField("Workspace-ID") {
-		wid, _, err = dbhandler.CheckRegCode(session.Message.Data["Workspace-ID"], domain, true,
+		wid, uid, err = dbhandler.CheckRegCode(session.Message.Data["Workspace-ID"], domain, true,
 			session.Message.Data["Reg-Code"])
 	} else {
-		wid, _, err = dbhandler.CheckRegCode(session.Message.Data["User-ID"], domain, false,
+		wid, uid, err = dbhandler.CheckRegCode(session.Message.Data["User-ID"], domain, false,
 			session.Message.Data["Reg-Code"])
 	}
 
@@ -311,11 +319,11 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.SetPassword(wid, session.Message.Data["Password-Hash"])
+	err = dbhandler.AddWorkspace(wid, uid, domain, session.Message.Data["Password-Hash"], "active",
+		"individual")
 	if err != nil {
-		logging.Writef("Internal server error. commandRegister.SetPassword. Error: %s\n", err)
+		logging.Writef("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-		return
 	}
 
 	err = dbhandler.SetWorkspaceStatus(wid, "active")
