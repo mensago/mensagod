@@ -281,14 +281,6 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	// var wid string
-	// if session.Message.HasField("Workspace-ID") {
-	// 	wid, _, err = dbhandler.CheckRegCode(session.Message.Data["Workspace-ID"], domain, true,
-	// 		session.Message.Data["Reg-Code"])
-	// } else {
-	// 	wid, _, err = dbhandler.CheckRegCode(session.Message.Data["User-ID"], domain, false,
-	// 		session.Message.Data["Reg-Code"])
-	// }
 	var wid, uid string
 	if session.Message.HasField("Workspace-ID") {
 		wid, uid, err = dbhandler.CheckRegCode(session.Message.Data["Workspace-ID"], domain, true,
