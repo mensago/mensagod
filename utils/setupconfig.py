@@ -481,9 +481,6 @@ config['admin_wid'] = admin_wid
 config['admin_regcode'] = regcode
 rootentry.set_field('Contact-Admin', '/'.join([admin_wid,config['org_domain']]))
 
-cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype, status) VALUES('{admin_wid}', "
-	f"'admin', '{config['org_domain']}', 'individual', 'active');")
-
 # preregister the abuse account if not aliased and put into the serverconfig
 
 abuse_wid = str(uuid.uuid4())

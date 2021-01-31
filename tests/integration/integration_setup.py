@@ -249,8 +249,6 @@ def init_server(dbconn) -> dict:
 	regcode = 'Undamaged Shining Amaretto Improve Scuttle Uptake'
 	cur.execute(f"INSERT INTO prereg(wid, uid, domain, regcode) VALUES('{admin_wid}', 'admin', "
 		f"'example.com', '{regcode}');")
-	cur.execute(f"INSERT INTO workspaces(wid, uid, domain, wtype, status) VALUES('{admin_wid}', "
-		f"'admin', 'example.com', 'individual', 'awaiting');")
 	
 	# Set up abuse/support forwarding to admin
 	abuse_wid = 'f8cfdbdf-62fe-4275-b490-736f5fdc82e3'
@@ -337,7 +335,7 @@ def login_admin(config, conn):
 	challenge = b85encode(secrets.token_bytes(32))
 	ekey = PublicKey(CryptoString(config['oekey']))
 	status = ekey.encrypt(challenge)
-	assert not status.error(), 'test_login: failed to encrypt server challenge'
+	assert not status.error(), 'login_admin: failed to encrypt server challenge'
 
 	conn.send_message({
 		'Action' : "LOGIN",
@@ -350,9 +348,9 @@ def login_admin(config, conn):
 
 	response = conn.read_response(None)
 	assert response['Code'] == 100 and response['Status'] == 'CONTINUE', \
-		'test_login: failed to log in'
+		'login_admin: failed to log in'
 	assert response['Data']['Response'] == challenge.decode(), \
-		'test_login: server failed identity response'
+		'login_admin: server failed identity response'
 
 	# Phase 2: PASSWORD
 	conn.send_message({
@@ -362,7 +360,7 @@ def login_admin(config, conn):
 
 	response = conn.read_response(None)
 	assert response['Code'] == 100 and response['Status'] == 'CONTINUE', \
-		'test_login: failed to auth password'
+		'login_admin: failed to auth password'
 
 	# Phase 3: DEVICE
 	conn.send_message({
@@ -376,11 +374,11 @@ def login_admin(config, conn):
 	# Receive, decrypt, and return the server challenge
 	response = conn.read_response(None)
 	assert response['Code'] == 100 and response['Status'] == 'CONTINUE', \
-		'test_login: failed to auth device'
-	assert 'Challenge' in response['Data'], 'test_login: server did not return a device challenge'
+		'login_admin: failed to auth device'
+	assert 'Challenge' in response['Data'], 'login_admin: server did not return a device challenge'
 	
 	status = config['devpair'].decrypt(response['Data']['Challenge'])
-	assert not status.error(), 'test_login: failed to decrypt device challenge'
+	assert not status.error(), 'login_admin: failed to decrypt device challenge'
 
 	conn.send_message({
 		'Action' : "DEVICE",
