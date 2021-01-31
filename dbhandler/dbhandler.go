@@ -506,7 +506,6 @@ func RemoveWorkspace(wid string) error {
 	var sqlCommands = []string{
 		`UPDATE workspaces SET password='-',status='deleted' WHERE wid=$1`,
 		`DELETE FROM iwkspc_folders WHERE wid=$1`,
-		`DELETE FROM iwkspc_sessions WHERE wid=$1`,
 	}
 	for _, sqlCmd := range sqlCommands {
 		_, err := dbConn.Exec(sqlCmd, wid)
