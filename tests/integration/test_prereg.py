@@ -135,16 +135,6 @@ def test_prereg():
 		}
 	})
 	response = conn.read_response(server_response)
-	assert response['Code'] == 200, 'test_prereg: subtest #3 failed to prereg user'
-
-	conn.send_message({
-		'Action' : "PREREG",
-		'Data' : {
-			'User-ID' : uid,
-			'Domain' : domain
-		}
-	})
-	response = conn.read_response(server_response)
 	assert response['Code'] == 408 and response['Status'] == 'RESOURCE EXISTS', \
 		'test_prereg: subtest #3 failed to catch duplicate user'
 
