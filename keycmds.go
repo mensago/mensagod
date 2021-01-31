@@ -54,7 +54,7 @@ func commandAddEntry(session *sessionState) {
 	var entry *keycard.Entry
 	entry, err := keycard.NewEntryFromData(session.Message.Data["Base-Entry"])
 	if err != nil {
-		session.SendStringResponse(411, "BAD KEYCARD DATA", "")
+		session.SendStringResponse(411, "BAD KEYCARD DATA", "Couldn't create entry from data")
 		return
 	}
 	if !entry.IsDataCompliant() {
