@@ -435,6 +435,8 @@ func processCommand(session *sessionState) {
 		commandRegCode(session)
 	case "REGISTER":
 		commandRegister(session)
+	case "SETPASSWORD":
+		commandSetPassword(session)
 	case "UNREGISTER":
 		commandUnregister(session)
 	case "USERCARD":

@@ -253,6 +253,19 @@ func commandPassword(session *sessionState) {
 	}
 }
 
+func commandSetPassword(session *sessionState) {
+	// Command syntax:
+	// SETPASSWORD(Password-Hash, NewPassword-Hash)
+
+	if session.Message.Validate([]string{"Password-Hash", "NewPassword-Hash"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	session.SendStringResponse(301, "NOT IMPLEMENTED", "Password changing not yet implemented. Sorry!")
+	return
+}
+
 func challengeDevice(session *sessionState, keytype string, devkeystr string) (bool, error) {
 	// 1) Generate a 32-byte random string of bytes
 	// 2) Encode string in base85
