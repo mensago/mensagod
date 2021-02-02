@@ -67,8 +67,8 @@ def test_setpassword():
 	})
 	
 	response = conn.read_response(None)
-	assert response['Code'] == 200 and response['Status'] == 'OK', \
-		'test_setpassword(): Failed to update admin password'
+	assert response['Code'] == 402 and response['Status'] == 'AUTHENTICATION FAILURE', \
+		'test_setpassword(): Failed to catch bad password'
 
 	# Subtest #2: Successful password change
 	conn.send_message({

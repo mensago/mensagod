@@ -262,8 +262,30 @@ func commandSetPassword(session *sessionState) {
 		return
 	}
 
-	session.SendStringResponse(301, "NOT IMPLEMENTED", "Password changing not yet implemented. Sorry!")
-	return
+	if session.LoginState != loginClientSession {
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		return
+	}
+
+	match, err := dbhandler.CheckPassword(session.WID, session.Message.Data["Password-Hash"])
+	if err != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Password check error")
+		return
+	}
+
+	if !match {
+		session.SendStringResponse(402, "AUTHENTICATION FAILURE", "")
+		return
+	}
+
+	err = dbhandler.SetPassword(session.WID, session.Message.Data["NewPassword-Hash"])
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandSetPassword: failed to update password: %s", err.Error())
+		return
+	}
+
+	session.SendStringResponse(200, "OK", "")
 }
 
 func challengeDevice(session *sessionState, keytype string, devkeystr string) (bool, error) {
