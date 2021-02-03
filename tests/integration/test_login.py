@@ -42,23 +42,25 @@ def test_devkey():
 		'Challenge' in response['Data'] and 'NewChallenge' in response['Data'], \
 		"test_devkey(): server failed to return new and old key challenge"
 	
-	# status = newdevpair.decrypt(response['Data']['Challenge'])
-	# assert not status.error(), 'login_admin: failed to decrypt device challenge'
+	msg = {
+		'Action' : "DEVKEY",
+		'Data' : { 
+		}
+	}
 
-	# conn.send_message({
-	# 	'Action' : "DEVICE",
-	# 	'Data' : { 
-	# 		'Device-ID' : config['devid'],
-	# 		'Device-Key' : config['devpair'].public.as_string(),
-	# 		'Response' : status['data']
-	# 	}
-	# })
+	status = devpair.decrypt(response['Data']['Challenge'])
+	assert not status.error(), 'login_devkey(): failed to decrypt device challenge for old key'
+	msg['Data']['Challenge'] = status['data']
 
-	# response = conn.read_response(None)
-	# assert response['Code'] == 200 and response['Status'] == 'OK', \
-	# 	'Server challenge-response phase failed'
+	status = newdevpair.decrypt(response['Data']['NewChallenge'])
+	assert not status.error(), 'login_devkey(): failed to decrypt device challenge for new key'
+	msg['Data']['NewChallenge'] = status['data']
 
+	conn.send_message(msg)
 
+	response = conn.read_response(None)
+	assert response['Code'] == 200 and response['Status'] == 'OK', \
+		'Server challenge-response phase failed'
 
 	conn.send_message({'Action' : "QUIT"})
 
