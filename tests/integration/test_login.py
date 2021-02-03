@@ -3,6 +3,66 @@ from pyanselus.encryption import EncryptionPair
 from pyanselus.serverconn import ServerConnection
 from integration_setup import setup_test, init_server, regcode_admin, login_admin
 
+def test_devkey():
+	'''Tests the DEVKEY command'''
+	dbconn = setup_test()
+	dbdata = init_server(dbconn)
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
+
+	# Most of the code which was originally written for this test is needed for other tests
+	# because commands like PREREG require being logged in as the administrator. Both of these
+	# functions still perform all the necessary tests that were originally done here.
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
+
+	newdevpair = EncryptionPair(CryptoString(r'CURVE25519:F0HjK;dB8tr<*2UkaHP?e1-tWAohWJ?IP+oP@o@C'),
+		CryptoString(r'CURVE25519:|Cs(42=7FEwCoKG|5fVPC%MR6gD)_{h}}?ah%cIn'))
+	
+	conn.send_message({
+		'Action': 'DEVKEY',
+		'Data': {
+			'New-Key': newdevpair.get_public_key()
+		}
+	})
+
+	response = conn.read_response(None)
+	assert response != 100 and response['Status'] == 'CONTINUE' and \
+		'Challenge' in response['Data'] and 'NewChallenge' in response['Data'], \
+		"test_devkey(): server failed to return new and old key challenge"
+	
+	# status = newdevpair.decrypt(response['Data']['Challenge'])
+	# assert not status.error(), 'login_admin: failed to decrypt device challenge'
+
+	# conn.send_message({
+	# 	'Action' : "DEVICE",
+	# 	'Data' : { 
+	# 		'Device-ID' : config['devid'],
+	# 		'Device-Key' : config['devpair'].public.as_string(),
+	# 		'Response' : status['data']
+	# 	}
+	# })
+
+	# response = conn.read_response(None)
+	# assert response['Code'] == 200 and response['Status'] == 'OK', \
+	# 	'Server challenge-response phase failed'
+
+
+
+	conn.send_message({'Action' : "QUIT"})
+
+
 def test_login():
 	'''Performs a basic login intended to be successful'''
 	
