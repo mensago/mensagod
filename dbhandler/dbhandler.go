@@ -481,6 +481,14 @@ func CheckDevice(wid string, devid string, devkey string) (bool, error) {
 	}
 }
 
+// UpdateDevice replaces a device's old key with a new one
+func UpdateDevice(wid string, devid string, oldkey string, newkey string) error {
+	_, err := dbConn.Exec(`UPDATE iwkspc_devices SET devkey=$1 WHERE wid=$2 AND 
+		devid=$3 AND devkey=$4`, newkey, wid, devid, oldkey)
+
+	return err
+}
+
 // AddWorkspace is used for adding a workspace to a server. Upon failure, it returns the error
 // state for the failure. It makes the necessary database modifications and creates the folder for
 // the workspace in the filesystem. Note that this function is strictly for adding workspaces for
