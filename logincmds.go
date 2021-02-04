@@ -17,7 +17,11 @@ func commandDevice(session *sessionState) {
 	// Command syntax:
 	// DEVICE(Device-ID,Device-Key)
 
-	session.Message.Validate([]string{"Device-ID", "Device-Key"})
+	if session.Message.Validate([]string{"Device-ID", "Device-Key"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
 	if !dbhandler.ValidateUUID(session.Message.Data["Device-ID"]) ||
 		session.LoginState != loginAwaitingSessionID {
 		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
@@ -68,6 +72,62 @@ func commandDevice(session *sessionState) {
 		dbhandler.LogFailure("device", session.WID, session.Connection.RemoteAddr().String())
 		session.SendStringResponse(401, "UNAUTHORIZED", "")
 	}
+}
+
+func commandDevKey(session *sessionState) {
+	// Command syntax:
+	// DEVKEY(Device-ID, Old-Key, New-Key)
+
+	if session.Message.Validate([]string{"Device-ID", "Old-Key", "New-Key"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	if session.LoginState != loginClientSession {
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		return
+	}
+
+	var oldkey cryptostring.CryptoString
+	if oldkey.Set(session.Message.Data["Old-Key"]) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Bad Old-Key")
+		return
+	}
+
+	success, err := dbhandler.CheckDevice(session.WID, session.Message.Data["Device-ID"],
+		oldkey.AsString())
+
+	if err != nil {
+		if err.Error() == "cancel" {
+			session.LoginState = loginNoSession
+			session.SendStringResponse(200, "OK", "")
+			return
+		}
+
+		session.SendStringResponse(400, "BAD REQUEST", "Bad Device-ID or Device-Key")
+		return
+	}
+
+	var newkey cryptostring.CryptoString
+	if newkey.Set(session.Message.Data["New-Key"]) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Bad New-Key")
+		return
+	}
+
+	success, err = dualChallengeDevice(session, oldkey, newkey)
+	if !success {
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
+	}
+
+	err = dbhandler.UpdateDevice(session.WID, session.Message.Data["Device-ID"], oldkey.AsString(),
+		newkey.AsString())
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandDevKey: error updating device: %s", err.Error())
+		return
+	}
+
+	session.SendStringResponse(200, "OK", "")
 }
 
 func commandLogin(session *sessionState) {
@@ -349,6 +409,82 @@ func challengeDevice(session *sessionState, keytype string, devkeystr string) (b
 
 	// Validate client response
 	if challenge != request.Data["Response"] {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func dualChallengeDevice(session *sessionState, oldkey cryptostring.CryptoString,
+	newkey cryptostring.CryptoString) (bool, error) {
+	// This is just like challengeDevice, but using two keys, an old one and a new one
+
+	if oldkey.Prefix != "CURVE25519" || newkey.Prefix != "CURVE25519" {
+		return false, errors.New("unsupported key type")
+	}
+
+	randBytes := make([]byte, 32)
+	_, err := rand.Read(randBytes)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("challengeDevice: error checking lockout: %s", err.Error())
+		return false, err
+	}
+	challenge := b85.Encode(randBytes)
+
+	encryptor := ezcrypt.NewEncryptionKey(oldkey)
+	encryptedChallenge, err := encryptor.Encrypt([]byte(challenge))
+
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		return false, err
+	}
+
+	response := NewServerResponse(100, "CONTINUE")
+	response.Data["Challenge"] = encryptedChallenge
+
+	_, err = rand.Read(randBytes)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("challengeDevice: error checking lockout: %s", err.Error())
+		return false, err
+	}
+	newChallenge := b85.Encode(randBytes)
+
+	encryptor = ezcrypt.NewEncryptionKey(newkey)
+	encryptedNewChallenge, err := encryptor.Encrypt([]byte(newChallenge))
+
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		return false, err
+	}
+	response.Data["New-Challenge"] = encryptedNewChallenge
+
+	err = session.SendResponse(*response)
+	if err != nil {
+		return false, err
+	}
+
+	// Challenges have been issued. Get client responses
+	request, err := session.GetRequest()
+	if err != nil {
+		return false, err
+	}
+	if request.Action == "CANCEL" {
+		return false, errors.New("cancel")
+	}
+
+	if request.Action != "DEVKEY" {
+		session.SendStringResponse(400, "BAD REQUEST", "Session state mismatch")
+		return false, nil
+	}
+	if request.Validate([]string{"Response", "New-Response"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return false, nil
+	}
+
+	// Validate client response
+	if challenge != request.Data["Response"] || newChallenge != request.Data["New-Response"] {
 		return false, nil
 	}
 

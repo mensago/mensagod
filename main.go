@@ -413,6 +413,8 @@ func processCommand(session *sessionState) {
 		commandCancel(session)
 	case "DEVICE":
 		commandDevice(session)
+	case "DEVKEY":
+		commandDevKey(session)
 	case "EXISTS":
 		commandExists(session)
 	case "GETWID":

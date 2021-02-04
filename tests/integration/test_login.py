@@ -33,13 +33,15 @@ def test_devkey():
 	conn.send_message({
 		'Action': 'DEVKEY',
 		'Data': {
+			'Device-ID': devid,
+			'Old-Key': dbdata['devpair'].get_public_key(),
 			'New-Key': newdevpair.get_public_key()
 		}
 	})
 
 	response = conn.read_response(None)
 	assert response != 100 and response['Status'] == 'CONTINUE' and \
-		'Challenge' in response['Data'] and 'NewChallenge' in response['Data'], \
+		'Challenge' in response['Data'] and 'New-Challenge' in response['Data'], \
 		"test_devkey(): server failed to return new and old key challenge"
 	
 	msg = {
@@ -50,11 +52,11 @@ def test_devkey():
 
 	status = devpair.decrypt(response['Data']['Challenge'])
 	assert not status.error(), 'login_devkey(): failed to decrypt device challenge for old key'
-	msg['Data']['Challenge'] = status['data']
+	msg['Data']['Response'] = status['data']
 
-	status = newdevpair.decrypt(response['Data']['NewChallenge'])
+	status = newdevpair.decrypt(response['Data']['New-Challenge'])
 	assert not status.error(), 'login_devkey(): failed to decrypt device challenge for new key'
-	msg['Data']['NewChallenge'] = status['data']
+	msg['Data']['New-Response'] = status['data']
 
 	conn.send_message(msg)
 
@@ -150,5 +152,6 @@ def test_setpassword():
 
 if __name__ == '__main__':
 	# test_login()
-	test_setpassword()
+	# test_setpassword()
+	test_devkey()
 
