@@ -439,6 +439,8 @@ func processCommand(session *sessionState) {
 		commandRegister(session)
 	case "SETPASSWORD":
 		commandSetPassword(session)
+	case "SETWORKSTATUS":
+		commandSetWorkStatus(session)
 	case "UNREGISTER":
 		commandUnregister(session)
 	case "USERCARD":
@@ -482,4 +484,54 @@ func commandExists(session *sessionState) {
 	} else {
 		session.SendStringResponse(200, "OK", "")
 	}
+}
+
+func commandSetWorkStatus(session *sessionState) {
+	// Command syntax:
+	// SETSTATUS(wid, status)
+
+	if session.Message.Validate([]string{"Workspace-ID", "Status"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
+		session.SendStringResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
+		return
+	}
+
+	switch session.Message.Data["Status"] {
+	case "active", "disabled", "approved":
+		break
+	default:
+		session.SendStringResponse(400, "BAD REQUEST", "Invalid Status")
+		return
+	}
+
+	if session.LoginState != loginClientSession {
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
+	}
+
+	adminAddress := "admin/" + viper.GetString("global.domain")
+	adminWid, err := dbhandler.ResolveAddress(adminAddress)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandPreregister: Error resolving address: %s", err)
+	}
+	if session.WID != adminWid {
+		session.SendStringResponse(403, "FORBIDDEN", "Only admin can use this")
+	}
+
+	if session.Message.Data["Workspace-ID"] == session.WID {
+		session.SendStringResponse(403, "FORBIDDEN", "admin status can't be changed")
+	}
+
+	err = dbhandler.SetWorkspaceStatus(session.Message.Data["Workspace-ID"],
+		session.Message.Data["Status"])
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandSetWorkStatus: error setting workspace status: %s", err.Error())
+	}
+
+	session.SendStringResponse(200, "OK", "")
 }
