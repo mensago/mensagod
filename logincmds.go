@@ -250,6 +250,13 @@ func commandLogout(session *sessionState) {
 	session.WorkspaceStatus = ""
 }
 
+func commandPasscode(session *sessionState) {
+	// Command syntax:
+	// PASSCODE(Workspace-ID, Reset-Code, Password-Hash)
+
+	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
+}
+
 func commandPassword(session *sessionState) {
 	// Command syntax:
 	// PASSWORD(Password-Hash)
@@ -311,6 +318,13 @@ func commandPassword(session *sessionState) {
 		}
 		time.Sleep(d)
 	}
+}
+
+func commandResetPassword(session *sessionState) {
+	// Command syntax:
+	// RESETPASSWORD(Workspace-ID, Reset-Code="", Expires="")
+
+	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
 }
 
 func commandSetPassword(session *sessionState) {

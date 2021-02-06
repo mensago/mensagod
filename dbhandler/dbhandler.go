@@ -389,6 +389,27 @@ func CheckLockout(failType string, id string, source string) (string, error) {
 	return locktime, nil
 }
 
+// CheckPasscode checks the validity of a workspace/passcode combination
+func CheckPasscode(wid string, passcode string) (bool, error) {
+	return false, errors.New("unimplemented")
+}
+
+// DeletePasscode deletes a workspace/passcode combination
+func DeletePasscode(wid string, passcode string) (bool, error) {
+	return false, errors.New("unimplemented")
+}
+
+// RemoveExpiredPasscodes removes any workspace/passcode combination entries which are expired
+func RemoveExpiredPasscodes() error {
+	return errors.New("unimplemented")
+}
+
+// ResetPassword adds a reset code combination to the database for later authentication by the
+// user. All parameters are expected to be populated.
+func ResetPassword(wid string, passcode string, expires string) error {
+	return errors.New("unimplemented")
+}
+
 // SetPassword does just that: sets the password for a workspace. It returns a boolean state,
 // indicating a match (or lack thereof) and an error state. It will take any input string of up to
 // 64 characters and store it in the database.

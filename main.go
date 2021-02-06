@@ -429,6 +429,8 @@ func processCommand(session *sessionState) {
 		// Do nothing. Just resets the idle counter.
 	case "ORGCARD":
 		commandOrgCard(session)
+	case "PASSCODE":
+		commandPasscode(session)
 	case "PASSWORD":
 		commandPassword(session)
 	case "PREREG":
@@ -437,6 +439,8 @@ func processCommand(session *sessionState) {
 		commandRegCode(session)
 	case "REGISTER":
 		commandRegister(session)
+	case "RESETPASSWORD":
+		commandResetPassword(session)
 	case "SETPASSWORD":
 		commandSetPassword(session)
 	case "SETSTATUS":
