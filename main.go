@@ -439,8 +439,8 @@ func processCommand(session *sessionState) {
 		commandRegister(session)
 	case "SETPASSWORD":
 		commandSetPassword(session)
-	case "SETWORKSTATUS":
-		commandSetWorkStatus(session)
+	case "SETSTATUS":
+		commandSetStatus(session)
 	case "UNREGISTER":
 		commandUnregister(session)
 	case "USERCARD":
@@ -486,7 +486,7 @@ func commandExists(session *sessionState) {
 	}
 }
 
-func commandSetWorkStatus(session *sessionState) {
+func commandSetStatus(session *sessionState) {
 	// Command syntax:
 	// SETSTATUS(wid, status)
 
@@ -530,7 +530,7 @@ func commandSetWorkStatus(session *sessionState) {
 		session.Message.Data["Status"])
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-		logging.Writef("commandSetWorkStatus: error setting workspace status: %s", err.Error())
+		logging.Writef("commandSetStatus: error setting workspace status: %s", err.Error())
 	}
 
 	session.SendStringResponse(200, "OK", "")

@@ -20,8 +20,8 @@ server_response = {
 	}
 }
 
-def test_setworkstatus():
-	'''Tests the SETWORKSTATUS command'''
+def test_set_status():
+	'''Tests the SETSTATUS command'''
 
 	dbconn = setup_test()
 	dbdata = init_server(dbconn)
@@ -57,13 +57,13 @@ def test_setworkstatus():
 	
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200 and response['Status'] == 'OK', \
-		'test_setworkstatus: failed to prereg test user'
+		'test_set_status: failed to prereg test user'
 
 	# Call REGCODE to actually register the user
 	regdata = response
 	pwd = Password()
 	status = pwd.Set('ShrivelCommuteGottenAgonizingElbowQuiver')
-	assert not status.error(), 'test_setworkstatus: Failed to set password'
+	assert not status.error(), 'test_set_status: Failed to set password'
 	devid = '0e6406e3-1831-4352-9fbe-0de8faebf0f0'
 	devkey = EncryptionPair()
 
@@ -83,10 +83,10 @@ def test_setworkstatus():
 
 	response = conn.read_response(server_response)
 	assert response['Code'] == 201 and response['Status'] == 'REGISTERED', \
-		'test_setworkstatus: failed to register test user'
+		'test_set_status: failed to register test user'
 
 	conn.send_message({
-		'Action': 'SETWORKSTATUS',
+		'Action': 'SETSTATUS',
 		'Data': {
 			'Workspace-ID': regdata['Data']['Workspace-ID'],
 			'Status': 'disabled'
@@ -94,8 +94,8 @@ def test_setworkstatus():
 	})
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200 and response['Status'] == 'OK', \
-		'test_setworkstatus: failed to disable test user'
+		'test_set_status: failed to disable test user'
 
 
 if __name__ == '__main__':
-	test_setworkstatus()
+	test_set_status()
