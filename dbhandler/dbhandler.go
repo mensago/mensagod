@@ -391,12 +391,30 @@ func CheckLockout(failType string, id string, source string) (string, error) {
 
 // CheckPasscode checks the validity of a workspace/passcode combination
 func CheckPasscode(wid string, passcode string) (bool, error) {
+	// var expires
+	// row := dbConn.QueryRow(`SELECT expires FROM passcodes WHERE wid = $1 AND passcode = $2 `,
+	// 	wid, passcode)
+	// err := row.Scan(&expires)
+	// if err != nil {
+	// 	if err == sql.ErrNoRows {
+	// 		// No entry in the table
+	// 		return false, nil
+	// 	}
+	// 	return false, err
+	// }
+
+	// TODO: Add expiration check
+
+	// return true, nil
 	return false, errors.New("unimplemented")
 }
 
 // DeletePasscode deletes a workspace/passcode combination
-func DeletePasscode(wid string, passcode string) (bool, error) {
-	return false, errors.New("unimplemented")
+func DeletePasscode(wid string, passcode string) error {
+	_, err := dbConn.Exec(`DELETE FROM passcodes WHERE wid = $1 AND passcode = $2`,
+		wid, passcode)
+
+	return err
 }
 
 // RemoveExpiredPasscodes removes any workspace/passcode combination entries which are expired
@@ -407,7 +425,10 @@ func RemoveExpiredPasscodes() error {
 // ResetPassword adds a reset code combination to the database for later authentication by the
 // user. All parameters are expected to be populated.
 func ResetPassword(wid string, passcode string, expires string) error {
-	return errors.New("unimplemented")
+	_, err := dbConn.Exec(`INSERT INTO passcodes(wid, passcode, expires) VALUES($1, $2, $3)`,
+		wid, passcode, expires)
+
+	return err
 }
 
 // SetPassword does just that: sets the password for a workspace. It returns a boolean state,
