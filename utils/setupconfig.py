@@ -394,6 +394,15 @@ if rows[0][0] is False:
 
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
+			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'passcodes' "
+			"AND c.relkind = 'r');")
+rows = cur.fetchall()
+if rows[0][0] is False:
+	cur.execute("CREATE TABLE passcodes(rowid SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE, "
+				"passcode VARCHAR(128) NOT NULL, expires TIMESTAMP NOT NULL);")
+
+
+cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
 			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'prereg' "
 			"AND c.relkind = 'r');")
 rows = cur.fetchall()
