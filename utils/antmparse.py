@@ -49,6 +49,39 @@ class Tag:
 		out.append(')')
 		return ''.join(out)
 
+class TextRun:
+	'''Defines a run of formatted text with interaction like a dictionary'''
+	def __init__(self, text=''):
+		self._attributes = dict()
+		self.text = text
+	
+	def __contains__(self, key):
+		return key in self._attributes
+
+	def __delitem__(self, key):
+		del self._attributes[key]
+
+	def __getitem__(self, key):
+		return self._attributes[key]
+	
+	def __iter__(self):
+		return self._attributes.__iter__()
+	
+	def __setitem__(self, key, value):
+		self._attributes[key] = value
+	
+	def __str__(self):
+		return str(self._attributes)
+
+	def empty(self):
+		'''Empties the object of all values and clears any errors'''
+		self._attributes = dict()
+		return self
+
+	def count(self) -> int:
+		'''Returns the number of values contained by the return value'''
+		return len(self._attributes)
+	
 
 def parse_tag(tagstr: str) -> Tag:
 	'''Transforms string of a tag into a Tag object. The text is expected to be that which is in 
@@ -105,7 +138,6 @@ def tokenize(indata: str) -> list:
 				out.append(tag)
 	
 	return out
-
 
 
 test1 = '''[document language="en-us"]
