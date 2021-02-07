@@ -67,13 +67,24 @@ func commandDevice(session *sessionState) {
 	// to ensure that the device really is authorized and the key wasn't stolen by an impostor
 
 	success, err = challengeDevice(session, "CURVE25519", session.Message.Data["Device-Key"])
-	if success {
-		session.LoginState = loginClientSession
-		session.SendStringResponse(200, "OK", "")
-	} else {
-		dbhandler.LogFailure("device", session.WID, session.Connection.RemoteAddr().String())
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+	if !success {
+		lockout, err := logFailure(session, "device", session.WID)
+		if err != nil {
+			// No need to log here -- logFailure does that.
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			return
+		}
+
+		// If locked out, the client has already been notified of the connection termination and
+		// all that is left is to exit the command handler
+		if !lockout {
+			session.SendStringResponse(401, "UNAUTHORIZED", "")
+		}
+		return
 	}
+
+	session.LoginState = loginClientSession
+	session.SendStringResponse(200, "OK", "")
 }
 
 func commandDevKey(session *sessionState) {
@@ -162,63 +173,32 @@ func commandLogin(session *sessionState) {
 	var exists bool
 	exists, session.WorkspaceStatus = dbhandler.CheckWorkspace(wid)
 	if exists {
-		lockTime, err := dbhandler.CheckLockout("workspace", wid, session.Connection.RemoteAddr().String())
-		if err != nil {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-			logging.Writef("commandLogin: error checking lockout: %s", err.Error())
+		lockout, err := isLocked(session, "workspace", wid)
+		if err != nil || lockout {
 			return
 		}
 
-		if len(lockTime) > 0 {
-			lockTime, err = dbhandler.CheckLockout("password", wid, session.Connection.RemoteAddr().String())
-			if err != nil {
-				session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-				logging.Writef("commandLogin: error checking lockout: %s", err.Error())
-				return
-			}
-		}
-
-		if len(lockTime) > 0 {
-			// The account is locked if lockTime is greater than 0
-			response := NewServerResponse(407, "UNAVAILABLE")
-			response.Data["Lock-Time"] = lockTime
-			session.SendResponse(*response)
+		lockout, err = isLocked(session, "password", wid)
+		if err != nil || lockout {
 			return
 		}
 
 	} else {
-		dbhandler.LogFailure("workspace", "", session.Connection.RemoteAddr().String())
-
-		lockTime, err := dbhandler.CheckLockout("workspace", wid, session.Connection.RemoteAddr().String())
-		if err != nil {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-			logging.Writef("commandLogin: error checking lockout: %s", err.Error())
+		terminate, err := logFailure(session, "workspace", "")
+		if err != nil || terminate {
 			return
 		}
 
-		// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
-		// At this point, the connection should be terminated. However, an empty lockTime
-		// means that although there has been a failure, the count for this IP address is
-		// still under the limit.
-		if len(lockTime) > 0 {
-			response := NewServerResponse(404, "TERMINATED")
-			response.Data["Lock-Time"] = lockTime
-			session.SendResponse(*response)
-			session.IsTerminating = true
-		} else {
-			session.SendStringResponse(404, "NOT FOUND", "")
-		}
+		session.SendStringResponse(404, "NOT FOUND", "")
 		return
 	}
 
 	switch session.WorkspaceStatus {
 	case "disabled":
-		session.SendStringResponse(411, "ACCOUNT DISABLED", "")
-		session.IsTerminating = true
+		session.SendStringResponse(407, "UNAVAILABLE", "account disabled")
 		return
 	case "awaiting":
 		session.SendStringResponse(101, "PENDING", "")
-		session.IsTerminating = true
 		return
 	case "active", "approved":
 		break
@@ -259,7 +239,50 @@ func commandPasscode(session *sessionState) {
 	// Command syntax:
 	// PASSCODE(Workspace-ID, Reset-Code, Password-Hash)
 
-	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
+	if session.Message.Validate([]string{"Workspace-ID", "Reset-Code", "Password-Hash"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
+		session.SendStringResponse(400, "BAD REQUEST", "bad workspace ID")
+		return
+	}
+
+	verified, err := dbhandler.CheckPasscode(session.Message.Data["Workspace-ID"],
+		session.Message.Data["Reset-Code"])
+	if err != nil {
+		if err.Error() == "expired" {
+			session.SendStringResponse(415, "EXPIRED", "")
+			dbhandler.DeletePasscode(session.Message.Data["Workspace-ID"],
+				session.Message.Data["Reset-Code"])
+			return
+		}
+
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandPasscode: Error checking passcode: %s", err.Error())
+		return
+	}
+
+	if !verified {
+		session.SendStringResponse(402, "AUTHENTICATION FAILURE", "")
+
+		err = dbhandler.LogFailure("passcode", session.Message.Data["Workspace-ID"],
+			session.Connection.RemoteAddr().String())
+		if err != nil {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			return
+		}
+	}
+
+	err = dbhandler.SetPassword(session.WID, session.Message.Data["Password-Hash"])
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandPasscode: failed to update password: %s", err.Error())
+		return
+	}
+
+	session.SendStringResponse(200, "OK", "")
 }
 
 func commandPassword(session *sessionState) {
@@ -284,34 +307,12 @@ func commandPassword(session *sessionState) {
 		return
 	}
 
-	if match {
-		session.LoginState = loginAwaitingSessionID
-		session.SendStringResponse(100, "CONTINUE", "")
-		return
-	}
+	if !match {
+		terminate, err := logFailure(session, "password", session.WID)
+		if terminate || err != nil {
+			return
+		}
 
-	dbhandler.LogFailure("password", session.WID, session.Connection.RemoteAddr().String())
-
-	lockTime, err := dbhandler.CheckLockout("password", session.WID,
-		session.Connection.RemoteAddr().String())
-	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-		logging.Writef("commandPassword: error checking lockout: %s", err.Error())
-		return
-	}
-
-	// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
-	// At this point, the connection should be terminated. However, an empty lockTime
-	// means that although there has been a failure, the count for this IP address is
-	// still under the limit.
-	if len(lockTime) > 0 {
-		var response ServerResponse
-		response.Code = 407
-		response.Status = "UNAVAILABLE"
-		response.Data["Lock-Time"] = lockTime
-		session.SendResponse(response)
-		session.IsTerminating = true
-	} else {
 		session.SendStringResponse(402, "AUTHENTICATION FAILURE", "")
 
 		var d time.Duration
@@ -322,7 +323,11 @@ func commandPassword(session *sessionState) {
 			d, err = time.ParseDuration("3s")
 		}
 		time.Sleep(d)
+		return
 	}
+
+	session.LoginState = loginAwaitingSessionID
+	session.SendStringResponse(100, "CONTINUE", "")
 }
 
 func commandResetPassword(session *sessionState) {

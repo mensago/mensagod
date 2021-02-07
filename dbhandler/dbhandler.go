@@ -172,21 +172,18 @@ func IsConnected() bool {
 // This function will check the server configuration and if the failure has
 // exceeded the threshold for that type of failure, then a lockout timestamp will
 // be set.
-func LogFailure(failType string, id string, source string) error {
-
-	// failure type can only be one of three possible values
-	switch failType {
-	case "workspace", "password", "recipient":
-		// do nothing -- everything's OK
-	default:
-		return errors.New("LogFailure: failure type must be 'workspace', 'password', or 'recipient',")
+func LogFailure(failType string, wid string, sourceip string) error {
+	if failType == "" {
+		logging.Write("LogFailure(): empty fail type")
+		return errors.New("empty fail type")
 	}
 
-	// source may only be an IP address or a UUID
-	if source == "" {
-		return errors.New("LogFailure: source may not be empty")
-	} else if net.ParseIP(source) == nil && !ValidateUUID(source) {
-		return errors.New(strings.Join([]string{"LogFailure: bad source ", source}, ""))
+	if sourceip == "" {
+		logging.Write("LogFailure(): empty source IP")
+		return errors.New("empty source ip")
+	} else if net.ParseIP(sourceip) == nil {
+		logging.Writef("LogFailure(): bad source IP %s", sourceip)
+		return errors.New("bad source ip")
 	}
 
 	// Timestamp must be ISO8601 without a timezone ('Z' suffix allowable)
@@ -194,7 +191,7 @@ func LogFailure(failType string, id string, source string) error {
 
 	// Now that the error-checking is out of the way, we can actually update the db. :)
 	row := dbConn.QueryRow(`SELECT count FROM failure_log WHERE type=$1 AND source=$2`,
-		failType, source)
+		failType, sourceip)
 	var failCount int
 	err := row.Scan(&failCount)
 	if err != nil {
@@ -211,7 +208,7 @@ func LogFailure(failType string, id string, source string) error {
 				SET count=$1, last_failure=$2, lockout_until=$3
 				WHERE type=$4 AND source=$5 AND id=$6`
 			_, err = dbConn.Exec(sqlStatement, failCount, timeString, lockout.Format(time.RFC3339),
-				failType, source, id)
+				failType, sourceip, wid)
 			if err != nil {
 				logging.Write("dbhandler.LogFailure: failed to update failure log")
 				return err
@@ -222,7 +219,7 @@ func LogFailure(failType string, id string, source string) error {
 				UPDATE failure_log 
 				SET count=$1, last_failure=$2 
 				WHERE type=$3 AND source=$4 and wid=$5`
-			_, err = dbConn.Exec(sqlStatement, failCount, timeString, failType, source, id)
+			_, err = dbConn.Exec(sqlStatement, failCount, timeString, failType, sourceip, wid)
 			if err != nil {
 				logging.Write("dbhandler.LogFailure: failed to update failure log")
 				return err
@@ -231,7 +228,7 @@ func LogFailure(failType string, id string, source string) error {
 	} else {
 		sqlStatement := `INSERT INTO failure_log(type, source, wid, count, last_failure)
 			VALUES($1, $2, $3, $4, $5)`
-		_, err = dbConn.Exec(sqlStatement, failType, source, id, failCount, timeString)
+		_, err = dbConn.Exec(sqlStatement, failType, sourceip, wid, failCount, timeString)
 		if err != nil {
 			logging.Write("dbhandler.LogFailure: failed to update failure log")
 			return err

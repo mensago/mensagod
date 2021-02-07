@@ -39,22 +39,8 @@ func commandGetWID(session *sessionState) {
 		domain = viper.GetString("global.domain")
 	}
 
-	lockTime, err := dbhandler.CheckLockout("widlookup", "", session.Connection.RemoteAddr().String())
-	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-		logging.Writef("commandLogin: error checking lockout: %s", err.Error())
-		return
-	}
-
-	// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
-	// At this point, the connection should be terminated. However, an empty lockTime
-	// means that although there has been a failure, the count for this IP address is
-	// still under the limit.
-	if len(lockTime) > 0 {
-		response := NewServerResponse(407, "UNAVAILABLE")
-		response.Data["Lock-Time"] = lockTime
-		session.SendResponse(*response)
-		session.IsTerminating = true
+	lockout, err := isLocked(session, "widlookup", "")
+	if lockout || err != nil {
 		return
 	}
 
@@ -62,28 +48,10 @@ func commandGetWID(session *sessionState) {
 	wid, err := dbhandler.ResolveAddress(address)
 	if err != nil {
 		if err.Error() == "workspace not found" {
-			dbhandler.LogFailure("widlookup", "", session.Connection.RemoteAddr().String())
-
-			lockTime, err := dbhandler.CheckLockout("widlookup", "", session.Connection.RemoteAddr().String())
-			if err != nil {
-				session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-				logging.Writef("commandGetWID: error checking lockout: %s", err.Error())
+			terminate, err := logFailure(session, "widlookup", "")
+			if terminate || err != nil {
 				return
 			}
-
-			// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
-			// At this point, the connection should be terminated. However, an empty lockTime
-			// means that although there has been a failure, the count for this IP address is
-			// still under the limit.
-			if len(lockTime) > 0 {
-				response := NewServerResponse(404, "TERMINATED")
-				response.Data["Lock-Time"] = lockTime
-				session.SendResponse(*response)
-				session.IsTerminating = true
-			} else {
-				session.SendStringResponse(404, "NOT FOUND", "")
-			}
-			return
 		}
 	}
 	response := NewServerResponse(200, "OK")
@@ -257,20 +225,9 @@ func commandRegCode(session *sessionState) {
 	// At this point, the connection should be terminated. However, an empty lockTime
 	// means that although there has been a failure, the count for this IP address is
 	// still under the limit.
-	lockTime, err := dbhandler.CheckLockout("prereg", session.Connection.RemoteAddr().String(),
-		session.Connection.RemoteAddr().String())
-
-	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-		logging.Writef("commandRegCode: error checking lockout: %s", err.Error())
+	lockout, err := isLocked(session, "prereg", "")
+	if lockout || err != nil {
 		return
-	}
-
-	if len(lockTime) > 0 {
-		response := NewServerResponse(405, "TERMINATED")
-		response.Data["Lock-Time"] = lockTime
-		session.SendResponse(*response)
-		session.IsTerminating = true
 	}
 
 	var devkey cryptostring.CryptoString
@@ -294,23 +251,9 @@ func commandRegCode(session *sessionState) {
 	}
 
 	if wid == "" {
-		dbhandler.LogFailure("prereg", session.Connection.RemoteAddr().String(),
-			session.Connection.RemoteAddr().String())
-
-		lockTime, err = dbhandler.CheckLockout("prereg", session.Connection.RemoteAddr().String(),
-			session.Connection.RemoteAddr().String())
-
-		if err != nil {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-			logging.Writef("commandRegCode: error checking lockout: %s", err.Error())
-			return
-		}
-
-		if len(lockTime) > 0 {
-			session.SendStringResponse(405, "TERMINATED", "")
-			session.IsTerminating = true
-			return
-		}
+		// Regardless of whether or not an error has been returned from log, we exit here. In this
+		// case, state doesn't matter.
+		logFailure(session, "prereg", "")
 		return
 	}
 

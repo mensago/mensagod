@@ -546,3 +546,69 @@ func commandSetStatus(session *sessionState) {
 
 	session.SendStringResponse(200, "OK", "")
 }
+
+// logFailure is for logging the different types of client failures which can potentially
+// terminate a session. If, after logging the failure, the limit is reached, this will return
+// true, indicating that the current command handler needs to exit. The wid parameter may be empty,
+// but should be supplied when possible. By doing so, it limits lockouts for an IP address to that
+// specific workspace ID.
+func logFailure(session *sessionState, failType string, wid string) (bool, error) {
+	err := dbhandler.LogFailure(failType, wid, session.Connection.RemoteAddr().String())
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("logFailure: error logging failure: %s", err.Error())
+		return true, err
+	}
+
+	// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
+	// At this point, the connection should be terminated. However, an empty lockTime
+	// means that although there has been a failure, the count for this IP address is
+	// still under the limit.
+	lockTime, err := getLockout(session, failType, wid)
+	if len(lockTime) > 0 {
+		response := NewServerResponse(405, "TERMINATED")
+		response.Data["Lock-Time"] = lockTime
+		session.SendResponse(*response)
+		session.IsTerminating = true
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// isLocked checks to see if the client should be locked out of the session. It handles sending
+// the appropriate message and returns true if the command handler should just exit.
+func isLocked(session *sessionState, failType string, wid string) (bool, error) {
+	lockTime, err := getLockout(session, failType, wid)
+	if err != nil {
+		return true, err
+	}
+
+	if len(lockTime) > 0 {
+		response := NewServerResponse(407, "UNAVAILABLE")
+		response.Data["Lock-Time"] = lockTime
+		session.SendResponse(*response)
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func getLockout(session *sessionState, failType string, wid string) (string, error) {
+
+	lockTime, err := dbhandler.CheckLockout(failType, wid, session.Connection.RemoteAddr().String())
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("getLockout: error checking lockout: %s", err.Error())
+		return "", err
+	}
+
+	if len(lockTime) > 0 {
+		response := NewServerResponse(407, "UNAVAILABLE")
+		response.Data["Lock-Time"] = lockTime
+		session.SendResponse(*response)
+		return lockTime, nil
+	}
+
+	return "", nil
+}
