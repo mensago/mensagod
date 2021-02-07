@@ -5,9 +5,6 @@ package dbhandler
 // eliminate cluttering up the otherwise-clean Go code with the ugly SQL queries.
 
 import (
-	"crypto/rand"
-	"crypto/subtle"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -27,7 +24,6 @@ import (
 	"github.com/everlastingbeta/diceware"
 	"github.com/lib/pq"
 	"github.com/spf13/viper"
-	"golang.org/x/crypto/argon2"
 )
 
 var (
@@ -35,92 +31,6 @@ var (
 	serverLog *log.Logger
 	dbConn    *sql.DB
 )
-
-// This internal function is for turning a string into an Argon2 password hash.
-func hashPassword(password string) string {
-	mode := viper.GetString("security.password_security")
-
-	var argonRAM, argonIterations, argonSaltLength, argonKeyLength uint32
-	var argonThreads uint8
-
-	if strings.ToLower(mode) == "enhanced" {
-		// LUDICROUS SPEED! GO!
-		argonRAM = 1073741824 // 1GB of RAM
-		argonIterations = 10
-		argonThreads = 8
-		argonSaltLength = 24
-		argonKeyLength = 48
-	} else {
-		argonRAM = 65536 // 64MB of RAM
-		argonIterations = 3
-		argonThreads = 4
-		argonSaltLength = 16
-		argonKeyLength = 32
-	}
-
-	salt := make([]byte, argonSaltLength)
-	_, err := rand.Read(salt)
-	if err != nil {
-		logging.Writef("Failure reading random bytes: %s", err.Error())
-		return ""
-	}
-
-	passhash := argon2.IDKey([]byte(password), salt, argonIterations, argonRAM, argonThreads,
-		argonKeyLength)
-
-	// Although base85 encoding is used wherever possible, base64 is used here because of a
-	// potential collision: base85 uses the $ character and argon2 hash strings use it as a
-	// field delimiter. Not a huge deal as it just uses a little extra disk storage and doesn't
-	// get transmitted over the network
-	passString := fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
-		argon2.Version, argonRAM, argonIterations, argonThreads,
-		base64.RawStdEncoding.EncodeToString(salt),
-		base64.RawStdEncoding.EncodeToString(passhash))
-	return passString
-}
-
-// This internal function takes a password and the Argon2 hash to verify against, gets the
-// parameters from the hash, applies them to the supplied password, and returns whether or not
-// they match and an error value
-func verifyHash(password string, hashPass string) (bool, error) {
-	splitValues := strings.Split(hashPass, "$")
-	if len(splitValues) != 6 {
-		return false, errors.New("Invalid Argon hash string")
-	}
-
-	var version int
-	_, err := fmt.Sscanf(splitValues[2], "v=%d", &version)
-	if err != nil {
-		return false, err
-	}
-	if version != argon2.Version {
-		return false, errors.New("Unsupported Argon version")
-	}
-
-	var ramUsage, iterations uint32
-	var parallelism uint8
-	_, err = fmt.Sscanf(splitValues[3], "m=%d,t=%d,p=%d", &ramUsage, &iterations, &parallelism)
-	if err != nil {
-		return false, err
-	}
-
-	var salt []byte
-	salt, err = base64.RawStdEncoding.DecodeString(splitValues[4])
-	if err != nil {
-		return false, err
-	}
-
-	var savedHash []byte
-	savedHash, err = base64.RawStdEncoding.DecodeString(splitValues[5])
-	if err != nil {
-		return false, err
-	}
-
-	passhash := argon2.IDKey([]byte(password), salt, iterations, ramUsage, parallelism,
-		uint32(len(savedHash)))
-
-	return (subtle.ConstantTimeCompare(passhash, savedHash) == 1), nil
-}
 
 // Connect utilizes the viper config system and connects to the specified database. Because
 // problems in the connection are almost always fatal to the successful continuation of the server
@@ -447,7 +357,7 @@ func SetPassword(wid string, password string) error {
 	if len(password) > 128 {
 		return errors.New("Password string has a maximum 128 characters")
 	}
-	passHash := hashPassword(password)
+	passHash := ezcrypt.HashPassword(password)
 	_, err := dbConn.Exec(`UPDATE workspaces SET password=$1 WHERE wid=$2`, passHash, wid)
 	return err
 }
@@ -464,7 +374,7 @@ func CheckPassword(wid string, password string) (bool, error) {
 		return false, err
 	}
 
-	return verifyHash(password, dbhash)
+	return ezcrypt.VerifyPasswordHash(password, dbhash)
 }
 
 // SetWorkspaceStatus sets the status of a workspace. Valid values are "disabled", "active", and
@@ -547,7 +457,7 @@ func UpdateDevice(wid string, devid string, oldkey string, newkey string) error 
 // 'pending', or 'disabled'.
 func AddWorkspace(wid string, uid string, domain string, password string, status string,
 	wtype string) error {
-	passString := hashPassword(password)
+	passString := ezcrypt.HashPassword(password)
 
 	// wid, uid, domain, wtype, status, password
 	var err error
