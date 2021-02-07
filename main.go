@@ -553,7 +553,8 @@ func commandSetStatus(session *sessionState) {
 // but should be supplied when possible. By doing so, it limits lockouts for an IP address to that
 // specific workspace ID.
 func logFailure(session *sessionState, failType string, wid string) (bool, error) {
-	err := dbhandler.LogFailure(failType, wid, session.Connection.RemoteAddr().String())
+	remoteip := strings.Split(session.Connection.RemoteAddr().String(), ":")[0]
+	err := dbhandler.LogFailure(failType, wid, remoteip)
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("logFailure: error logging failure: %s", err.Error())
