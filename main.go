@@ -516,6 +516,7 @@ func commandSetStatus(session *sessionState) {
 
 	if session.LoginState != loginClientSession {
 		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		return
 	}
 
 	adminAddress := "admin/" + viper.GetString("global.domain")
@@ -523,13 +524,16 @@ func commandSetStatus(session *sessionState) {
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandPreregister: Error resolving address: %s", err)
+		return
 	}
 	if session.WID != adminWid {
 		session.SendStringResponse(403, "FORBIDDEN", "Only admin can use this")
+		return
 	}
 
 	if session.Message.Data["Workspace-ID"] == session.WID {
 		session.SendStringResponse(403, "FORBIDDEN", "admin status can't be changed")
+		return
 	}
 
 	err = dbhandler.SetWorkspaceStatus(session.Message.Data["Workspace-ID"],
@@ -537,6 +541,7 @@ func commandSetStatus(session *sessionState) {
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandSetStatus: error setting workspace status: %s", err.Error())
+		return
 	}
 
 	session.SendStringResponse(200, "OK", "")

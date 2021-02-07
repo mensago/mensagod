@@ -119,6 +119,7 @@ func commandDevKey(session *sessionState) {
 	success, err = dualChallengeDevice(session, oldkey, newkey)
 	if !success {
 		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		return
 	}
 
 	err = dbhandler.UpdateDevice(session.WID, session.Message.Data["Device-ID"], oldkey.AsString(),
@@ -230,10 +231,12 @@ func commandLogin(session *sessionState) {
 	keypair, err := dbhandler.GetEncryptionPair()
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		return
 	}
 	decryptedChallenge, err := keypair.Decrypt(session.Message.Data["Challenge"])
 	if err != nil {
 		session.SendStringResponse(306, "KEY FAILURE", "Challenge decryption failure")
+		return
 	}
 
 	session.LoginState = loginAwaitingPassword
@@ -331,6 +334,7 @@ func commandResetPassword(session *sessionState) {
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandResetPassword: Error resolving address: %s", err)
+		return
 	}
 
 	if session.LoginState != loginClientSession || session.WID != adminWid {
@@ -352,6 +356,7 @@ func commandResetPassword(session *sessionState) {
 		if len(session.Message.Data["Reset-Code"]) < 8 {
 			session.SendStringResponse(400, "BAD REQUEST",
 				"Reset-Code must be at least 8 code points")
+			return
 		}
 		passcode = session.Message.Data["Reset-Code"]
 	}
@@ -361,6 +366,7 @@ func commandResetPassword(session *sessionState) {
 		err = keycard.IsTimestampValid(session.Message.Data["Expires"])
 		if err != nil {
 			session.SendStringResponse(400, "BAD REQUEST", "Bad Expires field")
+			return
 		}
 		expires = session.Message.Data["Expires"]
 	}

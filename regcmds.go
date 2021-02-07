@@ -19,6 +19,7 @@ func commandGetWID(session *sessionState) {
 	// GETWID(User-ID, Domain="")
 	if !session.Message.HasField("User-ID") {
 		session.SendStringResponse(400, "BAD REQUEST", "")
+		return
 	}
 
 	if strings.ContainsAny(session.Message.Data["User-ID"], "/\"") {
@@ -99,10 +100,12 @@ func commandPreregister(session *sessionState) {
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandPreregister: Error resolving address: %s", err)
+		return
 	}
 
 	if session.LoginState != loginClientSession || session.WID != adminWid {
 		session.SendStringResponse(403, "FORBIDDEN", "Only admin can use this")
+		return
 	}
 
 	// Just do some basic syntax checks on the user ID
@@ -314,20 +317,23 @@ func commandRegCode(session *sessionState) {
 	err = dbhandler.AddWorkspace(wid, uid, domain, session.Message.Data["Password-Hash"], "active",
 		"individual")
 	if err != nil {
-		logging.Writef("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
+		return
 	}
 
 	err = dbhandler.SetWorkspaceStatus(wid, "active")
 	if err != nil {
-		logging.Writef("Internal server error. commandRegister.SetWorkspaceStatus. Error: %s\n", err)
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("Internal server error. commandRegister.SetWorkspaceStatus. Error: %s\n", err)
+		return
 	}
 
 	err = dbhandler.AddDevice(wid, session.Message.Data["Device-ID"], devkey, "active")
 	if err != nil {
-		logging.Writef("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
+		return
 	}
 
 	if session.Message.HasField("Workspace-ID") {
@@ -339,6 +345,7 @@ func commandRegCode(session *sessionState) {
 	}
 	if err != nil {
 		logging.Writef("Internal server error. commandRegister.DeleteRegCode. Error: %s\n", err)
+		return
 	}
 
 	session.SendStringResponse(201, "REGISTERED", "")
@@ -454,15 +461,17 @@ func commandRegister(session *sessionState) {
 		viper.GetString("global.domain"), session.Message.Data["Password-Hash"], workspaceStatus,
 		wtype)
 	if err != nil {
-		logging.Writef("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
+		return
 	}
 
 	devid := uuid.New().String()
 	err = dbhandler.AddDevice(session.Message.Data["Workspace-ID"], devid, devkey, "active")
 	if err != nil {
-		logging.Writef("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
+		return
 	}
 
 	if regType == "moderated" {
@@ -563,6 +572,7 @@ func commandUnregister(session *sessionState) {
 	isAlias, err := dbhandler.IsAlias(wid)
 	if isAlias {
 		session.SendStringResponse(403, "FORBIDDEN", "Aliases aren't removed with this command")
+		return
 	}
 
 	err = dbhandler.RemoveWorkspace(wid)

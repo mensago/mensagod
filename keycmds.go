@@ -75,6 +75,7 @@ func commandAddEntry(session *sessionState) {
 		if err != nil {
 			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 			logging.Writef("commandAddEntry: error resolving address: %s", err.Error())
+			return
 		}
 		if session.WID == currentWid {
 			if entry.Fields["User-ID"] != address {
@@ -90,6 +91,7 @@ func commandAddEntry(session *sessionState) {
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandAddEntry: error resolving address: %s", err.Error())
+		return
 	}
 	if session.WID == adminWid {
 		if entry.Fields["User-ID"] != "admin" {
@@ -209,6 +211,7 @@ func commandAddEntry(session *sessionState) {
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERRROR", "")
 		logging.Write("ERROR AddEntry: failed to hash entry.")
+		return
 	}
 
 	response := NewServerResponse(100, "CONTINUE")
@@ -377,6 +380,7 @@ func commandUserCard(session *sessionState) {
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandUserCard: error retrieving user entries: %s", err.Error())
+		return
 	}
 	entryCount := len(entries)
 	var response ServerResponse
