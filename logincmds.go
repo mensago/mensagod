@@ -366,7 +366,7 @@ func commandResetPassword(session *sessionState) {
 	}
 
 	if len(passcode) < 1 {
-		passcode, err = diceware.RollWords(viper.GetInt("global.registration_wordcount"), "-",
+		passcode, err = diceware.RollWords(viper.GetInt("security.diceware_wordcount"), "-",
 			gDiceWordList)
 	}
 

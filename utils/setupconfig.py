@@ -28,7 +28,7 @@ from pyanselus.cryptostring import CryptoString
 def make_diceware():
 	'''Generates a diceware password'''
 	options = argparse.Namespace()
-	options.num = 4
+	options.num = 5
 	options.caps = True
 	options.specials = 0
 	options.delimiter = '-'
@@ -746,6 +746,25 @@ fhandle.write('''
 # port = "2001"
 
 [security]
+# The Diceware passphrase method is used to generate preregistration and password reset codes. 
+# Four word lists are available for use:
+# 
+# 'eff_long' - List from the Electronic Frontier Foundation of long words.
+# 'eff_short' - The EFF's short word list.
+# 'eff_short_prefix' - Another short word list from the EFF with some features that make typing 
+# 						easier and offer a little more security over eff_short.
+# 'original' - Arnold Reinhold's original Diceware word list. Not recommended for most situations.
+#
+# The EFF's rationale for these word lists can be found at 
+# https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases
+#
+# For more information about Diceware, visit https://theworld.com/~reinhold/diceware.html
+# diceware_wordlist = 'eff_short_prefix'
+#
+# The number of words used in a Diceware code. 6 is recommended for best security in most 
+# situations. This value cannot be less than 3.
+# diceware_wordcount = 6
+#
 # The number of seconds to wait after a login failure before accepting another
 # attempt
 # failure_delay_sec = 3

@@ -164,7 +164,7 @@ func commandPreregister(session *sessionState) {
 	}
 
 	regcode, err := dbhandler.PreregWorkspace(wid, uid, domain, &gDiceWordList,
-		viper.GetInt("global.registration_wordcount"))
+		viper.GetInt("security.diceware_wordcount"))
 	if err != nil {
 		if err.Error() == "uid exists" {
 			session.SendStringResponse(408, "RESOURCE EXISTS", "")

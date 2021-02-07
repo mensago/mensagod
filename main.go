@@ -218,11 +218,13 @@ func setupConfig() {
 	viper.SetDefault("global.registration_subnet",
 		"192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8, 127.0.0.1/8")
 	viper.SetDefault("global.registration_subnet6", "fe80::/10")
-	viper.SetDefault("global.registration_wordlist", "eff_short_prefix")
-	viper.SetDefault("global.registration_wordcount", 6)
 
 	// Default user workspace quota in MiB. 0 = no quota
 	viper.SetDefault("global.default_quota", 0)
+
+	// Diceware settings for registration code and password reset code generation
+	viper.SetDefault("security.diceware_wordlist", "eff_short_prefix")
+	viper.SetDefault("security.diceware_wordcount", 6)
 
 	// Delay after an unsuccessful login
 	viper.SetDefault("security.failure_delay_sec", 3)
@@ -292,7 +294,7 @@ func setupConfig() {
 		os.Exit(1)
 	}
 
-	wordList := viper.GetString("global.registration_wordlist")
+	wordList := viper.GetString("security.diceware_wordlist")
 	switch wordList {
 	case "eff_short":
 		gDiceWordList = wordlist.EFFShort
@@ -308,9 +310,9 @@ func setupConfig() {
 		os.Exit(1)
 	}
 
-	if viper.GetInt("global.registration_wordcount") < 0 ||
-		viper.GetInt("global.registration_wordcount") > 12 {
-		viper.Set("global.registration_wordcount", 0)
+	if viper.GetInt("security.diceware_wordcount") < 0 ||
+		viper.GetInt("security.diceware_wordcount") > 12 {
+		viper.Set("security.diceware_wordcount", 0)
 		logging.Write("Registration wordcount out of bounds in config file. Assuming 6.")
 	}
 
