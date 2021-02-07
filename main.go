@@ -239,6 +239,9 @@ func setupConfig() {
 	// can be requested from the same IP address -- for preventing registration spam/DoS.
 	viper.SetDefault("security.registration_delay_min", 15)
 
+	// Default expiration time for password resets
+	viper.SetDefault("security.password_reset_min", 60)
+
 	// Resource usage for password hashing
 	viper.SetDefault("security.password_security", "normal")
 
@@ -342,6 +345,12 @@ func setupConfig() {
 	if viper.GetInt("security.registration_delay_min") < 0 {
 		viper.Set("security.registration_delay_min", 0)
 		logging.Write("Negative registration delay. Setting to zero.")
+	}
+
+	if viper.GetInt("security.password_reset_min") < 10 ||
+		viper.GetInt("security.password_reset_min") > 2880 {
+		viper.Set("security.password_reset_min", 60)
+		logging.Write("Invalid password reset time. Setting to 60.")
 	}
 }
 

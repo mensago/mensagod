@@ -781,6 +781,10 @@ fhandle.write('''
 # address. This is to prevent registration spam
 # registration_delay_min = 15
 # 
+# The amount of time, in minutes, a password reset code is valid. It must be at least 10 and no
+# more than 2880 (48 hours).
+# password_reset_min = 60
+# 
 # Adjust the password security strength. Argon2id is used for the hash
 # generation algorithm. This setting may be `normal` or `enhanced`. Normal is
 # best for most situations, but for environments which require extra security,

@@ -394,11 +394,8 @@ func commandResetPassword(session *sessionState) {
 	var expires string
 	if session.Message.HasField("Expires") {
 		if session.Message.Data["Expires"] == "" {
-			// TODO: get interval from server config
-			expirationMinutes := 60
-
 			expires = time.Now().UTC().
-				Add(time.Minute * time.Duration(expirationMinutes)).
+				Add(time.Minute * time.Duration(viper.GetInt("security.password_reset_min"))).
 				Format("20060102T150405Z")
 		} else {
 			err = keycard.IsTimestampValid(session.Message.Data["Expires"])
