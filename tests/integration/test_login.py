@@ -152,6 +152,10 @@ def test_resetpassword():
 	assert 'Expires' in response['Data'] and 'Reset-Code' in response['Data'], \
 		"test_resetpassword(): subtest #2: server didn't return all required fields"
 	
+	conn.send_message({'Action':'LOGOUT','Data':{}})
+	response = conn.read_response(None)
+	assert response['Code'] == 200, 'test_resetpassword(): failed to log admin out'
+
 	# Subtest #3: Failed attempt to complete the password reset
 	newpassword = Password('SomeOth3rPassw*rd')
 	conn.send_message({
