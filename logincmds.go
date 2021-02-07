@@ -271,14 +271,12 @@ func commandPasscode(session *sessionState) {
 	}
 
 	if !verified {
-		session.SendStringResponse(402, "AUTHENTICATION FAILURE", "")
-
-		err = dbhandler.LogFailure("passcode", session.Message.Data["Workspace-ID"],
-			session.Connection.RemoteAddr().String())
-		if err != nil {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		terminate, err := logFailure(session, "passcode", session.Message.Data["Workspace-ID"])
+		if terminate || err != nil {
 			return
 		}
+		session.SendStringResponse(402, "AUTHENTICATION FAILURE", "")
+		return
 	}
 
 	err = dbhandler.SetPassword(session.WID, session.Message.Data["Password-Hash"])
