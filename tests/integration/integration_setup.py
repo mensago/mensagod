@@ -10,7 +10,7 @@ import psycopg2
 import toml
 
 from pyanselus.cryptostring import CryptoString
-from pyanselus.encryption import EncryptionPair, PublicKey, SigningPair
+from pyanselus.encryption import EncryptionPair, Password, PublicKey, SigningPair
 import pyanselus.keycard as keycard
 import pyanselus.serverconn as serverconn
 
@@ -435,3 +435,27 @@ def keycard_admin(config, conn) -> dict:
 		'admin_crspair':crspair,
 		'admin_epair':epair
 	}
+
+def init_user(config: dict, conn: serverconn.ServerConnection):
+	'''Creates a test user for command testing'''
+	
+	userwid = '33333333-3333-3333-3333-333333333333'
+	status = serverconn.preregister(conn, userwid, 'csimons', 'example.net')
+	assert not status.error(), "init_user(): uid preregistration failed"
+	assert status['domain'] == 'example.net' and 'wid' in status and 'regcode' in status and \
+		status['uid'] == 'csimons', "init_user(): failed to return expected data"
+
+	regdata = status
+	password = Password('MyS3cretPassw*rd')
+	devpair = EncryptionPair()
+	devid = '11111111-1111-1111-1111-111111111111'
+	status = serverconn.regcode(conn, 'csimons', regdata['regcode'], password.hashstring,
+		devid, devpair, 'example.net')
+	assert not status.error(), "init_user(): uid regcode failed"
+
+	config['user_wid'] = userwid
+	config['user_uid'] = regdata['uid']
+	config['user_domain'] = regdata['domain']
+	config['user_devid'] = devid
+	config['user_devpair'] = devpair
+	config['user_password'] = password
