@@ -8,8 +8,10 @@ import (
 	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/anselusd/dbhandler"
 	"github.com/darkwyrm/anselusd/ezcrypt"
+	"github.com/darkwyrm/anselusd/keycard"
 	"github.com/darkwyrm/anselusd/logging"
 	"github.com/darkwyrm/b85"
+	"github.com/everlastingbeta/diceware"
 	"github.com/spf13/viper"
 )
 
@@ -324,7 +326,69 @@ func commandResetPassword(session *sessionState) {
 	// Command syntax:
 	// RESETPASSWORD(Workspace-ID, Reset-Code="", Expires="")
 
-	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
+	adminAddress := "admin/" + viper.GetString("global.domain")
+	adminWid, err := dbhandler.ResolveAddress(adminAddress)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandResetPassword: Error resolving address: %s", err)
+	}
+
+	if session.LoginState != loginClientSession || session.WID != adminWid {
+		session.SendStringResponse(403, "FORBIDDEN", "Only admin can use this")
+	}
+
+	if !session.Message.HasField("Workspace-ID") {
+		session.SendStringResponse(400, "BAD REQUEST", "missing required field")
+		return
+	}
+
+	if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
+		session.SendStringResponse(400, "BAD REQUEST", "Bad Workspace-ID")
+		return
+	}
+
+	var passcode string
+	if session.Message.HasField("Reset-Code") {
+		if len(session.Message.Data["Reset-Code"]) < 8 {
+			session.SendStringResponse(400, "BAD REQUEST",
+				"Reset-Code must be at least 8 code points")
+		}
+		passcode = session.Message.Data["Reset-Code"]
+	}
+
+	var expires string
+	if session.Message.HasField("Expires") {
+		err = keycard.IsTimestampValid(session.Message.Data["Expires"])
+		if err != nil {
+			session.SendStringResponse(400, "BAD REQUEST", "Bad Expires field")
+		}
+		expires = session.Message.Data["Expires"]
+	}
+
+	if len(passcode) < 1 {
+		passcode, err = diceware.RollWords(viper.GetInt("global.registration_wordcount"), "-",
+			gDiceWordList)
+	}
+
+	if len(expires) < 1 {
+		// TODO: get interval from server config
+		expirationMinutes := 60
+		expires = time.Now().
+			Add(time.Minute * time.Duration(expirationMinutes)).
+			Format("20060102T150405Z")
+	}
+
+	err = dbhandler.ResetPassword(session.Message.Data["Workspace-ID"], passcode, expires)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandResetPassword: failed to add password reset code: %s", err.Error())
+		return
+	}
+
+	response := NewServerResponse(200, "OK")
+	response.Data["Reset-Code"] = passcode
+	response.Data["Expires"] = expires
+	session.SendResponse(*response)
 }
 
 func commandSetPassword(session *sessionState) {

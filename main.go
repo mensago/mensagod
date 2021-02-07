@@ -24,8 +24,8 @@ import (
 // ServerLog is the global logging object
 var ServerLog *log.Logger
 
-// gRegWordList is a copy of the word list for preregistration code generation
-var gRegWordList diceware.Wordlist
+// gDiceWordList is a copy of the word list for preregistration code generation
+var gDiceWordList diceware.Wordlist
 
 // -------------------------------------------------------------------------------------------
 // Types
@@ -295,13 +295,13 @@ func setupConfig() {
 	wordList := viper.GetString("global.registration_wordlist")
 	switch wordList {
 	case "eff_short":
-		gRegWordList = wordlist.EFFShort
+		gDiceWordList = wordlist.EFFShort
 	case "eff_short_prefix":
-		gRegWordList = wordlist.EFFShortPrefix
+		gDiceWordList = wordlist.EFFShortPrefix
 	case "eff_long":
-		gRegWordList = wordlist.EFFLong
+		gDiceWordList = wordlist.EFFLong
 	case "original":
-		gRegWordList = wordlist.Original
+		gDiceWordList = wordlist.Original
 	default:
 		logging.Write("Invalid word list in config file. Exiting.")
 		logging.Shutdown()

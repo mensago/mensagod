@@ -163,7 +163,7 @@ func commandPreregister(session *sessionState) {
 		}
 	}
 
-	regcode, err := dbhandler.PreregWorkspace(wid, uid, domain, &gRegWordList,
+	regcode, err := dbhandler.PreregWorkspace(wid, uid, domain, &gDiceWordList,
 		viper.GetInt("global.registration_wordcount"))
 	if err != nil {
 		if err.Error() == "uid exists" {
