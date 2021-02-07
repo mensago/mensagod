@@ -182,44 +182,6 @@ func (entry Entry) IsExpired() (bool, error) {
 	return now.After(expiration), nil
 }
 
-// IsTimestampValid returns true if the timestamp for the entry is valid
-func (entry Entry) IsTimestampValid() error {
-	pattern := regexp.MustCompile("^[[:digit:]]{8}T[[:digit:]]{6}Z$")
-	if !pattern.MatchString(entry.Fields["Timestamp"]) {
-		return errors.New("bad timestamp format")
-	}
-	year, _ := strconv.Atoi(entry.Fields["Timestamp"][0:4])
-	month, _ := strconv.Atoi(entry.Fields["Timestamp"][4:6])
-	day, _ := strconv.Atoi(entry.Fields["Timestamp"][6:8])
-
-	validDate, err := isValidDate(month, day, year)
-	if !validDate {
-		return fmt.Errorf("bad timestamp date %s", err.Error())
-	}
-
-	var intValue int
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][9:11])
-	if intValue > 23 {
-		return fmt.Errorf("bad timestamp hours")
-	}
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][11:13])
-	if intValue > 59 {
-		return fmt.Errorf("bad timestamp minutes")
-	}
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][13:15])
-	if intValue > 59 {
-		return fmt.Errorf("bad timestamp seconds")
-	}
-
-	now := time.Now()
-	timestamp, _ := time.Parse("20060102T030405Z", entry.Fields["Timestamp"])
-	if now.Before(timestamp) {
-		return errors.New("timestamp is later than expiration date")
-	}
-
-	return nil
-}
-
 // GetSignature - get the specified signature
 func (entry Entry) GetSignature(sigtype string) (string, error) {
 	val, exists := entry.Signatures[sigtype]
@@ -857,7 +819,7 @@ func (entry Entry) validateOrgEntry() (bool, error) {
 		}
 	}
 
-	if entry.IsTimestampValid() != nil {
+	if IsTimestampValid(entry.Fields["Timestamp"]) != nil {
 		return false, errors.New("invalid timestamp")
 	}
 
@@ -1079,7 +1041,7 @@ func (entry Entry) validateUserEntry() (bool, error) {
 		}
 	}
 
-	if entry.IsTimestampValid() != nil {
+	if IsTimestampValid(entry.Fields["Timestamp"]) != nil {
 		return false, errors.New("invalid timestamp")
 	}
 
@@ -1442,4 +1404,42 @@ func (card Keycard) VerifyChain(path string, clobber bool) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+// IsTimestampValid returns true if the timestamp for the entry is valid
+func IsTimestampValid(timestr string) error {
+	pattern := regexp.MustCompile("^[[:digit:]]{8}T[[:digit:]]{6}Z$")
+	if !pattern.MatchString(timestr) {
+		return errors.New("bad timestr format")
+	}
+	year, _ := strconv.Atoi(timestr[0:4])
+	month, _ := strconv.Atoi(timestr[4:6])
+	day, _ := strconv.Atoi(timestr[6:8])
+
+	validDate, err := isValidDate(month, day, year)
+	if !validDate {
+		return fmt.Errorf("bad timestr date %s", err.Error())
+	}
+
+	var intValue int
+	intValue, err = strconv.Atoi(timestr[9:11])
+	if intValue > 23 {
+		return fmt.Errorf("bad timestr hours")
+	}
+	intValue, err = strconv.Atoi(timestr[11:13])
+	if intValue > 59 {
+		return fmt.Errorf("bad timestr minutes")
+	}
+	intValue, err = strconv.Atoi(timestr[13:15])
+	if intValue > 59 {
+		return fmt.Errorf("bad timestr seconds")
+	}
+
+	now := time.Now()
+	timestamp, _ := time.Parse("20060102T030405Z", timestr)
+	if now.Before(timestamp) {
+		return errors.New("timestamp is later than expiration date")
+	}
+
+	return nil
 }

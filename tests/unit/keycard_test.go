@@ -953,7 +953,7 @@ func TestIsTimestampValid(t *testing.T) {
 	entry := keycard.NewOrgEntry()
 
 	// NewOrgEntry always creates an entry with a valid timestamp
-	err := entry.IsTimestampValid()
+	err := keycard.IsTimestampValid(entry.Fields["Timestamp"])
 	if err != nil {
 		t.Fatal("TestIsTimestampValid: IsTimestampValid failed a passing timestamp\n")
 	}
@@ -968,7 +968,7 @@ func TestIsTimestampValid(t *testing.T) {
 		"Expires":                  "20201002",
 		"Timestamp":                "20200901 131313"})
 
-	err = entry.IsTimestampValid()
+	err = keycard.IsTimestampValid(entry.Fields["Timestamp"])
 	if err == nil {
 		t.Fatal("TestIsTimestampValid: IsTimestampValid passed a failing timestamp\n")
 	}
