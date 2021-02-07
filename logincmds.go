@@ -239,6 +239,11 @@ func commandPasscode(session *sessionState) {
 	// Command syntax:
 	// PASSCODE(Workspace-ID, Reset-Code, Password-Hash)
 
+	if session.LoginState != loginNoSession {
+		session.SendStringResponse(403, "FORBIDDEN", "Can't reset a password while logged in")
+		return
+	}
+
 	if session.Message.Validate([]string{"Workspace-ID", "Reset-Code", "Password-Hash"}) != nil {
 		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
 		return
@@ -368,35 +373,41 @@ func commandResetPassword(session *sessionState) {
 
 	var passcode string
 	if session.Message.HasField("Reset-Code") {
-		if len(session.Message.Data["Reset-Code"]) < 8 {
-			session.SendStringResponse(400, "BAD REQUEST",
-				"Reset-Code must be at least 8 code points")
-			return
+		if session.Message.Data["Reset-Code"] == "" {
+			passcode, err = diceware.RollWords(viper.GetInt("security.diceware_wordcount"), "-",
+				gDiceWordList)
+			if err != nil {
+				session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+				logging.Writef("resetpassword: Failed to generate passcode: %s", err.Error())
+				return
+			}
+		} else {
+			if len(session.Message.Data["Reset-Code"]) < 8 {
+				session.SendStringResponse(400, "BAD REQUEST",
+					"Reset-Code must be at least 8 code points")
+				return
+			}
+			passcode = session.Message.Data["Reset-Code"]
 		}
-		passcode = session.Message.Data["Reset-Code"]
 	}
 
 	var expires string
 	if session.Message.HasField("Expires") {
-		err = keycard.IsTimestampValid(session.Message.Data["Expires"])
-		if err != nil {
-			session.SendStringResponse(400, "BAD REQUEST", "Bad Expires field")
-			return
+		if session.Message.Data["Expires"] == "" {
+			// TODO: get interval from server config
+			expirationMinutes := 60
+
+			expires = time.Now().UTC().
+				Add(time.Minute * time.Duration(expirationMinutes)).
+				Format("20060102T150405Z")
+		} else {
+			err = keycard.IsTimestampValid(session.Message.Data["Expires"])
+			if err != nil {
+				session.SendStringResponse(400, "BAD REQUEST", "Bad Expires field")
+				return
+			}
+			expires = session.Message.Data["Expires"]
 		}
-		expires = session.Message.Data["Expires"]
-	}
-
-	if len(passcode) < 1 {
-		passcode, err = diceware.RollWords(viper.GetInt("security.diceware_wordcount"), "-",
-			gDiceWordList)
-	}
-
-	if len(expires) < 1 {
-		// TODO: get interval from server config
-		expirationMinutes := 60
-		expires = time.Now().
-			Add(time.Minute * time.Duration(expirationMinutes)).
-			Format("20060102T150405Z")
 	}
 
 	err = dbhandler.ResetPassword(session.Message.Data["Workspace-ID"], passcode, expires)
