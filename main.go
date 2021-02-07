@@ -310,9 +310,9 @@ func setupConfig() {
 		os.Exit(1)
 	}
 
-	if viper.GetInt("security.diceware_wordcount") < 0 ||
+	if viper.GetInt("security.diceware_wordcount") < 3 ||
 		viper.GetInt("security.diceware_wordcount") > 12 {
-		viper.Set("security.diceware_wordcount", 0)
+		viper.Set("security.diceware_wordcount", 6)
 		logging.Write("Registration wordcount out of bounds in config file. Assuming 6.")
 	}
 
