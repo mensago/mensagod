@@ -249,6 +249,12 @@ func commandPasscode(session *sessionState) {
 		return
 	}
 
+	goodPass, err := ezcrypt.IsArgonHash(session.Message.Data["Password-Hash"])
+	if !goodPass || err != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "bad password hash")
+		return
+	}
+
 	verified, err := dbhandler.CheckPasscode(session.Message.Data["Workspace-ID"],
 		session.Message.Data["Reset-Code"])
 	if err != nil {
@@ -293,6 +299,12 @@ func commandPassword(session *sessionState) {
 	// by the user.
 	if !session.Message.HasField("Password-Hash") {
 		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	goodPass, err := ezcrypt.IsArgonHash(session.Message.Data["Password-Hash"])
+	if !goodPass || err != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "bad password hash")
 		return
 	}
 
@@ -413,6 +425,18 @@ func commandSetPassword(session *sessionState) {
 
 	if session.LoginState != loginClientSession {
 		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		return
+	}
+
+	goodPass, err := ezcrypt.IsArgonHash(session.Message.Data["Password-Hash"])
+	if !goodPass || err != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "bad old password hash")
+		return
+	}
+
+	goodPass, err = ezcrypt.IsArgonHash(session.Message.Data["NewPassword-Hash"])
+	if !goodPass || err != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "bad new password hash")
 		return
 	}
 

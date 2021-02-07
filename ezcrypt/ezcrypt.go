@@ -474,3 +474,17 @@ func VerifyPasswordHash(password string, hashPass string) (bool, error) {
 
 	return (subtle.ConstantTimeCompare(passhash, savedHash) == 1), nil
 }
+
+// IsArgonHash checks to see if the string passed is an Argon2id password hash
+func IsArgonHash(hashstr string) (bool, error) {
+	// TODO: revisit and make more robust
+
+	if !strings.HasPrefix(hashstr, "$argon2id") {
+		return false, errors.New("bad prefix")
+	}
+	if len(hashstr) > 128 {
+		return false, errors.New("hash too long")
+	}
+
+	return true, nil
+}

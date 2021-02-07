@@ -8,6 +8,7 @@ import (
 
 	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/anselusd/dbhandler"
+	"github.com/darkwyrm/anselusd/ezcrypt"
 	"github.com/darkwyrm/anselusd/fshandler"
 	"github.com/darkwyrm/anselusd/logging"
 	"github.com/google/uuid"
@@ -178,12 +179,15 @@ func commandRegCode(session *sessionState) {
 	}
 
 	// The password field is expected to contain an Argon2id password hash
-	if !strings.HasPrefix(session.Message.Data["Password-Hash"], "$argon2id") {
-		session.SendStringResponse(400, "BAD REQUEST", "Invalid password hash")
+	isArgon, err := ezcrypt.IsArgonHash(session.Message.Data["Password-Hash"])
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandRegCode: error check password hash: %s", err)
 		return
 	}
-	if len(session.Message.Data["Password-Hash"]) > 128 {
-		session.SendStringResponse(400, "BAD REQUEST", "Password hash too long")
+
+	if !isArgon {
+		session.SendStringResponse(400, "BAD REQUEST", "Invalid password hash")
 		return
 	}
 
