@@ -102,7 +102,7 @@ func commandPreregister(session *sessionState) {
 	}
 
 	if session.LoginState != loginClientSession || session.WID != adminWid {
-		session.SendStringResponse(401, "UNAUTHORIZED", "Only admin can use this")
+		session.SendStringResponse(403, "FORBIDDEN", "Only admin can use this")
 	}
 
 	// Just do some basic syntax checks on the user ID
