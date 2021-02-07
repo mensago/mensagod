@@ -389,24 +389,34 @@ func CheckLockout(failType string, id string, source string) (string, error) {
 	return locktime, nil
 }
 
-// CheckPasscode checks the validity of a workspace/passcode combination
+// CheckPasscode checks the validity of a workspace/passcode combination. This function will return
+// an error of "expired" if the combination is valid but expired.
 func CheckPasscode(wid string, passcode string) (bool, error) {
-	// var expires
-	// row := dbConn.QueryRow(`SELECT expires FROM passcodes WHERE wid = $1 AND passcode = $2 `,
-	// 	wid, passcode)
-	// err := row.Scan(&expires)
-	// if err != nil {
-	// 	if err == sql.ErrNoRows {
-	// 		// No entry in the table
-	// 		return false, nil
-	// 	}
-	// 	return false, err
-	// }
+	var expires string
+	row := dbConn.QueryRow(`SELECT expires FROM passcodes WHERE wid = $1 AND passcode = $2 `,
+		wid, passcode)
+	err := row.Scan(&expires)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// No entry in the table
+			return false, nil
+		}
+		return false, err
+	}
 
-	// TODO: Add expiration check
+	// We made it this far, so the combination is valid. Is it expired?
+	var codestamp time.Time
+	codestamp, err = time.Parse(time.RFC3339, expires)
+	if err != nil {
+		logging.Write("dbhandler.CheckPasscode: bad timestamp in database")
+		return false, err
+	}
 
-	// return true, nil
-	return false, errors.New("unimplemented")
+	if codestamp.Before(time.Now().UTC()) {
+		return true, errors.New("expired")
+	}
+
+	return true, nil
 }
 
 // DeletePasscode deletes a workspace/passcode combination
@@ -419,7 +429,9 @@ func DeletePasscode(wid string, passcode string) error {
 
 // RemoveExpiredPasscodes removes any workspace/passcode combination entries which are expired
 func RemoveExpiredPasscodes() error {
-	return errors.New("unimplemented")
+	_, err := dbConn.Exec(`DELETE FROM passcodes WHERE expires < CURRENT_TIMESTAMP`)
+
+	return err
 }
 
 // ResetPassword adds a reset code combination to the database for later authentication by the
