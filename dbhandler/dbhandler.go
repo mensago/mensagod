@@ -104,41 +104,45 @@ func LogFailure(failType string, wid string, sourceip string) error {
 		failType, sourceip)
 	var failCount int
 	err := row.Scan(&failCount)
+
 	if err != nil {
-		// Existing fail count. Increment value, check for lockout, and update table
-		failCount++
-		if failCount >= viper.GetInt("security.max_failures") {
-			// Failure threshold exceeded. Calculate lockout timestamp and update db
-			lockout := time.Now().UTC()
-			delay, _ := time.ParseDuration(fmt.Sprintf("%dm",
-				viper.GetInt64("security.lockout_delay_min")))
-			lockout.Add(delay)
-			sqlStatement := `
-				UPDATE failure_log 
-				SET count=$1, last_failure=$2, lockout_until=$3
-				WHERE type=$4 AND source=$5 AND id=$6`
-			_, err = dbConn.Exec(sqlStatement, failCount, timeString, lockout.Format(time.RFC3339),
-				failType, sourceip, wid)
+		// No failures in the table yet.
+		if err == sql.ErrNoRows {
+			sqlStatement := `INSERT INTO failure_log(type, source, id, count, last_failure)
+			VALUES($1, $2, $3, $4, $5)`
+			_, err = dbConn.Exec(sqlStatement, failType, sourceip, wid, failCount, timeString)
 			if err != nil {
 				logging.Write("dbhandler.LogFailure: failed to update failure log")
-				return err
-			}
-		} else {
-			// Within threshold, so just update values
-			sqlStatement := `
-				UPDATE failure_log 
-				SET count=$1, last_failure=$2 
-				WHERE type=$3 AND source=$4 and wid=$5`
-			_, err = dbConn.Exec(sqlStatement, failCount, timeString, failType, sourceip, wid)
-			if err != nil {
-				logging.Write("dbhandler.LogFailure: failed to update failure log")
-				return err
 			}
 		}
+		return err
+	}
+
+	// Existing fail count. Increment value, check for lockout, and update table
+	failCount++
+	if failCount >= viper.GetInt("security.max_failures") {
+		// Failure threshold exceeded. Calculate lockout timestamp and update db
+		lockout := time.Now().UTC()
+		delay, _ := time.ParseDuration(fmt.Sprintf("%dm",
+			viper.GetInt64("security.lockout_delay_min")))
+		lockout.Add(delay)
+		sqlStatement := `
+			UPDATE failure_log 
+			SET count=$1, last_failure=$2, lockout_until=$3
+			WHERE type=$4 AND source=$5 AND id=$6`
+		_, err = dbConn.Exec(sqlStatement, failCount, timeString, lockout.Format(time.RFC3339),
+			failType, sourceip, wid)
+		if err != nil {
+			logging.Write("dbhandler.LogFailure: failed to update failure log")
+			return err
+		}
 	} else {
-		sqlStatement := `INSERT INTO failure_log(type, source, wid, count, last_failure)
-			VALUES($1, $2, $3, $4, $5)`
-		_, err = dbConn.Exec(sqlStatement, failType, sourceip, wid, failCount, timeString)
+		// Within threshold, so just update values
+		sqlStatement := `
+			UPDATE failure_log 
+			SET count=$1, last_failure=$2 
+			WHERE type=$3 AND source=$4 and wid=$5`
+		_, err = dbConn.Exec(sqlStatement, failCount, timeString, failType, sourceip, wid)
 		if err != nil {
 			logging.Write("dbhandler.LogFailure: failed to update failure log")
 			return err
@@ -344,7 +348,12 @@ func RemoveExpiredPasscodes() error {
 // ResetPassword adds a reset code combination to the database for later authentication by the
 // user. All parameters are expected to be populated.
 func ResetPassword(wid string, passcode string, expires string) error {
-	_, err := dbConn.Exec(`INSERT INTO passcodes(wid, passcode, expires) VALUES($1, $2, $3)`,
+	_, err := dbConn.Exec(`DELETE FROM passcodes WHERE wid = $1`, wid)
+	if err != nil {
+		return err
+	}
+
+	_, err = dbConn.Exec(`INSERT INTO passcodes(wid, passcode, expires) VALUES($1, $2, $3)`,
 		wid, passcode, expires)
 
 	return err
