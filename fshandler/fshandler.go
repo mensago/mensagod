@@ -73,11 +73,6 @@ func (*LocalFSProvider) RemoveDirectory(path string, recursive bool) error {
 	return errors.New("unimplemented")
 }
 
-// ValidateAnselusPath confirms the validity of an Anselus path
-func ValidateAnselusPath(path string) error {
-	return errors.New("unimplemented")
-}
-
 // RemoveWorkspace deletes all file and folder data for the specified workspace. This call does
 // not validate the workspace string. Validation is the caller's responsibility.
 func RemoveWorkspace(wid string) error {

@@ -1,6 +1,9 @@
 package fshandler
 
-import "errors"
+import (
+	"errors"
+	"regexp"
+)
 
 // AnPath encapsulates all the translation between a standard Anselus path into whatever format
 // a filesystem needs. These are leveraged by the filesytem providers to assist with going between
@@ -28,4 +31,11 @@ func (ap *LocalAnPath) ToProvider(path string) (string, error) {
 // FromProvider translates a local filesystem path to an Anselus path
 func (ap *LocalAnPath) FromProvider(path string) (string, error) {
 	return "", errors.New("unimplemented")
+}
+
+// ValidateAnselusPath confirms the validity of an Anselus path
+func ValidateAnselusPath(path string) bool {
+	pattern := regexp.MustCompile(
+		"^/( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*$")
+	return pattern.MatchString(path)
 }
