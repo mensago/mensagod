@@ -29,7 +29,7 @@ type LocalFSProvider struct {
 }
 
 // ProviderName returns the name of the filesystem provider
-func (*LocalFSProvider) ProviderName() string {
+func (lfs *LocalFSProvider) ProviderName() string {
 	return "LocalFS"
 }
 
@@ -54,23 +54,71 @@ func NewLocalProvider() *LocalFSProvider {
 // ProviderType returns the type of the filesystem handled by the provider. Currently the only
 // values returned by this are either 'local' or 'cloud'. More detail can be provided by adding
 // a subtype following a period, such as 'cloud.azure' or 'cloud.b2'.
-func (*LocalFSProvider) ProviderType() string {
+func (lfs *LocalFSProvider) ProviderType() string {
 	return "local"
 }
 
 // Exists checks to see if the specified path exists
-func (*LocalFSProvider) Exists(path string) (bool, error) {
-	return false, errors.New("unimplemented")
+func (lfs *LocalFSProvider) Exists(path string) (bool, error) {
+
+	// Path validation handled in Set()
+	anpath := NewLocalPath()
+	err := anpath.Set(path)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = os.Stat(anpath.LocalPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
 }
 
 // MakeDirectory creates a directory in the local filesystem relative to the workspace folder
-func (*LocalFSProvider) MakeDirectory(path string) error {
-	return errors.New("unimplemented")
+func (lfs *LocalFSProvider) MakeDirectory(path string) error {
+
+	// Path validation handled in Set()
+	anpath := NewLocalPath()
+	err := anpath.Set(path)
+	if err != nil {
+		return err
+	}
+
+	_, err = os.Stat(anpath.LocalPath)
+	if err == nil {
+		return os.ErrExist
+	}
+
+	return os.MkdirAll(anpath.LocalPath, 0770)
 }
 
 // RemoveDirectory creates a directory in the local filesystem relative to the workspace folder
-func (*LocalFSProvider) RemoveDirectory(path string, recursive bool) error {
-	return errors.New("unimplemented")
+func (lfs *LocalFSProvider) RemoveDirectory(path string, recursive bool) error {
+
+	// Path validation handled in Set()
+	anpath := NewLocalPath()
+	err := anpath.Set(path)
+	if err != nil {
+		return err
+	}
+
+	stat, err := os.Stat(anpath.LocalPath)
+	if err != nil {
+		return err
+	}
+	if !stat.IsDir() {
+		return errors.New("directory path is a file")
+	}
+
+	if recursive {
+		return os.RemoveAll(anpath.LocalPath)
+	}
+	return os.Remove(anpath.LocalPath)
 }
 
 // RemoveWorkspace deletes all file and folder data for the specified workspace. This call does
