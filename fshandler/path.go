@@ -39,6 +39,13 @@ func NewLocalPath() *LocalAnPath {
 
 // Set assigns an Anselus path to the object
 func (ap *LocalAnPath) Set(path string) error {
+
+	if path == "" {
+		ap.LocalPath = ""
+		ap.Path = ""
+		return nil
+	}
+
 	if !ValidateAnselusPath(path) {
 		return errors.New("invalid path")
 	}
