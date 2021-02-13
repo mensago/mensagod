@@ -20,6 +20,18 @@ type FSProvider interface {
 	Exists(path string) error
 	MakeDirectory(path string) error
 	RemoveDirectory(path string, recursive bool) error
+	ListFiles(path AnPath, afterTime int64) ([]string, error)
+	ListDirectories(path AnPath) ([]string, error)
+
+	MakeTempFile(wid string) (*os.File, error)
+	InstallTempFile(source *os.File, dest AnPath) error
+
+	MoveFile(source AnPath, dest AnPath) error
+	CopyFile(source AnPath, dest AnPath) (string, error)
+	DeleteFile(path AnPath) error
+	OpenFile(path AnPath) (string, error)
+	ReadFile(handle string, size int) ([]byte, error)
+	CloseFile(handle string) error
 }
 
 // LocalFSProvider represents local storage on the server
@@ -119,6 +131,64 @@ func (lfs *LocalFSProvider) RemoveDirectory(path string, recursive bool) error {
 		return os.RemoveAll(anpath.LocalPath)
 	}
 	return os.Remove(anpath.LocalPath)
+}
+
+// ListFiles returns all files in the specified path after the specified time. Note that the time
+// is in UNIX time, i.e. seconds since the epoch. To return all files, pass a 0.
+func (lfs *LocalFSProvider) ListFiles(path AnPath, afterTime int64) ([]string, error) {
+	return nil, errors.New("unimplemented")
+}
+
+// ListDirectories returns the names of all subdirectories of the specified path
+func (lfs *LocalFSProvider) ListDirectories(path AnPath) ([]string, error) {
+	return nil, errors.New("unimplemented")
+}
+
+// MakeTempFile creates a file in the temporary file area and returns a handle to it
+func (lfs *LocalFSProvider) MakeTempFile(wid string) (*os.File, error) {
+	return nil, errors.New("unimplemented")
+}
+
+// InstallTempFile moves a file from the temporary file area to its location in a workspace
+func (lfs *LocalFSProvider) InstallTempFile(source *os.File, dest AnPath) error {
+	return errors.New("unimplemented")
+}
+
+// MoveFile moves the specified file to the specified directory. Note that dest MUST point to
+// a directory.
+func (lfs *LocalFSProvider) MoveFile(source AnPath, dest AnPath) error {
+	return errors.New("unimplemented")
+}
+
+// CopyFile creates a duplicate of the specified source file in the specified destination folder
+// and returns the name of the new file
+func (lfs *LocalFSProvider) CopyFile(source AnPath, dest AnPath) (string, error) {
+	return "", errors.New("unimplemented")
+}
+
+// DeleteFile deletes the specified workspace file
+func (lfs *LocalFSProvider) DeleteFile(path AnPath) error {
+	return errors.New("unimplemented")
+}
+
+// OpenFile opens the specified file for reading data and returns a file handle as a string. The
+// contents of the handle are specific to the provider and should not be expected to follow any
+// particular format
+func (lfs *LocalFSProvider) OpenFile(path AnPath) (string, error) {
+	return "", errors.New("unimplemented")
+}
+
+// ReadFile reads data from a file opened with OpenFile. If the Read() call encounters the end of
+// the file, less data than specified will be returned and the file handle will automatically be
+// closed.
+func (lfs *LocalFSProvider) ReadFile(handle string, size int) ([]byte, error) {
+	return nil, errors.New("unimplemented")
+}
+
+// CloseFile closes the specified file handle. It is not normally needed unless Read() returns an
+// error or the caller must abort reading the file.
+func (lfs *LocalFSProvider) CloseFile(handle string) error {
+	return errors.New("unimplemented")
 }
 
 // RemoveWorkspace deletes all file and folder data for the specified workspace. This call does
