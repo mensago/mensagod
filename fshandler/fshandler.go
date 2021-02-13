@@ -75,7 +75,7 @@ func (lfs *LocalFSProvider) Exists(path string) (bool, error) {
 
 	// Path validation handled in Set()
 	var anpath LocalAnPath
-	err := anpath.SetFromString(path)
+	err := anpath.Set(path)
 	if err != nil {
 		return false, err
 	}
@@ -94,9 +94,9 @@ func (lfs *LocalFSProvider) Exists(path string) (bool, error) {
 // MakeDirectory creates a directory in the local filesystem relative to the workspace folder
 func (lfs *LocalFSProvider) MakeDirectory(path AnPath) error {
 
-	// Path validation handled in Set()
+	// Path validation handled in FromPath()
 	var anpath LocalAnPath
-	err := anpath.Set(path)
+	err := anpath.FromPath(path)
 	if err != nil {
 		return err
 	}
@@ -112,9 +112,9 @@ func (lfs *LocalFSProvider) MakeDirectory(path AnPath) error {
 // RemoveDirectory creates a directory in the local filesystem relative to the workspace folder
 func (lfs *LocalFSProvider) RemoveDirectory(path AnPath, recursive bool) error {
 
-	// Path validation handled in Set()
+	// Path validation handled in FromPath()
 	var anpath LocalAnPath
-	err := anpath.Set(path)
+	err := anpath.FromPath(path)
 	if err != nil {
 		return err
 	}

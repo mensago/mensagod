@@ -16,8 +16,19 @@ import (
 // a filesystem needs. These are leveraged by the filesytem providers to assist with going between
 // the two realms
 type AnPath interface {
-	Set(path AnPath) error
-	SetFromString(path string) error
+	// PathType returns a string which indicates the kind of implementation the path object
+	// handles. It is expected to be all lowercase. As with FSProvider, subtypes can be indicated
+	// by a period separator.
+	PathType() string
+
+	// FromPath simply assigns to the object from the Anselus path of another
+	FromPath(path AnPath) error
+
+	// Set expects an Anselus path. If the path is invalid or some other error occurs, the
+	// object is not changed and the error is returned.
+	Set(path string) error
+
+	// ProviderPath returns a string which
 	ProviderPath() string
 	AnselusPath() string
 }
@@ -32,13 +43,18 @@ type LocalAnPath struct {
 	LocalPath string
 }
 
-// Set assigns an Anselus path to the object
-func (ap *LocalAnPath) Set(path AnPath) error {
-	return ap.SetFromString(path.AnselusPath())
+// PathType returns the type of path handled
+func (ap *LocalAnPath) PathType() string {
+	return "local"
 }
 
-// SetFromString assigns an Anselus path to the object
-func (ap *LocalAnPath) SetFromString(path string) error {
+// FromPath assigns an Anselus path to the object
+func (ap *LocalAnPath) FromPath(path AnPath) error {
+	return ap.Set(path.AnselusPath())
+}
+
+// Set assigns an Anselus path to the object
+func (ap *LocalAnPath) Set(path string) error {
 
 	if path == "" {
 		ap.LocalPath = ""

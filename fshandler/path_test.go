@@ -50,7 +50,7 @@ func TestAnPath_SetFromString(t *testing.T) {
 	testPath1 := "/ 3e782960-a762-4def-8038-a1d0a3cd951d e5c2f479-b9db-4475-8152-e76605e731fc"
 	var anpath LocalAnPath
 
-	if anpath.SetFromString(testPath1) != nil {
+	if anpath.Set(testPath1) != nil {
 		t.Fatal("LocalAnPath.Set failed to assign a valid path")
 	}
 
