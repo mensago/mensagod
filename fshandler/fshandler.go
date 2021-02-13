@@ -4,7 +4,10 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -18,18 +21,18 @@ type FSProvider interface {
 	ProviderType() string
 
 	Exists(path string) error
-	MakeDirectory(path AnPath) error
-	RemoveDirectory(path AnPath, recursive bool) error
-	ListFiles(path AnPath, afterTime int64) ([]string, error)
-	ListDirectories(path AnPath) ([]string, error)
+	MakeDirectory(path string) error
+	RemoveDirectory(path string, recursive bool) error
+	ListFiles(path string, afterTime int64) ([]string, error)
+	ListDirectories(path string) ([]string, error)
 
 	MakeTempFile(wid string) (*os.File, error)
-	InstallTempFile(source *os.File, dest AnPath) error
+	InstallTempFile(source *os.File, dest string) error
 
-	MoveFile(source AnPath, dest AnPath) error
-	CopyFile(source AnPath, dest AnPath) (string, error)
-	DeleteFile(path AnPath) error
-	OpenFile(path AnPath) (string, error)
+	MoveFile(source AnPath, dest string) error
+	CopyFile(source AnPath, dest string) (string, error)
+	DeleteFile(path string) error
+	OpenFile(path string) (string, error)
 	ReadFile(handle string, size int) ([]byte, error)
 	CloseFile(handle string) error
 }
@@ -80,7 +83,7 @@ func (lfs *LocalFSProvider) Exists(path string) (bool, error) {
 		return false, err
 	}
 
-	_, err = os.Stat(anpath.LocalPath)
+	_, err = os.Stat(anpath.ProviderPath())
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
@@ -92,11 +95,11 @@ func (lfs *LocalFSProvider) Exists(path string) (bool, error) {
 }
 
 // MakeDirectory creates a directory in the local filesystem relative to the workspace folder
-func (lfs *LocalFSProvider) MakeDirectory(path AnPath) error {
+func (lfs *LocalFSProvider) MakeDirectory(path string) error {
 
 	// Path validation handled in FromPath()
 	var anpath LocalAnPath
-	err := anpath.FromPath(path)
+	err := anpath.Set(path)
 	if err != nil {
 		return err
 	}
@@ -110,11 +113,11 @@ func (lfs *LocalFSProvider) MakeDirectory(path AnPath) error {
 }
 
 // RemoveDirectory creates a directory in the local filesystem relative to the workspace folder
-func (lfs *LocalFSProvider) RemoveDirectory(path AnPath, recursive bool) error {
+func (lfs *LocalFSProvider) RemoveDirectory(path string, recursive bool) error {
 
 	// Path validation handled in FromPath()
 	var anpath LocalAnPath
-	err := anpath.FromPath(path)
+	err := anpath.Set(path)
 	if err != nil {
 		return err
 	}
@@ -135,13 +138,90 @@ func (lfs *LocalFSProvider) RemoveDirectory(path AnPath, recursive bool) error {
 
 // ListFiles returns all files in the specified path after the specified time. Note that the time
 // is in UNIX time, i.e. seconds since the epoch. To return all files, pass a 0.
-func (lfs *LocalFSProvider) ListFiles(path AnPath, afterTime int64) ([]string, error) {
-	return nil, errors.New("unimplemented")
+func (lfs *LocalFSProvider) ListFiles(path string, afterTime int64) ([]string, error) {
+	// Path validation handled in FromPath()
+	var anpath LocalAnPath
+	err := anpath.Set(path)
+	if err != nil {
+		return nil, err
+	}
+
+	stat, err := os.Stat(anpath.ProviderPath())
+	if err != nil {
+		return nil, err
+	}
+	if !stat.IsDir() {
+		return nil, errors.New("directory path is a file")
+	}
+
+	handle, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer handle.Close()
+
+	list, _ := handle.Readdirnames(0)
+
+	pattern := regexp.MustCompile(
+		"^[0-9]+\\.[0-9]+\\.[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$")
+
+	out := make([]string, 0, len(list))
+	for _, name := range list {
+		if pattern.MatchString(name) {
+			if afterTime > 0 {
+				parts := strings.Split(name, ".")
+				filetime, err := strconv.ParseInt(parts[0], 10, 64)
+				if err != nil || afterTime > filetime {
+					continue
+				}
+			}
+			out = append(out, name)
+		}
+	}
+	return out, nil
 }
 
 // ListDirectories returns the names of all subdirectories of the specified path
-func (lfs *LocalFSProvider) ListDirectories(path AnPath) ([]string, error) {
-	return nil, errors.New("unimplemented")
+func (lfs *LocalFSProvider) ListDirectories(path string) ([]string, error) {
+	// Path validation handled in FromPath()
+	var anpath LocalAnPath
+	err := anpath.Set(path)
+	if err != nil {
+		return nil, err
+	}
+
+	stat, err := os.Stat(anpath.ProviderPath())
+	if err != nil {
+		return nil, err
+	}
+	if !stat.IsDir() {
+		return nil, errors.New("directory path is a file")
+	}
+
+	handle, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer handle.Close()
+
+	list, _ := handle.Readdirnames(0)
+
+	pattern := regexp.MustCompile(
+		"^[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$")
+
+	out := make([]string, 0, len(list))
+	for _, name := range list {
+		if pattern.MatchString(name) {
+			stat, err = os.Stat(anpath.ProviderPath())
+			if err != nil {
+				return nil, err
+			}
+			if stat.IsDir() {
+				out = append(out, name)
+			}
+		}
+	}
+	return out, nil
 }
 
 // MakeTempFile creates a file in the temporary file area and returns a handle to it
@@ -167,14 +247,14 @@ func (lfs *LocalFSProvider) CopyFile(source AnPath, dest AnPath) (string, error)
 }
 
 // DeleteFile deletes the specified workspace file
-func (lfs *LocalFSProvider) DeleteFile(path AnPath) error {
+func (lfs *LocalFSProvider) DeleteFile(path string) error {
 	return errors.New("unimplemented")
 }
 
 // OpenFile opens the specified file for reading data and returns a file handle as a string. The
 // contents of the handle are specific to the provider and should not be expected to follow any
 // particular format
-func (lfs *LocalFSProvider) OpenFile(path AnPath) (string, error) {
+func (lfs *LocalFSProvider) OpenFile(path string) (string, error) {
 	return "", errors.New("unimplemented")
 }
 
