@@ -18,8 +18,8 @@ type FSProvider interface {
 	ProviderType() string
 
 	Exists(path string) error
-	MakeDirectory(path string) error
-	RemoveDirectory(path string, recursive bool) error
+	MakeDirectory(path AnPath) error
+	RemoveDirectory(path AnPath, recursive bool) error
 	ListFiles(path AnPath, afterTime int64) ([]string, error)
 	ListDirectories(path AnPath) ([]string, error)
 
@@ -74,8 +74,8 @@ func (lfs *LocalFSProvider) ProviderType() string {
 func (lfs *LocalFSProvider) Exists(path string) (bool, error) {
 
 	// Path validation handled in Set()
-	anpath := NewLocalPath()
-	err := anpath.Set(path)
+	var anpath LocalAnPath
+	err := anpath.SetFromString(path)
 	if err != nil {
 		return false, err
 	}
@@ -92,10 +92,10 @@ func (lfs *LocalFSProvider) Exists(path string) (bool, error) {
 }
 
 // MakeDirectory creates a directory in the local filesystem relative to the workspace folder
-func (lfs *LocalFSProvider) MakeDirectory(path string) error {
+func (lfs *LocalFSProvider) MakeDirectory(path AnPath) error {
 
 	// Path validation handled in Set()
-	anpath := NewLocalPath()
+	var anpath LocalAnPath
 	err := anpath.Set(path)
 	if err != nil {
 		return err
@@ -110,10 +110,10 @@ func (lfs *LocalFSProvider) MakeDirectory(path string) error {
 }
 
 // RemoveDirectory creates a directory in the local filesystem relative to the workspace folder
-func (lfs *LocalFSProvider) RemoveDirectory(path string, recursive bool) error {
+func (lfs *LocalFSProvider) RemoveDirectory(path AnPath, recursive bool) error {
 
 	// Path validation handled in Set()
-	anpath := NewLocalPath()
+	var anpath LocalAnPath
 	err := anpath.Set(path)
 	if err != nil {
 		return err

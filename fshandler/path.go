@@ -16,7 +16,8 @@ import (
 // a filesystem needs. These are leveraged by the filesytem providers to assist with going between
 // the two realms
 type AnPath interface {
-	Set(path string) error
+	Set(path AnPath) error
+	SetFromString(path string) error
 	ProviderPath() string
 	AnselusPath() string
 }
@@ -31,14 +32,13 @@ type LocalAnPath struct {
 	LocalPath string
 }
 
-// NewLocalPath creates a new LocalAnPath object
-func NewLocalPath() *LocalAnPath {
-	var out LocalAnPath
-	return &out
+// Set assigns an Anselus path to the object
+func (ap *LocalAnPath) Set(path AnPath) error {
+	return ap.SetFromString(path.AnselusPath())
 }
 
-// Set assigns an Anselus path to the object
-func (ap *LocalAnPath) Set(path string) error {
+// SetFromString assigns an Anselus path to the object
+func (ap *LocalAnPath) SetFromString(path string) error {
 
 	if path == "" {
 		ap.LocalPath = ""
