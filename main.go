@@ -274,6 +274,17 @@ func setupConfig() {
 		}
 	}
 
+	tempDirPath := filepath.Join(viper.GetString("global.workspace_dir"), "tmp")
+	_, err = os.Stat(tempDirPath)
+	if os.IsNotExist(err) {
+		err = os.Mkdir(tempDirPath, 0600)
+		if err != nil {
+			fmt.Printf("Unable to create workspace temporary directory %s. Exiting. Error: %s",
+				tempDirPath, err)
+			os.Exit(1)
+		}
+	}
+
 	if viper.GetString("database.password") == "" {
 		logging.Write("Database password not set in config file. Exiting.")
 		logging.Shutdown()

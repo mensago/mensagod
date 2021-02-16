@@ -105,3 +105,9 @@ func ValidateFileName(filename string) bool {
 func GenerateFileName(filesize int) string {
 	return fmt.Sprintf("%d.%d.%s", time.Now().Unix(), filesize, uuid.New().String())
 }
+
+// GenerateTempFileName creates a temporary file name. It is similar to an Anselus file name
+// except that the file's size is not included.
+func GenerateTempFileName() string {
+	return fmt.Sprintf("%d.%s", time.Now().Unix(), uuid.New().String())
+}

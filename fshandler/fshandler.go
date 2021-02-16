@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/darkwyrm/anselusd/logging"
 	"github.com/spf13/viper"
 )
 
@@ -29,8 +30,8 @@ type FSProvider interface {
 	MakeTempFile(wid string) (*os.File, error)
 	InstallTempFile(source *os.File, dest string) error
 
-	MoveFile(source AnPath, dest string) error
-	CopyFile(source AnPath, dest string) (string, error)
+	MoveFile(source string, dest string) error
+	CopyFile(source string, dest string) (string, error)
 	DeleteFile(path string) error
 	OpenFile(path string) (string, error)
 	ReadFile(handle string, size int) ([]byte, error)
@@ -224,25 +225,89 @@ func (lfs *LocalFSProvider) ListDirectories(path string) ([]string, error) {
 	return out, nil
 }
 
-// MakeTempFile creates a file in the temporary file area and returns a handle to it
-func (lfs *LocalFSProvider) MakeTempFile(wid string) (*os.File, error) {
-	return nil, errors.New("unimplemented")
+// MakeTempFile creates a file in the temporary file area and returns a handle to it. The caller is
+// responsible for closing the handle when finished.
+func (lfs *LocalFSProvider) MakeTempFile(wid string) (*os.File, string, error) {
+
+	// TODO: validate WID
+
+	tempDirPath := filepath.Join(viper.GetString("global.workspace_dir"), "tmp")
+
+	// TODO: ensure workspace temp directory exists
+
+	tempFileName := ""
+	tempFilePath := ""
+	for tempFileName == "" {
+		proposedName := GenerateTempFileName()
+
+		tempFilePath = filepath.Join(tempDirPath, proposedName)
+		_, err := os.Stat(tempFilePath)
+		if err != nil {
+			tempFileName = proposedName
+			break
+		}
+	}
+
+	handle, err := os.OpenFile(tempFilePath, os.O_RDWR, 0600)
+	if err != nil {
+		logging.Writef("Couldn't save temp file %s: %s", tempFilePath, err.Error())
+		return nil, "", err
+	}
+
+	return handle, tempFileName, nil
 }
 
 // InstallTempFile moves a file from the temporary file area to its location in a workspace
-func (lfs *LocalFSProvider) InstallTempFile(source *os.File, dest AnPath) error {
+func (lfs *LocalFSProvider) InstallTempFile(source string, dest string) error {
 	return errors.New("unimplemented")
 }
 
 // MoveFile moves the specified file to the specified directory. Note that dest MUST point to
 // a directory.
-func (lfs *LocalFSProvider) MoveFile(source AnPath, dest AnPath) error {
-	return errors.New("unimplemented")
+func (lfs *LocalFSProvider) MoveFile(source string, dest string) error {
+	// Path validation handled in FromPath()
+	var srcAnpath LocalAnPath
+	err := srcAnpath.Set(source)
+	if err != nil {
+		return err
+	}
+
+	stat, err := os.Stat(srcAnpath.ProviderPath())
+	if err != nil {
+		return err
+	}
+	if !stat.Mode().IsRegular() {
+		return errors.New("source path is a not file")
+	}
+
+	// Path validation handled in FromPath()
+	var destAnpath LocalAnPath
+	err = destAnpath.Set(dest)
+	if err != nil {
+		return err
+	}
+
+	stat, err = os.Stat(destAnpath.ProviderPath())
+	if err != nil {
+		return err
+	}
+	if !stat.IsDir() {
+		return errors.New("destination path is not a directory")
+	}
+
+	newPath := filepath.Join(destAnpath.ProviderPath(), filepath.Base(srcAnpath.ProviderPath()))
+	_, err = os.Stat(srcAnpath.ProviderPath())
+	if err == nil {
+		return errors.New("source exists in destination path")
+	}
+	err = os.Rename(srcAnpath.ProviderPath(), newPath)
+
+	return err
 }
 
 // CopyFile creates a duplicate of the specified source file in the specified destination folder
 // and returns the name of the new file
-func (lfs *LocalFSProvider) CopyFile(source AnPath, dest AnPath) (string, error) {
+func (lfs *LocalFSProvider) CopyFile(source string, dest string) (string, error) {
 	return "", errors.New("unimplemented")
 }
 
