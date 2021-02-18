@@ -2,6 +2,7 @@ package fshandler
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -258,8 +259,50 @@ func (lfs *LocalFSProvider) MakeTempFile(wid string) (*os.File, string, error) {
 }
 
 // InstallTempFile moves a file from the temporary file area to its location in a workspace
-func (lfs *LocalFSProvider) InstallTempFile(source string, dest string) error {
-	return errors.New("unimplemented")
+func (lfs *LocalFSProvider) InstallTempFile(wid string, name string, dest string) (string, error) {
+	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
+	if (len(wid) != 36 && len(wid) != 32) || !pattern.MatchString(wid) {
+		return "", errors.New("bad workspace id")
+	}
+
+	if !ValidateFileName(name) {
+		return "", errors.New("bad tempfile name")
+	}
+
+	srcpath := filepath.Join(viper.GetString("global.workspace_dir"), "tmp", wid, name)
+
+	var destAnpath LocalAnPath
+	err := destAnpath.Set(dest)
+	if err != nil {
+		return "", err
+	}
+
+	stat, err := os.Stat(srcpath)
+	if err != nil {
+		return "", err
+	}
+	if !stat.Mode().IsRegular() {
+		return "", errors.New("source path is a not file")
+	}
+	filesize := stat.Size()
+
+	stat, err = os.Stat(destAnpath.ProviderPath())
+	if err != nil {
+		return "", err
+	}
+	if !stat.Mode().IsDir() {
+		return "", errors.New("destination path is a not directory")
+	}
+
+	parts := strings.Split(name, ".")
+	newname := fmt.Sprintf("%s.%d.%s", parts[0], filesize, parts[1])
+
+	err = os.Rename(srcpath, filepath.Join(destAnpath.ProviderPath(), newname))
+	if err != nil {
+		return "", err
+	}
+
+	return destAnpath.AnselusPath() + " " + newname, nil
 }
 
 // MoveFile moves the specified file to the specified directory. Note that dest MUST point to
