@@ -19,7 +19,6 @@ import (
 	"github.com/darkwyrm/anselusd/logging"
 	"github.com/darkwyrm/b85"
 	"github.com/darkwyrm/gostringlist"
-	"github.com/zeebo/blake3"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/sha3"
@@ -460,9 +459,10 @@ func (entry *Entry) GenerateHash(algorithm string) error {
 	}
 
 	switch algorithm {
-	case "BLAKE3-256":
-		sum := blake3.Sum256(entry.MakeByteString(hashLevel))
-		entry.Hash = algorithm + ":" + b85.Encode(sum[:])
+	// TODO: re-enable once the 'blake3.Sum256 undefined' issue is resolved
+	// case "BLAKE3-256":
+	// 	sum := blake3.Sum256(entry.MakeByteString(hashLevel))
+	// 	entry.Hash = algorithm + ":" + b85.Encode(sum[:])
 	case "BLAKE2B-256":
 		sum := blake2b.Sum256(entry.MakeByteString(hashLevel))
 		entry.Hash = algorithm + ":" + b85.Encode(sum[:])
