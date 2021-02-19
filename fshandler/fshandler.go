@@ -3,6 +3,7 @@ package fshandler
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -352,15 +353,69 @@ func (lfs *LocalFSProvider) MoveFile(source string, dest string) error {
 	if err == nil {
 		return errors.New("source exists in destination path")
 	}
-	err = os.Rename(srcAnpath.ProviderPath(), newPath)
 
-	return err
+	return os.Rename(srcAnpath.ProviderPath(), newPath)
 }
 
 // CopyFile creates a duplicate of the specified source file in the specified destination folder
 // and returns the name of the new file
 func (lfs *LocalFSProvider) CopyFile(source string, dest string) (string, error) {
-	return "", errors.New("unimplemented")
+	// Path validation handled in FromPath()
+	var srcAnpath LocalAnPath
+	err := srcAnpath.Set(source)
+	if err != nil {
+		return "", err
+	}
+
+	stat, err := os.Stat(srcAnpath.ProviderPath())
+	if err != nil {
+		return "", err
+	}
+	if !stat.Mode().IsRegular() {
+		return "", errors.New("source path is a not file")
+	}
+	if !ValidateFileName(filepath.Base(srcAnpath.ProviderPath())) {
+		return "", errors.New("bad filename format")
+	}
+
+	// Path validation handled in FromPath()
+	var destAnpath LocalAnPath
+	err = destAnpath.Set(dest)
+	if err != nil {
+		return "", err
+	}
+
+	stat, err = os.Stat(destAnpath.ProviderPath())
+	if err != nil {
+		return "", err
+	}
+	if !stat.IsDir() {
+		return "", errors.New("destination path is not a directory")
+	}
+
+	parts := strings.Split(filepath.Base(srcAnpath.ProviderPath()), ".")
+	filesize, _ := strconv.Atoi(parts[1])
+	newName := GenerateFileName(filesize)
+	newPath := filepath.Join(destAnpath.ProviderPath(), newName)
+	_, err = os.Stat(newPath)
+	if err == nil {
+		return "", errors.New("source exists in destination path")
+	}
+
+	sourceHandle, err := os.Open(srcAnpath.ProviderPath())
+	if err != nil {
+		return "", err
+	}
+	defer sourceHandle.Close()
+
+	destHandle, err := os.Create(newPath)
+	if err != nil {
+		return "", err
+	}
+	defer destHandle.Close()
+
+	_, err = io.Copy(destHandle, sourceHandle)
+	return newName, err
 }
 
 // DeleteFile deletes the specified workspace file
