@@ -230,11 +230,20 @@ func (lfs *LocalFSProvider) ListDirectories(path string) ([]string, error) {
 // responsible for closing the handle when finished.
 func (lfs *LocalFSProvider) MakeTempFile(wid string) (*os.File, string, error) {
 
-	// TODO: validate WID
+	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
+	if (len(wid) != 36 && len(wid) != 32) || !pattern.MatchString(wid) {
+		return nil, "", errors.New("bad workspace id")
+	}
 
 	tempDirPath := filepath.Join(viper.GetString("global.workspace_dir"), "tmp")
 
-	// TODO: ensure workspace temp directory exists
+	stat, err := os.Stat(tempDirPath)
+	if err != nil {
+		return nil, "", err
+	}
+	if !stat.Mode().IsDir() {
+		return nil, "", errors.New("destination path is a not directory")
+	}
 
 	tempFileName := ""
 	tempFilePath := ""
