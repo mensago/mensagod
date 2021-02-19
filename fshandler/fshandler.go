@@ -418,9 +418,25 @@ func (lfs *LocalFSProvider) CopyFile(source string, dest string) (string, error)
 	return newName, err
 }
 
-// DeleteFile deletes the specified workspace file
+// DeleteFile deletes the specified workspace file. If the file does not exist, this function will
+// not return an error.
 func (lfs *LocalFSProvider) DeleteFile(path string) error {
-	return errors.New("unimplemented")
+	// Path validation handled in Set()
+	var anpath LocalAnPath
+	err := anpath.Set(path)
+	if err != nil {
+		return err
+	}
+
+	_, err = os.Stat(anpath.ProviderPath())
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	return os.Remove(anpath.ProviderPath())
 }
 
 // OpenFile opens the specified file for reading data and returns a file handle as a string. The
