@@ -36,7 +36,7 @@ type FSProvider interface {
 	CopyFile(source string, dest string) (string, error)
 	DeleteFile(path string) error
 	OpenFile(path string) (string, error)
-	ReadFile(handle string, size int) ([]byte, error)
+	ReadFile(handle string, buffer []byte) (int, error)
 	CloseFile(handle string) error
 }
 
@@ -475,14 +475,29 @@ func (lfs *LocalFSProvider) OpenFile(path string) (string, error) {
 // ReadFile reads data from a file opened with OpenFile. If the Read() call encounters the end of
 // the file, less data than specified will be returned and the file handle will automatically be
 // closed.
-func (lfs *LocalFSProvider) ReadFile(handle string, size int) ([]byte, error) {
-	return nil, errors.New("unimplemented")
+func (lfs *LocalFSProvider) ReadFile(handle string, buffer []byte) (int, error) {
+
+	lfsh, exists := lfs.Files[handle]
+	if !exists {
+		return 0, os.ErrNotExist
+	}
+
+	bytesRead, err := lfsh.Handle.Read(buffer)
+	if err == io.EOF {
+		lfsh.Handle.Close()
+	}
+	return bytesRead, err
 }
 
 // CloseFile closes the specified file handle. It is not normally needed unless Read() returns an
 // error or the caller must abort reading the file.
 func (lfs *LocalFSProvider) CloseFile(handle string) error {
-	return errors.New("unimplemented")
+	lfsh, exists := lfs.Files[handle]
+	if !exists {
+		return os.ErrNotExist
+	}
+	lfsh.Handle.Close()
+	return nil
 }
 
 // RemoveWorkspace deletes all file and folder data for the specified workspace. This call does
