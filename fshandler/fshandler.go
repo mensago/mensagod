@@ -44,6 +44,13 @@ type FSProvider interface {
 type LocalFSProvider struct {
 	BasePath      string
 	PathSeparator string
+	Files         map[string]LocalFSHandle
+}
+
+// LocalFSHandle represents an open file and provides Open(), Read(), and Close() methods
+type LocalFSHandle struct {
+	Path   string
+	Handle *os.File
 }
 
 // ProviderName returns the name of the filesystem provider
@@ -65,6 +72,8 @@ func NewLocalProvider() *LocalFSProvider {
 	default:
 		provider.PathSeparator = "/"
 	}
+
+	provider.Files = make(map[string]LocalFSHandle, 100)
 
 	return &provider
 }
@@ -443,7 +452,24 @@ func (lfs *LocalFSProvider) DeleteFile(path string) error {
 // contents of the handle are specific to the provider and should not be expected to follow any
 // particular format
 func (lfs *LocalFSProvider) OpenFile(path string) (string, error) {
-	return "", errors.New("unimplemented")
+	// Path validation handled in Set()
+	var anpath LocalAnPath
+	err := anpath.Set(path)
+	if err != nil {
+		return "", err
+	}
+
+	handle, err := os.Open(anpath.ProviderPath())
+	if err != nil {
+		return "", err
+	}
+
+	var providerHandle LocalFSHandle
+	providerHandle.Path = anpath.ProviderPath()
+	providerHandle.Handle = handle
+	lfs.Files[path] = providerHandle
+
+	return anpath.ProviderPath(), errors.New("unimplemented")
 }
 
 // ReadFile reads data from a file opened with OpenFile. If the Read() call encounters the end of
