@@ -95,7 +95,10 @@ func ValidateAnselusPath(path string) bool {
 	}
 
 	pattern := regexp.MustCompile(
-		"^/( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*$")
+		"^/( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*" +
+			"( [0-9]+\\.[0-9]+\\." +
+			"[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*$")
+
 	return pattern.MatchString(path)
 }
 
@@ -103,7 +106,8 @@ func ValidateAnselusPath(path string) bool {
 // platform
 func ValidateFileName(filename string) bool {
 	pattern := regexp.MustCompile(
-		"^[0-9]+\\.[0-9]+\\.[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$")
+		"^[0-9]+\\.[0-9]+\\." +
+			"[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$")
 	return pattern.MatchString(filename)
 }
 
