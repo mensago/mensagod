@@ -13,7 +13,30 @@ import (
 	"github.com/spf13/viper"
 )
 
+var gSetupInit bool
+
+// SetupConfig initializes and loads the server's global configuration options
 func SetupConfig() diceware.Wordlist {
+
+	var outList diceware.Wordlist
+	if gSetupInit {
+		switch viper.GetString("security.diceware_wordlist") {
+		case "eff_short":
+			outList = wordlist.EFFShort
+		case "eff_short_prefix":
+			outList = wordlist.EFFShortPrefix
+		case "eff_long":
+			outList = wordlist.EFFLong
+		case "original":
+			outList = wordlist.Original
+		default:
+			logging.Write("Invalid word list in config file. Exiting.")
+			logging.Shutdown()
+			os.Exit(1)
+		}
+		return outList
+	}
+
 	// IP and port to listen on
 	viper.SetDefault("network.listen_ip", "127.0.0.1")
 	viper.SetDefault("network.port", "2001")
@@ -150,7 +173,6 @@ func SetupConfig() diceware.Wordlist {
 		os.Exit(1)
 	}
 
-	var outList diceware.Wordlist
 	switch viper.GetString("security.diceware_wordlist") {
 	case "eff_short":
 		outList = wordlist.EFFShort
@@ -205,6 +227,8 @@ func SetupConfig() diceware.Wordlist {
 		viper.Set("security.password_reset_min", 60)
 		logging.Write("Invalid password reset time. Setting to 60.")
 	}
+
+	gSetupInit = true
 
 	return outList
 }
