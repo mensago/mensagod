@@ -210,7 +210,7 @@ func (lfs *LocalFSProvider) ListDirectories(path string) ([]string, error) {
 		return nil, errors.New("directory path is a file")
 	}
 
-	handle, err := os.Open(path)
+	handle, err := os.Open(anpath.ProviderPath())
 	if err != nil {
 		return nil, err
 	}
