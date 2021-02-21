@@ -216,6 +216,7 @@ func TestLocalFSProvider_MakeDirectory(t *testing.T) {
 	}
 
 	wid := "11111111-1111-1111-1111-111111111111"
+	wid2 := "22222222-2222-2222-2222-222222222222"
 	provider := NewLocalProvider()
 
 	// Subtest #1: bad path
@@ -237,9 +238,73 @@ func TestLocalFSProvider_MakeDirectory(t *testing.T) {
 		t.Fatalf("TestLocalFSProvider_MakeDirectory: subtest #3 failed to handle existing dir: %s",
 			err.Error())
 	}
+
+	// Subtest #4: recursive creation
+
+	testDir := strings.Join([]string{"/", wid, wid2}, " ")
+	err = provider.MakeDirectory(testDir)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_MakeDirectory: subtest #4 failed to recursive create dir: %s",
+			err.Error())
+	}
 }
 
 func TestLocalFSProvider_RemoveDirectory(t *testing.T) {
+	err := setupTest()
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_RemoveDirectory: Couldn't reset workspace dir: %s", err.Error())
+	}
+
+	wid := "11111111-1111-1111-1111-111111111111"
+	wid2 := "22222222-2222-2222-2222-222222222222"
+	provider := NewLocalProvider()
+
+	// Subtest #1: bad path
+
+	err = provider.MakeDirectory("/var/anselus/" + wid)
+	if err == nil {
+		t.Fatal("TestLocalFSProvider_RemoveDirectory: failed to handle bad path")
+	}
+
+	// Subtest #2: directory doesn't exist
+
+	err = provider.RemoveDirectory("/ "+wid, false)
+	if err == nil {
+		t.Fatalf("TestLocalFSProvider_RemoveDirectory: subtest #2 failed to handle nonexistent dir: %s",
+			err.Error())
+	}
+
+	// Subtest #3: actual success
+
+	err = provider.MakeDirectory("/ " + wid)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_RemoveDirectory: subtest #3 failed to create dir: %s",
+			err.Error())
+	}
+	err = provider.RemoveDirectory("/ "+wid, false)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_RemoveDirectory: subtest #3 failed to remove dir: %s",
+			err.Error())
+	}
+
+	// Subtest #4: recursive removal
+
+	testDir := strings.Join([]string{"/", wid, wid2}, " ")
+	err = provider.MakeDirectory(testDir)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_RemoveDirectory: subtest #4 failed to create dir: %s",
+			err.Error())
+	}
+	err = makeTestFiles(testDir, 1)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_RemoveDirectory: subtest #4 failed to test files: %s",
+			err.Error())
+	}
+	err = provider.RemoveDirectory(testDir, true)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_RemoveDirectory: subtest #4 failed to remove dir: %s",
+			err.Error())
+	}
 }
 
 func TestLocalFSProvider_ListFiles(t *testing.T) {
