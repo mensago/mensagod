@@ -210,6 +210,33 @@ func TestLocalFSProvider_Exists(t *testing.T) {
 }
 
 func TestLocalFSProvider_MakeDirectory(t *testing.T) {
+	err := setupTest()
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_MakeDirectory: Couldn't reset workspace dir: %s", err.Error())
+	}
+
+	wid := "11111111-1111-1111-1111-111111111111"
+	provider := NewLocalProvider()
+
+	// Subtest #1: bad path
+	err = provider.MakeDirectory("/var/anselus/" + wid)
+	if err == nil {
+		t.Fatal("TestLocalFSProvider_MakeDirectory: failed to handle bad path")
+	}
+
+	// Subtest #2: actual success
+	err = provider.MakeDirectory("/ " + wid)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_MakeDirectory: subtest #2 failed to create dir: %s",
+			err.Error())
+	}
+
+	// Subtest #3: directory already exists
+	err = provider.MakeDirectory("/ " + wid)
+	if err == nil {
+		t.Fatalf("TestLocalFSProvider_MakeDirectory: subtest #3 failed to handle existing dir: %s",
+			err.Error())
+	}
 }
 
 func TestLocalFSProvider_RemoveDirectory(t *testing.T) {
