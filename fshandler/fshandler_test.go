@@ -112,7 +112,10 @@ func makeTestFiles(dir string, count int) error {
 
 	for i := 0; i < count; i++ {
 		filesize := rand.Intn(10140) + 100
-		generateRandomFile(anpath.ProviderPath(), filesize)
+		_, err = generateRandomFile(anpath.AnselusPath(), filesize)
+		if err != nil {
+			return err
+		}
 		time.Sleep(time.Millisecond * 500)
 	}
 	return nil
@@ -308,6 +311,84 @@ func TestLocalFSProvider_RemoveDirectory(t *testing.T) {
 }
 
 func TestLocalFSProvider_ListFiles(t *testing.T) {
+	err := setupTest()
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_ListFiles: Couldn't reset workspace dir: %s", err.Error())
+	}
+
+	wid := "11111111-1111-1111-1111-111111111111"
+	testPath := "/ " + wid
+	provider := NewLocalProvider()
+
+	// Subtest #1: bad path
+
+	err = provider.MakeDirectory("/var/anselus/" + wid)
+	if err == nil {
+		t.Fatal("TestLocalFSProvider_ListFiles: failed to handle bad path")
+	}
+
+	// Subtest #2: directory doesn't exist
+
+	_, err = provider.ListFiles(testPath, 0)
+	if err == nil {
+		t.Fatalf("TestLocalFSProvider_ListFiles: subtest #2 failed to handle nonexistent dir: %s",
+			err.Error())
+	}
+
+	// Subtest #3: empty directory
+
+	err = provider.MakeDirectory("/ " + wid)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_ListFiles: subtest #3 failed to create test dir: %s",
+			err.Error())
+	}
+	testFiles, err := provider.ListFiles(testPath, 0)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_ListFiles: subtest #3 unexpected error: %s",
+			err.Error())
+	}
+	if len(testFiles) > 0 {
+		t.Fatal("TestLocalFSProvider_ListFiles: subtest #3 failed to handle empty directory")
+	}
+
+	// Subtest #4: actual success
+
+	err = makeTestFiles(testPath, 3)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_ListFiles: subtest #4 unexpected error making test files: %s",
+			err.Error())
+	}
+	testFiles, err = provider.ListFiles(testPath, 0)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_ListFiles: subtest #4 unexpected error listing files: %s",
+			err.Error())
+	}
+	if len(testFiles) != 3 {
+		t.Fatal("TestLocalFSProvider_ListFiles: subtest #4 bad file count")
+	}
+
+	// Subtest #5: path is a file
+
+	_, err = provider.ListFiles(testPath+" "+testFiles[0], 0)
+	if err == nil {
+		t.Fatalf("TestLocalFSProvider_ListFiles: subtest #5 failed to handle path to file: %s",
+			err.Error())
+	}
+
+	// Subtest #6: filtered file listing
+	time.Sleep(time.Second)
+	timeFilter := time.Now().Unix()
+	err = makeTestFiles(testPath, 2)
+
+	testFiles, err = provider.ListFiles(testPath, timeFilter)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_ListFiles: subtest #6 unexpected error listing files: %s",
+			err.Error())
+	}
+	if len(testFiles) != 2 {
+		t.Fatal("TestLocalFSProvider_ListFiles: subtest #6 bad filtered file count")
+	}
+
 }
 
 func TestLocalFSProvider_ListDirectories(t *testing.T) {
