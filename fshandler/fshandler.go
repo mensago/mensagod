@@ -249,10 +249,18 @@ func (lfs *LocalFSProvider) MakeTempFile(wid string) (*os.File, string, error) {
 
 	stat, err := os.Stat(tempDirPath)
 	if err != nil {
-		return nil, "", err
-	}
-	if !stat.Mode().IsDir() {
-		return nil, "", errors.New("destination path is a not directory")
+		if os.IsNotExist(err) {
+			err = os.MkdirAll(tempDirPath, 0600)
+			if err != nil {
+				return nil, "", err
+			}
+		} else {
+			return nil, "", err
+		}
+	} else {
+		if !stat.Mode().IsDir() {
+			return nil, "", errors.New("destination path is a not directory")
+		}
 	}
 
 	tempFileName := ""
@@ -268,7 +276,7 @@ func (lfs *LocalFSProvider) MakeTempFile(wid string) (*os.File, string, error) {
 		}
 	}
 
-	handle, err := os.OpenFile(tempFilePath, os.O_RDWR, 0600)
+	handle, err := os.Create(tempFilePath)
 	if err != nil {
 		logging.Writef("Couldn't save temp file %s: %s", tempFilePath, err.Error())
 		return nil, "", err

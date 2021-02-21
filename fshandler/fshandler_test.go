@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -472,6 +473,46 @@ func TestLocalFSProvider_ListDirectories(t *testing.T) {
 }
 
 func TestLocalFSProvider_MakeTempFile(t *testing.T) {
+	err := setupTest()
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_MakeTempFile: Couldn't reset workspace dir: %s",
+			err.Error())
+	}
+
+	wid := "11111111-1111-1111-1111-111111111111"
+	provider := NewLocalProvider()
+
+	// Subtest #1: bad WID
+
+	_, _, err = provider.MakeTempFile("not a wid")
+	if err == nil {
+		t.Fatal("TestLocalFSProvider_MakeTempFile: failed to handle bad wid")
+	}
+
+	// Subtest #2: actual success
+
+	handle, name, err := provider.MakeTempFile(wid)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_MakeTempFile: unexpected error making temp file : %s",
+			err.Error())
+	}
+	defer handle.Close()
+
+	pattern := regexp.MustCompile(
+		"^[0-9]+\\." +
+			"[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$")
+	if !pattern.MatchString(name) {
+		t.Fatal("TestLocalFSProvider_MakeTempFile: bad temp file name format")
+	}
+	if handle == nil {
+		t.Fatal("TestLocalFSProvider_MakeTempFile: null temp file handle")
+	}
+
+	_, err = handle.Write([]byte("This is some text"))
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_MakeTempFile: unexpected error writing to temp file : %s",
+			err.Error())
+	}
 }
 
 func TestLocalFSProvider_InstallTempFile(t *testing.T) {
