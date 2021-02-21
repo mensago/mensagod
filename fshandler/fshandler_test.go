@@ -14,6 +14,7 @@ import (
 
 	"github.com/darkwyrm/anselusd/config"
 	"github.com/google/uuid"
+	"github.com/spf13/viper"
 )
 
 // setupTest initializes the global config and resets the workspace directory
@@ -513,9 +514,63 @@ func TestLocalFSProvider_MakeTempFile(t *testing.T) {
 		t.Fatalf("TestLocalFSProvider_MakeTempFile: unexpected error writing to temp file : %s",
 			err.Error())
 	}
+
+	expectedPath := filepath.Join(viper.GetString("global.workspace_dir"), "tmp", wid, name)
+	_, err = os.Stat(expectedPath)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_MakeTempFile: failed to stat temp file: %s",
+			err.Error())
+	}
 }
 
 func TestLocalFSProvider_InstallTempFile(t *testing.T) {
+	err := setupTest()
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_InstallTempFile: Couldn't reset workspace dir: %s",
+			err.Error())
+	}
+
+	wid := "11111111-1111-1111-1111-111111111111"
+	provider := NewLocalProvider()
+
+	// Subtest #2: destination doesn't exist
+
+	handle, name, err := provider.MakeTempFile(wid)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_InstallTempFile: subtest #1 unexpected error making "+
+			"temp file : %s", err.Error())
+	}
+
+	_, err = handle.Write([]byte("This is some text"))
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_InstallTempFile: subtest #1 unexpected error writing "+
+			"to temp file : %s", err.Error())
+	}
+	handle.Close()
+
+	destPath := "/ " + wid
+
+	_, err = provider.InstallTempFile(wid, name, destPath)
+	if err == nil {
+		t.Fatal("TestLocalFSProvider_InstallTempFile: subtest #2 failed to handle missing " +
+			"destination")
+	}
+
+	// Subtest #3: actual success
+	err = provider.MakeDirectory(destPath)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_InstallTempFile: subtest #3 unexpected error creating "+
+			"destination directory : %s", err.Error())
+	}
+	newName, err := provider.InstallTempFile(wid, name, destPath)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_InstallTempFile: subtest #3 unexpected error installing "+
+			"temp file : %s", err.Error())
+	}
+
+	if !ValidateFileName(newName) {
+		t.Fatal("TestLocalFSProvider_InstallTempFile: subtest #3 bad format for temp file new name")
+	}
 }
 
 func TestLocalFSProvider_MoveFile(t *testing.T) {

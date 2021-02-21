@@ -245,7 +245,7 @@ func (lfs *LocalFSProvider) MakeTempFile(wid string) (*os.File, string, error) {
 		return nil, "", errors.New("bad workspace id")
 	}
 
-	tempDirPath := filepath.Join(viper.GetString("global.workspace_dir"), "tmp")
+	tempDirPath := filepath.Join(viper.GetString("global.workspace_dir"), "tmp", wid)
 
 	stat, err := os.Stat(tempDirPath)
 	if err != nil {
@@ -292,7 +292,10 @@ func (lfs *LocalFSProvider) InstallTempFile(wid string, name string, dest string
 		return "", errors.New("bad workspace id")
 	}
 
-	if !ValidateFileName(name) {
+	pattern = regexp.MustCompile(
+		"^[0-9]+\\." +
+			"[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$")
+	if !pattern.MatchString(name) {
 		return "", errors.New("bad tempfile name")
 	}
 
@@ -329,7 +332,7 @@ func (lfs *LocalFSProvider) InstallTempFile(wid string, name string, dest string
 		return "", err
 	}
 
-	return destAnpath.AnselusPath() + " " + newname, nil
+	return newname, nil
 }
 
 // MoveFile moves the specified file to the specified directory. Note that dest MUST point to
