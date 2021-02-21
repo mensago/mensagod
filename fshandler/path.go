@@ -88,6 +88,12 @@ func (ap *LocalAnPath) AnselusPath() string {
 
 // ValidateAnselusPath confirms the validity of an Anselus path
 func ValidateAnselusPath(path string) bool {
+
+	// Just a slash is also valid -- refers to the workspace root directory
+	if path == "/" {
+		return true
+	}
+
 	pattern := regexp.MustCompile(
 		"^/( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*$")
 	return pattern.MatchString(path)
