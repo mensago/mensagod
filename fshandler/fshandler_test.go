@@ -602,8 +602,7 @@ func TestLocalFSProvider_MoveFile(t *testing.T) {
 		GenerateFileName(1000)}, " ")
 	err = provider.MoveFile(sourcePath, sourcePath)
 	if err == nil {
-		t.Fatalf("TestLocalFSProvider_MoveFile: subtest #1 failed to handle bad path: %s",
-			err.Error())
+		t.Fatalf("TestLocalFSProvider_MoveFile: subtest #1 failed to handle bad path")
 	}
 
 	// Subtest #2: Missing source file
@@ -611,8 +610,7 @@ func TestLocalFSProvider_MoveFile(t *testing.T) {
 	sourcePath = strings.Join([]string{"/", wid, srcDirName, GenerateFileName(1000)}, " ")
 	err = provider.MoveFile(sourcePath, sourcePath)
 	if err == nil {
-		t.Fatalf("TestLocalFSProvider_MoveFile: subtest #2 failed to handle missing file: %s",
-			err.Error())
+		t.Fatalf("TestLocalFSProvider_MoveFile: subtest #2 failed to handle missing file")
 	}
 
 	// Subtest #3: Missing destination
@@ -631,8 +629,7 @@ func TestLocalFSProvider_MoveFile(t *testing.T) {
 	destPath := strings.Join([]string{"/", wid, "12345678-1234-1234-1234-1234567890ab"}, " ")
 	err = provider.MoveFile(sourcePath, destPath)
 	if err == nil {
-		t.Fatalf("TestLocalFSProvider_MoveFile: subtest #3 failed to handle missing destination: %s",
-			err.Error())
+		t.Fatalf("TestLocalFSProvider_MoveFile: subtest #3 failed to handle missing destination")
 	}
 
 	// Subtest #4: Actual success
@@ -666,12 +663,79 @@ func TestLocalFSProvider_MoveFile(t *testing.T) {
 	destPath = strings.Join([]string{"/", wid, destDirName}, " ")
 	err = provider.MoveFile(sourcePath, destPath)
 	if err == nil {
-		t.Fatalf("TestLocalFSProvider_MoveFile: subtest #5 failed to handle existing file "+
-			"in destination: %s", err.Error())
+		t.Fatalf("TestLocalFSProvider_MoveFile: subtest #5 failed to handle existing file " +
+			"in destination")
 	}
+
 }
 
 func TestLocalFSProvider_CopyFile(t *testing.T) {
+	err := setupTest()
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_CopyFile: Couldn't reset workspace dir: %s",
+			err.Error())
+	}
+
+	wid := "11111111-1111-1111-1111-111111111111"
+	srcDirName := "10000000-0000-0000-0000-000000000001"
+	destDirName := "20000000-0000-0000-0000-000000000002"
+	provider := NewLocalProvider()
+
+	err = provider.MakeDirectory("/ " + wid + " " + srcDirName)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_CopyFile: Couldn't create source directory: %s",
+			err.Error())
+	}
+	err = provider.MakeDirectory("/ " + wid + " " + destDirName)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_CopyFile: Couldn't create destination directory: %s",
+			err.Error())
+	}
+
+	// Subtest #1: Bad path
+
+	sourcePath := strings.Join([]string{"/", wid, "12345678-1234-1234-1234-1234567890ab",
+		GenerateFileName(1000)}, " ")
+	_, err = provider.CopyFile(sourcePath, sourcePath)
+	if err == nil {
+		t.Fatalf("TestLocalFSProvider_CopyFile: subtest #1 failed to handle bad path")
+	}
+
+	// Subtest #2: Missing source file
+
+	sourcePath = strings.Join([]string{"/", wid, srcDirName, GenerateFileName(1000)}, " ")
+	_, err = provider.CopyFile(sourcePath, sourcePath)
+	if err == nil {
+		t.Fatalf("TestLocalFSProvider_CopyFile: subtest #2 failed to handle missing file")
+	}
+
+	// Subtest #3: Missing destination
+
+	tempHandle, tempName, err := provider.MakeTempFile(wid)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_CopyFile: unexpected error making temp file for subtest #3: %s",
+			err.Error())
+	}
+	tempHandle.Close()
+
+	tempName, err = provider.InstallTempFile(wid, tempName,
+		strings.Join([]string{"/", wid, srcDirName}, " "))
+
+	sourcePath = strings.Join([]string{"/", wid, srcDirName, tempName}, " ")
+	destPath := strings.Join([]string{"/", wid, "12345678-1234-1234-1234-1234567890ab"}, " ")
+	_, err = provider.CopyFile(sourcePath, destPath)
+	if err == nil {
+		t.Fatalf("TestLocalFSProvider_CopyFile: subtest #3 failed to handle missing destination")
+	}
+
+	// Subtest #4: Actual success
+
+	destPath = strings.Join([]string{"/", wid, destDirName}, " ")
+	_, err = provider.CopyFile(sourcePath, destPath)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_CopyFile: subtest #4 failed to move file: %s",
+			err.Error())
+	}
 }
 
 func TestLocalFSProvider_DeleteFile(t *testing.T) {
