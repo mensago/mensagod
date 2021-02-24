@@ -369,7 +369,8 @@ func (lfs *LocalFSProvider) MoveFile(source string, dest string) error {
 	}
 
 	newPath := filepath.Join(destAnpath.ProviderPath(), filepath.Base(srcAnpath.ProviderPath()))
-	_, err = os.Stat(srcAnpath.ProviderPath())
+	fmt.Println(newPath)
+	_, err = os.Stat(newPath)
 	if err == nil {
 		return errors.New("source exists in destination path")
 	}
