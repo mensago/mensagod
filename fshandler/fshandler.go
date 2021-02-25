@@ -451,9 +451,6 @@ func (lfs *LocalFSProvider) DeleteFile(path string) error {
 
 	_, err = os.Stat(anpath.ProviderPath())
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
 		return err
 	}
 
