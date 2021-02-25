@@ -666,7 +666,6 @@ func TestLocalFSProvider_MoveFile(t *testing.T) {
 		t.Fatalf("TestLocalFSProvider_MoveFile: subtest #5 failed to handle existing file " +
 			"in destination")
 	}
-
 }
 
 func TestLocalFSProvider_CopyFile(t *testing.T) {
@@ -739,6 +738,53 @@ func TestLocalFSProvider_CopyFile(t *testing.T) {
 }
 
 func TestLocalFSProvider_DeleteFile(t *testing.T) {
+	err := setupTest()
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_MoveFile: Couldn't reset workspace dir: %s",
+			err.Error())
+	}
+
+	wid := "11111111-1111-1111-1111-111111111111"
+	provider := NewLocalProvider()
+
+	// Subtest #1: Bad path
+
+	filePath := strings.Join([]string{"/", wid, "12345678-1234-1234-1234-1234567890ab",
+		GenerateFileName(1000)}, " ")
+	err = provider.DeleteFile(filePath)
+	if err == nil {
+		t.Fatalf("TestLocalFSProvider_DeleteFile: subtest #1 failed to handle bad path")
+	}
+
+	// Subtest #2: File doesn't exist
+
+	filePath = strings.Join([]string{"/", wid, GenerateFileName(1000)}, " ")
+	err = provider.DeleteFile(filePath)
+	if err == nil {
+		t.Fatalf("TestLocalFSProvider_DeleteFile: subtest #2 failed to handle nonexistent file")
+	}
+
+	// Subtest #3: Actual success
+
+	tempHandle, tempName, err := provider.MakeTempFile(wid)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_DeleteFile: unexpected error making temp file for "+
+			"subtest #3: %s", err.Error())
+	}
+	tempHandle.Close()
+
+	tempName, err = provider.InstallTempFile(wid, tempName, "/ "+wid)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_DeleteFile: subtest #3 failed to install temp file: %s",
+			err.Error())
+	}
+
+	filePath = strings.Join([]string{"/", wid, tempName}, " ")
+	err = provider.DeleteFile(filePath)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_DeleteFile: subtest #3 failed to delete file: %s",
+			err.Error())
+	}
 }
 
 func TestLocalFSProvider_OpenFile(t *testing.T) {
