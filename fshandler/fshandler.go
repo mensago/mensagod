@@ -478,7 +478,7 @@ func (lfs *LocalFSProvider) OpenFile(path string) (string, error) {
 	providerHandle.Handle = handle
 	lfs.Files[path] = providerHandle
 
-	return anpath.ProviderPath(), errors.New("unimplemented")
+	return anpath.AnselusPath(), nil
 }
 
 // ReadFile reads data from a file opened with OpenFile. If the Read() call encounters the end of
@@ -494,6 +494,7 @@ func (lfs *LocalFSProvider) ReadFile(handle string, buffer []byte) (int, error) 
 	bytesRead, err := lfsh.Handle.Read(buffer)
 	if err == io.EOF {
 		lfsh.Handle.Close()
+		delete(lfs.Files, handle)
 	}
 	return bytesRead, err
 }

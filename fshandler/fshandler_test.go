@@ -2,7 +2,7 @@ package fshandler
 
 import (
 	"errors"
-	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -91,7 +91,6 @@ func generateRandomFile(dir string, size int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Printf("Wrote file %s\n", filename)
 
 	return filename, nil
 }
@@ -740,7 +739,7 @@ func TestLocalFSProvider_CopyFile(t *testing.T) {
 func TestLocalFSProvider_DeleteFile(t *testing.T) {
 	err := setupTest()
 	if err != nil {
-		t.Fatalf("TestLocalFSProvider_MoveFile: Couldn't reset workspace dir: %s",
+		t.Fatalf("TestLocalFSProvider_DeleteFile: Couldn't reset workspace dir: %s",
 			err.Error())
 	}
 
@@ -788,10 +787,69 @@ func TestLocalFSProvider_DeleteFile(t *testing.T) {
 	}
 }
 
-func TestLocalFSProvider_OpenFile(t *testing.T) {
-}
+func TestLocalFSProvider_OpenReadFile(t *testing.T) {
+	err := setupTest()
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_OpenReadFile: Couldn't reset workspace dir: %s",
+			err.Error())
+	}
 
-func TestLocalFSProvider_ReadFile(t *testing.T) {
+	wid := "11111111-1111-1111-1111-111111111111"
+	provider := NewLocalProvider()
+
+	// Subtest #1: Bad path
+
+	filePath := strings.Join([]string{"/", wid, "12345678-1234-1234-1234-1234567890ab",
+		GenerateFileName(1000)}, " ")
+	_, err = provider.OpenFile(filePath)
+	if err == nil {
+		t.Fatalf("TestLocalFSProvider_OpenReadFile: subtest #1 failed to handle bad path")
+	}
+
+	// Subtest #2: File doesn't exist
+
+	filePath = strings.Join([]string{"/", wid, GenerateFileName(1000)}, " ")
+	_, err = provider.OpenFile(filePath)
+	if err == nil {
+		t.Fatalf("TestLocalFSProvider_OpenReadFile: subtest #2 failed to handle nonexistent file")
+	}
+
+	// Subtest #3: Actual success and read to EOF
+
+	provider.MakeDirectory("/ " + wid)
+	tempName, err := generateRandomFile("/ "+wid, 10240)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_OpenReadFile: subtest #3 failed to create temp file: %s",
+			err.Error())
+	}
+
+	filePath = strings.Join([]string{"/", wid, tempName}, " ")
+	handle, err := provider.OpenFile(filePath)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_OpenReadFile: subtest #3 failed to open file: %s",
+			err.Error())
+	}
+
+	buffer := make([]byte, 1000)
+	bytesRead, err := provider.ReadFile(handle, buffer)
+	if bytesRead != 1000 || err != nil {
+		t.Fatalf("TestLocalFSProvider_OpenReadFile: subtest #3 first read failed: %v bytes read",
+			bytesRead)
+	}
+	for bytesRead > 0 {
+		bytesRead, err = provider.ReadFile(handle, buffer)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.Fatalf("TestLocalFSProvider_OpenReadFile: subtest #3 loop read failed: %v bytes read",
+				bytesRead)
+		}
+	}
+	_, exists := provider.Files[handle]
+	if exists {
+		t.Fatal("TestLocalFSProvider_OpenReadFile: subtest #3 handle still exists after close")
+	}
 }
 
 func TestLocalFSProvider_CloseFile(t *testing.T) {
