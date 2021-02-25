@@ -507,6 +507,7 @@ func (lfs *LocalFSProvider) CloseFile(handle string) error {
 		return os.ErrNotExist
 	}
 	lfsh.Handle.Close()
+	delete(lfs.Files, handle)
 	return nil
 }
 

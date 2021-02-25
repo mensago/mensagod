@@ -853,4 +853,48 @@ func TestLocalFSProvider_OpenReadFile(t *testing.T) {
 }
 
 func TestLocalFSProvider_CloseFile(t *testing.T) {
+	err := setupTest()
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_CloseFile: Couldn't reset workspace dir: %s",
+			err.Error())
+	}
+
+	wid := "11111111-1111-1111-1111-111111111111"
+	provider := NewLocalProvider()
+
+	// Subtest #1: File not open
+
+	filePath := strings.Join([]string{"/", wid, "12345678-1234-1234-1234-1234567890ab",
+		GenerateFileName(1000)}, " ")
+	_, err = provider.OpenFile(filePath)
+	if err == nil {
+		t.Fatalf("TestLocalFSProvider_CloseFile: subtest #1 failed to handle missing handle")
+	}
+
+	// Subtest #2: Actual success
+
+	provider.MakeDirectory("/ " + wid)
+	tempName, err := generateRandomFile("/ "+wid, 10240)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_CloseFile: subtest #2 failed to create temp file: %s",
+			err.Error())
+	}
+
+	filePath = strings.Join([]string{"/", wid, tempName}, " ")
+	handle, err := provider.OpenFile(filePath)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_CloseFile: subtest #2 failed to open file: %s",
+			err.Error())
+	}
+
+	err = provider.CloseFile(handle)
+	if err != nil {
+		t.Fatalf("TestLocalFSProvider_CloseFile: subtest #2 failed to close file: %s",
+			err.Error())
+	}
+
+	_, exists := provider.Files[handle]
+	if exists {
+		t.Fatal("TestLocalFSProvider_CloseFile: subtest #2 handle still exists after close")
+	}
 }
