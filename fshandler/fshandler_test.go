@@ -773,6 +773,7 @@ func TestLocalFSProvider_DeleteFile(t *testing.T) {
 	}
 	tempHandle.Close()
 
+	provider.MakeDirectory("/ " + wid)
 	tempName, err = provider.InstallTempFile(wid, tempName, "/ "+wid)
 	if err != nil {
 		t.Fatalf("TestLocalFSProvider_DeleteFile: subtest #3 failed to install temp file: %s",
