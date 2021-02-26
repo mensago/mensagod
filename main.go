@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -285,35 +284,6 @@ func commandCancel(session *sessionState) {
 		session.LoginState = loginNoSession
 	}
 	session.SendStringResponse(200, "OK", "")
-}
-
-func commandExists(session *sessionState) {
-	// Command syntax:
-	// EXISTS(Path)
-
-	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
-		return
-	}
-
-	if !session.Message.HasField("Path") {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
-		return
-	}
-
-	fsPath := filepath.Join(viper.GetString("global.workspace_dir"), session.WID,
-		session.Message.Data["Path"])
-	_, err := os.Stat(fsPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			session.SendStringResponse(404, "NOT FOUND", "")
-		} else {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-			logging.Writef("commandExists: Filesystem error %s", err.Error())
-		}
-	} else {
-		session.SendStringResponse(200, "OK", "")
-	}
 }
 
 func commandSetStatus(session *sessionState) {
