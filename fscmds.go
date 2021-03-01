@@ -104,14 +104,6 @@ func commandExists(session *sessionState) {
 	}
 }
 
-func commandInstallTemp(session *sessionState) {
-	// Command syntax:
-	// INSTALLTEMP(Name, Path)
-
-	// TODO: Add to client-server spec
-	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
-}
-
 func commandList(session *sessionState) {
 	// Command syntax:
 	// LIST(Time=0)
@@ -129,14 +121,6 @@ func commandListDirs(session *sessionState) {
 func commandMkDir(session *sessionState) {
 	// Command syntax:
 	// MKDIR(Path)
-	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
-}
-
-func commandMkTemp(session *sessionState) {
-	// Command syntax:
-	// MKTEMP(Path)
-
-	// TODO: Add to client-server spec
 	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
 }
 
