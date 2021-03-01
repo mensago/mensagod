@@ -4,9 +4,26 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/darkwyrm/anselusd/fshandler"
 	"github.com/darkwyrm/anselusd/logging"
 	"github.com/spf13/viper"
 )
+
+func handleFSError(session *sessionState, err error) {
+	if os.IsNotExist(err) {
+		session.SendStringResponse(404, "NOT FOUND", "")
+		return
+	}
+	if os.IsExist(err) {
+		session.SendStringResponse(408, "RESOURCE EXISTS", "")
+		return
+	}
+	if os.IsPermission(err) {
+		session.SendStringResponse(403, "FORBIDDEN", "")
+		return
+	}
+	session.SendStringResponse(400, "BAD REQUEST", err.Error())
+}
 
 func commandCopy(session *sessionState) {
 	// Command syntax:
@@ -22,7 +39,34 @@ func commandCopy(session *sessionState) {
 		return
 	}
 
-	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
+	fsh := fshandler.GetFSHandler()
+	exists, err := fsh.Exists(session.Message.Data["Source"])
+	if err != nil {
+		handleFSError(session, err)
+		return
+	}
+	if !exists {
+		session.SendStringResponse(404, "NOT FOUND", "Source does not exist")
+	}
+
+	exists, err = fsh.Exists(session.Message.Data["DestDir"])
+	if err != nil {
+		handleFSError(session, err)
+		return
+	}
+	if !exists {
+		session.SendStringResponse(404, "NOT FOUND", "Destination does not exist")
+	}
+
+	newName, err := fsh.CopyFile(session.Message.Data["Source"], session.Message.Data["DestDir"])
+	if err != nil {
+		handleFSError(session, err)
+		return
+	}
+
+	response := NewServerResponse(200, "OK")
+	response.Data["NewName"] = newName
+	session.SendResponse(*response)
 }
 
 func commandDelete(session *sessionState) {
