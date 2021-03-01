@@ -32,11 +32,6 @@ type LocalFSHandle struct {
 	Handle *os.File
 }
 
-// ProviderName returns the name of the filesystem provider
-func (lfs *LocalFSHandler) ProviderName() string {
-	return "LocalFS"
-}
-
 // GetFSHandler returns a new filesystem provider which interacts with the local filesystem.
 // It obtains the necessary information about the local filesystem directly from the server
 // configuration data.
@@ -63,13 +58,6 @@ func GetFSHandler() *LocalFSHandler {
 	}
 
 	return localProviderInstance
-}
-
-// ProviderType returns the type of the filesystem handled by the provider. Currently the only
-// values returned by this are either 'local' or 'cloud'. More detail can be provided by adding
-// a subtype following a period, such as 'cloud.azure' or 'cloud.b2'.
-func (lfs *LocalFSHandler) ProviderType() string {
-	return "local"
 }
 
 // Exists checks to see if the specified path exists
