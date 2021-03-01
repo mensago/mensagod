@@ -114,14 +114,30 @@ func commandListDirs(session *sessionState) {
 	// Command syntax:
 	// LISTDIRS()
 
-	// TODO: Add to client-server spec
 	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
 }
 
 func commandMkDir(session *sessionState) {
 	// Command syntax:
 	// MKDIR(Path)
-	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
+	if session.LoginState != loginClientSession {
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		return
+	}
+
+	if session.Message.Validate([]string{"Path"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	fsh := fshandler.GetFSHandler()
+	err := fsh.MakeDirectory(session.Message.Data["Path"])
+	if err != nil {
+		handleFSError(session, err)
+		return
+	}
+
+	session.SendStringResponse(200, "OK", "")
 }
 
 func commandMove(session *sessionState) {
@@ -132,8 +148,7 @@ func commandMove(session *sessionState) {
 
 func commandRmDir(session *sessionState) {
 	// Command syntax:
-	// RMDIR(Path)
+	// RMDIR(Path, Recursive)
 
-	// TODO: Add to client-server spec
 	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
 }
