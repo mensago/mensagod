@@ -16,40 +16,15 @@ import (
 	"github.com/spf13/viper"
 )
 
-// This module is for abstracting away all the messy details of interacting with the filesystem
-
-// FSProvider objects have a standardized interface for interacting with a filesystem so that
-// working with a BackBlaze B2 bucket is just as easy as the local filesystem
-type FSProvider interface {
-	ProviderName() string
-	ProviderType() string
-
-	Exists(path string) error
-	MakeDirectory(path string) error
-	RemoveDirectory(path string, recursive bool) error
-	ListFiles(path string, afterTime int64) ([]string, error)
-	ListDirectories(path string) ([]string, error)
-
-	MakeTempFile(wid string) (*os.File, error)
-	InstallTempFile(source *os.File, dest string) error
-
-	MoveFile(source string, dest string) error
-	CopyFile(source string, dest string) (string, error)
-	DeleteFile(path string) error
-	OpenFile(path string) (string, error)
-	ReadFile(handle string, buffer []byte) (int, error)
-	CloseFile(handle string) error
-}
-
-// LocalFSProvider represents local storage on the server
-type LocalFSProvider struct {
+// LocalFSHandler represents local storage on the server
+type LocalFSHandler struct {
 	BasePath      string
 	PathSeparator string
 	Files         map[string]LocalFSHandle
 }
 
 var providerLock = &sync.Mutex{}
-var localProviderInstance *LocalFSProvider
+var localProviderInstance *LocalFSHandler
 
 // LocalFSHandle represents an open file and provides Open(), Read(), and Close() methods
 type LocalFSHandle struct {
@@ -58,20 +33,20 @@ type LocalFSHandle struct {
 }
 
 // ProviderName returns the name of the filesystem provider
-func (lfs *LocalFSProvider) ProviderName() string {
+func (lfs *LocalFSHandler) ProviderName() string {
 	return "LocalFS"
 }
 
-// GetLocalProvider returns a new filesystem provider which interacts with the local filesystem.
+// GetFSHandler returns a new filesystem provider which interacts with the local filesystem.
 // It obtains the necessary information about the local filesystem directly from the server
 // configuration data.
-func GetLocalProvider() *LocalFSProvider {
+func GetFSHandler() *LocalFSHandler {
 	if localProviderInstance == nil {
 		providerLock.Lock()
 		defer providerLock.Unlock()
 
 		if localProviderInstance == nil {
-			var provider LocalFSProvider
+			var provider LocalFSHandler
 
 			provider.BasePath = viper.GetString("global.workspace_dir")
 
@@ -93,12 +68,12 @@ func GetLocalProvider() *LocalFSProvider {
 // ProviderType returns the type of the filesystem handled by the provider. Currently the only
 // values returned by this are either 'local' or 'cloud'. More detail can be provided by adding
 // a subtype following a period, such as 'cloud.azure' or 'cloud.b2'.
-func (lfs *LocalFSProvider) ProviderType() string {
+func (lfs *LocalFSHandler) ProviderType() string {
 	return "local"
 }
 
 // Exists checks to see if the specified path exists
-func (lfs *LocalFSProvider) Exists(path string) (bool, error) {
+func (lfs *LocalFSHandler) Exists(path string) (bool, error) {
 
 	// Path validation handled in Set()
 	var anpath LocalAnPath
@@ -119,7 +94,7 @@ func (lfs *LocalFSProvider) Exists(path string) (bool, error) {
 }
 
 // MakeDirectory creates a directory in the local filesystem relative to the workspace folder
-func (lfs *LocalFSProvider) MakeDirectory(path string) error {
+func (lfs *LocalFSHandler) MakeDirectory(path string) error {
 
 	// Path validation handled in FromPath()
 	var anpath LocalAnPath
@@ -137,7 +112,7 @@ func (lfs *LocalFSProvider) MakeDirectory(path string) error {
 }
 
 // RemoveDirectory creates a directory in the local filesystem relative to the workspace folder
-func (lfs *LocalFSProvider) RemoveDirectory(path string, recursive bool) error {
+func (lfs *LocalFSHandler) RemoveDirectory(path string, recursive bool) error {
 
 	// Path validation handled in FromPath()
 	var anpath LocalAnPath
@@ -162,7 +137,7 @@ func (lfs *LocalFSProvider) RemoveDirectory(path string, recursive bool) error {
 
 // ListFiles returns all files in the specified path after the specified time. Note that the time
 // is in UNIX time, i.e. seconds since the epoch. To return all files, pass a 0.
-func (lfs *LocalFSProvider) ListFiles(path string, afterTime int64) ([]string, error) {
+func (lfs *LocalFSHandler) ListFiles(path string, afterTime int64) ([]string, error) {
 	// Path validation handled in FromPath()
 	var anpath LocalAnPath
 	err := anpath.Set(path)
@@ -206,7 +181,7 @@ func (lfs *LocalFSProvider) ListFiles(path string, afterTime int64) ([]string, e
 }
 
 // ListDirectories returns the names of all subdirectories of the specified path
-func (lfs *LocalFSProvider) ListDirectories(path string) ([]string, error) {
+func (lfs *LocalFSHandler) ListDirectories(path string) ([]string, error) {
 	// Path validation handled in FromPath()
 	var anpath LocalAnPath
 	err := anpath.Set(path)
@@ -250,7 +225,7 @@ func (lfs *LocalFSProvider) ListDirectories(path string) ([]string, error) {
 
 // MakeTempFile creates a file in the temporary file area and returns a handle to it. The caller is
 // responsible for closing the handle when finished.
-func (lfs *LocalFSProvider) MakeTempFile(wid string) (*os.File, string, error) {
+func (lfs *LocalFSHandler) MakeTempFile(wid string) (*os.File, string, error) {
 
 	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
 	if (len(wid) != 36 && len(wid) != 32) || !pattern.MatchString(wid) {
@@ -298,7 +273,7 @@ func (lfs *LocalFSProvider) MakeTempFile(wid string) (*os.File, string, error) {
 }
 
 // InstallTempFile moves a file from the temporary file area to its location in a workspace
-func (lfs *LocalFSProvider) InstallTempFile(wid string, name string, dest string) (string, error) {
+func (lfs *LocalFSHandler) InstallTempFile(wid string, name string, dest string) (string, error) {
 	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
 	if (len(wid) != 36 && len(wid) != 32) || !pattern.MatchString(wid) {
 		return "", errors.New("bad workspace id")
@@ -349,7 +324,7 @@ func (lfs *LocalFSProvider) InstallTempFile(wid string, name string, dest string
 
 // MoveFile moves the specified file to the specified directory. Note that dest MUST point to
 // a directory.
-func (lfs *LocalFSProvider) MoveFile(source string, dest string) error {
+func (lfs *LocalFSHandler) MoveFile(source string, dest string) error {
 	// Path validation handled in FromPath()
 	var srcAnpath LocalAnPath
 	err := srcAnpath.Set(source)
@@ -392,7 +367,7 @@ func (lfs *LocalFSProvider) MoveFile(source string, dest string) error {
 
 // CopyFile creates a duplicate of the specified source file in the specified destination folder
 // and returns the name of the new file
-func (lfs *LocalFSProvider) CopyFile(source string, dest string) (string, error) {
+func (lfs *LocalFSHandler) CopyFile(source string, dest string) (string, error) {
 	// Path validation handled in FromPath()
 	var srcAnpath LocalAnPath
 	err := srcAnpath.Set(source)
@@ -453,7 +428,7 @@ func (lfs *LocalFSProvider) CopyFile(source string, dest string) (string, error)
 
 // DeleteFile deletes the specified workspace file. If the file does not exist, this function will
 // not return an error.
-func (lfs *LocalFSProvider) DeleteFile(path string) error {
+func (lfs *LocalFSHandler) DeleteFile(path string) error {
 	// Path validation handled in Set()
 	var anpath LocalAnPath
 	err := anpath.Set(path)
@@ -472,7 +447,7 @@ func (lfs *LocalFSProvider) DeleteFile(path string) error {
 // OpenFile opens the specified file for reading data and returns a file handle as a string. The
 // contents of the handle are specific to the provider and should not be expected to follow any
 // particular format
-func (lfs *LocalFSProvider) OpenFile(path string) (string, error) {
+func (lfs *LocalFSHandler) OpenFile(path string) (string, error) {
 	// Path validation handled in Set()
 	var anpath LocalAnPath
 	err := anpath.Set(path)
@@ -496,7 +471,7 @@ func (lfs *LocalFSProvider) OpenFile(path string) (string, error) {
 // ReadFile reads data from a file opened with OpenFile. If the Read() call encounters the end of
 // the file, less data than specified will be returned and the file handle will automatically be
 // closed.
-func (lfs *LocalFSProvider) ReadFile(handle string, buffer []byte) (int, error) {
+func (lfs *LocalFSHandler) ReadFile(handle string, buffer []byte) (int, error) {
 
 	lfsh, exists := lfs.Files[handle]
 	if !exists {
@@ -513,7 +488,7 @@ func (lfs *LocalFSProvider) ReadFile(handle string, buffer []byte) (int, error) 
 
 // CloseFile closes the specified file handle. It is not normally needed unless Read() returns an
 // error or the caller must abort reading the file.
-func (lfs *LocalFSProvider) CloseFile(handle string) error {
+func (lfs *LocalFSHandler) CloseFile(handle string) error {
 	lfsh, exists := lfs.Files[handle]
 	if !exists {
 		return os.ErrNotExist
