@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/darkwyrm/anselusd/logging"
 	"github.com/spf13/viper"
@@ -47,6 +48,9 @@ type LocalFSProvider struct {
 	Files         map[string]LocalFSHandle
 }
 
+var providerLock = &sync.Mutex{}
+var localProviderInstance *LocalFSProvider
+
 // LocalFSHandle represents an open file and provides Open(), Read(), and Close() methods
 type LocalFSHandle struct {
 	Path   string
@@ -58,24 +62,32 @@ func (lfs *LocalFSProvider) ProviderName() string {
 	return "LocalFS"
 }
 
-// NewLocalProvider returns a new filesystem provider which interacts with the local filesystem.
+// GetLocalProvider returns a new filesystem provider which interacts with the local filesystem.
 // It obtains the necessary information about the local filesystem directly from the server
 // configuration data.
-func NewLocalProvider() *LocalFSProvider {
-	var provider LocalFSProvider
+func GetLocalProvider() *LocalFSProvider {
+	if localProviderInstance == nil {
+		providerLock.Lock()
+		defer providerLock.Unlock()
 
-	provider.BasePath = viper.GetString("global.workspace_dir")
+		if localProviderInstance == nil {
+			var provider LocalFSProvider
 
-	switch runtime.GOOS {
-	case "windows":
-		provider.PathSeparator = "\\"
-	default:
-		provider.PathSeparator = "/"
+			provider.BasePath = viper.GetString("global.workspace_dir")
+
+			switch runtime.GOOS {
+			case "windows":
+				provider.PathSeparator = "\\"
+			default:
+				provider.PathSeparator = "/"
+			}
+
+			provider.Files = make(map[string]LocalFSHandle, 100)
+			localProviderInstance = &provider
+		}
 	}
 
-	provider.Files = make(map[string]LocalFSHandle, 100)
-
-	return &provider
+	return localProviderInstance
 }
 
 // ProviderType returns the type of the filesystem handled by the provider. Currently the only
