@@ -183,16 +183,16 @@ func TestLocalFSHandler_Exists(t *testing.T) {
 		t.Fatalf("TestLocalFSHandler_Exists: Couldn't create wid: %s", err.Error())
 	}
 
-	fshandler := GetFSHandler()
+	fsh := GetFSHandler()
 
 	// Subtest #1: bad path
-	_, err = fshandler.Exists("/var/anselus/" + wid)
+	_, err = fsh.Exists("/var/anselus/" + wid)
 	if err == nil {
 		t.Fatal("TestLocalFSHandler_Exists: failed to handle bad path")
 	}
 
 	// Subtest #2: nonexistent file
-	exists, err := fshandler.Exists(testPath)
+	exists, err := fsh.Exists(testPath)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_Exists: subtest #2 unexpected error: %s", err.Error())
 	}
@@ -207,7 +207,7 @@ func TestLocalFSHandler_Exists(t *testing.T) {
 	}
 
 	testPath = strings.Join([]string{"/", wid, testFile}, " ")
-	exists, err = fshandler.Exists(testPath)
+	exists, err = fsh.Exists(testPath)
 	if !exists {
 		t.Fatal("TestLocalFSHandler_Exists: failed to handle file existence")
 	}
@@ -221,23 +221,23 @@ func TestLocalFSHandler_MakeDirectory(t *testing.T) {
 
 	wid := "11111111-1111-1111-1111-111111111111"
 	wid2 := "22222222-2222-2222-2222-222222222222"
-	fshandler := GetFSHandler()
+	fsh := GetFSHandler()
 
 	// Subtest #1: bad path
-	err = fshandler.MakeDirectory("/var/anselus/" + wid)
+	err = fsh.MakeDirectory("/var/anselus/" + wid)
 	if err == nil {
 		t.Fatal("TestLocalFSHandler_MakeDirectory: failed to handle bad path")
 	}
 
 	// Subtest #2: actual success
-	err = fshandler.MakeDirectory("/ " + wid)
+	err = fsh.MakeDirectory("/ " + wid)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_MakeDirectory: subtest #2 failed to create dir: %s",
 			err.Error())
 	}
 
 	// Subtest #3: directory already exists
-	err = fshandler.MakeDirectory("/ " + wid)
+	err = fsh.MakeDirectory("/ " + wid)
 	if err == nil {
 		t.Fatalf("TestLocalFSHandler_MakeDirectory: subtest #3 failed to handle existing dir: %s",
 			err.Error())
@@ -246,7 +246,7 @@ func TestLocalFSHandler_MakeDirectory(t *testing.T) {
 	// Subtest #4: recursive creation
 
 	testDir := strings.Join([]string{"/", wid, wid2}, " ")
-	err = fshandler.MakeDirectory(testDir)
+	err = fsh.MakeDirectory(testDir)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_MakeDirectory: subtest #4 failed to recursive create dir: %s",
 			err.Error())
@@ -261,18 +261,18 @@ func TestLocalFSHandler_RemoveDirectory(t *testing.T) {
 
 	wid := "11111111-1111-1111-1111-111111111111"
 	wid2 := "22222222-2222-2222-2222-222222222222"
-	fshandler := GetFSHandler()
+	fsh := GetFSHandler()
 
 	// Subtest #1: bad path
 
-	err = fshandler.MakeDirectory("/var/anselus/" + wid)
+	err = fsh.MakeDirectory("/var/anselus/" + wid)
 	if err == nil {
 		t.Fatal("TestLocalFSHandler_RemoveDirectory: failed to handle bad path")
 	}
 
 	// Subtest #2: directory doesn't exist
 
-	err = fshandler.RemoveDirectory("/ "+wid, false)
+	err = fsh.RemoveDirectory("/ "+wid, false)
 	if err == nil {
 		t.Fatalf("TestLocalFSHandler_RemoveDirectory: subtest #2 failed to handle nonexistent dir: %s",
 			err.Error())
@@ -280,12 +280,12 @@ func TestLocalFSHandler_RemoveDirectory(t *testing.T) {
 
 	// Subtest #3: actual success
 
-	err = fshandler.MakeDirectory("/ " + wid)
+	err = fsh.MakeDirectory("/ " + wid)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_RemoveDirectory: subtest #3 failed to create dir: %s",
 			err.Error())
 	}
-	err = fshandler.RemoveDirectory("/ "+wid, false)
+	err = fsh.RemoveDirectory("/ "+wid, false)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_RemoveDirectory: subtest #3 failed to remove dir: %s",
 			err.Error())
@@ -294,7 +294,7 @@ func TestLocalFSHandler_RemoveDirectory(t *testing.T) {
 	// Subtest #4: recursive removal
 
 	testDir := strings.Join([]string{"/", wid, wid2}, " ")
-	err = fshandler.MakeDirectory(testDir)
+	err = fsh.MakeDirectory(testDir)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_RemoveDirectory: subtest #4 failed to create dir: %s",
 			err.Error())
@@ -304,7 +304,7 @@ func TestLocalFSHandler_RemoveDirectory(t *testing.T) {
 		t.Fatalf("TestLocalFSHandler_RemoveDirectory: subtest #4 failed to test files: %s",
 			err.Error())
 	}
-	err = fshandler.RemoveDirectory(testDir, true)
+	err = fsh.RemoveDirectory(testDir, true)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_RemoveDirectory: subtest #4 failed to remove dir: %s",
 			err.Error())
@@ -319,18 +319,18 @@ func TestLocalFSHandler_ListFiles(t *testing.T) {
 
 	wid := "11111111-1111-1111-1111-111111111111"
 	testPath := "/ " + wid
-	fshandler := GetFSHandler()
+	fsh := GetFSHandler()
 
 	// Subtest #1: bad path
 
-	err = fshandler.MakeDirectory("/var/anselus/" + wid)
+	err = fsh.MakeDirectory("/var/anselus/" + wid)
 	if err == nil {
 		t.Fatal("TestLocalFSHandler_ListFiles: failed to handle bad path")
 	}
 
 	// Subtest #2: directory doesn't exist
 
-	_, err = fshandler.ListFiles(testPath, 0)
+	_, err = fsh.ListFiles(testPath, 0)
 	if err == nil {
 		t.Fatalf("TestLocalFSHandler_ListFiles: subtest #2 failed to handle nonexistent dir: %s",
 			err.Error())
@@ -338,12 +338,12 @@ func TestLocalFSHandler_ListFiles(t *testing.T) {
 
 	// Subtest #3: empty directory
 
-	err = fshandler.MakeDirectory("/ " + wid)
+	err = fsh.MakeDirectory("/ " + wid)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_ListFiles: subtest #3 failed to create test dir: %s",
 			err.Error())
 	}
-	testFiles, err := fshandler.ListFiles(testPath, 0)
+	testFiles, err := fsh.ListFiles(testPath, 0)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_ListFiles: subtest #3 unexpected error: %s",
 			err.Error())
@@ -359,7 +359,7 @@ func TestLocalFSHandler_ListFiles(t *testing.T) {
 		t.Fatalf("TestLocalFSHandler_ListFiles: subtest #4 unexpected error making test files: %s",
 			err.Error())
 	}
-	testFiles, err = fshandler.ListFiles(testPath, 0)
+	testFiles, err = fsh.ListFiles(testPath, 0)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_ListFiles: subtest #4 unexpected error listing files: %s",
 			err.Error())
@@ -370,7 +370,7 @@ func TestLocalFSHandler_ListFiles(t *testing.T) {
 
 	// Subtest #5: path is a file
 
-	_, err = fshandler.ListFiles(testPath+" "+testFiles[0], 0)
+	_, err = fsh.ListFiles(testPath+" "+testFiles[0], 0)
 	if err == nil {
 		t.Fatalf("TestLocalFSHandler_ListFiles: subtest #5 failed to handle path to file: %s",
 			err.Error())
@@ -381,7 +381,7 @@ func TestLocalFSHandler_ListFiles(t *testing.T) {
 	timeFilter := time.Now().Unix()
 	err = makeTestFiles(testPath, 2)
 
-	testFiles, err = fshandler.ListFiles(testPath, timeFilter)
+	testFiles, err = fsh.ListFiles(testPath, timeFilter)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_ListFiles: subtest #6 unexpected error listing files: %s",
 			err.Error())
@@ -404,18 +404,18 @@ func TestLocalFSHandler_ListDirectories(t *testing.T) {
 		"33333333-3333-3333-3333-333333333333",
 		"44444444-4444-4444-4444-444444444444"}
 	testPath := "/ " + wid
-	fshandler := GetFSHandler()
+	fsh := GetFSHandler()
 
 	// Subtest #1: bad path
 
-	err = fshandler.MakeDirectory("/var/anselus/" + wid)
+	err = fsh.MakeDirectory("/var/anselus/" + wid)
 	if err == nil {
 		t.Fatal("TestLocalFSHandler_ListDirectories: failed to handle bad path")
 	}
 
 	// Subtest #2: directory doesn't exist
 
-	_, err = fshandler.ListDirectories(testPath)
+	_, err = fsh.ListDirectories(testPath)
 	if err == nil {
 		t.Fatalf("TestLocalFSHandler_ListDirectories: subtest #2 failed to handle "+
 			"nonexistent dir: %s", err.Error())
@@ -423,12 +423,12 @@ func TestLocalFSHandler_ListDirectories(t *testing.T) {
 
 	// Subtest #3: empty directory
 
-	err = fshandler.MakeDirectory("/ " + wid)
+	err = fsh.MakeDirectory("/ " + wid)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_ListDirectories: subtest #3 failed to create test dir: %s",
 			err.Error())
 	}
-	testFiles, err := fshandler.ListDirectories(testPath)
+	testFiles, err := fsh.ListDirectories(testPath)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_ListDirectories: subtest #3 unexpected error: %s",
 			err.Error())
@@ -444,7 +444,7 @@ func TestLocalFSHandler_ListDirectories(t *testing.T) {
 		t.Fatalf("TestLocalFSHandler_ListDirectories: subtest #4 unexpected error making "+
 			"test files: %s", err.Error())
 	}
-	testFiles, err = fshandler.ListDirectories(testPath)
+	testFiles, err = fsh.ListDirectories(testPath)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_ListDirectories: subtest #4 unexpected error listing "+
 			"files: %s", err.Error())
@@ -456,13 +456,13 @@ func TestLocalFSHandler_ListDirectories(t *testing.T) {
 	// Subtest #5: actual success
 	for _, subwid := range subwids {
 		subwidPath := strings.Join([]string{"/", wid, subwid}, " ")
-		err = fshandler.MakeDirectory(subwidPath)
+		err = fsh.MakeDirectory(subwidPath)
 		if err != nil {
 			t.Fatalf("TestLocalFSHandler_ListDirectories: subtest #5 unexpected error making "+
 				"test directory %s: %s", subwid, err.Error())
 		}
 	}
-	testFiles, err = fshandler.ListDirectories(testPath)
+	testFiles, err = fsh.ListDirectories(testPath)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_ListDirectories: subtest #5 unexpected error listing "+
 			"files: %s", err.Error())
@@ -480,18 +480,18 @@ func TestLocalFSHandler_MakeTempFile(t *testing.T) {
 	}
 
 	wid := "11111111-1111-1111-1111-111111111111"
-	fshandler := GetFSHandler()
+	fsh := GetFSHandler()
 
 	// Subtest #1: bad WID
 
-	_, _, err = fshandler.MakeTempFile("not a wid")
+	_, _, err = fsh.MakeTempFile("not a wid")
 	if err == nil {
 		t.Fatal("TestLocalFSHandler_MakeTempFile: failed to handle bad wid")
 	}
 
 	// Subtest #2: actual success
 
-	handle, name, err := fshandler.MakeTempFile(wid)
+	handle, name, err := fsh.MakeTempFile(wid)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_MakeTempFile: unexpected error making temp file : %s",
 			err.Error())
@@ -530,11 +530,11 @@ func TestLocalFSHandler_InstallTempFile(t *testing.T) {
 	}
 
 	wid := "11111111-1111-1111-1111-111111111111"
-	fshandler := GetFSHandler()
+	fsh := GetFSHandler()
 
 	// Subtest #2: destination doesn't exist
 
-	handle, name, err := fshandler.MakeTempFile(wid)
+	handle, name, err := fsh.MakeTempFile(wid)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_InstallTempFile: subtest #1 unexpected error making "+
 			"temp file : %s", err.Error())
@@ -549,19 +549,19 @@ func TestLocalFSHandler_InstallTempFile(t *testing.T) {
 
 	destPath := "/ " + wid
 
-	_, err = fshandler.InstallTempFile(wid, name, destPath)
+	_, err = fsh.InstallTempFile(wid, name, destPath)
 	if err == nil {
 		t.Fatal("TestLocalFSHandler_InstallTempFile: subtest #2 failed to handle missing " +
 			"destination")
 	}
 
 	// Subtest #3: actual success
-	err = fshandler.MakeDirectory(destPath)
+	err = fsh.MakeDirectory(destPath)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_InstallTempFile: subtest #3 unexpected error creating "+
 			"destination directory : %s", err.Error())
 	}
-	newName, err := fshandler.InstallTempFile(wid, name, destPath)
+	newName, err := fsh.InstallTempFile(wid, name, destPath)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_InstallTempFile: subtest #3 unexpected error installing "+
 			"temp file : %s", err.Error())
@@ -582,14 +582,14 @@ func TestLocalFSHandler_MoveFile(t *testing.T) {
 	wid := "11111111-1111-1111-1111-111111111111"
 	srcDirName := "10000000-0000-0000-0000-000000000001"
 	destDirName := "20000000-0000-0000-0000-000000000002"
-	fshandler := GetFSHandler()
+	fsh := GetFSHandler()
 
-	err = fshandler.MakeDirectory("/ " + wid + " " + srcDirName)
+	err = fsh.MakeDirectory("/ " + wid + " " + srcDirName)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_MoveFile: Couldn't create source directory: %s",
 			err.Error())
 	}
-	err = fshandler.MakeDirectory("/ " + wid + " " + destDirName)
+	err = fsh.MakeDirectory("/ " + wid + " " + destDirName)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_MoveFile: Couldn't create destination directory: %s",
 			err.Error())
@@ -599,7 +599,7 @@ func TestLocalFSHandler_MoveFile(t *testing.T) {
 
 	sourcePath := strings.Join([]string{"/", wid, "12345678-1234-1234-1234-1234567890ab",
 		GenerateFileName(1000)}, " ")
-	err = fshandler.MoveFile(sourcePath, sourcePath)
+	err = fsh.MoveFile(sourcePath, sourcePath)
 	if err == nil {
 		t.Fatalf("TestLocalFSHandler_MoveFile: subtest #1 failed to handle bad path")
 	}
@@ -607,26 +607,26 @@ func TestLocalFSHandler_MoveFile(t *testing.T) {
 	// Subtest #2: Missing source file
 
 	sourcePath = strings.Join([]string{"/", wid, srcDirName, GenerateFileName(1000)}, " ")
-	err = fshandler.MoveFile(sourcePath, sourcePath)
+	err = fsh.MoveFile(sourcePath, sourcePath)
 	if err == nil {
 		t.Fatalf("TestLocalFSHandler_MoveFile: subtest #2 failed to handle missing file")
 	}
 
 	// Subtest #3: Missing destination
 
-	tempHandle, tempName, err := fshandler.MakeTempFile(wid)
+	tempHandle, tempName, err := fsh.MakeTempFile(wid)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_MoveFile: unexpected error making temp file for subtest #3: %s",
 			err.Error())
 	}
 	tempHandle.Close()
 
-	tempName, err = fshandler.InstallTempFile(wid, tempName,
+	tempName, err = fsh.InstallTempFile(wid, tempName,
 		strings.Join([]string{"/", wid, srcDirName}, " "))
 
 	sourcePath = strings.Join([]string{"/", wid, srcDirName, tempName}, " ")
 	destPath := strings.Join([]string{"/", wid, "12345678-1234-1234-1234-1234567890ab"}, " ")
-	err = fshandler.MoveFile(sourcePath, destPath)
+	err = fsh.MoveFile(sourcePath, destPath)
 	if err == nil {
 		t.Fatalf("TestLocalFSHandler_MoveFile: subtest #3 failed to handle missing destination")
 	}
@@ -634,7 +634,7 @@ func TestLocalFSHandler_MoveFile(t *testing.T) {
 	// Subtest #4: Actual success
 
 	destPath = strings.Join([]string{"/", wid, destDirName}, " ")
-	err = fshandler.MoveFile(sourcePath, destPath)
+	err = fsh.MoveFile(sourcePath, destPath)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_MoveFile: subtest #4 failed to move file: %s",
 			err.Error())
@@ -643,7 +643,7 @@ func TestLocalFSHandler_MoveFile(t *testing.T) {
 	// Subtest #5: File exists in destination
 
 	existingName := tempName
-	tempHandle, tempName, err = fshandler.MakeTempFile(wid)
+	tempHandle, tempName, err = fsh.MakeTempFile(wid)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_MoveFile: unexpected error making temp file for subtest #3: %s",
 			err.Error())
@@ -655,12 +655,12 @@ func TestLocalFSHandler_MoveFile(t *testing.T) {
 	err = os.Rename(filepath.Join(topDir, "tmp", wid, tempName),
 		filepath.Join(topDir, "tmp", wid, existingName))
 
-	tempName, err = fshandler.InstallTempFile(wid, existingName,
+	tempName, err = fsh.InstallTempFile(wid, existingName,
 		strings.Join([]string{"/", wid, srcDirName}, " "))
 
 	sourcePath = strings.Join([]string{"/", wid, srcDirName, existingName}, " ")
 	destPath = strings.Join([]string{"/", wid, destDirName}, " ")
-	err = fshandler.MoveFile(sourcePath, destPath)
+	err = fsh.MoveFile(sourcePath, destPath)
 	if err == nil {
 		t.Fatalf("TestLocalFSHandler_MoveFile: subtest #5 failed to handle existing file " +
 			"in destination")
@@ -677,14 +677,14 @@ func TestLocalFSHandler_CopyFile(t *testing.T) {
 	wid := "11111111-1111-1111-1111-111111111111"
 	srcDirName := "10000000-0000-0000-0000-000000000001"
 	destDirName := "20000000-0000-0000-0000-000000000002"
-	fshandler := GetFSHandler()
+	fsh := GetFSHandler()
 
-	err = fshandler.MakeDirectory("/ " + wid + " " + srcDirName)
+	err = fsh.MakeDirectory("/ " + wid + " " + srcDirName)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_CopyFile: Couldn't create source directory: %s",
 			err.Error())
 	}
-	err = fshandler.MakeDirectory("/ " + wid + " " + destDirName)
+	err = fsh.MakeDirectory("/ " + wid + " " + destDirName)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_CopyFile: Couldn't create destination directory: %s",
 			err.Error())
@@ -694,7 +694,7 @@ func TestLocalFSHandler_CopyFile(t *testing.T) {
 
 	sourcePath := strings.Join([]string{"/", wid, "12345678-1234-1234-1234-1234567890ab",
 		GenerateFileName(1000)}, " ")
-	_, err = fshandler.CopyFile(sourcePath, sourcePath)
+	_, err = fsh.CopyFile(sourcePath, sourcePath)
 	if err == nil {
 		t.Fatalf("TestLocalFSHandler_CopyFile: subtest #1 failed to handle bad path")
 	}
@@ -702,26 +702,26 @@ func TestLocalFSHandler_CopyFile(t *testing.T) {
 	// Subtest #2: Missing source file
 
 	sourcePath = strings.Join([]string{"/", wid, srcDirName, GenerateFileName(1000)}, " ")
-	_, err = fshandler.CopyFile(sourcePath, sourcePath)
+	_, err = fsh.CopyFile(sourcePath, sourcePath)
 	if err == nil {
 		t.Fatalf("TestLocalFSHandler_CopyFile: subtest #2 failed to handle missing file")
 	}
 
 	// Subtest #3: Missing destination
 
-	tempHandle, tempName, err := fshandler.MakeTempFile(wid)
+	tempHandle, tempName, err := fsh.MakeTempFile(wid)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_CopyFile: unexpected error making temp file for subtest #3: %s",
 			err.Error())
 	}
 	tempHandle.Close()
 
-	tempName, err = fshandler.InstallTempFile(wid, tempName,
+	tempName, err = fsh.InstallTempFile(wid, tempName,
 		strings.Join([]string{"/", wid, srcDirName}, " "))
 
 	sourcePath = strings.Join([]string{"/", wid, srcDirName, tempName}, " ")
 	destPath := strings.Join([]string{"/", wid, "12345678-1234-1234-1234-1234567890ab"}, " ")
-	_, err = fshandler.CopyFile(sourcePath, destPath)
+	_, err = fsh.CopyFile(sourcePath, destPath)
 	if err == nil {
 		t.Fatalf("TestLocalFSHandler_CopyFile: subtest #3 failed to handle missing destination")
 	}
@@ -729,7 +729,7 @@ func TestLocalFSHandler_CopyFile(t *testing.T) {
 	// Subtest #4: Actual success
 
 	destPath = strings.Join([]string{"/", wid, destDirName}, " ")
-	_, err = fshandler.CopyFile(sourcePath, destPath)
+	_, err = fsh.CopyFile(sourcePath, destPath)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_CopyFile: subtest #4 failed to move file: %s",
 			err.Error())
@@ -744,13 +744,13 @@ func TestLocalFSHandler_DeleteFile(t *testing.T) {
 	}
 
 	wid := "11111111-1111-1111-1111-111111111111"
-	fshandler := GetFSHandler()
+	fsh := GetFSHandler()
 
 	// Subtest #1: Bad path
 
 	filePath := strings.Join([]string{"/", wid, "12345678-1234-1234-1234-1234567890ab",
 		GenerateFileName(1000)}, " ")
-	err = fshandler.DeleteFile(filePath)
+	err = fsh.DeleteFile(filePath)
 	if err == nil {
 		t.Fatalf("TestLocalFSHandler_DeleteFile: subtest #1 failed to handle bad path")
 	}
@@ -758,29 +758,29 @@ func TestLocalFSHandler_DeleteFile(t *testing.T) {
 	// Subtest #2: File doesn't exist
 
 	filePath = strings.Join([]string{"/", wid, GenerateFileName(1000)}, " ")
-	err = fshandler.DeleteFile(filePath)
+	err = fsh.DeleteFile(filePath)
 	if err == nil {
 		t.Fatalf("TestLocalFSHandler_DeleteFile: subtest #2 failed to handle nonexistent file")
 	}
 
 	// Subtest #3: Actual success
 
-	tempHandle, tempName, err := fshandler.MakeTempFile(wid)
+	tempHandle, tempName, err := fsh.MakeTempFile(wid)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_DeleteFile: unexpected error making temp file for "+
 			"subtest #3: %s", err.Error())
 	}
 	tempHandle.Close()
 
-	fshandler.MakeDirectory("/ " + wid)
-	tempName, err = fshandler.InstallTempFile(wid, tempName, "/ "+wid)
+	fsh.MakeDirectory("/ " + wid)
+	tempName, err = fsh.InstallTempFile(wid, tempName, "/ "+wid)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_DeleteFile: subtest #3 failed to install temp file: %s",
 			err.Error())
 	}
 
 	filePath = strings.Join([]string{"/", wid, tempName}, " ")
-	err = fshandler.DeleteFile(filePath)
+	err = fsh.DeleteFile(filePath)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_DeleteFile: subtest #3 failed to delete file: %s",
 			err.Error())
@@ -795,13 +795,13 @@ func TestLocalFSHandler_OpenReadFile(t *testing.T) {
 	}
 
 	wid := "11111111-1111-1111-1111-111111111111"
-	fshandler := GetFSHandler()
+	fsh := GetFSHandler()
 
 	// Subtest #1: Bad path
 
 	filePath := strings.Join([]string{"/", wid, "12345678-1234-1234-1234-1234567890ab",
 		GenerateFileName(1000)}, " ")
-	_, err = fshandler.OpenFile(filePath)
+	_, err = fsh.OpenFile(filePath)
 	if err == nil {
 		t.Fatalf("TestLocalFSHandler_OpenReadFile: subtest #1 failed to handle bad path")
 	}
@@ -809,14 +809,14 @@ func TestLocalFSHandler_OpenReadFile(t *testing.T) {
 	// Subtest #2: File doesn't exist
 
 	filePath = strings.Join([]string{"/", wid, GenerateFileName(1000)}, " ")
-	_, err = fshandler.OpenFile(filePath)
+	_, err = fsh.OpenFile(filePath)
 	if err == nil {
 		t.Fatalf("TestLocalFSHandler_OpenReadFile: subtest #2 failed to handle nonexistent file")
 	}
 
 	// Subtest #3: Actual success and read to EOF
 
-	fshandler.MakeDirectory("/ " + wid)
+	fsh.MakeDirectory("/ " + wid)
 	tempName, err := generateRandomFile("/ "+wid, 10240)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_OpenReadFile: subtest #3 failed to create temp file: %s",
@@ -824,20 +824,20 @@ func TestLocalFSHandler_OpenReadFile(t *testing.T) {
 	}
 
 	filePath = strings.Join([]string{"/", wid, tempName}, " ")
-	handle, err := fshandler.OpenFile(filePath)
+	handle, err := fsh.OpenFile(filePath)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_OpenReadFile: subtest #3 failed to open file: %s",
 			err.Error())
 	}
 
 	buffer := make([]byte, 1000)
-	bytesRead, err := fshandler.ReadFile(handle, buffer)
+	bytesRead, err := fsh.ReadFile(handle, buffer)
 	if bytesRead != 1000 || err != nil {
 		t.Fatalf("TestLocalFSHandler_OpenReadFile: subtest #3 first read failed: %v bytes read",
 			bytesRead)
 	}
 	for bytesRead > 0 {
-		bytesRead, err = fshandler.ReadFile(handle, buffer)
+		bytesRead, err = fsh.ReadFile(handle, buffer)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -846,7 +846,7 @@ func TestLocalFSHandler_OpenReadFile(t *testing.T) {
 				bytesRead)
 		}
 	}
-	_, exists := fshandler.Files[handle]
+	_, exists := fsh.Files[handle]
 	if exists {
 		t.Fatal("TestLocalFSHandler_OpenReadFile: subtest #3 handle still exists after close")
 	}
@@ -860,20 +860,20 @@ func TestLocalFSHandler_CloseFile(t *testing.T) {
 	}
 
 	wid := "11111111-1111-1111-1111-111111111111"
-	fshandler := GetFSHandler()
+	fsh := GetFSHandler()
 
 	// Subtest #1: File not open
 
 	filePath := strings.Join([]string{"/", wid, "12345678-1234-1234-1234-1234567890ab",
 		GenerateFileName(1000)}, " ")
-	_, err = fshandler.OpenFile(filePath)
+	_, err = fsh.OpenFile(filePath)
 	if err == nil {
 		t.Fatalf("TestLocalFSHandler_CloseFile: subtest #1 failed to handle missing handle")
 	}
 
 	// Subtest #2: Actual success
 
-	fshandler.MakeDirectory("/ " + wid)
+	fsh.MakeDirectory("/ " + wid)
 	tempName, err := generateRandomFile("/ "+wid, 10240)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_CloseFile: subtest #2 failed to create temp file: %s",
@@ -881,19 +881,19 @@ func TestLocalFSHandler_CloseFile(t *testing.T) {
 	}
 
 	filePath = strings.Join([]string{"/", wid, tempName}, " ")
-	handle, err := fshandler.OpenFile(filePath)
+	handle, err := fsh.OpenFile(filePath)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_CloseFile: subtest #2 failed to open file: %s",
 			err.Error())
 	}
 
-	err = fshandler.CloseFile(handle)
+	err = fsh.CloseFile(handle)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_CloseFile: subtest #2 failed to close file: %s",
 			err.Error())
 	}
 
-	_, exists := fshandler.Files[handle]
+	_, exists := fsh.Files[handle]
 	if exists {
 		t.Fatal("TestLocalFSHandler_CloseFile: subtest #2 handle still exists after close")
 	}
