@@ -11,6 +11,17 @@ import (
 func commandCopy(session *sessionState) {
 	// Command syntax:
 	// COPY(FilePath, DestDir)
+
+	if session.LoginState != loginClientSession {
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		return
+	}
+
+	if session.Message.Validate([]string{"Source", "DestDir"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
 	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
 }
 
