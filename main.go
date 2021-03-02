@@ -290,6 +290,8 @@ func processCommand(session *sessionState) {
 		commandSetStatus(session)
 	case "UNREGISTER":
 		commandUnregister(session)
+	case "UPLOAD":
+		commandUpload(session)
 	case "USERCARD":
 		commandUserCard(session)
 	default:

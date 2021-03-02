@@ -299,3 +299,54 @@ func commandSelect(session *sessionState) {
 	}
 	session.CurrentPath = path
 }
+
+func commandUpload(session *sessionState) {
+	// Command syntax:
+	// UPLOAD(Size,Hash,Name="",Offset=0)
+
+	// if session.LoginState != loginClientSession {
+	// 	session.SendStringResponse(401, "UNAUTHORIZED", "")
+	// 	return
+	// }
+
+	// if session.Message.Validate([]string{"Size", "Hash"}) != nil {
+	// 	session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+	// 	return
+	// }
+
+	// // Both Name and Hash must be present when resuming
+	// if (session.Message.HasField("Name") && !session.Message.HasField("Hash")) ||
+	// 	(session.Message.HasField("Hash") && !session.Message.HasField("Name")) {
+	// 	session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+	// 	return
+	// }
+
+	// var fileSize int64
+	// var fileHash cs.CryptoString
+	// err := fileHash.Set(session.Message.Data["Hash"])
+	// if err != nil {
+	// 	session.SendStringResponse(400, "BAD REQUEST", err.Error())
+	// }
+
+	// fileSize, err = strconv.ParseInt(session.Message.Data["Size"], 10, 64)
+	// if err != nil {
+	// 	session.SendStringResponse(400, "BAD REQUEST", "Bad file size")
+	// }
+
+	// var resumeName string
+	// var resumeOffset int64
+	// if session.Message.HasField("Name") {
+	// 	if !fshandler.ValidateTempFileName(session.Message.Data["Name"]) {
+	// 		session.SendStringResponse(400, "BAD REQUEST", "Bad file name")
+	// 	}
+
+	// 	resumeName = session.Message.Data["Name"]
+
+	// 	resumeOffset, err = strconv.ParseInt(session.Message.Data["Offset"], 10, 64)
+	// 	if err != nil {
+	// 		session.SendStringResponse(400, "BAD REQUEST", "Bad offset")
+	// 	}
+	// }
+
+	session.SendStringResponse(308, "UNIMPLEMENTED", "")
+}
