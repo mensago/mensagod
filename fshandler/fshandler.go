@@ -60,299 +60,6 @@ func GetFSHandler() *LocalFSHandler {
 	return localProviderInstance
 }
 
-// Exists checks to see if the specified path exists
-func (lfs *LocalFSHandler) Exists(path string) (bool, error) {
-
-	// Path validation handled in Set()
-	var anpath LocalAnPath
-	err := anpath.Set(path)
-	if err != nil {
-		return false, err
-	}
-
-	_, err = os.Stat(anpath.ProviderPath())
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, err
-	}
-
-	return true, nil
-}
-
-// MakeDirectory creates a directory in the local filesystem relative to the workspace folder
-func (lfs *LocalFSHandler) MakeDirectory(path string) error {
-
-	// Path validation handled in FromPath()
-	var anpath LocalAnPath
-	err := anpath.Set(path)
-	if err != nil {
-		return err
-	}
-
-	_, err = os.Stat(anpath.LocalPath)
-	if err == nil {
-		return os.ErrExist
-	}
-
-	return os.MkdirAll(anpath.LocalPath, 0770)
-}
-
-// RemoveDirectory creates a directory in the local filesystem relative to the workspace folder
-func (lfs *LocalFSHandler) RemoveDirectory(path string, recursive bool) error {
-
-	// Path validation handled in FromPath()
-	var anpath LocalAnPath
-	err := anpath.Set(path)
-	if err != nil {
-		return err
-	}
-
-	stat, err := os.Stat(anpath.LocalPath)
-	if err != nil {
-		return err
-	}
-	if !stat.IsDir() {
-		return errors.New("directory path is a file")
-	}
-
-	if recursive {
-		return os.RemoveAll(anpath.LocalPath)
-	}
-	return os.Remove(anpath.LocalPath)
-}
-
-// ListFiles returns all files in the specified path after the specified time. Note that the time
-// is in UNIX time, i.e. seconds since the epoch. To return all files, pass a 0.
-func (lfs *LocalFSHandler) ListFiles(path string, afterTime int64) ([]string, error) {
-	// Path validation handled in FromPath()
-	var anpath LocalAnPath
-	err := anpath.Set(path)
-	if err != nil {
-		return nil, err
-	}
-
-	stat, err := os.Stat(anpath.ProviderPath())
-	if err != nil {
-		return nil, err
-	}
-	if !stat.IsDir() {
-		return nil, errors.New("directory path is a file")
-	}
-
-	handle, err := os.Open(anpath.ProviderPath())
-	if err != nil {
-		return nil, err
-	}
-	defer handle.Close()
-
-	list, _ := handle.Readdirnames(0)
-
-	pattern := regexp.MustCompile(
-		"^[0-9]+\\.[0-9]+\\.[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$")
-
-	out := make([]string, 0, len(list))
-	for _, name := range list {
-		if pattern.MatchString(name) {
-			if afterTime > 0 {
-				parts := strings.Split(name, ".")
-				filetime, err := strconv.ParseInt(parts[0], 10, 64)
-				if err != nil || afterTime > filetime {
-					continue
-				}
-			}
-			out = append(out, name)
-		}
-	}
-	return out, nil
-}
-
-// ListDirectories returns the names of all subdirectories of the specified path
-func (lfs *LocalFSHandler) ListDirectories(path string) ([]string, error) {
-	// Path validation handled in FromPath()
-	var anpath LocalAnPath
-	err := anpath.Set(path)
-	if err != nil {
-		return nil, err
-	}
-
-	stat, err := os.Stat(anpath.ProviderPath())
-	if err != nil {
-		return nil, err
-	}
-	if !stat.IsDir() {
-		return nil, errors.New("directory path is a file")
-	}
-
-	handle, err := os.Open(anpath.ProviderPath())
-	if err != nil {
-		return nil, err
-	}
-	defer handle.Close()
-
-	list, _ := handle.Readdirnames(0)
-
-	pattern := regexp.MustCompile(
-		"^[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$")
-
-	out := make([]string, 0, len(list))
-	for _, name := range list {
-		if pattern.MatchString(name) {
-			stat, err = os.Stat(anpath.ProviderPath())
-			if err != nil {
-				return nil, err
-			}
-			if stat.IsDir() {
-				out = append(out, name)
-			}
-		}
-	}
-	return out, nil
-}
-
-// MakeTempFile creates a file in the temporary file area and returns a handle to it. The caller is
-// responsible for closing the handle when finished.
-func (lfs *LocalFSHandler) MakeTempFile(wid string) (*os.File, string, error) {
-
-	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
-	if (len(wid) != 36 && len(wid) != 32) || !pattern.MatchString(wid) {
-		return nil, "", errors.New("bad workspace id")
-	}
-
-	tempDirPath := filepath.Join(viper.GetString("global.workspace_dir"), "tmp", wid)
-
-	stat, err := os.Stat(tempDirPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			err = os.MkdirAll(tempDirPath, 0600)
-			if err != nil {
-				return nil, "", err
-			}
-		} else {
-			return nil, "", err
-		}
-	} else {
-		if !stat.Mode().IsDir() {
-			return nil, "", errors.New("destination path is a not directory")
-		}
-	}
-
-	tempFileName := ""
-	tempFilePath := ""
-	for tempFileName == "" {
-		proposedName := GenerateTempFileName()
-
-		tempFilePath = filepath.Join(tempDirPath, proposedName)
-		_, err := os.Stat(tempFilePath)
-		if err != nil {
-			tempFileName = proposedName
-			break
-		}
-	}
-
-	handle, err := os.Create(tempFilePath)
-	if err != nil {
-		logging.Writef("Couldn't save temp file %s: %s", tempFilePath, err.Error())
-		return nil, "", err
-	}
-
-	return handle, tempFileName, nil
-}
-
-// InstallTempFile moves a file from the temporary file area to its location in a workspace
-func (lfs *LocalFSHandler) InstallTempFile(wid string, name string, dest string) (string, error) {
-	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
-	if (len(wid) != 36 && len(wid) != 32) || !pattern.MatchString(wid) {
-		return "", errors.New("bad workspace id")
-	}
-
-	pattern = regexp.MustCompile(
-		"^[0-9]+\\." +
-			"[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$")
-	if !pattern.MatchString(name) {
-		return "", errors.New("bad tempfile name")
-	}
-
-	srcpath := filepath.Join(viper.GetString("global.workspace_dir"), "tmp", wid, name)
-
-	var destAnpath LocalAnPath
-	err := destAnpath.Set(dest)
-	if err != nil {
-		return "", err
-	}
-
-	stat, err := os.Stat(srcpath)
-	if err != nil {
-		return "", err
-	}
-	if !stat.Mode().IsRegular() {
-		return "", errors.New("source path is a not file")
-	}
-	filesize := stat.Size()
-
-	stat, err = os.Stat(destAnpath.ProviderPath())
-	if err != nil {
-		return "", err
-	}
-	if !stat.Mode().IsDir() {
-		return "", errors.New("destination path is a not directory")
-	}
-
-	parts := strings.Split(name, ".")
-	newname := fmt.Sprintf("%s.%d.%s", parts[0], filesize, parts[1])
-
-	err = os.Rename(srcpath, filepath.Join(destAnpath.ProviderPath(), newname))
-	if err != nil {
-		return "", err
-	}
-
-	return newname, nil
-}
-
-// MoveFile moves the specified file to the specified directory. Note that dest MUST point to
-// a directory.
-func (lfs *LocalFSHandler) MoveFile(source string, dest string) error {
-	// Path validation handled in FromPath()
-	var srcAnpath LocalAnPath
-	err := srcAnpath.Set(source)
-	if err != nil {
-		return err
-	}
-
-	stat, err := os.Stat(srcAnpath.ProviderPath())
-	if err != nil {
-		return err
-	}
-	if !stat.Mode().IsRegular() {
-		return errors.New("source path is a not file")
-	}
-
-	// Path validation handled in FromPath()
-	var destAnpath LocalAnPath
-	err = destAnpath.Set(dest)
-	if err != nil {
-		return err
-	}
-
-	stat, err = os.Stat(destAnpath.ProviderPath())
-	if err != nil {
-		return err
-	}
-	if !stat.IsDir() {
-		return errors.New("destination path is not a directory")
-	}
-
-	newPath := filepath.Join(destAnpath.ProviderPath(), filepath.Base(srcAnpath.ProviderPath()))
-	fmt.Println(newPath)
-	_, err = os.Stat(newPath)
-	if err == nil {
-		return errors.New("source exists in destination path")
-	}
-
-	return os.Rename(srcAnpath.ProviderPath(), newPath)
-}
-
 // CopyFile creates a duplicate of the specified source file in the specified destination folder
 // and returns the name of the new file
 func (lfs *LocalFSHandler) CopyFile(source string, dest string) (string, error) {
@@ -414,6 +121,18 @@ func (lfs *LocalFSHandler) CopyFile(source string, dest string) (string, error) 
 	return newName, err
 }
 
+// CloseFile closes the specified file handle. It is not normally needed unless Read() returns an
+// error or the caller must abort reading the file.
+func (lfs *LocalFSHandler) CloseFile(handle string) error {
+	lfsh, exists := lfs.Files[handle]
+	if !exists {
+		return os.ErrNotExist
+	}
+	lfsh.Handle.Close()
+	delete(lfs.Files, handle)
+	return nil
+}
+
 // DeleteFile deletes the specified workspace file. If the file does not exist, this function will
 // not return an error.
 func (lfs *LocalFSHandler) DeleteFile(path string) error {
@@ -430,6 +149,275 @@ func (lfs *LocalFSHandler) DeleteFile(path string) error {
 	}
 
 	return os.Remove(anpath.ProviderPath())
+}
+
+// Exists checks to see if the specified path exists
+func (lfs *LocalFSHandler) Exists(path string) (bool, error) {
+
+	// Path validation handled in Set()
+	var anpath LocalAnPath
+	err := anpath.Set(path)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = os.Stat(anpath.ProviderPath())
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
+}
+
+// InstallTempFile moves a file from the temporary file area to its location in a workspace
+func (lfs *LocalFSHandler) InstallTempFile(wid string, name string, dest string) (string, error) {
+	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
+	if (len(wid) != 36 && len(wid) != 32) || !pattern.MatchString(wid) {
+		return "", errors.New("bad workspace id")
+	}
+
+	pattern = regexp.MustCompile(
+		"^[0-9]+\\." +
+			"[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$")
+	if !pattern.MatchString(name) {
+		return "", errors.New("bad tempfile name")
+	}
+
+	srcpath := filepath.Join(viper.GetString("global.workspace_dir"), "tmp", wid, name)
+
+	var destAnpath LocalAnPath
+	err := destAnpath.Set(dest)
+	if err != nil {
+		return "", err
+	}
+
+	stat, err := os.Stat(srcpath)
+	if err != nil {
+		return "", err
+	}
+	if !stat.Mode().IsRegular() {
+		return "", errors.New("source path is a not file")
+	}
+	filesize := stat.Size()
+
+	stat, err = os.Stat(destAnpath.ProviderPath())
+	if err != nil {
+		return "", err
+	}
+	if !stat.Mode().IsDir() {
+		return "", errors.New("destination path is a not directory")
+	}
+
+	parts := strings.Split(name, ".")
+	newname := fmt.Sprintf("%s.%d.%s", parts[0], filesize, parts[1])
+
+	err = os.Rename(srcpath, filepath.Join(destAnpath.ProviderPath(), newname))
+	if err != nil {
+		return "", err
+	}
+
+	return newname, nil
+}
+
+// ListDirectories returns the names of all subdirectories of the specified path
+func (lfs *LocalFSHandler) ListDirectories(path string) ([]string, error) {
+	// Path validation handled in FromPath()
+	var anpath LocalAnPath
+	err := anpath.Set(path)
+	if err != nil {
+		return nil, err
+	}
+
+	stat, err := os.Stat(anpath.ProviderPath())
+	if err != nil {
+		return nil, err
+	}
+	if !stat.IsDir() {
+		return nil, errors.New("directory path is a file")
+	}
+
+	handle, err := os.Open(anpath.ProviderPath())
+	if err != nil {
+		return nil, err
+	}
+	defer handle.Close()
+
+	list, _ := handle.Readdirnames(0)
+
+	pattern := regexp.MustCompile(
+		"^[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$")
+
+	out := make([]string, 0, len(list))
+	for _, name := range list {
+		if pattern.MatchString(name) {
+			stat, err = os.Stat(anpath.ProviderPath())
+			if err != nil {
+				return nil, err
+			}
+			if stat.IsDir() {
+				out = append(out, name)
+			}
+		}
+	}
+	return out, nil
+}
+
+// ListFiles returns all files in the specified path after the specified time. Note that the time
+// is in UNIX time, i.e. seconds since the epoch. To return all files, pass a 0.
+func (lfs *LocalFSHandler) ListFiles(path string, afterTime int64) ([]string, error) {
+	// Path validation handled in FromPath()
+	var anpath LocalAnPath
+	err := anpath.Set(path)
+	if err != nil {
+		return nil, err
+	}
+
+	stat, err := os.Stat(anpath.ProviderPath())
+	if err != nil {
+		return nil, err
+	}
+	if !stat.IsDir() {
+		return nil, errors.New("directory path is a file")
+	}
+
+	handle, err := os.Open(anpath.ProviderPath())
+	if err != nil {
+		return nil, err
+	}
+	defer handle.Close()
+
+	list, _ := handle.Readdirnames(0)
+
+	pattern := regexp.MustCompile(
+		"^[0-9]+\\.[0-9]+\\.[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$")
+
+	out := make([]string, 0, len(list))
+	for _, name := range list {
+		if pattern.MatchString(name) {
+			if afterTime > 0 {
+				parts := strings.Split(name, ".")
+				filetime, err := strconv.ParseInt(parts[0], 10, 64)
+				if err != nil || afterTime > filetime {
+					continue
+				}
+			}
+			out = append(out, name)
+		}
+	}
+	return out, nil
+}
+
+// MakeDirectory creates a directory in the local filesystem relative to the workspace folder
+func (lfs *LocalFSHandler) MakeDirectory(path string) error {
+
+	// Path validation handled in FromPath()
+	var anpath LocalAnPath
+	err := anpath.Set(path)
+	if err != nil {
+		return err
+	}
+
+	_, err = os.Stat(anpath.LocalPath)
+	if err == nil {
+		return os.ErrExist
+	}
+
+	return os.MkdirAll(anpath.LocalPath, 0770)
+}
+
+// MakeTempFile creates a file in the temporary file area and returns a handle to it. The caller is
+// responsible for closing the handle when finished.
+func (lfs *LocalFSHandler) MakeTempFile(wid string) (*os.File, string, error) {
+
+	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
+	if (len(wid) != 36 && len(wid) != 32) || !pattern.MatchString(wid) {
+		return nil, "", errors.New("bad workspace id")
+	}
+
+	tempDirPath := filepath.Join(viper.GetString("global.workspace_dir"), "tmp", wid)
+
+	stat, err := os.Stat(tempDirPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = os.MkdirAll(tempDirPath, 0600)
+			if err != nil {
+				return nil, "", err
+			}
+		} else {
+			return nil, "", err
+		}
+	} else {
+		if !stat.Mode().IsDir() {
+			return nil, "", errors.New("destination path is a not directory")
+		}
+	}
+
+	tempFileName := ""
+	tempFilePath := ""
+	for tempFileName == "" {
+		proposedName := GenerateTempFileName()
+
+		tempFilePath = filepath.Join(tempDirPath, proposedName)
+		_, err := os.Stat(tempFilePath)
+		if err != nil {
+			tempFileName = proposedName
+			break
+		}
+	}
+
+	handle, err := os.Create(tempFilePath)
+	if err != nil {
+		logging.Writef("Couldn't save temp file %s: %s", tempFilePath, err.Error())
+		return nil, "", err
+	}
+
+	return handle, tempFileName, nil
+}
+
+// MoveFile moves the specified file to the specified directory. Note that dest MUST point to
+// a directory.
+func (lfs *LocalFSHandler) MoveFile(source string, dest string) error {
+	// Path validation handled in FromPath()
+	var srcAnpath LocalAnPath
+	err := srcAnpath.Set(source)
+	if err != nil {
+		return err
+	}
+
+	stat, err := os.Stat(srcAnpath.ProviderPath())
+	if err != nil {
+		return err
+	}
+	if !stat.Mode().IsRegular() {
+		return errors.New("source path is a not file")
+	}
+
+	// Path validation handled in FromPath()
+	var destAnpath LocalAnPath
+	err = destAnpath.Set(dest)
+	if err != nil {
+		return err
+	}
+
+	stat, err = os.Stat(destAnpath.ProviderPath())
+	if err != nil {
+		return err
+	}
+	if !stat.IsDir() {
+		return errors.New("destination path is not a directory")
+	}
+
+	newPath := filepath.Join(destAnpath.ProviderPath(), filepath.Base(srcAnpath.ProviderPath()))
+	fmt.Println(newPath)
+	_, err = os.Stat(newPath)
+	if err == nil {
+		return errors.New("source exists in destination path")
+	}
+
+	return os.Rename(srcAnpath.ProviderPath(), newPath)
 }
 
 // OpenFile opens the specified file for reading data and returns a file handle as a string. The
@@ -474,16 +462,49 @@ func (lfs *LocalFSHandler) ReadFile(handle string, buffer []byte) (int, error) {
 	return bytesRead, err
 }
 
-// CloseFile closes the specified file handle. It is not normally needed unless Read() returns an
-// error or the caller must abort reading the file.
-func (lfs *LocalFSHandler) CloseFile(handle string) error {
-	lfsh, exists := lfs.Files[handle]
-	if !exists {
-		return os.ErrNotExist
+// RemoveDirectory creates a directory in the local filesystem relative to the workspace folder
+func (lfs *LocalFSHandler) RemoveDirectory(path string, recursive bool) error {
+
+	// Path validation handled in FromPath()
+	var anpath LocalAnPath
+	err := anpath.Set(path)
+	if err != nil {
+		return err
 	}
-	lfsh.Handle.Close()
-	delete(lfs.Files, handle)
-	return nil
+
+	stat, err := os.Stat(anpath.LocalPath)
+	if err != nil {
+		return err
+	}
+	if !stat.IsDir() {
+		return errors.New("directory path is a file")
+	}
+
+	if recursive {
+		return os.RemoveAll(anpath.LocalPath)
+	}
+	return os.Remove(anpath.LocalPath)
+}
+
+// Select confirms that the given path is a valid working directory for the user
+func (lfs *LocalFSHandler) Select(path string) (LocalAnPath, error) {
+
+	// Path validation handled in FromPath()
+	var anpath LocalAnPath
+	err := anpath.Set(path)
+	if err != nil {
+		return anpath, err
+	}
+
+	stat, err := os.Stat(anpath.LocalPath)
+	if err != nil {
+		return anpath, err
+	}
+	if !stat.IsDir() {
+		return anpath, errors.New("directory path is a file")
+	}
+
+	return anpath, nil
 }
 
 // RemoveWorkspace deletes all file and folder data for the specified workspace. This call does

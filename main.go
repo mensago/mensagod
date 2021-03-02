@@ -12,6 +12,7 @@ import (
 
 	"github.com/darkwyrm/anselusd/config"
 	"github.com/darkwyrm/anselusd/dbhandler"
+	"github.com/darkwyrm/anselusd/fshandler"
 	"github.com/darkwyrm/anselusd/logging"
 	"github.com/everlastingbeta/diceware"
 	_ "github.com/lib/pq"
@@ -54,6 +55,7 @@ type sessionState struct {
 	IsTerminating    bool
 	WID              string
 	WorkspaceStatus  string
+	CurrentPath      fshandler.LocalAnPath
 }
 
 // ClientRequest is for encapsulating requests from the client.
@@ -236,6 +238,10 @@ func processCommand(session *sessionState) {
 		commandAddEntry(session)
 	case "CANCEL":
 		commandCancel(session)
+	case "COPY":
+		commandCopy(session)
+	case "DELETE":
+		commandDelete(session)
 	case "DEVICE":
 		commandDevice(session)
 	case "DEVKEY":
@@ -246,10 +252,18 @@ func processCommand(session *sessionState) {
 		commandGetWID(session)
 	case "ISCURRENT":
 		commandIsCurrent(session)
+	case "LIST":
+		commandList(session)
+	case "LISTDIRS":
+		commandListDirs(session)
 	case "LOGIN":
 		commandLogin(session)
 	case "LOGOUT":
 		commandLogout(session)
+	case "MKDIR":
+		commandMkDir(session)
+	case "MOVE":
+		commandMove(session)
 	case "NOOP":
 		// Do nothing. Just resets the idle counter.
 	case "ORGCARD":
@@ -266,6 +280,10 @@ func processCommand(session *sessionState) {
 		commandRegister(session)
 	case "RESETPASSWORD":
 		commandResetPassword(session)
+	case "RMDIR":
+		commandRmDir(session)
+	case "SELECT":
+		commandSelect(session)
 	case "SETPASSWORD":
 		commandSetPassword(session)
 	case "SETSTATUS":

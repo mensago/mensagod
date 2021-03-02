@@ -2,11 +2,10 @@ package main
 
 import (
 	"os"
-	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/darkwyrm/anselusd/fshandler"
-	"github.com/darkwyrm/anselusd/logging"
-	"github.com/spf13/viper"
 )
 
 func handleFSError(session *sessionState, err error) {
@@ -27,20 +26,20 @@ func handleFSError(session *sessionState, err error) {
 
 func commandCopy(session *sessionState) {
 	// Command syntax:
-	// COPY(FilePath, DestDir)
+	// COPY(SourceFile, DestDir)
 
 	if session.LoginState != loginClientSession {
 		session.SendStringResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
-	if session.Message.Validate([]string{"Source", "DestDir"}) != nil {
+	if session.Message.Validate([]string{"SourceFile", "DestDir"}) != nil {
 		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
 	fsh := fshandler.GetFSHandler()
-	exists, err := fsh.Exists(session.Message.Data["Source"])
+	exists, err := fsh.Exists(session.Message.Data["SourceFile"])
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -58,7 +57,8 @@ func commandCopy(session *sessionState) {
 		session.SendStringResponse(404, "NOT FOUND", "Destination does not exist")
 	}
 
-	newName, err := fsh.CopyFile(session.Message.Data["Source"], session.Message.Data["DestDir"])
+	newName, err := fsh.CopyFile(session.Message.Data["SourceFile"],
+		session.Message.Data["DestDir"])
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -72,7 +72,24 @@ func commandCopy(session *sessionState) {
 func commandDelete(session *sessionState) {
 	// Command syntax:
 	// DELETE(FilePath)
-	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
+	if session.LoginState != loginClientSession {
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		return
+	}
+
+	if session.Message.Validate([]string{"Path"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	fsh := fshandler.GetFSHandler()
+	err := fsh.DeleteFile(session.Message.Data["Path"])
+	if err != nil {
+		handleFSError(session, err)
+		return
+	}
+
+	session.SendStringResponse(200, "OK", "")
 }
 
 func commandExists(session *sessionState) {
@@ -89,32 +106,74 @@ func commandExists(session *sessionState) {
 		return
 	}
 
-	fsPath := filepath.Join(viper.GetString("global.workspace_dir"), session.WID,
-		session.Message.Data["Path"])
-	_, err := os.Stat(fsPath)
+	fsh := fshandler.GetFSHandler()
+	exists, err := fsh.Exists(session.Message.Data["Path"])
 	if err != nil {
-		if os.IsNotExist(err) {
-			session.SendStringResponse(404, "NOT FOUND", "")
-		} else {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-			logging.Writef("commandExists: Filesystem error %s", err.Error())
-		}
-	} else {
+		handleFSError(session, err)
+		return
+	}
+
+	if exists {
 		session.SendStringResponse(200, "OK", "")
+	} else {
+		session.SendStringResponse(404, "NOT FOUND", "")
 	}
 }
 
 func commandList(session *sessionState) {
 	// Command syntax:
 	// LIST(Time=0)
-	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
+	if session.LoginState != loginClientSession {
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		return
+	}
+
+	if session.Message.Validate([]string{"Path"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	var err error
+	var unixTime int64 = 0
+	if session.Message.HasField("Time") {
+		unixTime, err = strconv.ParseInt(session.Message.Data["Time"], 10, 64)
+		if err != nil {
+			session.SendStringResponse(400, "BAD REQUEST", "Bad time field")
+		}
+		return
+	}
+
+	fsh := fshandler.GetFSHandler()
+	names, err := fsh.ListFiles(session.Message.Data["Path"], int64(unixTime))
+	if err != nil {
+		handleFSError(session, err)
+		return
+	}
+
+	response := NewServerResponse(200, "OK")
+	response.Data["Files"] = strings.Join(names, ",")
+	session.SendResponse(*response)
 }
 
 func commandListDirs(session *sessionState) {
 	// Command syntax:
 	// LISTDIRS()
 
-	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
+	if session.LoginState != loginClientSession {
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		return
+	}
+
+	fsh := fshandler.GetFSHandler()
+	names, err := fsh.ListDirectories(session.CurrentPath.AnselusPath())
+	if err != nil {
+		handleFSError(session, err)
+		return
+	}
+
+	response := NewServerResponse(200, "OK")
+	response.Data["Directories"] = strings.Join(names, ",")
+	session.SendResponse(*response)
 }
 
 func commandMkDir(session *sessionState) {
@@ -142,13 +201,101 @@ func commandMkDir(session *sessionState) {
 
 func commandMove(session *sessionState) {
 	// Command syntax:
-	// MOVE(FilePath, DestDir)
-	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
+	// MOVE(SourceFile, DestDir)
+
+	if session.LoginState != loginClientSession {
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		return
+	}
+
+	if session.Message.Validate([]string{"SourceFile", "DestDir"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	fsh := fshandler.GetFSHandler()
+	exists, err := fsh.Exists(session.Message.Data["SourceFile"])
+	if err != nil {
+		handleFSError(session, err)
+		return
+	}
+	if !exists {
+		session.SendStringResponse(404, "NOT FOUND", "Source does not exist")
+	}
+
+	exists, err = fsh.Exists(session.Message.Data["DestDir"])
+	if err != nil {
+		handleFSError(session, err)
+		return
+	}
+	if !exists {
+		session.SendStringResponse(404, "NOT FOUND", "Destination does not exist")
+	}
+
+	err = fsh.MoveFile(session.Message.Data["SourceFile"], session.Message.Data["DestDir"])
+	if err != nil {
+		handleFSError(session, err)
+		return
+	}
+
+	session.SendStringResponse(200, "OK", "")
 }
 
 func commandRmDir(session *sessionState) {
 	// Command syntax:
 	// RMDIR(Path, Recursive)
+	if session.LoginState != loginClientSession {
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		return
+	}
 
-	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
+	if session.Message.Validate([]string{"Path", "Recursive"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	fsh := fshandler.GetFSHandler()
+	exists, err := fsh.Exists(session.Message.Data["Path"])
+	if err != nil {
+		handleFSError(session, err)
+		return
+	}
+	if !exists {
+		session.SendStringResponse(404, "NOT FOUND", "Path does not exist")
+	}
+
+	recurseStr := strings.ToLower(session.Message.Data["Recursive"])
+	var recursive bool
+	if recurseStr == "true" || recurseStr == "yes" {
+		recursive = true
+	}
+	err = fsh.RemoveDirectory(session.Message.Data["Path"], recursive)
+	if err != nil {
+		handleFSError(session, err)
+		return
+	}
+
+	session.SendStringResponse(200, "OK", "")
+}
+
+func commandSelect(session *sessionState) {
+	// Command syntax:
+	// SELECT(Path)
+
+	if session.LoginState != loginClientSession {
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		return
+	}
+
+	if !session.Message.HasField("Path") {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	fsh := fshandler.GetFSHandler()
+	path, err := fsh.Select(session.Message.Data["Path"])
+	if err != nil {
+		handleFSError(session, err)
+	}
+	session.CurrentPath = path
 }
