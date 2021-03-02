@@ -111,6 +111,15 @@ func ValidateFileName(filename string) bool {
 	return pattern.MatchString(filename)
 }
 
+// ValidateTempFileName returns whether or not a filename for a temp file conforms to the format
+// expected by the platform
+func ValidateTempFileName(filename string) bool {
+	pattern := regexp.MustCompile(
+		"^[0-9]+\\." +
+			"[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$")
+	return pattern.MatchString(filename)
+}
+
 // GenerateFileName creates a filename matching the format expected by the Anselus platform
 func GenerateFileName(filesize int) string {
 	return fmt.Sprintf("%d.%d.%s", time.Now().Unix(), filesize, uuid.New().String())
