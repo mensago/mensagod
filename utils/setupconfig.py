@@ -384,6 +384,15 @@ if rows[0][0] is False:
 
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
+			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'quotas' "
+			"AND c.relkind = 'r');")
+rows = cur.fetchall()
+if rows[0][0] is False:
+	cur.execute("CREATE TABLE quotas(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, "
+			"usage BIGINT, quota BIGINT);")
+
+
+cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
 			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'failure_log' "
 			"AND c.relkind = 'r');")
 rows = cur.fetchall()
