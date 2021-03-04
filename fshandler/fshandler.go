@@ -522,6 +522,11 @@ func ModifyQuotaUsage(wid string, amount int64) (uint64, error) {
 	return 0, errors.New("Unimplemented")
 }
 
+// ResetQuotaUsage resets the disk quota usage count in the database for all workspaces
+func ResetQuotaUsage() error {
+	return errors.New("Unimplemented")
+}
+
 // SetQuota sets the disk quota for a workspace to the specified number of bytes
 func SetQuota(wid string, quota uint64) error {
 	return errors.New("Unimplemented")
