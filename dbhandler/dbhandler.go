@@ -961,8 +961,29 @@ func ModifyQuotaUsage(wid string, amount int64) (uint64, error) {
 	sqlStatement := `UPDATE quotas SET usage=usage+$1 WHERE wid=$2`
 	_, err := dbConn.Exec(sqlStatement, amount, wid)
 	if err != nil {
-		logging.Writef("dbhandler.SetQuota: failed to update quota for %s: %s", wid, err.Error())
-		return 0, err
+		if err == sql.ErrNoRows {
+			usage, err := fshandler.GetFSHandler().GetDiskUsage(wid)
+			if err != nil {
+				return 0, err
+			}
+			if amount < 0 {
+				usage -= uint64(amount * -1)
+			} else {
+				usage += uint64(amount)
+			}
+
+			sqlStatement := `INSERT INTO quotas(wid, usage, quota)	VALUES($1, $2, $3)`
+			_, err = dbConn.Exec(sqlStatement, wid, usage,
+				viper.GetInt64("global.default_quota")*1_048_576)
+			if err != nil {
+				logging.Writef("dbhandler.SetQuota: failed to add quota entry to table: %s",
+					err.Error())
+			}
+		} else {
+			logging.Writef("dbhandler.ModifyQuotaUsage: failed to update quota for %s: %s", wid,
+				err.Error())
+			return 0, err
+		}
 	}
 	return GetQuotaUsage(wid)
 }
@@ -983,8 +1004,21 @@ func SetQuota(wid string, quota uint64) error {
 	sqlStatement := `UPDATE quotas SET quota=$1 WHERE wid=$2`
 	_, err := dbConn.Exec(sqlStatement, quota, wid)
 	if err != nil {
-		logging.Writef("dbhandler.SetQuota: failed to update quota for %s: %s", wid, err.Error())
-		return err
+		if err == sql.ErrNoRows {
+			usage, err := fshandler.GetFSHandler().GetDiskUsage(wid)
+			if err != nil {
+				return err
+			}
+			sqlStatement := `INSERT INTO quotas(wid, usage, quota)	VALUES($1, $2, $3)`
+			_, err = dbConn.Exec(sqlStatement, wid, usage, quota)
+			if err != nil {
+				logging.Writef("dbhandler.SetQuota: failed to add quota entry to table: %s",
+					err.Error())
+			}
+		} else {
+			logging.Writef("dbhandler.SetQuota: failed to update quota for %s: %s", wid, err.Error())
+			return err
+		}
 	}
 	return nil
 }
@@ -994,9 +1028,19 @@ func SetQuotaUsage(wid string, total uint64) error {
 	sqlStatement := `UPDATE quotas SET usage=$1 WHERE wid=$2`
 	_, err := dbConn.Exec(sqlStatement, total, wid)
 	if err != nil {
-		logging.Writef("dbhandler.SetQuotaUsage: failed to update quota for %s: %s", wid,
-			err.Error())
-		return err
+		if err == sql.ErrNoRows {
+			sqlStatement := `INSERT INTO quotas(wid, usage, quota)	VALUES($1, $2, $3)`
+			_, err = dbConn.Exec(sqlStatement, wid, total,
+				viper.GetInt64("global.default_quota")*1_048_576)
+			if err != nil {
+				logging.Writef("dbhandler.SetQuotaUsage: failed to add quota entry to table: %s",
+					err.Error())
+			}
+		} else {
+			logging.Writef("dbhandler.SetQuotaUsage: failed to update quota for %s: %s", wid,
+				err.Error())
+			return err
+		}
 	}
 	return nil
 }
