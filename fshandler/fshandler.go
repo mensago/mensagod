@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -170,6 +171,33 @@ func (lfs *LocalFSHandler) Exists(path string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// GetDiskUsage calculates the disk usage of a workspace
+func (lfs *LocalFSHandler) GetDiskUsage(wid string) (uint64, error) {
+	// Path validation handled in Set()
+	var anpath LocalAnPath
+	err := anpath.Set("/ " + wid)
+	if err != nil {
+		return 0, err
+	}
+
+	var totalSize uint64
+	err = filepath.WalkDir(anpath.ProviderPath(), func(_ string, info fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() || !ValidateFileName(info.Name()) {
+			return nil
+		}
+		parts := strings.Split(info.Name(), ".")
+		fileSize, _ := strconv.ParseInt(parts[1], 10, 64)
+		totalSize += uint64(fileSize)
+
+		return err
+	})
+	return totalSize, err
 }
 
 // InstallTempFile moves a file from the temporary file area to its location in a workspace

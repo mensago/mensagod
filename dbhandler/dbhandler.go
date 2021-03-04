@@ -18,6 +18,7 @@ import (
 
 	"github.com/darkwyrm/anselusd/cryptostring"
 	"github.com/darkwyrm/anselusd/ezcrypt"
+	"github.com/darkwyrm/anselusd/fshandler"
 	"github.com/darkwyrm/anselusd/keycard"
 	"github.com/darkwyrm/anselusd/logging"
 	"github.com/darkwyrm/gostringlist"
@@ -919,7 +920,40 @@ func GetQuota(wid string) (uint64, error) {
 
 // GetQuotaUsage returns the disk usage of a workspace in bytes
 func GetQuotaUsage(wid string) (uint64, error) {
-	return 0, errors.New("Unimplemented")
+	row := dbConn.QueryRow(`SELECT usage FROM quotas WHERE wid=$1`, wid)
+
+	var dbUsage int64
+	var out uint64
+	err := row.Scan(&dbUsage)
+
+	switch err {
+	case sql.ErrNoRows:
+		logging.Writef("dbhandler.GetQuota: No rows found for %s", wid)
+	case nil:
+		if dbUsage >= 0 {
+			return uint64(dbUsage), nil
+		}
+	case err.(*pq.Error):
+		logging.Writef("dbhandler.GetQuota: PostgreSQL error: %s", err.Error())
+		return 0, err
+	default:
+		logging.Writef("dbhandler.GetQuota: unexpected error: %s", err.Error())
+		return 0, err
+	}
+
+	out, err = fshandler.GetFSHandler().GetDiskUsage(wid)
+	if err != nil {
+		return 0, err
+	}
+
+	sqlStatement := `INSERT INTO quotas(wid, usage, quota)	VALUES($1, $2, $3)`
+	_, err = dbConn.Exec(sqlStatement, wid, out, viper.GetInt64("global.default_quota")*1_048_576)
+	if err != nil {
+		logging.Writef("dbhandler.GetQuotaUsage: failed to add quota entry to table: %s",
+			err.Error())
+	}
+
+	return out, SetQuotaUsage(wid, out)
 }
 
 // ModifyQuotaUsage modifies the disk usage by a relative amount, specified in bytes
