@@ -884,10 +884,85 @@ func IsAlias(wid string) (bool, error) {
 	case nil:
 		return true, nil
 	case err.(*pq.Error):
-		fmt.Println("Server encountered PostgreSQL error ", err)
+		logging.Writef("dbhandler.IsAlias: PostgreSQL error: %s", err.Error())
 		return false, err
 	default:
 		return false, err
 	}
 	return false, nil
+}
+
+// GetQuota returns the size of a workspace's disk quota in bytes
+func GetQuota(wid string) (uint64, error) {
+	row := dbConn.QueryRow(`SELECT quota FROM quotas WHERE wid=$1`, wid)
+
+	var quota int64
+	err := row.Scan(&quota)
+
+	switch err {
+	case sql.ErrNoRows:
+		logging.Writef("dbhandler.GetQuota: No rows found for %s", wid)
+		return 0, err
+	case nil:
+		if quota < 0 {
+			quota = viper.GetInt64("global.default_quota") * 1_048_576
+		}
+		return uint64(quota), nil
+	case err.(*pq.Error):
+		logging.Writef("dbhandler.GetQuota: PostgreSQL error: %s", err.Error())
+		return 0, err
+	default:
+		logging.Writef("dbhandler.GetQuota: unexpected error: %s", err.Error())
+		return 0, err
+	}
+}
+
+// GetQuotaUsage returns the disk usage of a workspace in bytes
+func GetQuotaUsage(wid string) (uint64, error) {
+	return 0, errors.New("Unimplemented")
+}
+
+// ModifyQuotaUsage modifies the disk usage by a relative amount, specified in bytes
+func ModifyQuotaUsage(wid string, amount int64) (uint64, error) {
+	sqlStatement := `UPDATE quotas SET usage=usage+$1 WHERE wid=$2`
+	_, err := dbConn.Exec(sqlStatement, amount, wid)
+	if err != nil {
+		logging.Writef("dbhandler.SetQuota: failed to update quota for %s: %s", wid, err.Error())
+		return 0, err
+	}
+	return GetQuotaUsage(wid)
+}
+
+// ResetQuotaUsage resets the disk quota usage count in the database for all workspaces
+func ResetQuotaUsage() error {
+	sqlStatement := `UPDATE quotas SET usage=-1`
+	_, err := dbConn.Exec(sqlStatement)
+	if err != nil {
+		logging.Write("dbhandler.ResetQuotaUsage: failed to update reset disk quotas")
+		return err
+	}
+	return nil
+}
+
+// SetQuota sets the disk quota for a workspace to the specified number of bytes
+func SetQuota(wid string, quota uint64) error {
+	sqlStatement := `UPDATE quotas SET quota=$1 WHERE wid=$2`
+	_, err := dbConn.Exec(sqlStatement, quota, wid)
+	if err != nil {
+		logging.Writef("dbhandler.SetQuota: failed to update quota for %s: %s", wid, err.Error())
+		return err
+	}
+	return nil
+}
+
+// SetQuotaUsage sets the disk quota usage for a workspace to a specified number of bytes.
+func SetQuotaUsage(wid string, total uint64) error {
+	sqlStatement := `UPDATE quotas SET usage=$1 WHERE wid=$2`
+	_, err := dbConn.Exec(sqlStatement, total, wid)
+	if err != nil {
+		logging.Writef("dbhandler.SetQuotaUsage: failed to update quota for %s: %s", wid,
+			err.Error())
+		return err
+	}
+	return nil
 }

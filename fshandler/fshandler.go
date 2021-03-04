@@ -507,36 +507,6 @@ func (lfs *LocalFSHandler) Select(path string) (LocalAnPath, error) {
 	return anpath, nil
 }
 
-// GetQuota returns the size of a workspace's disk quota in mebibytes
-func GetQuota(wid string) (uint64, error) {
-	return 0, errors.New("Unimplemented")
-}
-
-// GetQuotaUsage returns the disk usage of a workspace in bytes
-func GetQuotaUsage(wid string) (uint64, error) {
-	return 0, errors.New("Unimplemented")
-}
-
-// ModifyQuotaUsage modifies the disk usage by a relative amount, specified in bytes
-func ModifyQuotaUsage(wid string, amount int64) (uint64, error) {
-	return 0, errors.New("Unimplemented")
-}
-
-// ResetQuotaUsage resets the disk quota usage count in the database for all workspaces
-func ResetQuotaUsage() error {
-	return errors.New("Unimplemented")
-}
-
-// SetQuota sets the disk quota for a workspace to the specified number of bytes
-func SetQuota(wid string, quota uint64) error {
-	return errors.New("Unimplemented")
-}
-
-// SetQuotaUsage sets the disk quota usage for a workspace to a specified number of bytes.
-func SetQuotaUsage(wid string, total uint64) error {
-	return errors.New("Unimplemented")
-}
-
 // RemoveWorkspace deletes all file and folder data for the specified workspace. This call does
 // not validate the workspace string. Validation is the caller's responsibility.
 func RemoveWorkspace(wid string) error {
