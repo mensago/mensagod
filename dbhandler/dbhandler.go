@@ -902,8 +902,9 @@ func GetQuota(wid string) (uint64, error) {
 
 	switch err {
 	case sql.ErrNoRows:
-		logging.Writef("dbhandler.GetQuota: No rows found for %s", wid)
-		return 0, err
+		defaultSize := uint64(viper.GetInt64("global.default_quota") * 1_048_576)
+		err = SetQuota(wid, defaultSize)
+		return defaultSize, err
 	case nil:
 		if quota < 0 {
 			quota = viper.GetInt64("global.default_quota") * 1_048_576

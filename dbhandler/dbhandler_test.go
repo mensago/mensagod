@@ -13,6 +13,7 @@ import (
 	"github.com/darkwyrm/anselusd/config"
 	"github.com/darkwyrm/anselusd/fshandler"
 	"github.com/google/uuid"
+	"github.com/spf13/viper"
 )
 
 // setupTest initializes the global config and resets the database
@@ -183,6 +184,49 @@ func TestDBHandler_GetQuota(t *testing.T) {
 	if err := setupTest(); err != nil {
 		t.Fatalf("TestDBHandler_GetQuota: Couldn't reset database: %s", err.Error())
 	}
+
+	wid := "11111111-1111-1111-1111-111111111111"
+	ensureTestDirectory("/ " + wid)
+
+	row := dbConn.QueryRow(`SELECT quota FROM quotas WHERE wid=$1`, wid)
+	var tempSize int64
+	err := row.Scan(&tempSize)
+
+	if err != sql.ErrNoRows {
+		t.Fatalf("TestDBHandler_GetQuota: Pre-execution error: %s", err)
+	}
+
+	// Subtest #1: Handle nonexistent record
+	quotaSize, err := GetQuota(wid)
+	if err != nil {
+		t.Fatalf("TestDBHandler_GetQuota: #1: failure to get quota: %s", err)
+	}
+	if quotaSize != uint64(viper.GetInt64("global.default_quota")) {
+		t.Fatal("TestDBHandler_GetQuota: #1: quota wrong size", err)
+	}
+
+	row = dbConn.QueryRow(`SELECT quota FROM quotas WHERE wid=$1`, wid)
+	err = row.Scan(&tempSize)
+	if err != nil {
+		t.Fatalf("TestDBHandler_GetQuota: #1: failed to get quota: %s", err)
+	}
+	if tempSize != viper.GetInt64("global.default_quota")*0x10_0000 {
+		t.Fatalf("TestDBHandler_GetQuota: #1: got the wrong quota size: %s", err)
+	}
+
+	// Subtest #2: Get existing record
+	err = SetQuota(wid, 0x60_0000)
+	if err != nil {
+		t.Fatalf("TestDBHandler_GetQuota: #2: failure to update quota size: %s", err)
+	}
+
+	quotaSize, err = GetQuota(wid)
+	if err != nil {
+		t.Fatalf("TestDBHandler_GetQuota: #2: failure to get quota: %s", err)
+	}
+	if quotaSize != 0x60_0000 {
+		t.Fatal("TestDBHandler_GetQuota: #2: quota wrong size", err)
+	}
 }
 
 func TestDBHandler_GetQuotaUsage(t *testing.T) {
@@ -195,6 +239,8 @@ func TestDBHandler_SetQuota(t *testing.T) {
 	if err := setupTest(); err != nil {
 		t.Fatalf("TestDBHandler_SetQuota: Couldn't reset database: %s", err.Error())
 	}
+
+	resetWorkspaceDir()
 
 	wid := "11111111-1111-1111-1111-111111111111"
 	ensureTestDirectory("/ " + wid)
