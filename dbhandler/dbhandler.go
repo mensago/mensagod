@@ -1002,22 +1002,23 @@ func ResetQuotaUsage() error {
 // SetQuota sets the disk quota for a workspace to the specified number of bytes
 func SetQuota(wid string, quota uint64) error {
 	sqlStatement := `UPDATE quotas SET quota=$1 WHERE wid=$2`
-	_, err := dbConn.Exec(sqlStatement, quota, wid)
+	result, err := dbConn.Exec(sqlStatement, quota, wid)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			usage, err := fshandler.GetFSHandler().GetDiskUsage(wid)
-			if err != nil {
-				return err
-			}
-			sqlStatement := `INSERT INTO quotas(wid, usage, quota)	VALUES($1, $2, $3)`
-			_, err = dbConn.Exec(sqlStatement, wid, usage, quota)
-			if err != nil {
-				logging.Writef("dbhandler.SetQuota: failed to add quota entry to table: %s",
-					err.Error())
-			}
-		} else {
-			logging.Writef("dbhandler.SetQuota: failed to update quota for %s: %s", wid, err.Error())
+		logging.Writef("dbhandler.SetQuota: failed to update quota for %s: %s", wid, err.Error())
+		return err
+	}
+
+	rowcount, _ := result.RowsAffected()
+	if rowcount == 0 {
+		usage, err := fshandler.GetFSHandler().GetDiskUsage(wid)
+		if err != nil {
 			return err
+		}
+		sqlStatement := `INSERT INTO quotas(wid, usage, quota)	VALUES($1, $2, $3)`
+		_, err = dbConn.Exec(sqlStatement, wid, usage, quota)
+		if err != nil {
+			logging.Writef("dbhandler.SetQuota: failed to add quota entry to table: %s",
+				err.Error())
 		}
 	}
 	return nil

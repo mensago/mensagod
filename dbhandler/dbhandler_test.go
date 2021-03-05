@@ -1,6 +1,7 @@
 package dbhandler
 
 import (
+	"database/sql"
 	"errors"
 	"io/ioutil"
 	"math/rand"
@@ -186,7 +187,62 @@ func TestDBHandler_GetQuota(t *testing.T) {
 
 func TestDBHandler_GetQuotaUsage(t *testing.T) {
 	if err := setupTest(); err != nil {
-		t.Fatalf("TestDBHandler_GetQuota: Couldn't reset database: %s", err.Error())
+		t.Fatalf("TestDBHandler_GetQuotaUsage: Couldn't reset database: %s", err.Error())
+	}
+}
+
+func TestDBHandler_SetQuota(t *testing.T) {
+	if err := setupTest(); err != nil {
+		t.Fatalf("TestDBHandler_SetQuota: Couldn't reset database: %s", err.Error())
+	}
+
+	wid := "11111111-1111-1111-1111-111111111111"
+	ensureTestDirectory("/ " + wid)
+	makeTestFiles("/ "+wid, 5)
+
+	row := dbConn.QueryRow(`SELECT quota FROM quotas WHERE wid=$1`, wid)
+
+	var quotaSize int64
+	err := row.Scan(&quotaSize)
+
+	if err != sql.ErrNoRows {
+		t.Fatalf("TestDBHandler_SetQuota: Pre-execution error: %s", err)
+	}
+
+	// Subtest #1: Handle nonexistent record
+	err = SetQuota(wid, 0x10_0000)
+	if err != nil {
+		t.Fatalf("TestDBHandler_SetQuota: #1: failure to add quota: %s", err)
+	}
+
+	row = dbConn.QueryRow(`SELECT quota FROM quotas WHERE wid=$1`, wid)
+	err = row.Scan(&quotaSize)
+	if err != nil {
+		t.Fatalf("TestDBHandler_SetQuota: #1: failed to get quota: %s", err)
+	}
+	if quotaSize != 0x10_0000 {
+		t.Fatalf("TestDBHandler_SetQuota: #1: got the wrong quota size: %s", err)
+	}
+
+	// Subtest #2: Update existing record
+	err = SetQuota(wid, 0x60_0000)
+	if err != nil {
+		t.Fatalf("TestDBHandler_SetQuota: #2: failure to set quota: %s", err)
+	}
+
+	row = dbConn.QueryRow(`SELECT quota FROM quotas WHERE wid=$1`, wid)
+	err = row.Scan(&quotaSize)
+	if err != nil {
+		t.Fatalf("TestDBHandler_SetQuota: #2: failed to get quota: %s", err)
+	}
+	if quotaSize != 0x60_0000 {
+		t.Fatalf("TestDBHandler_SetQuota: #2: got the wrong quota size: %s", err)
+	}
+}
+
+func TestDBHandler_SetQuotaUsage(t *testing.T) {
+	if err := setupTest(); err != nil {
+		t.Fatalf("TestDBHandler_SetQuotaUsage: Couldn't reset database: %s", err.Error())
 	}
 }
 
@@ -222,7 +278,5 @@ func TestDBHandler_GetQuotaUsage(t *testing.T) {
 // ResetQuotaUsage
 // ResolveAddress
 // SetPassword
-// SetQuota
-// SetQuotaUsage
 // SetWorkspaceStatus
 // UpdateDevice
