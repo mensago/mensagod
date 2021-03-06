@@ -235,6 +235,82 @@ func TestDBHandler_GetQuotaUsage(t *testing.T) {
 	}
 }
 
+func TestDBHandler_ModifyQuotaUsage(t *testing.T) {
+	if err := setupTest(); err != nil {
+		t.Fatalf("TestDBHandler_ModifyQuotaUsage: Couldn't reset database: %s", err.Error())
+	}
+
+	resetWorkspaceDir()
+
+	wid := "11111111-1111-1111-1111-111111111111"
+	ensureTestDirectory("/ " + wid)
+	generateRandomFile("/ "+wid, 2000)
+
+	row := dbConn.QueryRow(`SELECT quota FROM quotas WHERE wid=$1`, wid)
+
+	var quotaSize int64
+	err := row.Scan(&quotaSize)
+
+	if err != sql.ErrNoRows {
+		t.Fatalf("TestDBHandler_ModifyQuotaUsage: Pre-execution error: %s", err)
+	}
+
+	// Subtest #1: Handle nonexistent record. This means that a new record will be created and the
+	// value passed will be ignored. The exact disk usage will be set in the database instead.
+	currentUsage, err := ModifyQuotaUsage(wid, 1000)
+	if err != nil {
+		t.Fatalf("TestDBHandler_ModifyQuotaUsage: #1: failure to update quota: %s", err)
+	}
+	if currentUsage != 2000 {
+		t.Fatalf("TestDBHandler_ModifyQuotaUsage: #1: bad usage value: %d", currentUsage)
+	}
+
+	result, err := dbConn.Exec("UPDATE quotas SET usage=-1 WHERE wid=$1", wid)
+	if err != nil {
+		t.Fatalf("TestDBHandler_ModifyQuotaUsage: #1: failure to reset usage: %s", err)
+	}
+	rowCount, _ := result.RowsAffected()
+	if rowCount != 1 {
+		t.Fatalf("TestDBHandler_ModifyQuotaUsage: #1: failure to reset usage: no rows affected")
+	}
+
+	// Subtest #2: Update record which needs updating
+
+	currentUsage, err = ModifyQuotaUsage(wid, 1000)
+	if err != nil {
+		t.Fatalf("TestDBHandler_ModifyQuotaUsage: #2: failure to update quota: %s", err)
+	}
+	if currentUsage != 2000 {
+		t.Fatalf("TestDBHandler_ModifyQuotaUsage: #2: bad usage value: %d", currentUsage)
+	}
+
+	// Subtest #3: Actual success
+
+	currentUsage, err = ModifyQuotaUsage(wid, 1000)
+	if err != nil {
+		t.Fatalf("TestDBHandler_ModifyQuotaUsage: #3: failure to update quota: %s", err)
+	}
+	if currentUsage != 3000 {
+		t.Fatalf("TestDBHandler_ModifyQuotaUsage: #3: bad usage value: %d", currentUsage)
+	}
+
+	// Subtest #4: Try to go lower than 0
+
+	currentUsage, err = ModifyQuotaUsage(wid, -10000)
+	if err != nil {
+		t.Fatalf("TestDBHandler_ModifyQuotaUsage: #4: failure to update quota: %s", err)
+	}
+	if currentUsage != 0 {
+		t.Fatalf("TestDBHandler_ModifyQuotaUsage: #4: bad usage value: %d", currentUsage)
+	}
+}
+
+func TestDBHandler_ResetQuotaUsage(t *testing.T) {
+	if err := setupTest(); err != nil {
+		t.Fatalf("TestDBHandler_ResetQuotaUsage: Couldn't reset database: %s", err.Error())
+	}
+}
+
 func TestDBHandler_SetQuota(t *testing.T) {
 	if err := setupTest(); err != nil {
 		t.Fatalf("TestDBHandler_SetQuota: Couldn't reset database: %s", err.Error())
@@ -315,7 +391,6 @@ func TestDBHandler_SetQuotaUsage(t *testing.T) {
 // GetUserEntries
 // IsAlias
 // LogFailure
-// ModifyQuotaUsage
 // PreregWorkspace
 // RemoveDevice
 // RemoveExpiredPasscodes
