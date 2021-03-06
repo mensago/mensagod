@@ -1048,7 +1048,9 @@ func SetQuota(wid string, quota uint64) error {
 	return nil
 }
 
-// SetQuotaUsage sets the disk quota usage for a workspace to a specified number of bytes.
+// SetQuotaUsage sets the disk quota usage for a workspace to a specified number of bytes. If the
+// usage has not been updated since boot, the total is ignored and the actual value from disk
+// is used.
 func SetQuotaUsage(wid string, total uint64) error {
 	sqlStatement := `UPDATE quotas SET usage=$1 WHERE wid=$2`
 	result, err := dbConn.Exec(sqlStatement, total, wid)
@@ -1060,8 +1062,13 @@ func SetQuotaUsage(wid string, total uint64) error {
 
 	rowcount, _ := result.RowsAffected()
 	if rowcount == 0 {
+		usage, err := fshandler.GetFSHandler().GetDiskUsage(wid)
+		if err != nil {
+			return err
+		}
+
 		sqlStatement := `INSERT INTO quotas(wid, usage, quota)	VALUES($1, $2, $3)`
-		_, err = dbConn.Exec(sqlStatement, wid, total,
+		_, err = dbConn.Exec(sqlStatement, wid, usage,
 			viper.GetInt64("global.default_quota")*1_048_576)
 		if err != nil {
 			logging.Writef("dbhandler.SetQuotaUsage: failed to add quota entry to table: %s",

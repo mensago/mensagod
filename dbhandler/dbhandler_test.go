@@ -459,6 +459,57 @@ func TestDBHandler_SetQuotaUsage(t *testing.T) {
 	if err := setupTest(); err != nil {
 		t.Fatalf("TestDBHandler_SetQuotaUsage: Couldn't reset database: %s", err.Error())
 	}
+
+	resetWorkspaceDir()
+
+	wid := "11111111-1111-1111-1111-111111111111"
+	testPath := "/ " + wid
+	ensureTestDirectory(testPath)
+	generateRandomFile(testPath, 2000)
+
+	row := dbConn.QueryRow(`SELECT usage FROM quotas WHERE wid=$1`, wid)
+
+	var usage int64
+	err := row.Scan(&usage)
+
+	if err != sql.ErrNoRows {
+		t.Fatalf("TestDBHandler_SetQuotaUsage: Pre-execution error: %s", err)
+	}
+
+	// Subtest #1: Handle nonexistent record
+
+	err = SetQuotaUsage(wid, 1000)
+	if err != nil {
+		t.Fatalf("TestDBHandler_SetQuotaUsage: #1: failure to add usage: %s", err)
+	}
+
+	row = dbConn.QueryRow(`SELECT usage FROM quotas WHERE wid=$1`, wid)
+	err = row.Scan(&usage)
+	if err != nil {
+		t.Fatalf("TestDBHandler_SetQuotaUsage: #1: failed to get usage: %s", err)
+	}
+
+	// This should be 2000 as determined by the call to generateRandomFile. If the record doesn't
+	// exist, then the actual usage should be pulled from the disk
+	if usage != 2000 {
+		t.Fatalf("TestDBHandler_SetQuotaUsage: #1: got the wrong usage size: %d", usage)
+	}
+
+	// Subtest #2: Update existing record
+
+	err = SetQuotaUsage(wid, 3000)
+	if err != nil {
+		t.Fatalf("TestDBHandler_SetQuotaUsage: #2: failure to set quota: %s", err)
+	}
+
+	row = dbConn.QueryRow(`SELECT usage FROM quotas WHERE wid=$1`, wid)
+	err = row.Scan(&usage)
+	if err != nil {
+		t.Fatalf("TestDBHandler_SetQuotaUsage: #2: failed to get usage: %s", err)
+	}
+	if usage != 3000 {
+		t.Fatalf("TestDBHandler_SetQuotaUsage: #2: got the wrong usage size: %d", usage)
+	}
 }
 
 // TODO: Tests to write:
