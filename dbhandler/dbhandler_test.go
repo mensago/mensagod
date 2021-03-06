@@ -197,6 +197,7 @@ func TestDBHandler_GetQuota(t *testing.T) {
 	}
 
 	// Subtest #1: Handle nonexistent record
+
 	quotaSize, err := GetQuota(wid)
 	if err != nil {
 		t.Fatalf("TestDBHandler_GetQuota: #1: failure to get quota: %s", err)
@@ -215,6 +216,7 @@ func TestDBHandler_GetQuota(t *testing.T) {
 	}
 
 	// Subtest #2: Get existing record
+
 	err = SetQuota(wid, 0x60_0000)
 	if err != nil {
 		t.Fatalf("TestDBHandler_GetQuota: #2: failure to update quota size: %s", err)
@@ -306,6 +308,7 @@ func TestDBHandler_ModifyQuotaUsage(t *testing.T) {
 
 	// Subtest #1: Handle nonexistent record. This means that a new record will be created and the
 	// value passed will be ignored. The exact disk usage will be set in the database instead.
+
 	currentUsage, err := ModifyQuotaUsage(wid, 1000)
 	if err != nil {
 		t.Fatalf("TestDBHandler_ModifyQuotaUsage: #1: failure to update quota: %s", err)
@@ -425,6 +428,7 @@ func TestDBHandler_SetQuota(t *testing.T) {
 	}
 
 	// Subtest #1: Handle nonexistent record
+
 	err = SetQuota(wid, 0x10_0000)
 	if err != nil {
 		t.Fatalf("TestDBHandler_SetQuota: #1: failure to add quota: %s", err)
@@ -440,6 +444,7 @@ func TestDBHandler_SetQuota(t *testing.T) {
 	}
 
 	// Subtest #2: Update existing record
+
 	err = SetQuota(wid, 0x60_0000)
 	if err != nil {
 		t.Fatalf("TestDBHandler_SetQuota: #2: failure to set quota: %s", err)
