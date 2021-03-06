@@ -358,6 +358,50 @@ func TestDBHandler_ResetQuotaUsage(t *testing.T) {
 	if err := setupTest(); err != nil {
 		t.Fatalf("TestDBHandler_ResetQuotaUsage: Couldn't reset database: %s", err.Error())
 	}
+
+	resetWorkspaceDir()
+
+	wid := "11111111-1111-1111-1111-111111111111"
+	ensureTestDirectory("/ " + wid)
+	makeTestFiles("/ "+wid, 5)
+
+	row := dbConn.QueryRow(`SELECT usage FROM quotas WHERE wid=$1`, wid)
+
+	var quotaSize int64
+	err := row.Scan(&quotaSize)
+
+	if err != sql.ErrNoRows {
+		t.Fatalf("TestDBHandler_ResetQuotaUsage: Pre-execution error: %s", err)
+	}
+
+	// Subtest #1: Handle empty table
+
+	err = ResetQuotaUsage()
+	if err != nil {
+		t.Fatalf("TestDBHandler_ResetQuotaUsage: #1: failure to handle empty table: %s", err)
+	}
+
+	// Subtest #2: Update existing record
+
+	err = SetQuota(wid, 0x60_0000)
+	if err != nil {
+		t.Fatalf("TestDBHandler_ResetQuotaUsage: #2: failure to add quota record: %s", err)
+	}
+
+	err = ResetQuotaUsage()
+	if err != nil {
+		t.Fatalf("TestDBHandler_ResetQuotaUsage: #2: failure to update table: %s", err)
+	}
+
+	row = dbConn.QueryRow(`SELECT usage FROM quotas WHERE wid=$1`, wid)
+	err = row.Scan(&quotaSize)
+	if err != nil {
+		t.Fatalf("TestDBHandler_ResetQuotaUsage: #2: failed to get quota: %s", err)
+	}
+	if quotaSize >= 0 {
+		t.Fatal("TestDBHandler_ResetQuotaUsage: #2: quota failed to invalidate")
+	}
+
 }
 
 func TestDBHandler_SetQuota(t *testing.T) {
