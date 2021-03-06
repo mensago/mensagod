@@ -957,36 +957,55 @@ func GetQuotaUsage(wid string) (uint64, error) {
 	return out, SetQuotaUsage(wid, out)
 }
 
-// ModifyQuotaUsage modifies the disk usage by a relative amount, specified in bytes
+// ModifyQuotaUsage modifies the disk usage by a relative amount, specified in bytes. Note that if
 func ModifyQuotaUsage(wid string, amount int64) (uint64, error) {
-	sqlStatement := `UPDATE quotas SET usage=usage+$1 WHERE wid=$2`
-	_, err := dbConn.Exec(sqlStatement, amount, wid)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			usage, err := fshandler.GetFSHandler().GetDiskUsage(wid)
-			if err != nil {
-				return 0, err
-			}
-			if amount < 0 {
-				usage -= uint64(amount * -1)
-			} else {
-				usage += uint64(amount)
-			}
+	row := dbConn.QueryRow(`SELECT usage FROM quotas WHERE wid=$1`, wid)
 
-			sqlStatement := `INSERT INTO quotas(wid, usage, quota)	VALUES($1, $2, $3)`
-			_, err = dbConn.Exec(sqlStatement, wid, usage,
-				viper.GetInt64("global.default_quota")*1_048_576)
-			if err != nil {
-				logging.Writef("dbhandler.SetQuota: failed to add quota entry to table: %s",
-					err.Error())
-			}
-		} else {
-			logging.Writef("dbhandler.ModifyQuotaUsage: failed to update quota for %s: %s", wid,
-				err.Error())
+	var dbUsage int64
+	var out uint64
+	err := row.Scan(&dbUsage)
+
+	switch err {
+	case sql.ErrNoRows:
+		out, err = fshandler.GetFSHandler().GetDiskUsage(wid)
+		if err != nil {
 			return 0, err
 		}
+
+		sqlStatement := `INSERT INTO quotas(wid, usage, quota)	VALUES($1, $2, $3)`
+		_, err = dbConn.Exec(sqlStatement, wid, out,
+			viper.GetInt64("global.default_quota")*1_048_576)
+		if err != nil {
+			logging.Writef("dbhandler.GetQuotaUsage: failed to add quota entry to table: %s",
+				err.Error())
+		}
+		return out, SetQuotaUsage(wid, out)
+	case nil:
+		// Keep going
+	case err.(*pq.Error):
+		logging.Writef("dbhandler.GetQuota: PostgreSQL error: %s", err.Error())
+		return 0, err
+	default:
+		logging.Writef("dbhandler.GetQuota: unexpected error: %s", err.Error())
+		return 0, err
 	}
-	return GetQuotaUsage(wid)
+
+	// Disk usage is lazily updated after each boot. If it has yet to be updated, the value in the
+	// database will be negative
+	if dbUsage < 0 {
+		fsh := fshandler.GetFSHandler()
+		out, err = fsh.GetDiskUsage(wid)
+		if err != nil {
+			return 0, err
+		}
+		return out, SetQuotaUsage(wid, out)
+	}
+
+	newTotal := dbUsage + amount
+	if newTotal < 0 {
+		newTotal = 0
+	}
+	return uint64(newTotal), SetQuotaUsage(wid, uint64(newTotal))
 }
 
 // ResetQuotaUsage resets the disk quota usage count in the database for all workspaces
