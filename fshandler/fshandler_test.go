@@ -380,6 +380,52 @@ func TestLocalFSHandler_Exists(t *testing.T) {
 	}
 }
 
+func TestLocalFSHandler_GetDiskUsage(t *testing.T) {
+	err := setupTest()
+	if err != nil {
+		t.Fatalf("TestLocalFSHandler_GetDiskUsage: Couldn't reset workspace dir: %s", err.Error())
+	}
+
+	wid := "11111111-1111-1111-1111-111111111111"
+	testPath := "/ " + wid
+	fsh := GetFSHandler()
+
+	// Subtest #1: bad WID
+
+	_, err = fsh.GetDiskUsage("11111111-1111-1111-1111")
+	if err == nil {
+		t.Fatal("TestLocalFSHandler_ListFiles: #1: failed to handle bad WID")
+	}
+
+	// Subtest #2: non-existent WID
+
+	_, err = fsh.GetDiskUsage("/ 22222222-2222-2222-2222-222222222222")
+	if err == nil {
+		t.Fatal("TestLocalFSHandler_ListFiles: #2: failed to handle missing workspace directory")
+	}
+
+	// Subtest #3: Single directory of files
+
+	err = ensureTestDirectory(testPath)
+	if err != nil {
+		t.Fatal("TestLocalFSHandler_ListFiles: #3: failed to create workspace directory")
+	}
+
+	for _, testSize := range []int{1000, 2000, 3000, 4000} {
+		_, err = generateRandomFile(testPath, testSize)
+		if err != nil {
+			t.Fatal("TestLocalFSHandler_ListFiles: #3: failed to create test files")
+		}
+	}
+	fileSize, err := fsh.GetDiskUsage(wid)
+	if err != nil {
+		t.Fatal("TestLocalFSHandler_ListFiles: #3: failed to get disk usage")
+	}
+	if fileSize != 10_000 {
+		t.Fatalf("TestLocalFSHandler_ListFiles: #3: got wrong file size: %d", fileSize)
+	}
+}
+
 func TestLocalFSHandler_InstallTempFile(t *testing.T) {
 	err := setupTest()
 	if err != nil {
