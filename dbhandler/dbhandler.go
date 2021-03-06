@@ -929,7 +929,11 @@ func GetQuotaUsage(wid string) (uint64, error) {
 
 	switch err {
 	case sql.ErrNoRows:
-		logging.Writef("dbhandler.GetQuota: No rows found for %s", wid)
+		out, err = fshandler.GetFSHandler().GetDiskUsage(wid)
+		if err != nil {
+			return 0, err
+		}
+		return out, SetQuotaUsage(wid, out)
 	case nil:
 		if dbUsage >= 0 {
 			return uint64(dbUsage), nil
@@ -1047,21 +1051,22 @@ func SetQuota(wid string, quota uint64) error {
 // SetQuotaUsage sets the disk quota usage for a workspace to a specified number of bytes.
 func SetQuotaUsage(wid string, total uint64) error {
 	sqlStatement := `UPDATE quotas SET usage=$1 WHERE wid=$2`
-	_, err := dbConn.Exec(sqlStatement, total, wid)
+	result, err := dbConn.Exec(sqlStatement, total, wid)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			sqlStatement := `INSERT INTO quotas(wid, usage, quota)	VALUES($1, $2, $3)`
-			_, err = dbConn.Exec(sqlStatement, wid, total,
-				viper.GetInt64("global.default_quota")*1_048_576)
-			if err != nil {
-				logging.Writef("dbhandler.SetQuotaUsage: failed to add quota entry to table: %s",
-					err.Error())
-			}
-		} else {
-			logging.Writef("dbhandler.SetQuotaUsage: failed to update quota for %s: %s", wid,
+		logging.Writef("dbhandler.SetQuota: failed to update quota for %s: %s", wid, err.Error())
+		return err
+	}
+
+	rowcount, _ := result.RowsAffected()
+	if rowcount == 0 {
+		sqlStatement := `INSERT INTO quotas(wid, usage, quota)	VALUES($1, $2, $3)`
+		_, err = dbConn.Exec(sqlStatement, wid, total,
+			viper.GetInt64("global.default_quota")*1_048_576)
+		if err != nil {
+			logging.Writef("dbhandler.SetQuotaUsage: failed to add quota entry to table: %s",
 				err.Error())
-			return err
 		}
 	}
+
 	return nil
 }

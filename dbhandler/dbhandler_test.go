@@ -233,6 +233,55 @@ func TestDBHandler_GetQuotaUsage(t *testing.T) {
 	if err := setupTest(); err != nil {
 		t.Fatalf("TestDBHandler_GetQuotaUsage: Couldn't reset database: %s", err.Error())
 	}
+
+	resetWorkspaceDir()
+
+	wid := "11111111-1111-1111-1111-111111111111"
+	testPath := "/ " + wid
+	ensureTestDirectory(testPath)
+	generateRandomFile(testPath, 2000)
+
+	row := dbConn.QueryRow(`SELECT usage FROM quotas WHERE wid=$1`, wid)
+	var tempSize int64
+	err := row.Scan(&tempSize)
+
+	if err != sql.ErrNoRows {
+		t.Fatalf("TestDBHandler_GetQuotaUsage: Pre-execution error: %s", err)
+	}
+
+	// Subtest #1: Handle nonexistent record
+
+	usage, err := GetQuotaUsage(wid)
+	if err != nil {
+		t.Fatalf("TestDBHandler_GetQuotaUsage: #1: failure to get usage: %s", err)
+	}
+	if usage != 2000 {
+		t.Fatalf("TestDBHandler_GetQuotaUsage: #1: usage wrong size: %d", usage)
+	}
+
+	row = dbConn.QueryRow(`SELECT usage FROM quotas WHERE wid=$1`, wid)
+	err = row.Scan(&tempSize)
+	if err != nil {
+		t.Fatalf("TestDBHandler_GetQuota: #1: failed to get usage: %s", err)
+	}
+	if tempSize != 2000 {
+		t.Fatalf("TestDBHandler_GetQuotaUsage: #1: got the wrong usage size: %s", err)
+	}
+
+	// Subtest #2: Get existing record
+
+	err = SetQuotaUsage(wid, 3000)
+	if err != nil {
+		t.Fatalf("TestDBHandler_GetQuotaUsage: #2: failure to update usage: %s", err)
+	}
+
+	usage, err = GetQuotaUsage(wid)
+	if err != nil {
+		t.Fatalf("TestDBHandler_GetQuotaUsage: #2: failure to get usage: %s", err)
+	}
+	if usage != 3000 {
+		t.Fatal("TestDBHandler_GetQuotaUsage: #2: usage wrong size", err)
+	}
 }
 
 func TestDBHandler_ModifyQuotaUsage(t *testing.T) {
