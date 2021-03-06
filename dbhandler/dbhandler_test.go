@@ -202,7 +202,7 @@ func TestDBHandler_GetQuota(t *testing.T) {
 		t.Fatalf("TestDBHandler_GetQuota: #1: failure to get quota: %s", err)
 	}
 	if quotaSize != uint64(viper.GetInt64("global.default_quota")) {
-		t.Fatal("TestDBHandler_GetQuota: #1: quota wrong size", err)
+		t.Fatalf("TestDBHandler_GetQuota: #1: quota wrong size: %d", quotaSize)
 	}
 
 	row = dbConn.QueryRow(`SELECT quota FROM quotas WHERE wid=$1`, wid)
@@ -211,7 +211,7 @@ func TestDBHandler_GetQuota(t *testing.T) {
 		t.Fatalf("TestDBHandler_GetQuota: #1: failed to get quota: %s", err)
 	}
 	if tempSize != viper.GetInt64("global.default_quota")*0x10_0000 {
-		t.Fatalf("TestDBHandler_GetQuota: #1: got the wrong quota size: %s", err)
+		t.Fatalf("TestDBHandler_GetQuota: #1: got the wrong quota size: %d", tempSize)
 	}
 
 	// Subtest #2: Get existing record
@@ -225,7 +225,7 @@ func TestDBHandler_GetQuota(t *testing.T) {
 		t.Fatalf("TestDBHandler_GetQuota: #2: failure to get quota: %s", err)
 	}
 	if quotaSize != 0x60_0000 {
-		t.Fatal("TestDBHandler_GetQuota: #2: quota wrong size", err)
+		t.Fatalf("TestDBHandler_GetQuota: #2: quota wrong size: %d", quotaSize)
 	}
 }
 
@@ -265,7 +265,7 @@ func TestDBHandler_GetQuotaUsage(t *testing.T) {
 		t.Fatalf("TestDBHandler_GetQuota: #1: failed to get usage: %s", err)
 	}
 	if tempSize != 2000 {
-		t.Fatalf("TestDBHandler_GetQuotaUsage: #1: got the wrong usage size: %s", err)
+		t.Fatalf("TestDBHandler_GetQuotaUsage: #1: got the wrong usage size: %d", tempSize)
 	}
 
 	// Subtest #2: Get existing record
@@ -280,7 +280,7 @@ func TestDBHandler_GetQuotaUsage(t *testing.T) {
 		t.Fatalf("TestDBHandler_GetQuotaUsage: #2: failure to get usage: %s", err)
 	}
 	if usage != 3000 {
-		t.Fatal("TestDBHandler_GetQuotaUsage: #2: usage wrong size", err)
+		t.Fatalf("TestDBHandler_GetQuotaUsage: #2: usage wrong size: %d", usage)
 	}
 }
 
@@ -295,7 +295,7 @@ func TestDBHandler_ModifyQuotaUsage(t *testing.T) {
 	ensureTestDirectory("/ " + wid)
 	generateRandomFile("/ "+wid, 2000)
 
-	row := dbConn.QueryRow(`SELECT quota FROM quotas WHERE wid=$1`, wid)
+	row := dbConn.QueryRow(`SELECT usage FROM quotas WHERE wid=$1`, wid)
 
 	var quotaSize int64
 	err := row.Scan(&quotaSize)
@@ -392,7 +392,7 @@ func TestDBHandler_SetQuota(t *testing.T) {
 		t.Fatalf("TestDBHandler_SetQuota: #1: failed to get quota: %s", err)
 	}
 	if quotaSize != 0x10_0000 {
-		t.Fatalf("TestDBHandler_SetQuota: #1: got the wrong quota size: %s", err)
+		t.Fatalf("TestDBHandler_SetQuota: #1: got the wrong quota size: %d", quotaSize)
 	}
 
 	// Subtest #2: Update existing record
@@ -407,7 +407,7 @@ func TestDBHandler_SetQuota(t *testing.T) {
 		t.Fatalf("TestDBHandler_SetQuota: #2: failed to get quota: %s", err)
 	}
 	if quotaSize != 0x60_0000 {
-		t.Fatalf("TestDBHandler_SetQuota: #2: got the wrong quota size: %s", err)
+		t.Fatalf("TestDBHandler_SetQuota: #2: got the wrong quota size: %d", quotaSize)
 	}
 }
 

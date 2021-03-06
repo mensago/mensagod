@@ -939,10 +939,10 @@ func GetQuotaUsage(wid string) (uint64, error) {
 			return uint64(dbUsage), nil
 		}
 	case err.(*pq.Error):
-		logging.Writef("dbhandler.GetQuota: PostgreSQL error: %s", err.Error())
+		logging.Writef("dbhandler.GetQuotaUsage: PostgreSQL error: %s", err.Error())
 		return 0, err
 	default:
-		logging.Writef("dbhandler.GetQuota: unexpected error: %s", err.Error())
+		logging.Writef("dbhandler.GetQuotaUsage: unexpected error: %s", err.Error())
 		return 0, err
 	}
 
@@ -980,17 +980,17 @@ func ModifyQuotaUsage(wid string, amount int64) (uint64, error) {
 		_, err = dbConn.Exec(sqlStatement, wid, out,
 			viper.GetInt64("global.default_quota")*1_048_576)
 		if err != nil {
-			logging.Writef("dbhandler.GetQuotaUsage: failed to add quota entry to table: %s",
+			logging.Writef("dbhandler.ModifyQuotaUsage: failed to add quota entry to table: %s",
 				err.Error())
 		}
 		return out, SetQuotaUsage(wid, out)
 	case nil:
 		// Keep going
 	case err.(*pq.Error):
-		logging.Writef("dbhandler.GetQuota: PostgreSQL error: %s", err.Error())
+		logging.Writef("dbhandler.ModifyQuotaUsage: PostgreSQL error: %s", err.Error())
 		return 0, err
 	default:
-		logging.Writef("dbhandler.GetQuota: unexpected error: %s", err.Error())
+		logging.Writef("dbhandler.ModifyQuotaUsage: unexpected error: %s", err.Error())
 		return 0, err
 	}
 
@@ -1053,7 +1053,8 @@ func SetQuotaUsage(wid string, total uint64) error {
 	sqlStatement := `UPDATE quotas SET usage=$1 WHERE wid=$2`
 	result, err := dbConn.Exec(sqlStatement, total, wid)
 	if err != nil {
-		logging.Writef("dbhandler.SetQuota: failed to update quota for %s: %s", wid, err.Error())
+		logging.Writef("dbhandler.SetQuotaUsage: failed to update quota for %s: %s", wid,
+			err.Error())
 		return err
 	}
 
