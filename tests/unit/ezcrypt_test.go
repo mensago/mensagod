@@ -1,10 +1,10 @@
-package anselusd
+package mensagod
 
 import (
 	"testing"
 
-	"github.com/darkwyrm/anselusd/cryptostring"
-	"github.com/darkwyrm/anselusd/ezcrypt"
+	"github.com/darkwyrm/mensagod/cryptostring"
+	"github.com/darkwyrm/mensagod/ezcrypt"
 )
 
 func TestEZCryptEncryptDecrypt(t *testing.T) {

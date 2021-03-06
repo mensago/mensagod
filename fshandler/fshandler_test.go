@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/darkwyrm/anselusd/config"
+	"github.com/darkwyrm/mensagod/config"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
@@ -113,7 +113,7 @@ func makeTestFiles(dir string, count int) error {
 
 	for i := 0; i < count; i++ {
 		filesize := rand.Intn(10140) + 100
-		_, err = generateRandomFile(anpath.AnselusPath(), filesize)
+		_, err = generateRandomFile(anpath.MensagoPath(), filesize)
 		if err != nil {
 			return err
 		}
@@ -152,7 +152,7 @@ func makeTestDirectories(path string, count int) ([]string, error) {
 }
 
 // ensureTestDirectory makes sure a specific test directory exists. The path is expected to be
-// an Anselus-format path, resulting in a path relative to the workspace root.
+// an Mensago-format path, resulting in a path relative to the workspace root.
 func ensureTestDirectory(path string) error {
 	var anpath LocalAnPath
 	err := anpath.Set(path)
@@ -353,7 +353,7 @@ func TestLocalFSHandler_Exists(t *testing.T) {
 	fsh := GetFSHandler()
 
 	// Subtest #1: bad path
-	_, err = fsh.Exists("/var/anselus/" + wid)
+	_, err = fsh.Exists("/var/mensago/" + wid)
 	if err == nil {
 		t.Fatal("TestLocalFSHandler_Exists: failed to handle bad path")
 	}
@@ -488,7 +488,7 @@ func TestLocalFSHandler_ListFiles(t *testing.T) {
 
 	// Subtest #1: bad path
 
-	err = fsh.MakeDirectory("/var/anselus/" + wid)
+	err = fsh.MakeDirectory("/var/mensago/" + wid)
 	if err == nil {
 		t.Fatal("TestLocalFSHandler_ListFiles: failed to handle bad path")
 	}
@@ -573,7 +573,7 @@ func TestLocalFSHandler_ListDirectories(t *testing.T) {
 
 	// Subtest #1: bad path
 
-	err = fsh.MakeDirectory("/var/anselus/" + wid)
+	err = fsh.MakeDirectory("/var/mensago/" + wid)
 	if err == nil {
 		t.Fatal("TestLocalFSHandler_ListDirectories: failed to handle bad path")
 	}
@@ -648,7 +648,7 @@ func TestLocalFSHandler_MakeDirectory(t *testing.T) {
 	fsh := GetFSHandler()
 
 	// Subtest #1: bad path
-	err = fsh.MakeDirectory("/var/anselus/" + wid)
+	err = fsh.MakeDirectory("/var/mensago/" + wid)
 	if err == nil {
 		t.Fatal("TestLocalFSHandler_MakeDirectory: failed to handle bad path")
 	}
@@ -899,7 +899,7 @@ func TestLocalFSHandler_RemoveDirectory(t *testing.T) {
 
 	// Subtest #1: bad path
 
-	err = fsh.MakeDirectory("/var/anselus/" + wid)
+	err = fsh.MakeDirectory("/var/mensago/" + wid)
 	if err == nil {
 		t.Fatal("TestLocalFSHandler_RemoveDirectory: failed to handle bad path")
 	}

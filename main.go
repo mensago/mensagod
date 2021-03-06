@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/darkwyrm/anselusd/config"
-	"github.com/darkwyrm/anselusd/dbhandler"
-	"github.com/darkwyrm/anselusd/fshandler"
-	"github.com/darkwyrm/anselusd/logging"
+	"github.com/darkwyrm/mensagod/config"
+	"github.com/darkwyrm/mensagod/dbhandler"
+	"github.com/darkwyrm/mensagod/fshandler"
+	"github.com/darkwyrm/mensagod/logging"
 	"github.com/everlastingbeta/diceware"
 	_ "github.com/lib/pq"
 	"github.com/spf13/viper"
@@ -29,7 +29,7 @@ var gDiceWordList diceware.Wordlist
 // Types
 // -------------------------------------------------------------------------------------------
 
-// MaxCommandLength is the maximum number of bytes an Anselus command is permitted to be, including
+// MaxCommandLength is the maximum number of bytes an Mensago command is permitted to be, including
 // end-of-line terminator. Note that bulk transfers are not subject to this restriction -- just the
 // initial command.
 const MaxCommandLength = 1024
@@ -210,7 +210,7 @@ func connectionWorker(conn net.Conn) {
 	session.Connection = conn
 	session.LoginState = loginNoSession
 
-	session.WriteClient("{\"Name\":\"Anselus\",\"Version\":\"0.1\",\"Code\":200," +
+	session.WriteClient("{\"Name\":\"Mensago\",\"Version\":\"0.1\",\"Code\":200," +
 		"\"Status\":\"OK\"}\r\n")
 	for {
 		request, err := session.GetRequest()

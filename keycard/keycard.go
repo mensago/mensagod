@@ -15,10 +15,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/darkwyrm/anselusd/cryptostring"
-	"github.com/darkwyrm/anselusd/logging"
 	"github.com/darkwyrm/b85"
 	"github.com/darkwyrm/gostringlist"
+	"github.com/darkwyrm/mensagod/cryptostring"
+	"github.com/darkwyrm/mensagod/logging"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/sha3"

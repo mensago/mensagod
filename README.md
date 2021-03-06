@@ -1,6 +1,6 @@
-# anselusd: server-side daemon for the [Anselus](https://anselus.org) online communications platform
+# mensagod: server-side daemon for the [Mensago](https://mensago.org) online communications platform
 
-anselusd provides identity services and data storage and synchronization for Anselus client applications and is released under the MIT license. 
+mensagod provides identity services and data storage and synchronization for Mensago client applications and is released under the MIT license. 
 
 ## Description
 
@@ -10,14 +10,14 @@ The server daemon isn't dramatically different from other database-based applica
 
 ## Contributing
 
-Anselus is a very young, very ambitious project that needs help in all sorts of areas -- not just writing code. Find out more information at https://anselus.org/develop.
+Mensago is a very young, very ambitious project that needs help in all sorts of areas -- not just writing code. Find out more information at https://mensago.org/develop.
 
 ### Environment Setup
 
 1. Create PostgreSQL database and associated user with all permissions on said database
 2. Run utils/serverconfig.py
 	- Set the database username and password at minimum
-	- If your Postgres setup is non-standard (not localhost:5432, database name/user anselus/anselus), make the necessary adjustments to your database config
+	- If your Postgres setup is non-standard (not localhost:5432, database name/user mensago/mensago), make the necessary adjustments to your database config
 3. Windows users may need to install the pycryptodome module in addition to the others to use all the utilities
 
 ### Current Status and Roadmap

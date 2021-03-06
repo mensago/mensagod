@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"runtime"
 
-	"github.com/darkwyrm/anselusd/logging"
+	"github.com/darkwyrm/mensagod/logging"
 	"github.com/everlastingbeta/diceware"
 	"github.com/everlastingbeta/diceware/wordlist"
 	"github.com/spf13/viper"
@@ -45,14 +45,14 @@ func SetupConfig() diceware.Wordlist {
 	viper.SetDefault("database.engine", "postgresql")
 	viper.SetDefault("database.ip", "127.0.0.1")
 	viper.SetDefault("database.port", "5432")
-	viper.SetDefault("database.name", "anselus")
-	viper.SetDefault("database.user", "anselus")
+	viper.SetDefault("database.name", "mensago")
+	viper.SetDefault("database.user", "mensago")
 	viper.SetDefault("database.password", "")
 
 	// Location of workspace data, server log
 	switch runtime.GOOS {
 	case "js", "nacl":
-		fmt.Println("Javascript and NaCl are not supported platforms for Anselus Server.")
+		fmt.Println("Javascript and NaCl are not supported platforms for Mensago Server.")
 		os.Exit(1)
 	case "windows":
 		programData, success := os.LookupEnv("ProgramData")
@@ -60,15 +60,15 @@ func SetupConfig() diceware.Wordlist {
 			programData = "C:\\ProgramData"
 		}
 
-		viper.SetDefault("global.workspace_dir", filepath.Join(programData, "anselus"))
-		viper.Set("global.log_dir", filepath.Join(programData, "anselusd"))
+		viper.SetDefault("global.workspace_dir", filepath.Join(programData, "mensago"))
+		viper.Set("global.log_dir", filepath.Join(programData, "mensagod"))
 		viper.SetConfigName("serverconfig")
-		viper.AddConfigPath(filepath.Join(programData, "anselusd"))
+		viper.AddConfigPath(filepath.Join(programData, "mensagod"))
 	default:
-		viper.SetDefault("global.workspace_dir", "/var/anselus/")
-		viper.Set("global.log_dir", "/var/log/anselusd/")
+		viper.SetDefault("global.workspace_dir", "/var/mensago/")
+		viper.Set("global.log_dir", "/var/log/mensagod/")
 		viper.SetConfigName("serverconfig")
-		viper.AddConfigPath("/etc/anselusd/")
+		viper.AddConfigPath("/etc/mensagod/")
 	}
 
 	// Account registration modes
@@ -117,7 +117,7 @@ func SetupConfig() diceware.Wordlist {
 		os.Exit(1)
 	}
 
-	logLocation := filepath.Join(viper.GetString("global.log_dir"), "anselusd.log")
+	logLocation := filepath.Join(viper.GetString("global.log_dir"), "mensagod.log")
 	if _, err := os.Stat(viper.GetString("global.log_dir")); os.IsNotExist(err) {
 		err = os.Mkdir(viper.GetString("global.log_dir"), 0600)
 		if err != nil {

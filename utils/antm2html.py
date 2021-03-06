@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# AntmConv - a conversion utility for the AnTM markup language, https://anselus.org/spec/antm/
+# AntmConv - a conversion utility for the AnTM markup language, https://mensago.org/spec/antm/
 
 # Released under the terms of the MIT license
 # ©2019-2020 Jon Yoder <jsyoder@mailfence.com>
@@ -10,7 +10,7 @@ import sys
 
 def AnTM2HTML(instr, fulldocument):
 	'''
-	This function takes in AnTM, the Anselus dialect of BBCode, and spits out HTML.
+	This function takes in AnTM, the Mensago dialect of BBCode, and spits out HTML.
 	'''
 	conversionMap = {
 		'b' : '<span style="font-weight: bold;">',

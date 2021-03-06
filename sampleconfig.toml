@@ -1,6 +1,6 @@
-# This is a sample Anselus server config file. Each value listed below is the default value.
+# This is a sample Mensago server config file. Each value listed below is the default value.
 # Every effort has been made to set this file to sensible defaults so that configuration is
-# kept to a minimum. This file is expected to be found in /etc/anselusd/serverconfig.toml 
+# kept to a minimum. This file is expected to be found in /etc/mensagod/serverconfig.toml 
 # or in the same directory as the executable, also named serverconfig.toml in that location.
 
 [database]
@@ -10,8 +10,8 @@
 # engine = "postgresql"
 # ip = "127.0.0.1"
 # port = "5432"
-# name = "anselus"
-# user = "anselus"
+# name = "mensago"
+# user = "mensago"
 password = ""
 
 [network]
@@ -23,8 +23,8 @@ password = ""
 # The domain for the organization.
 domain = ""
 
-# The location where workspace data is stored. On Windows, the default is %PROGRAMDATA%\anselus.
-# workspace_dir = "/var/anselus"
+# The location where workspace data is stored. On Windows, the default is %PROGRAMDATA%\mensago.
+# workspace_dir = "/var/mensago"
 # 
 # The type of registration. 'public' is open to outside registration requests, and would be 
 # appropriate only for hosting a public free server. 'moderated' is open to public registration, 
@@ -42,10 +42,10 @@ domain = ""
 # The default storage quota for a workspace, measured in MiB. 0 means no limit.
 # default_quota = 0
 # 
-# Location for log files. This directory requires full permissions for the user anselusd runs as.
+# Location for log files. This directory requires full permissions for the user mensagod runs as.
 # On Windows, this defaults to the same location as the server config file, i.e. 
-# C:\\ProgramData\\anselusd
-# log_path = "/var/log/anselusd"
+# C:\\ProgramData\\mensagod
+# log_path = "/var/log/mensagod"
 
 [security]
 # The Diceware passphrase method is used to generate preregistration and password reset codes. 

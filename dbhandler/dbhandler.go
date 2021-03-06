@@ -16,12 +16,12 @@ import (
 
 	"database/sql"
 
-	"github.com/darkwyrm/anselusd/cryptostring"
-	"github.com/darkwyrm/anselusd/ezcrypt"
-	"github.com/darkwyrm/anselusd/fshandler"
-	"github.com/darkwyrm/anselusd/keycard"
-	"github.com/darkwyrm/anselusd/logging"
 	"github.com/darkwyrm/gostringlist"
+	"github.com/darkwyrm/mensagod/cryptostring"
+	"github.com/darkwyrm/mensagod/ezcrypt"
+	"github.com/darkwyrm/mensagod/fshandler"
+	"github.com/darkwyrm/mensagod/keycard"
+	"github.com/darkwyrm/mensagod/logging"
 	"github.com/everlastingbeta/diceware"
 	"github.com/lib/pq"
 	"github.com/spf13/viper"
@@ -72,7 +72,7 @@ func Disconnect() {
 	}
 }
 
-// IsConnected returns a boolean if it has successfully connected to the Anselus server database
+// IsConnected returns a boolean if it has successfully connected to the Mensago server database
 func IsConnected() bool {
 	return connected
 }
@@ -162,9 +162,9 @@ func ValidateUUID(uuid string) bool {
 	return pattern.MatchString(uuid)
 }
 
-// GetAnselusAddressType returns the type of address given to it. It returns 0 when there is an
-// error, 1 when given a valid workspace address, and 2 when given a valid Anselus address
-func GetAnselusAddressType(addr string) int {
+// GetMensagoAddressType returns the type of address given to it. It returns 0 when there is an
+// error, 1 when given a valid workspace address, and 2 when given a valid Mensago address
+func GetMensagoAddressType(addr string) int {
 
 	parts := strings.Split(addr, "/")
 	if len(parts) != 2 {
@@ -189,7 +189,7 @@ func GetAnselusAddressType(addr string) int {
 	return 2
 }
 
-// ResolveAddress returns the WID corresponding to an Anselus address.
+// ResolveAddress returns the WID corresponding to an Mensago address.
 func ResolveAddress(addr string) (string, error) {
 	parts := strings.Split(addr, "/")
 	if len(parts) != 2 {

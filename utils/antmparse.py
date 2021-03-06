@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# AntmConv - a conversion utility for the AnTM markup language, https://anselus.org/spec/antm/
+# AntmConv - a conversion utility for the AnTM markup language, https://mensago.org/spec/antm/
 
 # Released under the terms of the MIT license
 # ©2019-2020 Jon Yoder <jsyoder@mailfence.com>
@@ -141,16 +141,16 @@ def tokenize(indata: str) -> list:
 
 
 test1 = '''[document language="en-us"]
-[h1]Anselus Text Markup (AnTM)[/h1]
+[h1]Mensago Text Markup (AnTM)[/h1]
 Jon Yoder -- jsyoder@mailfence.com -- Version 1.0, 2019-08-08
 
 [b]Status:[/b] Review
 [b]Abstract:[/b] Rich text formatting language for client-side use
 
 [h2]Description[/h2]
-AnTM, pronounced [i]AN-tim[/i] or [i]an-tee-EM[/i], is a plaintext-with-markup format for describing rich formatting in a way that is expressive, easy to parse, and easy to implement with a measure of safety and security. It is heavily inspired by [link url="https://en.wikipedia.org/wiki/BBCode"]BBCode[/link], but introduces changes to make it more consistent and full-featured. It is intended to be the transmission format for all text on the Anselus platform, including messages, notes, and so on.
+AnTM, pronounced [i]AN-tim[/i] or [i]an-tee-EM[/i], is a plaintext-with-markup format for describing rich formatting in a way that is expressive, easy to parse, and easy to implement with a measure of safety and security. It is heavily inspired by [link url="https://en.wikipedia.org/wiki/BBCode"]BBCode[/link], but introduces changes to make it more consistent and full-featured. It is intended to be the transmission format for all text on the Mensago platform, including messages, notes, and so on.
 
-Anselus clients need to provide users the ability to communicate in an expressive manner in the same way that has been established with HTML e-mail. [b]Supporting HTML as a document format is [i]strictly[/i] prohibited.[/b] HTML, unfortunately, presents a number of challenges, including security and historical quirks in its syntax.
+Mensago clients need to provide users the ability to communicate in an expressive manner in the same way that has been established with HTML e-mail. [b]Supporting HTML as a document format is [i]strictly[/i] prohibited.[/b] HTML, unfortunately, presents a number of challenges, including security and historical quirks in its syntax.
 
 The problems which AnTM is intended to solve in replacing HTML for rich formatting are as follows:
 

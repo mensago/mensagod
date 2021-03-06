@@ -1,12 +1,12 @@
-from pyanselus.encryption import EncryptionPair, SigningPair
-from pyanselus.cryptostring import CryptoString
-import pyanselus.keycard as keycard
-import pyanselus.serverconn as serverconn
+from pymensago.encryption import EncryptionPair, SigningPair
+from pymensago.cryptostring import CryptoString
+import pymensago.keycard as keycard
+import pymensago.serverconn as serverconn
 from integration_setup import load_server_config_file, setup_test, init_server, regcode_admin, \
 	login_admin
 
 server_response = {
-	'title' : 'Anselus Server Response',
+	'title' : 'Mensago Server Response',
 	'type' : 'object',
 	'required' : [ 'Code', 'Status', 'Data' ],
 	'properties' : {
@@ -224,7 +224,7 @@ def test_unregister():
 	status = serverconn.device(conn, devid, devpair)
 	assert not status.error(), f"test_unregister(): device phase failed: {status.info()}"
 
-	# As a general rule, these anselusd integration tests don't call the regular pyanselus client 
+	# As a general rule, these mensagod integration tests don't call the regular pymensago client 
 	# library calls because we do extra validation. However, we're going to make an exception in 
 	# this test because LOGIN and ADDENTRY are both really big.
 	usercard = keycard.UserEntry()

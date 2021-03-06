@@ -21,7 +21,7 @@ func Init(path string, includeStdout bool) {
 		fmt.Printf("Error: %s\n", err)
 		os.Exit(1)
 	}
-	serverLog = log.New(logHandle, "anselusd:", log.LstdFlags)
+	serverLog = log.New(logHandle, "mensagod:", log.LstdFlags)
 }
 
 // GetLog returns a pointer to the global logging facilities

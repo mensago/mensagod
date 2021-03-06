@@ -1,7 +1,7 @@
 import datetime
-from pyanselus.cryptostring import CryptoString
-from pyanselus.encryption import EncryptionPair, Password
-from pyanselus.serverconn import ServerConnection
+from pymensago.cryptostring import CryptoString
+from pymensago.encryption import EncryptionPair, Password
+from pymensago.serverconn import ServerConnection
 from integration_setup import setup_test, init_user, init_server, regcode_admin, login_admin
 
 def test_devkey():

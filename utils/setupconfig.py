@@ -22,8 +22,8 @@ import nacl.signing
 import psycopg2
 from termcolor import colored
 
-import pyanselus.keycard as keycard
-from pyanselus.cryptostring import CryptoString	
+import pymensago.keycard as keycard
+from pymensago.cryptostring import CryptoString	
 
 def make_diceware():
 	'''Generates a diceware password'''
@@ -64,12 +64,12 @@ def make_diceware():
 
 # Step 1: Check prerequisites
 
-# print("This script generates the necessary baseline configuration for a new anselusd server. "
+# print("This script generates the necessary baseline configuration for a new mensagod server. "
 # 	"It will generate a new vanilla server config file. Depending on the requirements of your "
 # 	"environment, you may need to perform additional editing of the file once it is generated.\n\n"
 # 	"Any existing server config file will be renamed to a backup.\n")
 
-print("""This script generates the first-time setup for a new anselusd 
+print("""This script generates the first-time setup for a new mensagod 
 server. Depending on the requirements of your environment, you may need to edit
 the config file afterward.
 
@@ -115,9 +115,9 @@ else:
 #	- required keycard fields
 
 config = dict()
-default_workspace_path = '/var/anselus'
+default_workspace_path = '/var/mensago'
 if server_platform == 'windows':
-	default_workspace_path = os.environ['PROGRAMDATA'] + '\\anselus'
+	default_workspace_path = os.environ['PROGRAMDATA'] + '\\mensago'
 
 
 # location of workspace data
@@ -203,20 +203,20 @@ while config['quota_size'] == '':
 
 # location of server config and log files
 
-config['config_path'] = '/etc/anselusd'
+config['config_path'] = '/etc/mensagod'
 if server_platform == 'windows':
-	config['config_path'] = os.environ['PROGRAMDATA'] + '\\anselusd'
+	config['config_path'] = os.environ['PROGRAMDATA'] + '\\mensagod'
 	config['log_path'] = config['config_path']
 else:
-	config['log_path'] = '/var/log/anselusd'
-	tempstr = input('\nEnter the name of the user to run the server as. [anselus]: ')
+	config['log_path'] = '/var/log/mensagod'
+	tempstr = input('\nEnter the name of the user to run the server as. [mensago]: ')
 	if tempstr == '':
-		tempstr = 'anselus'
+		tempstr = 'mensago'
 	config['server_user'] = tempstr
 
-	tempstr = input('\nEnter the name of the group for the server user. [anselus]: ')
+	tempstr = input('\nEnter the name of the group for the server user. [mensago]: ')
 	if tempstr == '':
-		tempstr = 'anselus'
+		tempstr = 'mensago'
 	config['server_group'] = tempstr
 
 # IP address of postgres server
@@ -232,14 +232,14 @@ if tempstr == '':
 config['server_port'] = tempstr
 
 # database username
-tempstr = input('Enter the name of the database to store data. [anselus]: ')
+tempstr = input('Enter the name of the database to store data. [mensago]: ')
 if tempstr == '':
-	tempstr = 'anselus'
+	tempstr = 'mensago'
 config['db_name'] = tempstr
 
-tempstr = input('Enter a username which has admin privileges on this database. [anselus]: ').strip()
+tempstr = input('Enter a username which has admin privileges on this database. [mensago]: ').strip()
 if tempstr == '':
-	tempstr = 'anselus'
+	tempstr = 'mensago'
 config['db_user'] = tempstr
 
 # database user password
@@ -307,7 +307,7 @@ while config['org_language'] == '':
 try:
 	conn = psycopg2.connect(host=config['server_ip'],
 							port=config['server_port'],
-							database='anselus',
+							database='mensago',
 							user=config['db_user'],
 							password=config['db_password'])
 except Exception as e:
@@ -669,10 +669,10 @@ except Exception as e:
 	print("You will need to find out why and restart this script.")
 	sys.exit(-1)
 
-fhandle.write('''# This is an Anselus server config file. Each value listed below is the 
+fhandle.write('''# This is an Mensago server config file. Each value listed below is the 
 # default value. Every effort has been made to set this file to sensible 
 # defaults so that configuration is kept to a minimum. This file is expected
-# to be found in /etc/anselusd/serverconfig.toml or C:\\ProgramData\\anselusd
+# to be found in /etc/mensagod/serverconfig.toml or C:\\ProgramData\\mensagod
 # on Windows.
 
 [database]
@@ -681,8 +681,8 @@ fhandle.write('''# This is an Anselus server config file. Each value listed belo
 #
 # ip = "localhost"
 # port = "5432"
-# name = "anselus"
-# user = "anselus"
+# name = "mensago"
+# user = "mensago"
 ''')
 if config['server_ip'] != 'localhost':
 	fhandle.write('ip = "' + config['server_ip'] + '"' + os.linesep)
@@ -690,13 +690,13 @@ if config['server_ip'] != 'localhost':
 if config['server_port'] != '5432':
 	fhandle.write('port = "' + config['server_port'] + '"' + os.linesep)
 
-if config['db_name'] != 'anselus':
+if config['db_name'] != 'mensago':
 	fhandle.write('name = "' + config['db_name'] + '"' + os.linesep)
 
-if config['db_user'] != 'anselus':
+if config['db_user'] != 'mensago':
 	fhandle.write('user = "' + config['db_user'] + '"' + os.linesep)
 
-if config['db_password'] != 'anselus':
+if config['db_password'] != 'mensago':
 	fhandle.write('password = "' + config['db_password'] + '"' + os.linesep)
 
 fhandle.write('''
@@ -706,8 +706,8 @@ fhandle.write('''
 
 fhandle.write('''
 # The location where workspace data is stored. The default for Windows is 
-# "C:\\ProgramData\\anselus", but for other platforms is "/var/anselus".
-# workspace_dir = "/var/anselus"
+# "C:\\ProgramData\\mensago", but for other platforms is "/var/mensago".
+# workspace_dir = "/var/mensago"
 ''')
 
 if config['workspace_path'] != default_workspace_path:
@@ -742,10 +742,10 @@ if config['quota_size'] != '0':
 	fhandle.write('default_quota = ' + config['quota_size'] + os.linesep)
 
 fhandle.write('''
-# Location for log files. This directory requires full permissions for the user anselusd runs as.
+# Location for log files. This directory requires full permissions for the user mensagod runs as.
 # On Windows, this defaults to the same location as the server config file, i.e. 
-# C:\\ProgramData\\anselusd
-# log_path = "/var/log/anselusd"
+# C:\\ProgramData\\mensagod
+# log_path = "/var/log/mensagod"
 ''')
 
 fhandle.write('''
@@ -813,7 +813,7 @@ From here, please make sure you:
 
 1) Review the config file at {config_file_path}.
 2) Make sure port 2001 is open on the firewall.
-3) Start the anselusd service.
+3) Start the mensagod service.
 4) Finish registration of the admin account on a device that is NOT this server.
 5) If you are using separate abuse or support accounts, also complete
    registration for those accounts on a device that is NOT this server.

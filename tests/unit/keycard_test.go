@@ -1,12 +1,12 @@
-package anselusd
+package mensagod
 
 import (
 	"fmt"
 	"testing"
 	"time"
 
-	"github.com/darkwyrm/anselusd/cryptostring"
-	"github.com/darkwyrm/anselusd/keycard"
+	"github.com/darkwyrm/mensagod/cryptostring"
+	"github.com/darkwyrm/mensagod/keycard"
 )
 
 func TestSetField(t *testing.T) {
@@ -659,21 +659,21 @@ func TestIsDataCompliantOrg(t *testing.T) {
 
 	entry.SetField("Contact-Admin", "admin/example.com")
 	if entry.IsDataCompliant() {
-		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with an Anselus address " +
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with an Mensago address " +
 			"for the admin contact\n")
 	}
 	entry.SetField("Contact-Admin", "54025843-bacc-40cc-a0e4-df48a099c2f3/acme.com")
 
 	entry.SetField("Contact-Abuse", "abuse/example.com")
 	if entry.IsDataCompliant() {
-		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with an Anselus address " +
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with an Mensago address " +
 			"for the abuse contact\n")
 	}
 	entry.SetField("Contact-Abuse", "54025843-bacc-40cc-a0e4-df48a099c2f3/acme.com")
 
 	entry.SetField("Contact-Support", "support/example.com")
 	if entry.IsDataCompliant() {
-		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with an Anselus address " +
+		t.Fatal("TestIsDataCompliantOrg: IsDataCompliant passed an entry with an Mensago address " +
 			"for the support contact\n")
 	}
 	entry.SetField("Contact-Support", "54025843-bacc-40cc-a0e4-df48a099c2f3/acme.com")

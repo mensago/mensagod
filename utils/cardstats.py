@@ -2,12 +2,12 @@
 
 import secrets
 
-# Entries can vary in size depending on the length of the person's name, their Anselus ID, and
+# Entries can vary in size depending on the length of the person's name, their Mensago ID, and
 # the hash algorithm used, and the key algorithms used.
 
 # This entry size uses:
 # Name: Corbin Simons
-# Anselus ID: csimons
+# Mensago ID: csimons
 # Hash: BLAKE2B-256
 # Encryption: CURVE25519
 # Signing: ED25519

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/darkwyrm/anselusd/cryptostring"
-	"github.com/darkwyrm/anselusd/dbhandler"
-	"github.com/darkwyrm/anselusd/keycard"
-	"github.com/darkwyrm/anselusd/logging"
 	"github.com/darkwyrm/b85"
+	"github.com/darkwyrm/mensagod/cryptostring"
+	"github.com/darkwyrm/mensagod/dbhandler"
+	"github.com/darkwyrm/mensagod/keycard"
+	"github.com/darkwyrm/mensagod/logging"
 	"github.com/spf13/viper"
 )
 
@@ -350,7 +350,7 @@ func commandUserCard(session *sessionState) {
 		return
 	}
 
-	if dbhandler.GetAnselusAddressType(session.Message.Data["Owner"]) == 0 {
+	if dbhandler.GetMensagoAddressType(session.Message.Data["Owner"]) == 0 {
 		session.SendStringResponse(400, "BAD REQUEST", "Missing Owner")
 		return
 	}

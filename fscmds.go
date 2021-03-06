@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/darkwyrm/anselusd/fshandler"
+	"github.com/darkwyrm/mensagod/fshandler"
 )
 
 func handleFSError(session *sessionState, err error) {
@@ -165,7 +165,7 @@ func commandListDirs(session *sessionState) {
 	}
 
 	fsh := fshandler.GetFSHandler()
-	names, err := fsh.ListDirectories(session.CurrentPath.AnselusPath())
+	names, err := fsh.ListDirectories(session.CurrentPath.MensagoPath())
 	if err != nil {
 		handleFSError(session, err)
 		return

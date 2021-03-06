@@ -1,4 +1,4 @@
-module github.com/darkwyrm/anselusd
+module github.com/darkwyrm/mensagod
 
 go 1.15
 

@@ -5,12 +5,12 @@ import (
 	"errors"
 	"time"
 
-	"github.com/darkwyrm/anselusd/cryptostring"
-	"github.com/darkwyrm/anselusd/dbhandler"
-	"github.com/darkwyrm/anselusd/ezcrypt"
-	"github.com/darkwyrm/anselusd/keycard"
-	"github.com/darkwyrm/anselusd/logging"
 	"github.com/darkwyrm/b85"
+	"github.com/darkwyrm/mensagod/cryptostring"
+	"github.com/darkwyrm/mensagod/dbhandler"
+	"github.com/darkwyrm/mensagod/ezcrypt"
+	"github.com/darkwyrm/mensagod/keycard"
+	"github.com/darkwyrm/mensagod/logging"
 	"github.com/everlastingbeta/diceware"
 	"github.com/spf13/viper"
 )

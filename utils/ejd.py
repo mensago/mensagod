@@ -15,7 +15,7 @@ import jsonschema
 import nacl.public
 import nacl.secret
 import nacl.utils
-from pyanselus.keycard import CryptoString, Base85Encoder
+from pymensago.keycard import CryptoString, Base85Encoder
 
 debug_mode = False
 

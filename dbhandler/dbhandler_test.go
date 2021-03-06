@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/darkwyrm/anselusd/config"
-	"github.com/darkwyrm/anselusd/fshandler"
+	"github.com/darkwyrm/mensagod/config"
+	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
@@ -125,7 +125,7 @@ func makeTestFiles(dir string, count int) error {
 
 	for i := 0; i < count; i++ {
 		filesize := rand.Intn(10140) + 100
-		_, err = generateRandomFile(anpath.AnselusPath(), filesize)
+		_, err = generateRandomFile(anpath.MensagoPath(), filesize)
 		if err != nil {
 			return err
 		}
@@ -164,7 +164,7 @@ func makeTestDirectories(path string, count int) ([]string, error) {
 }
 
 // ensureTestDirectory makes sure a specific test directory exists. The path is expected to be
-// an Anselus-format path, resulting in a path relative to the workspace root.
+// an Mensago-format path, resulting in a path relative to the workspace root.
 func ensureTestDirectory(path string) error {
 	var anpath fshandler.LocalAnPath
 	err := anpath.Set(path)
@@ -532,7 +532,7 @@ func TestDBHandler_SetQuotaUsage(t *testing.T) {
 // DeletePasscode
 // DeleteRegCode
 // GetAliases
-// GetAnselusAddressType
+// GetMensagoAddressType
 // GetEncryptionPair
 // GetLastEntry
 // GetOrgEntries

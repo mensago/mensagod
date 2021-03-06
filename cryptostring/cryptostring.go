@@ -9,7 +9,7 @@ import (
 )
 
 // This module contains the Go implementation of CryptoString. It is very similar to the
-// implementation in PyAnselus, but also includes some special sauce to make interaction with
+// implementation in PyMensago, but also includes some special sauce to make interaction with
 // Go's libsodium API, which is less than ideal.
 
 // CryptoString is a compact way of handling hashes and cryptographic keys such that (1) the

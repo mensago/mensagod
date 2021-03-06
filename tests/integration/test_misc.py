@@ -1,10 +1,10 @@
-from pyanselus.encryption import EncryptionPair, Password
-from pyanselus.cryptostring import CryptoString
-from pyanselus.serverconn import ServerConnection
+from pymensago.encryption import EncryptionPair, Password
+from pymensago.cryptostring import CryptoString
+from pymensago.serverconn import ServerConnection
 from integration_setup import setup_test, init_server, regcode_admin, login_admin
 
 server_response = {
-	'title' : 'Anselus Server Response',
+	'title' : 'Mensago Server Response',
 	'type' : 'object',
 	'required' : [ 'Code', 'Status', 'Data' ],
 	'properties' : {

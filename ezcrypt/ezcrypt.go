@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/darkwyrm/anselusd/cryptostring"
-	"github.com/darkwyrm/anselusd/logging"
 	"github.com/darkwyrm/b85"
+	"github.com/darkwyrm/mensagod/cryptostring"
+	"github.com/darkwyrm/mensagod/logging"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/blake2b"

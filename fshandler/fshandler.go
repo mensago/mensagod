@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/darkwyrm/anselusd/logging"
+	"github.com/darkwyrm/mensagod/logging"
 	"github.com/spf13/viper"
 )
 
@@ -469,7 +469,7 @@ func (lfs *LocalFSHandler) OpenFile(path string) (string, error) {
 	providerHandle.Handle = handle
 	lfs.Files[path] = providerHandle
 
-	return anpath.AnselusPath(), nil
+	return anpath.MensagoPath(), nil
 }
 
 // ReadFile reads data from a file opened with OpenFile. If the Read() call encounters the end of

@@ -1,10 +1,10 @@
-package anselusd
+package mensagod
 
 import (
 	"testing"
 
-	"github.com/darkwyrm/anselusd/cryptostring"
-	"github.com/darkwyrm/anselusd/keycard"
+	"github.com/darkwyrm/mensagod/cryptostring"
+	"github.com/darkwyrm/mensagod/keycard"
 )
 
 func TestEntrySize(t *testing.T) {
