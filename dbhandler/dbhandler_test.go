@@ -545,7 +545,6 @@ func TestDBHandler_SetQuotaUsage(t *testing.T) {
 // RemoveExpiredPasscodes
 // RemoveWorkspace
 // ResetPassword
-// ResetQuotaUsage
 // ResolveAddress
 // SetPassword
 // SetWorkspaceStatus
