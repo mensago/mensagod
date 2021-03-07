@@ -178,7 +178,7 @@ func TestLocalFSHandler_CopyFile(t *testing.T) {
 	wid := "11111111-1111-1111-1111-111111111111"
 	srcDirName := "10000000-0000-0000-0000-000000000001"
 	destDirName := "20000000-0000-0000-0000-000000000002"
-	fsh := GetFSHandler()
+	fsh := GetFSProvider()
 
 	err = fsh.MakeDirectory("/ " + wid + " " + srcDirName)
 	if err != nil {
@@ -245,7 +245,7 @@ func TestLocalFSHandler_CloseFile(t *testing.T) {
 	}
 
 	wid := "11111111-1111-1111-1111-111111111111"
-	fsh := GetFSHandler()
+	fsh := GetFSProvider()
 
 	// Subtest #1: File not open
 
@@ -292,7 +292,7 @@ func TestLocalFSHandler_DeleteFile(t *testing.T) {
 	}
 
 	wid := "11111111-1111-1111-1111-111111111111"
-	fsh := GetFSHandler()
+	fsh := GetFSProvider()
 
 	// Subtest #1: Bad path
 
@@ -350,7 +350,7 @@ func TestLocalFSHandler_Exists(t *testing.T) {
 		t.Fatalf("TestLocalFSHandler_Exists: Couldn't create wid: %s", err.Error())
 	}
 
-	fsh := GetFSHandler()
+	fsh := GetFSProvider()
 
 	// Subtest #1: bad path
 	_, err = fsh.Exists("/var/mensago/" + wid)
@@ -388,7 +388,7 @@ func TestLocalFSHandler_GetDiskUsage(t *testing.T) {
 
 	wid := "11111111-1111-1111-1111-111111111111"
 	testPath := "/ " + wid
-	fsh := GetFSHandler()
+	fsh := GetFSProvider()
 
 	// Subtest #1: bad WID
 
@@ -434,7 +434,7 @@ func TestLocalFSHandler_InstallTempFile(t *testing.T) {
 	}
 
 	wid := "11111111-1111-1111-1111-111111111111"
-	fsh := GetFSHandler()
+	fsh := GetFSProvider()
 
 	// Subtest #2: destination doesn't exist
 
@@ -484,7 +484,7 @@ func TestLocalFSHandler_ListFiles(t *testing.T) {
 
 	wid := "11111111-1111-1111-1111-111111111111"
 	testPath := "/ " + wid
-	fsh := GetFSHandler()
+	fsh := GetFSProvider()
 
 	// Subtest #1: bad path
 
@@ -569,7 +569,7 @@ func TestLocalFSHandler_ListDirectories(t *testing.T) {
 		"33333333-3333-3333-3333-333333333333",
 		"44444444-4444-4444-4444-444444444444"}
 	testPath := "/ " + wid
-	fsh := GetFSHandler()
+	fsh := GetFSProvider()
 
 	// Subtest #1: bad path
 
@@ -645,7 +645,7 @@ func TestLocalFSHandler_MakeDirectory(t *testing.T) {
 
 	wid := "11111111-1111-1111-1111-111111111111"
 	wid2 := "22222222-2222-2222-2222-222222222222"
-	fsh := GetFSHandler()
+	fsh := GetFSProvider()
 
 	// Subtest #1: bad path
 	err = fsh.MakeDirectory("/var/mensago/" + wid)
@@ -685,7 +685,7 @@ func TestLocalFSHandler_MakeTempFile(t *testing.T) {
 	}
 
 	wid := "11111111-1111-1111-1111-111111111111"
-	fsh := GetFSHandler()
+	fsh := GetFSProvider()
 
 	// Subtest #1: bad WID
 
@@ -737,7 +737,7 @@ func TestLocalFSHandler_MoveFile(t *testing.T) {
 	wid := "11111111-1111-1111-1111-111111111111"
 	srcDirName := "10000000-0000-0000-0000-000000000001"
 	destDirName := "20000000-0000-0000-0000-000000000002"
-	fsh := GetFSHandler()
+	fsh := GetFSProvider()
 
 	err = fsh.MakeDirectory("/ " + wid + " " + srcDirName)
 	if err != nil {
@@ -830,7 +830,7 @@ func TestLocalFSHandler_OpenReadFile(t *testing.T) {
 	}
 
 	wid := "11111111-1111-1111-1111-111111111111"
-	fsh := GetFSHandler()
+	fsh := GetFSProvider()
 
 	// Subtest #1: Bad path
 
@@ -895,7 +895,7 @@ func TestLocalFSHandler_RemoveDirectory(t *testing.T) {
 
 	wid := "11111111-1111-1111-1111-111111111111"
 	wid2 := "22222222-2222-2222-2222-222222222222"
-	fsh := GetFSHandler()
+	fsh := GetFSProvider()
 
 	// Subtest #1: bad path
 

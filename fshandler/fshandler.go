@@ -36,7 +36,7 @@ type LocalFSHandle struct {
 // GetFSHandler returns a new filesystem provider which interacts with the local filesystem.
 // It obtains the necessary information about the local filesystem directly from the server
 // configuration data.
-func GetFSHandler() *LocalFSHandler {
+func GetFSProvider() *LocalFSHandler {
 	if localProviderInstance == nil {
 		providerLock.Lock()
 		defer providerLock.Unlock()
