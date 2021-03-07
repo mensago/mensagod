@@ -28,7 +28,7 @@ def hash_blake3_256(data: bytes):
 def hash_blake2b_256(data: bytes):
 	'''Returns a 256-bit BLAKE2B hash as a string'''
 
-	hasher = hasher = hashlib.blake2b()
+	hasher = hasher = hashlib.blake2b(digest_size=32)
 	hasher.update(data)
 	return "BLAKE2B-256:" + base64.b85encode(hasher.digest()).decode()
 
