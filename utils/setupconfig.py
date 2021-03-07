@@ -742,6 +742,14 @@ if config['quota_size'] != '0':
 	fhandle.write('default_quota = ' + config['quota_size'] + os.linesep)
 
 fhandle.write('''
+# The maximum size in MiB of a file stored on the server. Note that this is the size of the actual 
+# data stored on disk. Encoding adds 25%% overhead.
+# max_file_size = 50
+#
+# The maximum size in MiB of a message. The value of max_file_size takes precedence if this value
+# is larger than the value of max_file_size.
+# max_message_size = 50
+#
 # Location for log files. This directory requires full permissions for the user mensagod runs as.
 # On Windows, this defaults to the same location as the server config file, i.e. 
 # C:\\ProgramData\\mensagod
