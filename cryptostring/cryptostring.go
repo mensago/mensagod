@@ -12,6 +12,10 @@ import (
 // implementation in PyMensago, but also includes some special sauce to make interaction with
 // Go's libsodium API, which is less than ideal.
 
+// ErrUnsupportedAlgorithm is to be used if a function which leverages this module does not
+// support the algorithm passed to it
+var ErrUnsupportedAlgorithm = "unsupported algorithm"
+
 // CryptoString is a compact way of handling hashes and cryptographic keys such that (1) the
 // algorithm used is obvious and (2) the data is encoded as text. The RFC 1924 variant of Base85
 // encoding is used because it is more compact than Base64 and friendly to source code. The format
