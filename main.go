@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/darkwyrm/mensagod/config"
+	"github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/logging"
@@ -164,6 +165,14 @@ func (s *sessionState) ReadClient() (string, error) {
 
 func (s sessionState) WriteClient(msg string) (n int, err error) {
 	return s.Connection.Write([]byte(msg))
+}
+
+func (s *sessionState) ReadFileData(fileSize uint64, fileHash cryptostring.CryptoString,
+	fileHandle *os.File) error {
+
+	// TODO: Implement
+
+	return errors.New("Unimplemented")
 }
 
 // -------------------------------------------------------------------------------------------
