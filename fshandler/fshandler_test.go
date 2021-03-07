@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/darkwyrm/mensagod/config"
+	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
@@ -958,10 +959,52 @@ func TestHashFile(t *testing.T) {
 		t.Fatalf("Test_HashFile: Couldn't create temp dir: %s", err.Error())
 	}
 
-	_, err = generateRandomFile(testPath, 1000)
+	tempName, err := generateRandomFile(testPath, 1000)
 	if err != nil {
 		t.Fatalf("Test_HashFile: Couldn't create temp file: %s", err.Error())
 	}
 
-	// TODO: finish hasher test
+	// For a file containing 1000 zeroes, the following hashes should be obtained:
+
+	// SHA-256:!yC#)X>JQgWkPZ(rTwm&KaI*6bm_U0DaQ=>nW+wF
+	// SHA3-256:bNfL0Wsh(<B+cG{Q;I78M$QpjDJtYbHQW>ti3Sq3
+	// BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp
+	// BLAKE3-256:nP#5xBwJ+O3hxgIJDg4DHBe%>4>Z$Dc1J-hDV}PQ
+
+	var hash cs.CryptoString
+	hash.Set("SHA-256:!yC#)X>JQgWkPZ(rTwm&KaI*6bm_U0DaQ=>nW+wF")
+	match, err := HashFile(testPath+" "+tempName, hash)
+	if err != nil {
+		t.Fatalf("Test_HashFile: Error getting SHA-256 hash: %s", err.Error())
+	}
+	if !match {
+		t.Fatal("Test_HashFile: SHA-256 hash mismatch")
+	}
+
+	hash.Set("SHA3-256:bNfL0Wsh(<B+cG{Q;I78M$QpjDJtYbHQW>ti3Sq3")
+	match, err = HashFile(testPath+" "+tempName, hash)
+	if err != nil {
+		t.Fatalf("Test_HashFile: Error getting SHA3-256 hash: %s", err.Error())
+	}
+	if !match {
+		t.Fatal("Test_HashFile: SHA3-256 hash mismatch")
+	}
+
+	hash.Set("BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp")
+	match, err = HashFile(testPath+" "+tempName, hash)
+	if err != nil {
+		t.Fatalf("Test_HashFile: Error getting BLAKE2B-256 hash: %s", err.Error())
+	}
+	if !match {
+		t.Fatal("Test_HashFile: BLAKE2B-256 hash mismatch")
+	}
+
+	hash.Set("BLAKE3-256:nP#5xBwJ+O3hxgIJDg4DHBe%>4>Z$Dc1J-hDV}PQ")
+	match, err = HashFile(testPath+" "+tempName, hash)
+	if err != nil {
+		t.Fatalf("Test_HashFile: Error getting BLAKE3-256 hash: %s", err.Error())
+	}
+	if !match {
+		t.Fatal("Test_HashFile: BLAKE3-256 hash mismatch")
+	}
 }

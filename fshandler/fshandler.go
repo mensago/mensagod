@@ -569,20 +569,20 @@ func HashFile(path string, hash cs.CryptoString) (bool, error) {
 		return false, err
 	}
 
-	buffer := make([]byte, 8192)
+	readSize := 8192
+	buffer := make([]byte, readSize)
 	for {
-		_, err = fHandle.Read(buffer)
+		bytesRead, err := fHandle.Read(buffer)
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
 			return false, err
 		}
-		hasher.Write(buffer)
+		hasher.Write(buffer[0:bytesRead])
 	}
 
-	hashBytes := make([]byte, 32)
-	hasher.Sum(hashBytes)
+	hashBytes := hasher.Sum(nil)
 	ourHash := b85.Encode(hashBytes)
 
 	return ourHash == hash.Data, nil
