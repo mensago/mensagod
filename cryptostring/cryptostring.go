@@ -14,7 +14,7 @@ import (
 
 // ErrUnsupportedAlgorithm is to be used if a function which leverages this module does not
 // support the algorithm passed to it
-var ErrUnsupportedAlgorithm = "unsupported algorithm"
+var ErrUnsupportedAlgorithm = errors.New("unsupported algorithm")
 
 // CryptoString is a compact way of handling hashes and cryptographic keys such that (1) the
 // algorithm used is obvious and (2) the data is encoded as text. The RFC 1924 variant of Base85
