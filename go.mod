@@ -9,6 +9,6 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/lib/pq v1.9.0
 	github.com/spf13/viper v1.7.1
+	github.com/zeebo/blake3 v0.1.0
 	golang.org/x/crypto v0.0.0-20210218145215-b8e89b74b9df
-	golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5 // indirect
 )

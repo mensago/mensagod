@@ -19,6 +19,7 @@ import (
 	"github.com/darkwyrm/gostringlist"
 	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/logging"
+	"github.com/zeebo/blake3"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/sha3"
@@ -459,10 +460,14 @@ func (entry *Entry) GenerateHash(algorithm string) error {
 	}
 
 	switch algorithm {
-	// TODO: re-enable once the 'blake3.Sum256 undefined' issue is resolved
-	// case "BLAKE3-256":
-	// 	sum := blake3.Sum256(entry.MakeByteString(hashLevel))
-	// 	entry.Hash = algorithm + ":" + b85.Encode(sum[:])
+	case "BLAKE3-256":
+		// The API for Zeebo's BLAKE3 implementation isn't the same as the other hash APIs. It
+		// requires a bit more effort. :(
+		var sum []byte
+		hasher := blake3.New()
+		hasher.Write(entry.MakeByteString(hashLevel))
+		hasher.Sum(sum)
+		entry.Hash = algorithm + ":" + b85.Encode(sum)
 	case "BLAKE2B-256":
 		sum := blake2b.Sum256(entry.MakeByteString(hashLevel))
 		entry.Hash = algorithm + ":" + b85.Encode(sum[:])

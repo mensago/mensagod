@@ -18,6 +18,7 @@ import (
 	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/spf13/viper"
+	"github.com/zeebo/blake3"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/sha3"
 )
@@ -545,8 +546,8 @@ func HashFile(path string, hash cs.CryptoString) (bool, error) {
 
 	hasher := sha256.New()
 	switch hash.Prefix {
-	case
-		"BLAKE3-256":
+	case "BLAKE3-256":
+		hasher = blake3.New()
 	case "BLAKE2B-256":
 		hasher, _ = blake2b.New256(nil)
 	case "SHA-256":
