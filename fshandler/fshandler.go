@@ -1,6 +1,7 @@
 package fshandler
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -13,8 +14,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/darkwyrm/b85"
+	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/spf13/viper"
+	"golang.org/x/crypto/blake2b"
+	"golang.org/x/crypto/sha3"
 )
 
 // LocalFSHandler represents local storage on the server
@@ -33,7 +38,7 @@ type LocalFSHandle struct {
 	Handle *os.File
 }
 
-// GetFSHandler returns a new filesystem provider which interacts with the local filesystem.
+// GetFSProvider returns a new filesystem provider which interacts with the local filesystem.
 // It obtains the necessary information about the local filesystem directly from the server
 // configuration data.
 func GetFSProvider() *LocalFSHandler {
@@ -533,6 +538,53 @@ func (lfs *LocalFSHandler) Select(path string) (LocalAnPath, error) {
 	}
 
 	return anpath, nil
+}
+
+// HashFile performs a hash check on a file and determines if it matches or not
+func HashFile(path string, hash cs.CryptoString) (bool, error) {
+
+	hasher := sha256.New()
+	switch hash.Prefix {
+	case
+		"BLAKE3-256":
+	case "BLAKE2B-256":
+		hasher, _ = blake2b.New256(nil)
+	case "SHA-256":
+		// Do nothing. We've already created a SHA256 hasher
+	case "SHA3-256":
+		hasher = sha3.New256()
+	default:
+		return false, cs.ErrUnsupportedAlgorithm
+	}
+
+	var anpath LocalAnPath
+	err := anpath.Set(path)
+	if err != nil {
+		return false, err
+	}
+
+	fHandle, err := os.Open(anpath.ProviderPath())
+	if err != nil {
+		return false, err
+	}
+
+	buffer := make([]byte, 8192)
+	for {
+		_, err = fHandle.Read(buffer)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return false, err
+		}
+		hasher.Write(buffer)
+	}
+
+	hashBytes := make([]byte, 32)
+	hasher.Sum(hashBytes)
+	ourHash := b85.Encode(hashBytes)
+
+	return ourHash == hash.Data, nil
 }
 
 // RemoveWorkspace deletes all file and folder data for the specified workspace. This call does
