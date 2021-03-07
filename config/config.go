@@ -87,6 +87,12 @@ func SetupConfig() diceware.Wordlist {
 	// Default user workspace quota in MiB. 0 = no quota
 	viper.SetDefault("global.default_quota", 0)
 
+	// Max item size in MiB.
+	viper.SetDefault("global.max_file_size", 50)
+
+	// Max message size in MiB. max_file_size takes precedence over this value
+	viper.SetDefault("global.max_message_size", 50)
+
 	// Diceware settings for registration code and password reset code generation
 	viper.SetDefault("security.diceware_wordlist", "eff_short_prefix")
 	viper.SetDefault("security.diceware_wordcount", 6)
