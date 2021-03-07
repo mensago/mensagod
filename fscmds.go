@@ -1,11 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
 
+	cs "github.com/darkwyrm/mensagod/cryptostring"
+	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/fshandler"
+	"github.com/spf13/viper"
 )
 
 func handleFSError(session *sessionState, err error) {
@@ -38,7 +42,7 @@ func commandCopy(session *sessionState) {
 		return
 	}
 
-	fsh := fshandler.GetFSHandler()
+	fsh := fshandler.GetFSProvider()
 	exists, err := fsh.Exists(session.Message.Data["SourceFile"])
 	if err != nil {
 		handleFSError(session, err)
@@ -82,7 +86,7 @@ func commandDelete(session *sessionState) {
 		return
 	}
 
-	fsh := fshandler.GetFSHandler()
+	fsh := fshandler.GetFSProvider()
 	err := fsh.DeleteFile(session.Message.Data["Path"])
 	if err != nil {
 		handleFSError(session, err)
@@ -106,7 +110,7 @@ func commandExists(session *sessionState) {
 		return
 	}
 
-	fsh := fshandler.GetFSHandler()
+	fsh := fshandler.GetFSProvider()
 	exists, err := fsh.Exists(session.Message.Data["Path"])
 	if err != nil {
 		handleFSError(session, err)
@@ -143,7 +147,7 @@ func commandList(session *sessionState) {
 		return
 	}
 
-	fsh := fshandler.GetFSHandler()
+	fsh := fshandler.GetFSProvider()
 	names, err := fsh.ListFiles(session.Message.Data["Path"], int64(unixTime))
 	if err != nil {
 		handleFSError(session, err)
@@ -164,7 +168,7 @@ func commandListDirs(session *sessionState) {
 		return
 	}
 
-	fsh := fshandler.GetFSHandler()
+	fsh := fshandler.GetFSProvider()
 	names, err := fsh.ListDirectories(session.CurrentPath.MensagoPath())
 	if err != nil {
 		handleFSError(session, err)
@@ -189,7 +193,7 @@ func commandMkDir(session *sessionState) {
 		return
 	}
 
-	fsh := fshandler.GetFSHandler()
+	fsh := fshandler.GetFSProvider()
 	err := fsh.MakeDirectory(session.Message.Data["Path"])
 	if err != nil {
 		handleFSError(session, err)
@@ -213,7 +217,7 @@ func commandMove(session *sessionState) {
 		return
 	}
 
-	fsh := fshandler.GetFSHandler()
+	fsh := fshandler.GetFSProvider()
 	exists, err := fsh.Exists(session.Message.Data["SourceFile"])
 	if err != nil {
 		handleFSError(session, err)
@@ -254,7 +258,7 @@ func commandRmDir(session *sessionState) {
 		return
 	}
 
-	fsh := fshandler.GetFSHandler()
+	fsh := fshandler.GetFSProvider()
 	exists, err := fsh.Exists(session.Message.Data["Path"])
 	if err != nil {
 		handleFSError(session, err)
@@ -292,7 +296,7 @@ func commandSelect(session *sessionState) {
 		return
 	}
 
-	fsh := fshandler.GetFSHandler()
+	fsh := fshandler.GetFSProvider()
 	path, err := fsh.Select(session.Message.Data["Path"])
 	if err != nil {
 		handleFSError(session, err)
@@ -304,40 +308,50 @@ func commandUpload(session *sessionState) {
 	// Command syntax:
 	// UPLOAD(Size,Hash,Name="",Offset=0)
 
-	// if session.LoginState != loginClientSession {
-	// 	session.SendStringResponse(401, "UNAUTHORIZED", "")
-	// 	return
-	// }
+	if session.LoginState != loginClientSession {
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		return
+	}
 
-	// if session.Message.Validate([]string{"Size", "Hash"}) != nil {
-	// 	session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
-	// 	return
-	// }
+	if session.Message.Validate([]string{"Size", "Hash", "Path"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
 
-	// // Both Name and Hash must be present when resuming
-	// if (session.Message.HasField("Name") && !session.Message.HasField("Hash")) ||
-	// 	(session.Message.HasField("Hash") && !session.Message.HasField("Name")) {
-	// 	session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
-	// 	return
-	// }
+	// Both Name and Hash must be present when resuming
+	if (session.Message.HasField("TempName") && !session.Message.HasField("Hash")) ||
+		(session.Message.HasField("Hash") && !session.Message.HasField("TempName")) {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
 
-	// var fileSize int64
-	// var fileHash cs.CryptoString
-	// err := fileHash.Set(session.Message.Data["Hash"])
-	// if err != nil {
-	// 	session.SendStringResponse(400, "BAD REQUEST", err.Error())
-	// }
+	var fileSize int64
+	var fileHash cs.CryptoString
+	err := fileHash.Set(session.Message.Data["Hash"])
+	if err != nil {
+		session.SendStringResponse(400, "BAD REQUEST", err.Error())
+		return
+	}
 
-	// fileSize, err = strconv.ParseInt(session.Message.Data["Size"], 10, 64)
-	// if err != nil {
-	// 	session.SendStringResponse(400, "BAD REQUEST", "Bad file size")
-	// }
+	fileSize, err = strconv.ParseInt(session.Message.Data["Size"], 10, 64)
+	if err != nil || fileSize < 1 {
+		session.SendStringResponse(400, "BAD REQUEST", "Bad file size")
+		return
+	}
+
+	var filePath fshandler.LocalAnPath
+	err = filePath.Set(session.Message.Data["Path"])
+	if err != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Bad file path")
+		return
+	}
 
 	// var resumeName string
 	// var resumeOffset int64
 	// if session.Message.HasField("Name") {
 	// 	if !fshandler.ValidateTempFileName(session.Message.Data["Name"]) {
 	// 		session.SendStringResponse(400, "BAD REQUEST", "Bad file name")
+	// 		return
 	// 	}
 
 	// 	resumeName = session.Message.Data["Name"]
@@ -345,8 +359,77 @@ func commandUpload(session *sessionState) {
 	// 	resumeOffset, err = strconv.ParseInt(session.Message.Data["Offset"], 10, 64)
 	// 	if err != nil {
 	// 		session.SendStringResponse(400, "BAD REQUEST", "Bad offset")
+	// 		return
 	// 	}
 	// }
 
-	session.SendStringResponse(308, "UNIMPLEMENTED", "")
+	// An administrator can dictate how large a file can be stored on the server
+
+	if fileSize > int64(viper.GetInt("global.max_file_size"))*0x10_0000 {
+		session.SendStringResponse(414, "LIMIT REACHED", "")
+		return
+	}
+
+	// Arguments have been validated, do a quota check
+
+	diskQuota, err := dbhandler.GetQuota(session.WID)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+	diskUsage, err := dbhandler.GetQuotaUsage(session.WID)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+
+	if uint64(fileSize)+diskUsage > diskQuota {
+		session.SendStringResponse(409, "QUOTA INSUFFICIENT", "")
+		return
+	}
+
+	fsp := fshandler.GetFSProvider()
+	tempHandle, tempName, err := fsp.MakeTempFile(session.WID)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+
+	response := NewServerResponse(100, "CONTINUE")
+	response.Data["TempName"] = tempName
+	session.SendResponse(*response)
+
+	bytesRead, err := session.ReadFileData(uint64(fileSize), tempHandle)
+	tempHandle.Close()
+	if err != nil {
+		response = NewServerResponse(305, "INTERRUPTED")
+		response.Data["Offset"] = fmt.Sprintf("%d", bytesRead)
+		session.SendResponse(*response)
+		return
+	}
+
+	hashMatch, err := fshandler.HashFile(strings.Join([]string{"/", session.WID, tempName}, " "),
+		fileHash)
+	if err != nil {
+		if err == cs.ErrUnsupportedAlgorithm {
+			session.SendStringResponse(309, "UNSUPPORTED ALGORITHM", "")
+		} else {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		}
+		return
+	}
+	if !hashMatch {
+		fsp.DeleteFile(strings.Join([]string{"/", "tmp", session.WID, tempName}, " "))
+		session.SendStringResponse(410, "HASH MISMATCH", "")
+	}
+
+	realName, err := fsp.InstallTempFile(session.WID, tempName, session.Message.Data["Path"])
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+
+	response = NewServerResponse(200, "OK")
+	response.Data["FileName"] = realName
+	session.SendResponse(*response)
 }
