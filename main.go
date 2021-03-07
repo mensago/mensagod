@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/darkwyrm/mensagod/config"
-	"github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/logging"
@@ -167,12 +166,32 @@ func (s sessionState) WriteClient(msg string) (n int, err error) {
 	return s.Connection.Write([]byte(msg))
 }
 
-func (s *sessionState) ReadFileData(fileSize uint64, fileHash cryptostring.CryptoString,
-	fileHandle *os.File) error {
+func (s *sessionState) ReadFileData(fileSize uint64, fileHandle *os.File) (uint64, error) {
 
-	// TODO: Implement
+	var totalRead uint64
+	buffer := make([]byte, MaxCommandLength)
 
-	return errors.New("Unimplemented")
+	for totalRead < fileSize {
+
+		bytesRead, err := s.Connection.Read(buffer)
+		if err != nil {
+			ne, ok := err.(*net.OpError)
+			if ok && ne.Timeout() {
+				s.IsTerminating = true
+				return 0, errors.New("connection timed out")
+			}
+
+			if err.Error() != "EOF" {
+				fmt.Println("Error reading from client: ", err.Error())
+			}
+			return 0, err
+		}
+
+		fileHandle.Write(buffer)
+		totalRead += uint64(bytesRead)
+	}
+
+	return totalRead, nil
 }
 
 // -------------------------------------------------------------------------------------------
