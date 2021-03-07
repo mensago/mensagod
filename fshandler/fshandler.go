@@ -551,7 +551,7 @@ func HashFile(path string, hash cs.CryptoString) (bool, error) {
 	case "BLAKE2B-256":
 		hasher, _ = blake2b.New256(nil)
 	case "SHA-256":
-		// Do nothing. We've already created a SHA256 hasher
+		// Do nothing. We've already created a SHA-256 hasher
 	case "SHA3-256":
 		hasher = sha3.New256()
 	default:

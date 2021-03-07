@@ -471,7 +471,7 @@ func (entry *Entry) GenerateHash(algorithm string) error {
 	case "BLAKE2B-256":
 		sum := blake2b.Sum256(entry.MakeByteString(hashLevel))
 		entry.Hash = algorithm + ":" + b85.Encode(sum[:])
-	case "SHA256":
+	case "SHA-256":
 		sum := sha256.Sum256(entry.MakeByteString(hashLevel))
 		entry.Hash = algorithm + ":" + b85.Encode(sum[:])
 	case "SHA3-256":
