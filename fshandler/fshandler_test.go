@@ -944,3 +944,24 @@ func TestLocalFSHandler_RemoveDirectory(t *testing.T) {
 			err.Error())
 	}
 }
+
+func TestHashFile(t *testing.T) {
+	err := setupTest()
+	if err != nil {
+		t.Fatalf("Test_HashFile: Couldn't reset workspace dir: %s", err.Error())
+	}
+
+	wid := "11111111-1111-1111-1111-111111111111"
+	testPath := "/ " + wid
+	err = ensureTestDirectory(testPath)
+	if err != nil {
+		t.Fatalf("Test_HashFile: Couldn't create temp dir: %s", err.Error())
+	}
+
+	_, err = generateRandomFile(testPath, 1000)
+	if err != nil {
+		t.Fatalf("Test_HashFile: Couldn't create temp file: %s", err.Error())
+	}
+
+	// TODO: finish hasher test
+}
