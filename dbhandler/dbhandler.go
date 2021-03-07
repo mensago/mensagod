@@ -929,7 +929,7 @@ func GetQuotaUsage(wid string) (uint64, error) {
 
 	switch err {
 	case sql.ErrNoRows:
-		out, err = fshandler.GetFSHandler().GetDiskUsage(wid)
+		out, err = fshandler.GetFSProvider().GetDiskUsage(wid)
 		if err != nil {
 			return 0, err
 		}
@@ -946,7 +946,7 @@ func GetQuotaUsage(wid string) (uint64, error) {
 		return 0, err
 	}
 
-	out, err = fshandler.GetFSHandler().GetDiskUsage(wid)
+	out, err = fshandler.GetFSProvider().GetDiskUsage(wid)
 	if err != nil {
 		return 0, err
 	}
@@ -971,7 +971,7 @@ func ModifyQuotaUsage(wid string, amount int64) (uint64, error) {
 
 	switch err {
 	case sql.ErrNoRows:
-		out, err = fshandler.GetFSHandler().GetDiskUsage(wid)
+		out, err = fshandler.GetFSProvider().GetDiskUsage(wid)
 		if err != nil {
 			return 0, err
 		}
@@ -997,7 +997,7 @@ func ModifyQuotaUsage(wid string, amount int64) (uint64, error) {
 	// Disk usage is lazily updated after each boot. If it has yet to be updated, the value in the
 	// database will be negative
 	if dbUsage < 0 {
-		fsh := fshandler.GetFSHandler()
+		fsh := fshandler.GetFSProvider()
 		out, err = fsh.GetDiskUsage(wid)
 		if err != nil {
 			return 0, err
@@ -1034,7 +1034,7 @@ func SetQuota(wid string, quota uint64) error {
 
 	rowcount, _ := result.RowsAffected()
 	if rowcount == 0 {
-		usage, err := fshandler.GetFSHandler().GetDiskUsage(wid)
+		usage, err := fshandler.GetFSProvider().GetDiskUsage(wid)
 		if err != nil {
 			return err
 		}
@@ -1062,7 +1062,7 @@ func SetQuotaUsage(wid string, total uint64) error {
 
 	rowcount, _ := result.RowsAffected()
 	if rowcount == 0 {
-		usage, err := fshandler.GetFSHandler().GetDiskUsage(wid)
+		usage, err := fshandler.GetFSProvider().GetDiskUsage(wid)
 		if err != nil {
 			return err
 		}
