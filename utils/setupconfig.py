@@ -307,7 +307,7 @@ while config['org_language'] == '':
 try:
 	conn = psycopg2.connect(host=config['server_ip'],
 							port=config['server_port'],
-							database='mensago',
+							database=config['db_name'],
 							user=config['db_user'],
 							password=config['db_password'])
 except Exception as e:
