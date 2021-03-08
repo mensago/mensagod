@@ -685,24 +685,24 @@ fhandle.write('''# This is an Mensago server config file. Each value listed belo
 # user = "mensago"
 ''')
 if config['server_ip'] != 'localhost':
-	fhandle.write('ip = "' + config['server_ip'] + '"')
+	fhandle.write('ip = "' + config['server_ip'] + '"' + os.linesep)
 
 if config['server_port'] != '5432':
-	fhandle.write('port = "' + config['server_port'] + '"')
+	fhandle.write('port = "' + config['server_port'] + '"' + os.linesep)
 
 if config['db_name'] != 'mensago':
-	fhandle.write('name = "' + config['db_name'] + '"')
+	fhandle.write('name = "' + config['db_name'] + '"' + os.linesep)
 
 if config['db_user'] != 'mensago':
-	fhandle.write('user = "' + config['db_user'] + '"')
+	fhandle.write('user = "' + config['db_user'] + '"' + os.linesep)
 
 if config['db_password'] != 'mensago':
-	fhandle.write('password = "' + config['db_password'] + '"')
+	fhandle.write('password = "' + config['db_password'] + '"' + os.linesep)
 
 fhandle.write('''
 [global]
 # The domain for the organization.
-''' + 'domain = "' + config['org_domain'] + '"')
+''' + 'domain = "' + config['org_domain'] + '"' + os.linesep)
 
 fhandle.write('''
 # The location where workspace data is stored. The default for Windows is 
@@ -711,7 +711,7 @@ fhandle.write('''
 ''')
 
 if config['workspace_path'] != default_workspace_path:
-	fhandle.write('workspace_dir = "' + config['workspace_path'] + '"')
+	fhandle.write('workspace_dir = "' + config['workspace_path'] + '"' + os.linesep)
 
 fhandle.write('''
 # The type of registration. 'public' is open to outside registration requests,
@@ -724,7 +724,7 @@ fhandle.write('''
 ''')
 
 if config['regtype'] != 'private':
-	fhandle.write('registration = "' + config['regtype'] + '"')
+	fhandle.write('registration = "' + config['regtype'] + '"' + os.linesep)
 
 fhandle.write('''
 # For servers configured to network registration, this variable sets the 
@@ -739,7 +739,7 @@ fhandle.write('''
 ''')
 
 if config['quota_size'] != '0':
-	fhandle.write('default_quota = ' + config['quota_size'])
+	fhandle.write('default_quota = ' + config['quota_size'] + os.linesep)
 
 fhandle.write('''
 # The maximum size in MiB of a file stored on the server. Note that this is the size of the actual 
