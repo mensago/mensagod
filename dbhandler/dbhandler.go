@@ -1043,6 +1043,7 @@ func SetQuota(wid string, quota uint64) error {
 		if err != nil {
 			logging.Writef("dbhandler.SetQuota: failed to add quota entry to table: %s",
 				err.Error())
+			return err
 		}
 	}
 	return nil
