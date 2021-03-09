@@ -9,6 +9,7 @@ import (
 	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/fshandler"
+	"github.com/darkwyrm/mensagod/logging"
 	"github.com/spf13/viper"
 )
 
@@ -302,6 +303,59 @@ func commandSelect(session *sessionState) {
 		handleFSError(session, err)
 	}
 	session.CurrentPath = path
+}
+
+func commandSetQuota(session *sessionState) {
+	// Command syntax:
+	// SETQUOTA(Workspaces, Size)
+
+	if session.LoginState != loginClientSession {
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		return
+	}
+
+	if session.Message.Validate([]string{"Workspaces", "Size"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	quotaSize, err := strconv.ParseInt(session.Message.Data["Size"], 10, 64)
+	if err != nil || quotaSize < 1 {
+		session.SendStringResponse(400, "BAD REQUEST", "Bad quota size")
+		return
+	}
+
+	adminAddress := "admin/" + viper.GetString("global.domain")
+	adminWid, err := dbhandler.ResolveAddress(adminAddress)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandSetQuota: Error resolving admin address: %s", err)
+		return
+	}
+
+	if session.LoginState != loginClientSession || session.WID != adminWid {
+		session.SendStringResponse(403, "FORBIDDEN", "Only admin can use this")
+		return
+	}
+
+	// If an error occurs processing one workspace, no further processing is made for reasons of
+	// both security and simplicity
+	workspaces := strings.Split(session.Message.Data["Workspaces"], ",")
+	for _, rawWID := range workspaces {
+		w := strings.TrimSpace(rawWID)
+		if !dbhandler.ValidateUUID(w) {
+			session.SendStringResponse(400, "BAD REQUEST", fmt.Sprintf("Bad workspace ID %s", w))
+			return
+		}
+
+		err = dbhandler.SetQuota(w, uint64(quotaSize))
+		if err != nil {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			return
+		}
+	}
+
+	session.SendStringResponse(200, "OK", "")
 }
 
 func commandUpload(session *sessionState) {

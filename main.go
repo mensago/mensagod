@@ -314,6 +314,8 @@ func processCommand(session *sessionState) {
 		commandSelect(session)
 	case "SETPASSWORD":
 		commandSetPassword(session)
+	case "SETQUOTA":
+		commandSetQuota(session)
 	case "SETSTATUS":
 		commandSetStatus(session)
 	case "UNREGISTER":

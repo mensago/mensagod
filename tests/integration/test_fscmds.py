@@ -41,6 +41,42 @@ def setup_testdir(name) -> str:
 	return testdir
 
 
+def test_setquota():
+	'''Tests the SETQUOTA command'''
+
+	dbconn = setup_test()
+	dbdata = init_server(dbconn)
+
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
+	
+	regcode_admin(dbdata, conn)
+
+	# Subtest #1: Non-administrator
+	
+	login_admin(dbdata, conn)
+
+	init_user(dbdata, conn)
+
+	# Subtest #2: Bad size
+
+	# Subtest #3: Bad workspace list
+
+	# Subtest #4: Actual success
+
+
+
 def test_upload():
 	'''Tests the UPLOAD command'''
 
