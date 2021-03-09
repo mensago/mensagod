@@ -93,7 +93,11 @@ def load_server_config_file() -> dict:
 	serverconfig['network'].setdefault('port','2001')
 
 	serverconfig.setdefault('global', dict())
-	serverconfig['global'].setdefault('workspace_dir','/var/mensago')
+
+	if platform.system() == 'Windows':
+		serverconfig['global'].setdefault('workspace_dir','C:\\ProgramData\\mensago')
+	else:
+		serverconfig['global'].setdefault('workspace_dir','/var/mensago')
 	serverconfig['global'].setdefault('registration','private')
 	serverconfig['global'].setdefault('default_quota',0)
 
@@ -267,6 +271,7 @@ def init_server(dbconn) -> dict:
 	dbconn.commit()	
 
 	return {
+		'configfile' : load_server_config_file(),
 		'ovkey' : keys['sign.public'],
 		'oskey' : keys['sign.private'],
 		'oekey' : keys['encrypt.public'],
@@ -459,3 +464,37 @@ def init_user(config: dict, conn: serverconn.ServerConnection):
 	config['user_devid'] = devid
 	config['user_devpair'] = devpair
 	config['user_password'] = password
+
+	try:
+		os.mkdir(os.path.join(config['configfile']['global']['workspace_dir'],userwid))
+	except OSError:
+		pass
+
+def init_user2(config: dict, conn: serverconn.ServerConnection):
+	'''Creates a second test user for command testing'''
+	
+	userwid = '44444444-4444-4444-4444-444444444444'
+	status = serverconn.preregister(conn, userwid, 'fkingsley', 'example.net')
+	assert not status.error(), "init_user2(): uid preregistration failed"
+	assert status['domain'] == 'example.net' and 'wid' in status and 'regcode' in status and \
+		status['uid'] == 'fkingsley', "init_user2(): failed to return expected data"
+
+	regdata = status
+	password = Password('MyS3cretPassw*rd')
+	devpair = EncryptionPair()
+	devid = '11111111-1111-1111-1111-111111111111'
+	status = serverconn.regcode(conn, 'fkingsley', regdata['regcode'], password.hashstring,
+		devid, devpair, 'example.net')
+	assert not status.error(), "init_user2(): uid regcode failed"
+
+	config['user2_wid'] = userwid
+	config['user2_uid'] = regdata['uid']
+	config['user2_domain'] = regdata['domain']
+	config['user2_devid'] = devid
+	config['user2_devpair'] = devpair
+	config['user2_password'] = password
+
+	try:
+		os.mkdir(os.path.join(config['configfile']['global']['workspace_dir'],userwid))
+	except OSError:
+		pass

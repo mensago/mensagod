@@ -5,7 +5,8 @@ import time
 from pymensago.cryptostring import CryptoString
 from pymensago.encryption import EncryptionPair
 from pymensago.serverconn import ServerConnection
-from integration_setup import login_admin, regcode_admin, setup_test, init_server, init_user
+from integration_setup import login_admin, regcode_admin, setup_test, init_server, init_user, \
+	init_user2
 
 server_response = {
 	'title' : 'Mensago Server Response',
@@ -62,19 +63,61 @@ def test_setquota():
 	dbdata['devpair'] = devpair
 	
 	regcode_admin(dbdata, conn)
-
-	# Subtest #1: Non-administrator
-	
 	login_admin(dbdata, conn)
 
 	init_user(dbdata, conn)
+	init_user2(dbdata, conn)
 
-	# Subtest #2: Bad size
+	# Subtest #1: Bad sizes
 
-	# Subtest #3: Bad workspace list
+	conn.send_message({
+		'Action': 'SETQUOTA',
+		'Data': {
+			'Size': '0',
+			'Workspaces': '33333333-3333-3333-3333-333333333333'
+		}
+	})
 
-	# Subtest #4: Actual success
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, 'test_setquota: failed to handle bad size value'
 
+	conn.send_message({
+		'Action': 'SETQUOTA',
+		'Data': {
+			'Size': "Real programmers don't eat quiche ;)",
+			'Workspaces': '33333333-3333-3333-3333-333333333333'
+		}
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, 'test_setquota: failed to handle bad size data type'
+
+	# Subtest #2: Bad workspace list
+
+	conn.send_message({
+		'Action': 'SETQUOTA',
+		'Data': {
+			'Size': "4096",
+			'Workspaces': '33333333-3333-3333-3333-333333333333,'
+		}
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, 'test_setquota: failed to handle bad workspace list'
+
+	# Subtest #3: Actual success
+
+	conn.send_message({
+		'Action': 'SETQUOTA',
+		'Data': {
+			'Size': "4096",
+			'Workspaces': '33333333-3333-3333-3333-333333333333, ' \
+				'44444444-4444-4444-4444-444444444444'
+		}
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_setquota: failed to handle actual success'
 
 
 def test_upload():
@@ -182,4 +225,5 @@ def test_upload():
 
 
 if __name__ == '__main__':
-	test_upload()
+	test_setquota()
+	# test_upload()
