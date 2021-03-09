@@ -1,12 +1,16 @@
 import os
+import random
 import shutil
 import time
 
 from pymensago.cryptostring import CryptoString
 from pymensago.encryption import EncryptionPair
+from pymensago.retval import RetVal, ExceptionThrown
 from pymensago.serverconn import ServerConnection
+
 from integration_setup import login_admin, regcode_admin, setup_test, init_server, init_user, \
 	init_user2
+
 
 server_response = {
 	'title' : 'Mensago Server Response',
@@ -25,6 +29,26 @@ server_response = {
 	}
 }
 
+def make_test_file(path: str, file_size=-1, file_name='') -> RetVal:
+	'''Generate a test file containing nothing but zeroes. If the file size is negative, a random 
+	size between 1 and 10 Kb will be chosen. If the file name is empty, a random one will be 
+	generated.'''
+	
+	# TODO: finish
+	if file_name == '' or not file_name:
+		file_name = 
+	
+	try:
+		fhandle = open(os.path.join(testpath, 'testfile.txt'), 'w')
+	except Exception as e:
+		return RetVal(ExceptionThrown, e)
+	
+	if file_size < 0:
+		file_size = random.randint(1,10) * 1024
+	fhandle.write(file_size)
+	fhandle.close()
+
+
 def setup_testdir(name) -> str:
 	'''Creates a test folder for holding files'''
 	topdir = os.path.join(os.path.dirname(os.path.realpath(__file__)),'testfiles')
@@ -40,6 +64,44 @@ def setup_testdir(name) -> str:
 			time.sleep(1.0)
 	os.mkdir(testdir)
 	return testdir
+
+
+def test_getquotainfo():
+	'''This tests the command GETQUOTAINFO, which gets both the quota for the workspace and the 
+	disk usage'''
+
+	dbconn = setup_test()
+	dbdata = init_server(dbconn)
+
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
+	
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
+
+	init_user(dbdata, conn)
+	
+	testpath = setup_testdir('test_upload')
+
+	# Make a test file
+	try:
+		fhandle = open(os.path.join(testpath, 'testfile.txt'), 'w')
+	except Exception as e:
+		assert False, f"test_upload: exception thrown creating temp file: {e}"
+	
+	fhandle.write('0' * 1000)
+	fhandle.close()
 
 
 def test_setquota():
@@ -118,6 +180,7 @@ def test_setquota():
 
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_setquota: failed to handle actual success'
+
 
 
 def test_upload():
