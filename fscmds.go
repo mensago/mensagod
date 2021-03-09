@@ -319,8 +319,8 @@ func commandUpload(session *sessionState) {
 	}
 
 	// Both Name and Hash must be present when resuming
-	if (session.Message.HasField("TempName") && !session.Message.HasField("Hash")) ||
-		(session.Message.HasField("Hash") && !session.Message.HasField("TempName")) {
+	if (session.Message.HasField("TempName") && !session.Message.HasField("Offset")) ||
+		(session.Message.HasField("Offset") && !session.Message.HasField("TempName")) {
 		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
@@ -339,10 +339,18 @@ func commandUpload(session *sessionState) {
 		return
 	}
 
-	var filePath fshandler.LocalAnPath
-	err = filePath.Set(session.Message.Data["Path"])
+	fsp := fshandler.GetFSProvider()
+	exists, err := fsp.Exists(session.Message.Data["Path"])
 	if err != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Bad file path")
+		if err == fshandler.ErrBadPath {
+			session.SendStringResponse(400, "BAD REQUEST", "Bad file path")
+		} else {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		}
+		return
+	}
+	if !exists {
+		session.SendStringResponse(404, "NOT FOUND", "")
 		return
 	}
 
@@ -388,7 +396,6 @@ func commandUpload(session *sessionState) {
 		return
 	}
 
-	fsp := fshandler.GetFSProvider()
 	tempHandle, tempName, err := fsp.MakeTempFile(session.WID)
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
