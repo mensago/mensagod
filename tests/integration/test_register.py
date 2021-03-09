@@ -130,7 +130,7 @@ def test_register_failures():
 	})
 
 	response = conn.read_response(server_response)
-	assert response['Code'] == 309 and response['Status'] == 'ALGORITHM NOT SUPPORTED', \
+	assert response['Code'] == 309, \
 		'test_register_failures: subtest #1 failed to catch unsupported encryption'
 
 	# Test #2: Send bad WID
