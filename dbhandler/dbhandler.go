@@ -153,15 +153,6 @@ func LogFailure(failType string, wid string, sourceip string) error {
 	return nil
 }
 
-// ValidateUUID just returns whether or not a string is a valid UUID.
-func ValidateUUID(uuid string) bool {
-	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
-	if len(uuid) != 36 && len(uuid) != 32 {
-		return false
-	}
-	return pattern.MatchString(uuid)
-}
-
 // GetMensagoAddressType returns the type of address given to it. It returns 0 when there is an
 // error, 1 when given a valid workspace address, and 2 when given a valid Mensago address
 func GetMensagoAddressType(addr string) int {
@@ -1078,4 +1069,13 @@ func SetQuotaUsage(wid string, total uint64) error {
 	}
 
 	return nil
+}
+
+// ValidateUUID just returns whether or not a string is a valid UUID.
+func ValidateUUID(uuid string) bool {
+	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
+	if len(uuid) != 36 && len(uuid) != 32 {
+		return false
+	}
+	return pattern.MatchString(uuid)
 }
