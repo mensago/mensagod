@@ -119,7 +119,7 @@ def setup_test():
 	try:
 		conn = psycopg2.connect(host=serverconfig['database']['ip'],
 								port=serverconfig['database']['port'],
-								database="mensago",
+								database=serverconfig['database']['name'],
 								user=serverconfig['database']['user'],
 								password=serverconfig['database']['password'])
 	except Exception as e:
