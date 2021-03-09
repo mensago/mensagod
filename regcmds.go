@@ -148,6 +148,24 @@ func commandPreregister(session *sessionState) {
 		return
 	}
 
+	fsp := fshandler.GetFSProvider()
+	exists, err := fsp.Exists("/ " + wid)
+	if err != nil {
+		logging.Writef("commandPreregister: Failed to check workspace %s existence: %s",
+			wid, err)
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+	if !exists {
+		fsp.MakeDirectory("/ " + wid)
+		if err != nil {
+			logging.Writef("commandPreregister: Failed to create workspace %s top directory: %s",
+				wid, err)
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			return
+		}
+	}
+
 	response := NewServerResponse(200, "OK")
 	if uid != "" {
 		response.Data["User-ID"] = uid
@@ -419,6 +437,24 @@ func commandRegister(session *sessionState) {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
 		return
+	}
+
+	fsp := fshandler.GetFSProvider()
+	exists, err := fsp.Exists("/ " + session.Message.Data["Workspace-ID"])
+	if err != nil {
+		logging.Writef("commandPreregister: Failed to check workspace %s existence: %s",
+			session.Message.Data["Workspace-ID"], err)
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+	if !exists {
+		fsp.MakeDirectory("/ " + session.Message.Data["Workspace-ID"])
+		if err != nil {
+			logging.Writef("commandPreregister: Failed to create workspace %s top directory: %s",
+				session.Message.Data["Workspace-ID"], err)
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			return
+		}
 	}
 
 	if regType == "moderated" {
