@@ -125,6 +125,43 @@ func commandExists(session *sessionState) {
 	}
 }
 
+func commandGetQuotaInfo(session *sessionState) {
+	// Command syntax:
+	// GETQUOTAINFO(Workspace='')
+
+	if session.LoginState != loginClientSession {
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		return
+	}
+
+	quotaSize, err := strconv.ParseInt(session.Message.Data["Size"], 10, 64)
+	if err != nil || quotaSize < 1 {
+		session.SendStringResponse(400, "BAD REQUEST", "Bad quota size")
+		return
+	}
+
+	adminAddress := "admin/" + viper.GetString("global.domain")
+	adminWid, err := dbhandler.ResolveAddress(adminAddress)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandSetQuota: Error resolving admin address: %s", err)
+		return
+	}
+
+	isAdmin := adminWid == session.WID
+
+	if session.Message.HasField("Workspaces") {
+		if !isAdmin {
+			session.SendStringResponse(403, "FORBIDDEN", "Only admin can use the Workspaces field")
+			return
+		}
+
+		// TODO: Handle multiple workspaces
+	}
+
+	// TODO: Finish handling regular user mode
+}
+
 func commandList(session *sessionState) {
 	// Command syntax:
 	// LIST(Time=0)

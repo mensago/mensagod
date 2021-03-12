@@ -2,6 +2,7 @@ import os
 import random
 import shutil
 import time
+import uuid
 
 from pymensago.cryptostring import CryptoString
 from pymensago.encryption import EncryptionPair
@@ -34,19 +35,21 @@ def make_test_file(path: str, file_size=-1, file_name='') -> RetVal:
 	size between 1 and 10 Kb will be chosen. If the file name is empty, a random one will be 
 	generated.'''
 	
-	# TODO: finish
+	if file_size < 0:
+		file_size = random.randint(1,10) * 1024
+	
 	if file_name == '' or not file_name:
-		file_name = 
+		file_name = f"{int(time.time())}.{file_size}.{str(uuid.uuid4())}"
 	
 	try:
-		fhandle = open(os.path.join(testpath, 'testfile.txt'), 'w')
+		fhandle = open(os.path.join(path, file_name), 'w')
 	except Exception as e:
 		return RetVal(ExceptionThrown, e)
 	
-	if file_size < 0:
-		file_size = random.randint(1,10) * 1024
-	fhandle.write(file_size)
+	fhandle.write('0' * file_size)
 	fhandle.close()
+	
+	return RetVal()
 
 
 def setup_testdir(name) -> str:
@@ -92,16 +95,17 @@ def test_getquotainfo():
 
 	init_user(dbdata, conn)
 	
-	testpath = setup_testdir('test_upload')
+	status = make_test_file(os.path.join(dbdata['configfile']['global']['workspace_dir'], 
+		dbdata['admin_wid']), file_size=1000)
+	assert not status.error(), f"Failed to create test workspace file: {status.info}"
 
-	# Make a test file
-	try:
-		fhandle = open(os.path.join(testpath, 'testfile.txt'), 'w')
-	except Exception as e:
-		assert False, f"test_upload: exception thrown creating temp file: {e}"
+	conn.send_message({ 'Action': 'GETQUOTAINFO', 'Data': {} })
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_getquotainfo: failed to get quota information'
 	
-	fhandle.write('0' * 1000)
-	fhandle.close()
+	assert response['Data']['DiskUsage'] == '1000', 'test_getquotainfo: disk usage was incorrect'
+	assert response['Data']['QuotaSize'] == dbdata['configfile']['global']['default_quota'], \
+		"test_getquotainfo: admin quota didn't match the default"
 
 
 def test_setquota():
@@ -288,5 +292,6 @@ def test_upload():
 
 
 if __name__ == '__main__':
-	test_setquota()
+	test_getquotainfo()
+	# test_setquota()
 	# test_upload()

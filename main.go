@@ -276,6 +276,8 @@ func processCommand(session *sessionState) {
 		commandDevKey(session)
 	case "EXISTS":
 		commandExists(session)
+	case "GETQUOTAINFO":
+		commandGetQuotaInfo(session)
 	case "GETWID":
 		commandGetWID(session)
 	case "ISCURRENT":
