@@ -9,6 +9,7 @@ import (
 	"github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/ezcrypt"
+	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/keycard"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/everlastingbeta/diceware"
@@ -81,6 +82,16 @@ func commandDevice(session *sessionState) {
 			session.SendStringResponse(401, "UNAUTHORIZED", "")
 		}
 		return
+	}
+
+	fsp := fshandler.GetFSProvider()
+	exists, err := fsp.Exists("/ " + session.WID)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+	if !exists {
+		fsp.MakeDirectory("/ " + session.WID)
 	}
 
 	session.LoginState = loginClientSession
