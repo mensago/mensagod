@@ -884,72 +884,47 @@ func IsAlias(wid string) (bool, error) {
 	return false, nil
 }
 
-// GetQuota returns the size of a workspace's disk quota in bytes
-func GetQuota(wid string) (uint64, error) {
-	row := dbConn.QueryRow(`SELECT quota FROM quotas WHERE wid=$1`, wid)
+// GetQuotaInfo returns the disk usage and quota size of a workspace in bytes
+func GetQuotaInfo(wid string) (uint64, uint64, error) {
+	row := dbConn.QueryRow(`SELECT usage,quota FROM quotas WHERE wid=$1`, wid)
 
-	var quota int64
-	err := row.Scan(&quota)
-
-	switch err {
-	case sql.ErrNoRows:
-		defaultSize := uint64(viper.GetInt64("global.default_quota") * 1_048_576)
-		err = SetQuota(wid, defaultSize)
-		return defaultSize, err
-	case nil:
-		if quota < 0 {
-			quota = viper.GetInt64("global.default_quota") * 1_048_576
-		}
-		return uint64(quota), nil
-	case err.(*pq.Error):
-		logging.Writef("dbhandler.GetQuota: PostgreSQL error: %s", err.Error())
-		return 0, err
-	default:
-		logging.Writef("dbhandler.GetQuota: unexpected error: %s", err.Error())
-		return 0, err
-	}
-}
-
-// GetQuotaUsage returns the disk usage of a workspace in bytes
-func GetQuotaUsage(wid string) (uint64, error) {
-	row := dbConn.QueryRow(`SELECT usage FROM quotas WHERE wid=$1`, wid)
-
-	var dbUsage int64
-	var out uint64
-	err := row.Scan(&dbUsage)
+	var dbUsage, dbQuota int64
+	var outUsage, outQuota uint64
+	err := row.Scan(&dbUsage, &dbQuota)
 
 	switch err {
 	case sql.ErrNoRows:
-		out, err = fshandler.GetFSProvider().GetDiskUsage(wid)
+		outUsage, err = fshandler.GetFSProvider().GetDiskUsage(wid)
 		if err != nil {
-			return 0, err
+			return 0, 0, err
 		}
-		return out, SetQuotaUsage(wid, out)
+		return outUsage, outQuota, SetQuotaUsage(wid, outUsage)
 	case nil:
 		if dbUsage >= 0 {
-			return uint64(dbUsage), nil
+			return uint64(dbUsage), uint64(dbQuota), nil
 		}
 	case err.(*pq.Error):
 		logging.Writef("dbhandler.GetQuotaUsage: PostgreSQL error: %s", err.Error())
-		return 0, err
+		return 0, 0, err
 	default:
 		logging.Writef("dbhandler.GetQuotaUsage: unexpected error: %s", err.Error())
-		return 0, err
+		return 0, 0, err
 	}
 
-	out, err = fshandler.GetFSProvider().GetDiskUsage(wid)
+	outUsage, err = fshandler.GetFSProvider().GetDiskUsage(wid)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	sqlStatement := `INSERT INTO quotas(wid, usage, quota)	VALUES($1, $2, $3)`
-	_, err = dbConn.Exec(sqlStatement, wid, out, viper.GetInt64("global.default_quota")*1_048_576)
+	_, err = dbConn.Exec(sqlStatement, wid, outUsage,
+		viper.GetInt64("global.default_quota")*1_048_576)
 	if err != nil {
 		logging.Writef("dbhandler.GetQuotaUsage: failed to add quota entry to table: %s",
 			err.Error())
 	}
 
-	return out, SetQuotaUsage(wid, out)
+	return outUsage, outQuota, SetQuotaUsage(wid, outUsage)
 }
 
 // ModifyQuotaUsage modifies the disk usage by a relative amount, specified in bytes. Note that if

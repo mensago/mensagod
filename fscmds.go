@@ -144,7 +144,7 @@ func commandGetQuotaInfo(session *sessionState) {
 	adminWid, err := dbhandler.ResolveAddress(adminAddress)
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-		logging.Writef("commandSetQuota: Error resolving admin address: %s", err)
+		logging.Writef("commandGetQuotaInfo: Error resolving admin address: %s", err)
 		return
 	}
 
@@ -156,10 +156,50 @@ func commandGetQuotaInfo(session *sessionState) {
 			return
 		}
 
-		// TODO: Handle multiple workspaces
+		widList := strings.Split(session.Message.Data["Workspaces"], ",")
+		if len(widList) > 100 {
+			session.SendStringResponse(414, "LIMIT REACHED", "No more than 100 workspaces at once")
+		}
+
+		quotaList := make([]string, len(widList))
+		usageList := make([]string, len(widList))
+		for i, rawwid := range widList {
+			wid := strings.TrimSpace(rawwid)
+			if !dbhandler.ValidateUUID(wid) {
+				session.SendStringResponse(400, "BAD REQUEST", "Bad workspace ID "+wid)
+				return
+			}
+
+			u, q, err := dbhandler.GetQuotaInfo(wid)
+			if err != nil {
+				session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+				logging.Writef("commandGetQuotaInfo: Error getting quota info for workspace %s: %s",
+					wid, err)
+				return
+			}
+			usageList[i] = fmt.Sprintf("%d", u)
+			quotaList[i] = fmt.Sprintf("%d", q)
+		}
+
+		response := NewServerResponse(200, "OK")
+		response.Data["DiskUsage"] = strings.Join(usageList, ",")
+		response.Data["QuotaSize"] = strings.Join(quotaList, ",")
+		session.SendResponse(*response)
+		return
 	}
 
-	// TODO: Finish handling regular user mode
+	u, q, err := dbhandler.GetQuotaInfo(session.WID)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandGetQuotaInfo: Error getting quota info for workspace %s: %s",
+			session.WID, err)
+		return
+	}
+
+	response := NewServerResponse(200, "OK")
+	response.Data["DiskUsage"] = fmt.Sprintf("%d", u)
+	response.Data["QuotaSize"] = fmt.Sprintf("%d", q)
+	session.SendResponse(*response)
 }
 
 func commandList(session *sessionState) {
@@ -471,12 +511,7 @@ func commandUpload(session *sessionState) {
 
 	// Arguments have been validated, do a quota check
 
-	diskQuota, err := dbhandler.GetQuota(session.WID)
-	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-		return
-	}
-	diskUsage, err := dbhandler.GetQuotaUsage(session.WID)
+	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID)
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
 		return

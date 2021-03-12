@@ -13,7 +13,6 @@ import (
 	"github.com/darkwyrm/mensagod/config"
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/google/uuid"
-	"github.com/spf13/viper"
 )
 
 // setupTest initializes the global config and resets the database
@@ -180,61 +179,63 @@ func ensureTestDirectory(path string) error {
 	return os.Mkdir(anpath.ProviderPath(), 0777)
 }
 
-func TestDBHandler_GetQuota(t *testing.T) {
+// func TestDBHandler_GetQuota(t *testing.T) {
+// 	if err := setupTest(); err != nil {
+// 		t.Fatalf("TestDBHandler_GetQuota: Couldn't reset database: %s", err.Error())
+// 	}
+
+// 	wid := "11111111-1111-1111-1111-111111111111"
+// 	ensureTestDirectory("/ " + wid)
+
+// 	row := dbConn.QueryRow(`SELECT quota FROM quotas WHERE wid=$1`, wid)
+// 	var tempSize int64
+// 	err := row.Scan(&tempSize)
+
+// 	if err != sql.ErrNoRows {
+// 		t.Fatalf("TestDBHandler_GetQuota: Pre-execution error: %s", err)
+// 	}
+
+// 	// Subtest #1: Handle nonexistent record
+
+// 	quotaSize, err := GetQuota(wid)
+// 	if err != nil {
+// 		t.Fatalf("TestDBHandler_GetQuota: #1: failure to get quota: %s", err)
+// 	}
+// 	if quotaSize != uint64(viper.GetInt64("global.default_quota")) {
+// 		t.Fatalf("TestDBHandler_GetQuota: #1: quota wrong size: %d", quotaSize)
+// 	}
+
+// 	row = dbConn.QueryRow(`SELECT quota FROM quotas WHERE wid=$1`, wid)
+// 	err = row.Scan(&tempSize)
+// 	if err != nil {
+// 		t.Fatalf("TestDBHandler_GetQuota: #1: failed to get quota: %s", err)
+// 	}
+// 	if tempSize != viper.GetInt64("global.default_quota")*0x10_0000 {
+// 		t.Fatalf("TestDBHandler_GetQuota: #1: got the wrong quota size: %d", tempSize)
+// 	}
+
+// 	// Subtest #2: Get existing record
+
+// 	err = SetQuota(wid, 0x60_0000)
+// 	if err != nil {
+// 		t.Fatalf("TestDBHandler_GetQuota: #2: failure to update quota size: %s", err)
+// 	}
+
+// 	quotaSize, err = GetQuota(wid)
+// 	if err != nil {
+// 		t.Fatalf("TestDBHandler_GetQuota: #2: failure to get quota: %s", err)
+// 	}
+// 	if quotaSize != 0x60_0000 {
+// 		t.Fatalf("TestDBHandler_GetQuota: #2: quota wrong size: %d", quotaSize)
+// 	}
+// }
+
+func TestDBHandler_GetQuotaInfo(t *testing.T) {
 	if err := setupTest(); err != nil {
-		t.Fatalf("TestDBHandler_GetQuota: Couldn't reset database: %s", err.Error())
+		t.Fatalf("TestDBHandler_GetQuotaInfo: Couldn't reset database: %s", err.Error())
 	}
 
-	wid := "11111111-1111-1111-1111-111111111111"
-	ensureTestDirectory("/ " + wid)
-
-	row := dbConn.QueryRow(`SELECT quota FROM quotas WHERE wid=$1`, wid)
-	var tempSize int64
-	err := row.Scan(&tempSize)
-
-	if err != sql.ErrNoRows {
-		t.Fatalf("TestDBHandler_GetQuota: Pre-execution error: %s", err)
-	}
-
-	// Subtest #1: Handle nonexistent record
-
-	quotaSize, err := GetQuota(wid)
-	if err != nil {
-		t.Fatalf("TestDBHandler_GetQuota: #1: failure to get quota: %s", err)
-	}
-	if quotaSize != uint64(viper.GetInt64("global.default_quota")) {
-		t.Fatalf("TestDBHandler_GetQuota: #1: quota wrong size: %d", quotaSize)
-	}
-
-	row = dbConn.QueryRow(`SELECT quota FROM quotas WHERE wid=$1`, wid)
-	err = row.Scan(&tempSize)
-	if err != nil {
-		t.Fatalf("TestDBHandler_GetQuota: #1: failed to get quota: %s", err)
-	}
-	if tempSize != viper.GetInt64("global.default_quota")*0x10_0000 {
-		t.Fatalf("TestDBHandler_GetQuota: #1: got the wrong quota size: %d", tempSize)
-	}
-
-	// Subtest #2: Get existing record
-
-	err = SetQuota(wid, 0x60_0000)
-	if err != nil {
-		t.Fatalf("TestDBHandler_GetQuota: #2: failure to update quota size: %s", err)
-	}
-
-	quotaSize, err = GetQuota(wid)
-	if err != nil {
-		t.Fatalf("TestDBHandler_GetQuota: #2: failure to get quota: %s", err)
-	}
-	if quotaSize != 0x60_0000 {
-		t.Fatalf("TestDBHandler_GetQuota: #2: quota wrong size: %d", quotaSize)
-	}
-}
-
-func TestDBHandler_GetQuotaUsage(t *testing.T) {
-	if err := setupTest(); err != nil {
-		t.Fatalf("TestDBHandler_GetQuotaUsage: Couldn't reset database: %s", err.Error())
-	}
+	// TODO: Finish refactoring to incorporate subtests from old GetQuota test
 
 	resetWorkspaceDir()
 
@@ -248,17 +249,17 @@ func TestDBHandler_GetQuotaUsage(t *testing.T) {
 	err := row.Scan(&tempSize)
 
 	if err != sql.ErrNoRows {
-		t.Fatalf("TestDBHandler_GetQuotaUsage: Pre-execution error: %s", err)
+		t.Fatalf("TestDBHandler_GetQuotaInfo: Pre-execution error: %s", err)
 	}
 
 	// Subtest #1: Handle nonexistent record
 
-	usage, err := GetQuotaUsage(wid)
+	usage, _, err := GetQuotaInfo(wid)
 	if err != nil {
-		t.Fatalf("TestDBHandler_GetQuotaUsage: #1: failure to get usage: %s", err)
+		t.Fatalf("TestDBHandler_GetQuotaInfo: #1: failure to get usage: %s", err)
 	}
 	if usage != 2000 {
-		t.Fatalf("TestDBHandler_GetQuotaUsage: #1: usage wrong size: %d", usage)
+		t.Fatalf("TestDBHandler_GetQuotaInfo: #1: usage wrong size: %d", usage)
 	}
 
 	row = dbConn.QueryRow(`SELECT usage FROM quotas WHERE wid=$1`, wid)
@@ -267,22 +268,22 @@ func TestDBHandler_GetQuotaUsage(t *testing.T) {
 		t.Fatalf("TestDBHandler_GetQuota: #1: failed to get usage: %s", err)
 	}
 	if tempSize != 2000 {
-		t.Fatalf("TestDBHandler_GetQuotaUsage: #1: got the wrong usage size: %d", tempSize)
+		t.Fatalf("TestDBHandler_GetQuotaInfo: #1: got the wrong usage size: %d", tempSize)
 	}
 
 	// Subtest #2: Get existing record
 
 	err = SetQuotaUsage(wid, 3000)
 	if err != nil {
-		t.Fatalf("TestDBHandler_GetQuotaUsage: #2: failure to update usage: %s", err)
+		t.Fatalf("TestDBHandler_GetQuotaInfo: #2: failure to update usage: %s", err)
 	}
 
-	usage, err = GetQuotaUsage(wid)
+	usage, _, err = GetQuotaInfo(wid)
 	if err != nil {
-		t.Fatalf("TestDBHandler_GetQuotaUsage: #2: failure to get usage: %s", err)
+		t.Fatalf("TestDBHandler_GetQuotaInfo: #2: failure to get usage: %s", err)
 	}
 	if usage != 3000 {
-		t.Fatalf("TestDBHandler_GetQuotaUsage: #2: usage wrong size: %d", usage)
+		t.Fatalf("TestDBHandler_GetQuotaInfo: #2: usage wrong size: %d", usage)
 	}
 }
 
