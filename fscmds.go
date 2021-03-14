@@ -134,12 +134,6 @@ func commandGetQuotaInfo(session *sessionState) {
 		return
 	}
 
-	quotaSize, err := strconv.ParseInt(session.Message.Data["Size"], 10, 64)
-	if err != nil || quotaSize < 1 {
-		session.SendStringResponse(400, "BAD REQUEST", "Bad quota size")
-		return
-	}
-
 	adminAddress := "admin/" + viper.GetString("global.domain")
 	adminWid, err := dbhandler.ResolveAddress(adminAddress)
 	if err != nil {

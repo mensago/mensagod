@@ -104,8 +104,8 @@ def test_getquotainfo():
 	assert response['Code'] == 200, 'test_getquotainfo: failed to get quota information'
 	
 	assert response['Data']['DiskUsage'] == '1000', 'test_getquotainfo: disk usage was incorrect'
-	assert response['Data']['QuotaSize'] == dbdata['configfile']['global']['default_quota'], \
-		"test_getquotainfo: admin quota didn't match the default"
+	assert response['Data']['QuotaSize'] == '0', \
+		"test_getquotainfo: admin quota wasn't unlimited"
 
 
 def test_setquota():
@@ -428,6 +428,6 @@ def test_upload():
 
 
 if __name__ == '__main__':
-	# test_getquotainfo()
+	test_getquotainfo()
 	# test_setquota()
-	test_upload()
+	# test_upload()
