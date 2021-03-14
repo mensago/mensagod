@@ -214,15 +214,6 @@ def test_upload():
 	
 	testpath = setup_testdir('test_upload')
 
-	# Make a test file
-	try:
-		fhandle = open(os.path.join(testpath, 'uploadme.txt'), 'w')
-	except Exception as e:
-		assert False, f"test_upload: exception thrown creating temp file: {e}"
-	
-	fhandle.write('0' * 1000)
-	fhandle.close()
-
 	# Subtest #1: Missing parameters
 	
 	conn.send_message({
@@ -235,7 +226,7 @@ def test_upload():
 	})
 
 	response = conn.read_response(server_response)
-	assert response['Code'] == 400, 'test_upload: failed to handle missing parameter'
+	assert response['Code'] == 400, 'test_upload: #1 failed to handle missing parameter'
 
 	# Subtest #2: Non-existent path
 
@@ -249,7 +240,7 @@ def test_upload():
 	})
 
 	response = conn.read_response(server_response)
-	assert response['Code'] == 404, 'test_upload: failed to handle non-existent path'
+	assert response['Code'] == 404, 'test_upload: #2 failed to handle non-existent path'
 
 	# Subtest #3: Size too big
 
@@ -263,7 +254,7 @@ def test_upload():
 	})
 
 	response = conn.read_response(server_response)
-	assert response['Code'] == 414, 'test_upload: failed to handle file too big'
+	assert response['Code'] == 414, 'test_upload: #3 failed to handle file too big'
 
 	# Subtest #4: Insufficient quota remaining
 
@@ -281,12 +272,12 @@ def test_upload():
 		'Data': {
 			'Size': str(0x10_0000 * 30), # 30MiB
 			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-			'Path': '/ ' + dbdata['user_wid']
+			'Path': '/ ' + dbdata['admin_wid']
 		}
 	})
 
 	response = conn.read_response(server_response)
-	assert response['Code'] == 409, 'test_upload: quota check failed'
+	assert response['Code'] == 409, 'test_upload: #4 quota check failed'
 
 	# We need this to be unlimited for later tests
 	cur = dbconn.cursor()
@@ -295,7 +286,41 @@ def test_upload():
 
 	# Subtest #5: Hash mismatch
 
+	conn.send_message({
+		'Action': 'UPLOAD',
+		'Data': {
+			'Size': str(1000),
+			'Hash': r'BLAKE2B-256:5(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
+			'Path': '/ ' + dbdata['admin_wid']
+		}
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 100, 'test_upload: #5 failed to proceed to file upload'
+
+	conn.write('0' * 1000)
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 410, 'test_upload: #5 failed to handle file hash mismatch'
+
 	# Subtest #6: Actual success
+
+	conn.send_message({
+		'Action': 'UPLOAD',
+		'Data': {
+			'Size': str(1000),
+			'Hash': r'BLAKE2B-256:|CAi^d1>P`4Tg*@9eZ2Kg|P^D!klB|G|=?q!;NVw',
+			'Path': '/ ' + dbdata['admin_wid']
+		}
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 100, 'test_upload: #6 failed to proceed to file upload'
+
+	conn.write('0' * 1000)
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_upload: #6 failed to handle file hash mismatch'
 
 	# Subtest #7: Interrupted transfer
 

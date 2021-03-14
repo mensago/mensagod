@@ -140,8 +140,7 @@ func (lfs *LocalFSHandler) CloseFile(handle string) error {
 	return nil
 }
 
-// DeleteFile deletes the specified workspace file. If the file does not exist, this function will
-// not return an error.
+// DeleteFile deletes the specified workspace file.
 func (lfs *LocalFSHandler) DeleteFile(path string) error {
 	// Path validation handled in Set()
 	var anpath LocalAnPath
@@ -156,6 +155,18 @@ func (lfs *LocalFSHandler) DeleteFile(path string) error {
 	}
 
 	return os.Remove(anpath.ProviderPath())
+}
+
+// DeleteTempFile deletes the specified temporary file.
+func (lfs *LocalFSHandler) DeleteTempFile(wid string, name string) error {
+	tmppath := filepath.Join(viper.GetString("global.workspace_dir"), "tmp", wid, name)
+
+	_, err := os.Stat(tmppath)
+	if err != nil {
+		return err
+	}
+
+	return os.Remove(tmppath)
 }
 
 // Exists checks to see if the specified path exists
@@ -541,7 +552,11 @@ func (lfs *LocalFSHandler) Select(path string) (LocalAnPath, error) {
 	return anpath, nil
 }
 
-// HashFile performs a hash check on a file and determines if it matches or not
+// HashFile performs a hash check on a file and determines if it matches or not. Note that this
+// file only works on the local filesystem because it is expected to mostly operate on temp files.
+// Temp files are initially stored in / tmp <wid>, so using a LocalAnPath object will fail because
+// LocalAnPath expects to operate within a workspace. At the same time, using the Mensago formatting
+// for a file path *is* expected.
 func HashFile(path string, hash cs.CryptoString) (bool, error) {
 
 	hasher := sha256.New()
@@ -558,13 +573,12 @@ func HashFile(path string, hash cs.CryptoString) (bool, error) {
 		return false, cs.ErrUnsupportedAlgorithm
 	}
 
-	var anpath LocalAnPath
-	err := anpath.Set(path)
-	if err != nil {
-		return false, err
-	}
-
-	fHandle, err := os.Open(anpath.ProviderPath())
+	workspaceRoot := viper.GetString("global.workspace_dir")
+	pathParts := strings.Split(path, " ")
+	localPath := filepath.Join(workspaceRoot,
+		strings.Join(pathParts[1:], string(filepath.Separator)))
+	fHandle, err := os.Open(localPath)
+	defer fHandle.Close()
 	if err != nil {
 		return false, err
 	}

@@ -541,7 +541,7 @@ func commandUpload(session *sessionState) {
 		return
 	}
 
-	hashMatch, err := fshandler.HashFile(strings.Join([]string{"/", session.WID, tempName}, " "),
+	hashMatch, err := fshandler.HashFile(strings.Join([]string{"/ tmp", session.WID, tempName}, " "),
 		fileHash)
 	if err != nil {
 		if err == cs.ErrUnsupportedAlgorithm {
@@ -552,8 +552,9 @@ func commandUpload(session *sessionState) {
 		return
 	}
 	if !hashMatch {
-		fsp.DeleteFile(strings.Join([]string{"/", "tmp", session.WID, tempName}, " "))
+		fsp.DeleteTempFile(session.WID, tempName)
 		session.SendStringResponse(410, "HASH MISMATCH", "")
+		return
 	}
 
 	realName, err := fsp.InstallTempFile(session.WID, tempName, session.Message.Data["Path"])
