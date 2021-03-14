@@ -187,7 +187,7 @@ func (s *sessionState) ReadFileData(fileSize uint64, fileHandle *os.File) (uint6
 			return 0, err
 		}
 
-		fileHandle.Write(buffer)
+		fileHandle.Write(buffer[:bytesRead])
 		totalRead += uint64(bytesRead)
 	}
 

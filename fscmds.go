@@ -485,22 +485,24 @@ func commandUpload(session *sessionState) {
 		return
 	}
 
-	// var resumeName string
-	// var resumeOffset int64
-	// if session.Message.HasField("Name") {
-	// 	if !fshandler.ValidateTempFileName(session.Message.Data["Name"]) {
-	// 		session.SendStringResponse(400, "BAD REQUEST", "Bad file name")
-	// 		return
-	// 	}
+	var resumeOffset int64
+	if session.Message.HasField("TempName") {
+		if !fshandler.ValidateTempFileName(session.Message.Data["TempName"]) {
+			session.SendStringResponse(400, "BAD REQUEST", "Bad file name")
+			return
+		}
 
-	// 	resumeName = session.Message.Data["Name"]
+		resumeOffset, err = strconv.ParseInt(session.Message.Data["Offset"], 10, 64)
+		if err != nil || resumeOffset < 1 {
+			session.SendStringResponse(400, "BAD REQUEST", "Bad resume offset")
+			return
+		}
 
-	// 	resumeOffset, err = strconv.ParseInt(session.Message.Data["Offset"], 10, 64)
-	// 	if err != nil {
-	// 		session.SendStringResponse(400, "BAD REQUEST", "Bad offset")
-	// 		return
-	// 	}
-	// }
+		if resumeOffset > fileSize {
+			session.SendStringResponse(400, "BAD REQUEST", "Resume offset greater than file size")
+			return
+		}
+	}
 
 	// An administrator can dictate how large a file can be stored on the server
 
@@ -522,22 +524,38 @@ func commandUpload(session *sessionState) {
 		return
 	}
 
-	tempHandle, tempName, err := fsp.MakeTempFile(session.WID)
-	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
-		return
+	var tempHandle *os.File
+	var tempName string
+	if resumeOffset > 0 {
+		tempName = session.Message.Data["TempName"]
+		tempHandle, err = fsp.OpenTempFile(session.WID, tempName, resumeOffset)
+
+		if err != nil {
+			session.SendStringResponse(400, "BAD REQUEST", err.Error())
+			return
+		}
+
+	} else {
+		tempHandle, tempName, err = fsp.MakeTempFile(session.WID)
+		if err != nil {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			return
+		}
 	}
 
 	response := NewServerResponse(100, "CONTINUE")
 	response.Data["TempName"] = tempName
 	session.SendResponse(*response)
 
-	bytesRead, err := session.ReadFileData(uint64(fileSize), tempHandle)
+	if resumeOffset > 0 {
+		_, err = session.ReadFileData(uint64(fileSize-resumeOffset), tempHandle)
+	} else {
+		_, err = session.ReadFileData(uint64(fileSize), tempHandle)
+	}
 	tempHandle.Close()
 	if err != nil {
-		response = NewServerResponse(305, "INTERRUPTED")
-		response.Data["Offset"] = fmt.Sprintf("%d", bytesRead)
-		session.SendResponse(*response)
+		// Transfer was interrupted. We won't delete the file--we will leave it so the client can
+		// attempt to resume the upload later.
 		return
 	}
 

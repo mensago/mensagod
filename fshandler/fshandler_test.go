@@ -14,7 +14,6 @@ import (
 
 	"github.com/darkwyrm/mensagod/config"
 	cs "github.com/darkwyrm/mensagod/cryptostring"
-	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
 
@@ -81,7 +80,7 @@ func generateRandomFile(dir string, size int) (string, error) {
 		return "", err
 	}
 
-	filedata := make([]byte, size, size)
+	filedata := make([]byte, size)
 	for j := range filedata {
 		filedata[j] = 48
 	}
@@ -124,33 +123,33 @@ func makeTestFiles(dir string, count int) error {
 }
 
 // MakeTestDirectories creates a number of randomly-named directories and returns their names
-func makeTestDirectories(path string, count int) ([]string, error) {
-	if count > 50 || count < 1 {
-		return nil, errors.New("Count out of range")
-	}
+// func makeTestDirectories(path string, count int) ([]string, error) {
+// 	if count > 50 || count < 1 {
+// 		return nil, errors.New("Count out of range")
+// 	}
 
-	var anpath LocalAnPath
-	err := anpath.Set(path)
-	if err != nil {
-		return nil, err
-	}
+// 	var anpath LocalAnPath
+// 	err := anpath.Set(path)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	_, err = os.Stat(anpath.ProviderPath())
-	if err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
+// 	_, err = os.Stat(anpath.ProviderPath())
+// 	if err != nil && !os.IsNotExist(err) {
+// 		return nil, err
+// 	}
 
-	names := make([]string, count)
-	for i := 0; i < count; i++ {
-		dirname := uuid.New().String()
-		dirpath := filepath.Join(anpath.ProviderPath(), dirname)
-		err := os.Mkdir(dirpath, 0777)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return names, nil
-}
+// 	names := make([]string, count)
+// 	for i := 0; i < count; i++ {
+// 		dirname := uuid.New().String()
+// 		dirpath := filepath.Join(anpath.ProviderPath(), dirname)
+// 		err := os.Mkdir(dirpath, 0777)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 	}
+// 	return names, nil
+// }
 
 // ensureTestDirectory makes sure a specific test directory exists. The path is expected to be
 // an Mensago-format path, resulting in a path relative to the workspace root.
@@ -218,7 +217,7 @@ func TestLocalFSHandler_CopyFile(t *testing.T) {
 	}
 	tempHandle.Close()
 
-	tempName, err = fsh.InstallTempFile(wid, tempName,
+	tempName, _ = fsh.InstallTempFile(wid, tempName,
 		strings.Join([]string{"/", wid, srcDirName}, " "))
 
 	sourcePath = strings.Join([]string{"/", wid, srcDirName, tempName}, " ")
@@ -375,7 +374,7 @@ func TestLocalFSHandler_Exists(t *testing.T) {
 	}
 
 	testPath = strings.Join([]string{"/", wid, testFile}, " ")
-	exists, err = fsh.Exists(testPath)
+	exists, _ = fsh.Exists(testPath)
 	if !exists {
 		t.Fatal("TestLocalFSHandler_Exists: failed to handle file existence")
 	}
@@ -545,7 +544,7 @@ func TestLocalFSHandler_ListFiles(t *testing.T) {
 	// Subtest #6: filtered file listing
 	time.Sleep(time.Second)
 	timeFilter := time.Now().Unix()
-	err = makeTestFiles(testPath, 2)
+	makeTestFiles(testPath, 2)
 
 	testFiles, err = fsh.ListFiles(testPath, timeFilter)
 	if err != nil {
@@ -705,8 +704,8 @@ func TestLocalFSHandler_MakeTempFile(t *testing.T) {
 	defer handle.Close()
 
 	pattern := regexp.MustCompile(
-		"^[0-9]+\\." +
-			"[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$")
+		`^[0-9]+\.` +
+			`[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$`)
 	if !pattern.MatchString(name) {
 		t.Fatal("TestLocalFSHandler_MakeTempFile: bad temp file name format")
 	}
@@ -777,7 +776,7 @@ func TestLocalFSHandler_MoveFile(t *testing.T) {
 	}
 	tempHandle.Close()
 
-	tempName, err = fsh.InstallTempFile(wid, tempName,
+	tempName, _ = fsh.InstallTempFile(wid, tempName,
 		strings.Join([]string{"/", wid, srcDirName}, " "))
 
 	sourcePath = strings.Join([]string{"/", wid, srcDirName, tempName}, " ")
@@ -808,11 +807,10 @@ func TestLocalFSHandler_MoveFile(t *testing.T) {
 
 	// Rename the new temp file to match exactly to the name of the file from the previous subtest
 	topDir := viper.GetString("global.workspace_dir")
-	err = os.Rename(filepath.Join(topDir, "tmp", wid, tempName),
+	os.Rename(filepath.Join(topDir, "tmp", wid, tempName),
 		filepath.Join(topDir, "tmp", wid, existingName))
 
-	tempName, err = fsh.InstallTempFile(wid, existingName,
-		strings.Join([]string{"/", wid, srcDirName}, " "))
+	fsh.InstallTempFile(wid, existingName, strings.Join([]string{"/", wid, srcDirName}, " "))
 
 	sourcePath = strings.Join([]string{"/", wid, srcDirName, existingName}, " ")
 	destPath = strings.Join([]string{"/", wid, destDirName}, " ")

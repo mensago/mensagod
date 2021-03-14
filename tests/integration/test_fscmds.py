@@ -212,8 +212,6 @@ def test_upload():
 
 	init_user(dbdata, conn)
 	
-	testpath = setup_testdir('test_upload')
-
 	# Subtest #1: Missing parameters
 	
 	conn.send_message({
@@ -309,7 +307,7 @@ def test_upload():
 		'Action': 'UPLOAD',
 		'Data': {
 			'Size': str(1000),
-			'Hash': r'BLAKE2B-256:|CAi^d1>P`4Tg*@9eZ2Kg|P^D!klB|G|=?q!;NVw',
+			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
 			'Path': '/ ' + dbdata['admin_wid']
 		}
 	})
@@ -322,13 +320,111 @@ def test_upload():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_upload: #6 failed to handle file hash mismatch'
 
-	# Subtest #7: Interrupted transfer
+	# Set up an interrupted transfer
 
-	# Subtest #8: Resume offset larger than size of data stored server-side
+	conn.send_message({
+		'Action': 'UPLOAD',
+		'Data': {
+			'Size': str(1000),
+			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
+			'Path': '/ ' + dbdata['admin_wid']
+		}
+	})
 
-	# Subtest #9: Resume interrupted transfer - exact match
+	response = conn.read_response(server_response)
+	tempFileName = response['Data']['TempName']
+	assert response['Code'] == 100, 'test_upload: #6 failed to proceed to file upload'
+	assert tempFileName != '', 'test_upload: #6 server failed to return temp file name'
 
-	# Subtest #10: Overlapping resume
+	conn.write('0' * 500)
+	del conn
+	
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+	login_admin(dbdata, conn)
+
+	# Subtest #7: Resume offset larger than size of data stored server-side
+
+	conn.send_message({
+		'Action': 'UPLOAD',
+		'Data': {
+			'Size': str(1000),
+			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
+			'Path': '/ ' + dbdata['admin_wid'],
+			'TempName': tempFileName,
+			'Offset': '2000'
+		}
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, 'test_upload: #7 failed to handle offset > file size'
+
+
+	# Subtest #8: Resume interrupted transfer - exact match
+
+	conn.send_message({
+		'Action': 'UPLOAD',
+		'Data': {
+			'Size': str(1000),
+			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
+			'Path': '/ ' + dbdata['admin_wid'],
+			'TempName': tempFileName,
+			'Offset': '500'
+		}
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 100, 'test_upload: #8 failed to proceed to file upload'
+
+	conn.write('0' * 500)
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_upload: #8 failed to resume with exact offset match'
+
+	# Set up one last interrupted transfer
+
+	conn.send_message({
+		'Action': 'UPLOAD',
+		'Data': {
+			'Size': str(1000),
+			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
+			'Path': '/ ' + dbdata['admin_wid']
+		}
+	})
+
+	response = conn.read_response(server_response)
+	tempFileName = response['Data']['TempName']
+	assert response['Code'] == 100, 'test_upload: #6 failed to proceed to file upload'
+	assert tempFileName != '', 'test_upload: #6 server failed to return temp file name'
+
+	conn.write('0' * 500)
+	del conn
+	
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+	login_admin(dbdata, conn)
+
+	# Subtest #9: Overlapping resume
+
+	conn.send_message({
+		'Action': 'UPLOAD',
+		'Data': {
+			'Size': str(1000),
+			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
+			'Path': '/ ' + dbdata['admin_wid'],
+			'TempName': tempFileName,
+			'Offset': '400'
+		}
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 100, 'test_upload: #9 failed to proceed to file upload'
+
+	conn.write('0' * 600)
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_upload: #9 failed to resume with overlapping offset'
+
 
 
 if __name__ == '__main__':

@@ -219,14 +219,14 @@ func (lfs *LocalFSHandler) GetDiskUsage(wid string) (uint64, error) {
 
 // InstallTempFile moves a file from the temporary file area to its location in a workspace
 func (lfs *LocalFSHandler) InstallTempFile(wid string, name string, dest string) (string, error) {
-	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
+	pattern := regexp.MustCompile(`[\da-fA-F]{8}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{12}`)
 	if (len(wid) != 36 && len(wid) != 32) || !pattern.MatchString(wid) {
 		return "", errors.New("bad workspace id")
 	}
 
 	pattern = regexp.MustCompile(
-		"^[0-9]+\\." +
-			"[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$")
+		`^[0-9]+\.` +
+			`[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$`)
 	if !pattern.MatchString(name) {
 		return "", errors.New("bad tempfile name")
 	}
@@ -337,7 +337,7 @@ func (lfs *LocalFSHandler) ListFiles(path string, afterTime int64) ([]string, er
 	list, _ := handle.Readdirnames(0)
 
 	pattern := regexp.MustCompile(
-		"^[0-9]+\\.[0-9]+\\.[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$")
+		`^[0-9]+\\.[0-9]+\\.[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$`)
 
 	out := make([]string, 0, len(list))
 	for _, name := range list {
@@ -377,7 +377,7 @@ func (lfs *LocalFSHandler) MakeDirectory(path string) error {
 // responsible for closing the handle when finished.
 func (lfs *LocalFSHandler) MakeTempFile(wid string) (*os.File, string, error) {
 
-	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
+	pattern := regexp.MustCompile(`[\da-fA-F]{8}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{12}`)
 	if (len(wid) != 36 && len(wid) != 32) || !pattern.MatchString(wid) {
 		return nil, "", errors.New("bad workspace id")
 	}
@@ -489,6 +489,36 @@ func (lfs *LocalFSHandler) OpenFile(path string) (string, error) {
 	return anpath.MensagoPath(), nil
 }
 
+// OpenTempFile opens the specified temp file for reading or writing. If offset is >= 0, the
+// read/write pointer is moved to the specified offset. A negative offset moves the read/write
+// pointer to the end of the file. Attempting to open a nonexistent temp file will result in an
+// error.
+func (lfs *LocalFSHandler) OpenTempFile(wid string, name string, offset int64) (*os.File, error) {
+
+	pattern := regexp.MustCompile(`[\da-fA-F]{8}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{12}`)
+	if (len(wid) != 36 && len(wid) != 32) || !pattern.MatchString(wid) {
+		return nil, errors.New("bad workspace id")
+	}
+
+	tempFilePath := filepath.Join(filepath.Join(viper.GetString("global.workspace_dir"), "tmp", wid),
+		name)
+
+	openFlags := os.O_RDWR
+	if offset < 0 {
+		openFlags |= os.O_APPEND
+	}
+	handle, err := os.OpenFile(tempFilePath, openFlags, 0600)
+	if err != nil {
+		return nil, err
+	}
+
+	if offset >= 0 {
+		handle.Seek(offset, 0)
+	}
+
+	return handle, nil
+}
+
 // ReadFile reads data from a file opened with OpenFile. If the Read() call encounters the end of
 // the file, less data than specified will be returned and the file handle will automatically be
 // closed.
@@ -578,10 +608,10 @@ func HashFile(path string, hash cs.CryptoString) (bool, error) {
 	localPath := filepath.Join(workspaceRoot,
 		strings.Join(pathParts[1:], string(filepath.Separator)))
 	fHandle, err := os.Open(localPath)
-	defer fHandle.Close()
 	if err != nil {
 		return false, err
 	}
+	defer fHandle.Close()
 
 	readSize := 8192
 	buffer := make([]byte, readSize)
