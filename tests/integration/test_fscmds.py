@@ -230,7 +230,7 @@ def test_upload():
 		'Data': {
 			'Size': '1000',
 			# Hash parameter is missing
-			'Path': '/ ' + dbdata['user_wid']
+			'Path': '/ ' + dbdata['admin_wid']
 		}
 	})
 
@@ -244,7 +244,7 @@ def test_upload():
 		'Data': {
 			'Size': '1000',
 			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-			'Path': '/ ' + dbdata['user_wid'] + ' 22222222-2222-2222-2222-222222222222'
+			'Path': '/ ' + dbdata['admin_wid'] + ' 22222222-2222-2222-2222-222222222222'
 		}
 	})
 
@@ -254,22 +254,11 @@ def test_upload():
 	# Subtest #3: Size too big
 
 	conn.send_message({
-		'Action': 'MKDIR',
-		'Data': {
-			'Path': '/ ' + dbdata['user_wid']
-		}
-	})
-
-	response = conn.read_response(server_response)
-	assert response['Code'] == 200, 'test_upload: failed to create user workspace directory'
-
-
-	conn.send_message({
 		'Action': 'UPLOAD',
 		'Data': {
-			'Size': str(0x10_0000 * 200_000),
+			'Size': str(0x4000_0000 * 200), # 200GiB isn't all that big :P
 			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-			'Path': '/ ' + dbdata['user_wid']
+			'Path': '/ ' + dbdata['admin_wid']
 		}
 	})
 
@@ -277,6 +266,32 @@ def test_upload():
 	assert response['Code'] == 414, 'test_upload: failed to handle file too big'
 
 	# Subtest #4: Insufficient quota remaining
+
+	# The administrator normally can't have a quota. We'll just fix that just for this one test
+	# *heh*
+
+	# Normally in Python direct string substitution is a recipe for SQL injection. We're not 
+	# bringing in any insecure code here, so it's only a little bit bad.
+	cur = dbconn.cursor()
+	cur.execute(f"INSERT INTO quotas(wid, usage, quota)	VALUES('{dbdata['admin_wid']}', 5100 , 5120)")
+	dbconn.commit()
+
+	conn.send_message({
+		'Action': 'UPLOAD',
+		'Data': {
+			'Size': str(0x10_0000 * 30), # 30MiB
+			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
+			'Path': '/ ' + dbdata['user_wid']
+		}
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 409, 'test_upload: quota check failed'
+
+	# We need this to be unlimited for later tests
+	cur = dbconn.cursor()
+	cur.execute(f"UPDATE quotas SET quota=0 WHERE wid = '{dbdata['admin_wid']}'")
+	dbconn.commit()
 
 	# Subtest #5: Hash mismatch
 
@@ -292,6 +307,6 @@ def test_upload():
 
 
 if __name__ == '__main__':
-	test_getquotainfo()
+	# test_getquotainfo()
 	# test_setquota()
-	# test_upload()
+	test_upload()

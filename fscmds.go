@@ -517,7 +517,7 @@ func commandUpload(session *sessionState) {
 		return
 	}
 
-	if uint64(fileSize)+diskUsage > diskQuota {
+	if diskQuota != 0 && uint64(fileSize)+diskUsage > diskQuota {
 		session.SendStringResponse(409, "QUOTA INSUFFICIENT", "")
 		return
 	}
