@@ -1,9 +1,5 @@
 package dbhandler
 
-// This module is for abstracting away all the messy details of interacting with the database.
-// By doing so, it will be easier to add support for databases other than Postgresql. It will also
-// eliminate cluttering up the otherwise-clean Go code with the ugly SQL queries.
-
 import (
 	"errors"
 	"fmt"
