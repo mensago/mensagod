@@ -345,11 +345,19 @@ func commandRmDir(session *sessionState) {
 	if recurseStr == "true" || recurseStr == "yes" {
 		recursive = true
 	}
+
+	usage, err := fsh.GetDiskUsage(session.Message.Data["Path"])
+	if err != nil {
+		handleFSError(session, err)
+		return
+	}
+
 	err = fsh.RemoveDirectory(session.Message.Data["Path"], recursive)
 	if err != nil {
 		handleFSError(session, err)
 		return
 	}
+	dbhandler.ModifyQuotaUsage(session.WID, int64(usage)*-1)
 
 	session.SendStringResponse(200, "OK", "")
 }
