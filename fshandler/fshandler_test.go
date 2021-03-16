@@ -417,7 +417,7 @@ func TestLocalFSHandler_GetDiskUsage(t *testing.T) {
 			t.Fatal("TestLocalFSHandler_ListFiles: #3: failed to create test files")
 		}
 	}
-	fileSize, err := fsh.GetDiskUsage(wid)
+	fileSize, err := fsh.GetDiskUsage("/ " + wid)
 	if err != nil {
 		t.Fatal("TestLocalFSHandler_ListFiles: #3: failed to get disk usage")
 	}

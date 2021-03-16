@@ -190,11 +190,11 @@ func (lfs *LocalFSHandler) Exists(path string) (bool, error) {
 	return true, nil
 }
 
-// GetDiskUsage calculates the disk usage of a workspace
-func (lfs *LocalFSHandler) GetDiskUsage(wid string) (uint64, error) {
+// GetDiskUsage calculates the disk usage of a workspace path
+func (lfs *LocalFSHandler) GetDiskUsage(path string) (uint64, error) {
 	// Path validation handled in Set()
 	var anpath LocalAnPath
-	err := anpath.Set("/ " + wid)
+	err := anpath.Set(path)
 	if err != nil {
 		return 0, err
 	}
