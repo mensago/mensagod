@@ -575,6 +575,8 @@ func commandUpload(session *sessionState) {
 		return
 	}
 
+	dbhandler.ModifyQuotaUsage(session.WID, fileSize)
+
 	response = NewServerResponse(200, "OK")
 	response.Data["FileName"] = realName
 	session.SendResponse(*response)
