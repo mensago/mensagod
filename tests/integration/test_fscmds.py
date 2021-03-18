@@ -68,6 +68,21 @@ def setup_testdir(name) -> str:
 	os.mkdir(testdir)
 	return testdir
 
+def test_copy():
+	'''Tests the COPY command'''
+
+	# Subtest #1: Nonexistent source file
+
+	# Subtest #2: Nonexistent destination directory
+
+	# Subtest #3: Source path is a directory
+
+	# Subtest #4: Destination is file path
+
+	# Subtest #5: Insufficient quota remaining
+
+	# Subtest #6: Actual success
+
 
 def test_getquotainfo():
 	'''This tests the command GETQUOTAINFO, which gets both the quota for the workspace and the 
@@ -106,6 +121,80 @@ def test_getquotainfo():
 	assert response['Data']['DiskUsage'] == '1000', 'test_getquotainfo: disk usage was incorrect'
 	assert response['Data']['QuotaSize'] == '0', \
 		"test_getquotainfo: admin quota wasn't unlimited"
+
+
+def test_list():
+	'''Tests the LIST command'''
+
+	# Subtest #1: Nonexistent path
+
+	# Subtest #2: Path is a file
+
+	# Subtest #3: Empty directory
+
+	# Subtest #4: A list of files
+
+
+def test_listdirs():
+	'''Tests the LISTDIRS command'''
+
+	# Subtest #1: Nonexistent path
+
+	# Subtest #2: Path is a file
+
+	# Subtest #3: Empty directory
+
+	# Subtest #4: A list of files
+
+
+def test_mkdir():
+	'''Tests the MKDIR command'''
+
+	# Subtest #1: Bad directory name
+
+	# Subtest #2: Directory already exists
+
+	# Subtest #3: Actual success - 1 directory
+
+	# Subtest #4: Actual success - nested directories
+
+
+def test_move():
+	'''Tests the MOVE command'''
+
+	# Subtest #1: Nonexistent source file
+
+	# Subtest #2: Nonexistent destination directory
+
+	# Subtest #3: Source path is a directory
+
+	# Subtest #4: Destination is file path
+
+	# Subtest #5: Actual success
+
+
+def test_rmdir():
+	'''Tests the RMDIR command'''
+
+	# Subtest #1: Bad directory name
+
+	# Subtest #2: Directory doesn't exist
+
+	# Subtest #3: Non-recursive call fails because of non-empty directory
+
+	# Subtest #4: Actual success - non-recursively remove an empty directory
+
+	# Subtest #5: Actual success - recursively remove files and subdirectories
+
+
+def test_select():
+	'''Tests the SELECT command'''
+
+	# Subtest #1: Nonexistent path
+
+	# Subtest #2: Path is a file
+
+	# Subtest #3: Actual success
 
 
 def test_setquota():
@@ -184,7 +273,6 @@ def test_setquota():
 
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_setquota: failed to handle actual success'
-
 
 
 def test_upload():
