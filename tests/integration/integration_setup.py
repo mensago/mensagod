@@ -1,8 +1,10 @@
 from base64 import b85encode
+from glob import glob
 import os.path
 import platform
 import re
 import secrets
+import shutil
 import sys
 import time
 
@@ -300,6 +302,28 @@ def validate_uuid(indata):
 		return False
 	
 	return True
+
+
+def reset_workspace_dir(config: dict):
+	'''Resets the system workspace storage directory to an empty skeleton'''
+
+	glob_list = glob(os.path.join(config['configfile']['global']['workspace_dir'],'*'))
+	if not glob_list:
+		return
+	
+	for glob_item in glob_list:
+		if os.path.isfile(glob_item):
+			try:
+				os.remove(glob_item)
+			except:
+				assert False, f"Unable to delete file {glob_item}"
+		else:
+			try:
+				shutil.rmtree(glob_item)
+			except:
+				assert False, f"Unable to delete file {glob_item}"
+	
+	os.mkdir(os.path.join(config['configfile']['global']['workspace_dir'],'tmp'))
 
 
 def regcode_admin(config, conn):
