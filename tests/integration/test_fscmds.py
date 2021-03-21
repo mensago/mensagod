@@ -201,7 +201,7 @@ def test_list():
 			fhandle = open(os.path.join(admin_dir, '11111111-1111-1111-1111-111111111111', 
 				tempname), 'w')
 		except Exception as e:
-			return RetVal(ExceptionThrown, e)
+			assert False, 'test_list: #4 failed to create test files: ' + e
 		
 		fhandle.write('0' * 500)
 		fhandle.close()
