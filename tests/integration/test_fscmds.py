@@ -232,17 +232,94 @@ def test_list():
 		'test_list: #5 failed to filter files'
 
 
-
 def test_listdirs():
 	'''Tests the LISTDIRS command'''
 
+	dbconn = setup_test()
+	dbdata = init_server(dbconn)
+
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+
+	reset_workspace_dir(dbdata)
+
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
+	
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
+
 	# Subtest #1: Nonexistent path
 
+	conn.send_message({
+		'Action': 'LISTDIRS',
+		'Data': {
+			'Path': '/ 11111111-1111-1111-1111-111111111111'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 404, 'test_listdirs: #1 failed to handle missing path'
+	
 	# Subtest #2: Path is a file
+
+	admin_dir = os.path.join(dbdata['configfile']['global']['workspace_dir'],
+		dbdata['admin_wid'])
+	status = make_test_file(admin_dir)
+	assert not status.error(), "test_listdirs: #2 failed to create test file"
+
+	conn.send_message({
+		'Action': 'LIST',
+		'Data': {
+			'Path': ' '.join(['/', dbdata['admin_wid'], status['name']])
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, 'test_listdirs: #2 failed to handle path as file'
 
 	# Subtest #3: Empty directory
 
-	# Subtest #4: A list of files
+	os.mkdir(os.path.join(admin_dir, '11111111-1111-1111-1111-111111111111'))
+
+	conn.send_message({
+		'Action': 'LISTDIRS',
+		'Data': {
+			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_listdirs: #3 failed to handle empty directory'
+	assert 'Directories' in response['Data'] and len(response['Data']['Directories']) == 0, \
+		'test_listdirs: #3 failed to have empty response for empty directory'
+
+	# Subtest #4: A list of directories
+
+	for i in range(2,7):
+		tempname = '-'.join([(str(i) * 8), (str(i) * 4), (str(i) * 4), (str(i) * 4), (str(i) * 12)])
+		try:
+			os.mkdir(os.path.join(admin_dir, '11111111-1111-1111-1111-111111111111', tempname))
+		except Exception as e:
+			assert False, 'test_listdirs: #4 failed to create test directories: ' + e
+		
+		make_test_file(os.path.join(admin_dir, '11111111-1111-1111-1111-111111111111'))
+
+	conn.send_message({
+		'Action': 'LISTDIRS',
+		'Data': {
+			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_listdirs: #4 failed to handle non-empty directory'
+	assert 'Directories' in response['Data'] and len(response['Data']['Directories']) == 5, \
+		'test_list: #4 failed to list all subdirectories'
 
 
 def test_mkdir():
@@ -615,6 +692,7 @@ def test_upload():
 
 if __name__ == '__main__':
 	# test_getquotainfo()
-	test_list()
+	# test_list()
+	test_listdirs()
 	# test_setquota()
 	# test_upload()

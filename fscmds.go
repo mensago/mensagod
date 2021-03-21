@@ -241,23 +241,36 @@ func commandList(session *sessionState) {
 
 func commandListDirs(session *sessionState) {
 	// Command syntax:
-	// LISTDIRS()
+	// LISTDIRS(path)
 
 	if session.LoginState != loginClientSession {
 		session.SendStringResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
+	if session.Message.Validate([]string{"Path"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
 	fsh := fshandler.GetFSProvider()
-	names, err := fsh.ListDirectories(session.CurrentPath.MensagoPath())
+	names, err := fsh.ListDirectories(session.Message.Data["Path"])
 	if err != nil {
 		handleFSError(session, err)
 		return
 	}
 
-	responseString := `{"Code":200,"Status":"OK","Info":"","Data":{"Directories":[` +
-		strings.Join(names, ",") + `]}}`
-	session.WriteClient(responseString)
+	if len(names) > 0 {
+		fileNames := make([]string, len(names))
+		for i, name := range names {
+			fileNames[i] = `"` + name + `"`
+		}
+		responseString := `{"Code":200,"Status":"OK","Info":"","Data":{"Directories":[` +
+			strings.Join(fileNames, ",") + `]}}`
+		session.WriteClient(responseString)
+	} else {
+		session.WriteClient(`{"Code":200,"Status":"OK","Info":"","Data":{"Directories":[]}}`)
+	}
 }
 
 func commandMkDir(session *sessionState) {
