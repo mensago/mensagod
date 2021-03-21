@@ -215,8 +215,8 @@ func commandList(session *sessionState) {
 		unixTime, err = strconv.ParseInt(session.Message.Data["Time"], 10, 64)
 		if err != nil {
 			session.SendStringResponse(400, "BAD REQUEST", "Bad time field")
+			return
 		}
-		return
 	}
 
 	fsh := fshandler.GetFSProvider()
@@ -226,9 +226,17 @@ func commandList(session *sessionState) {
 		return
 	}
 
-	response := NewServerResponse(200, "OK")
-	response.Data["Files"] = strings.Join(names, ",")
-	session.SendResponse(*response)
+	if len(names) > 0 {
+		fileNames := make([]string, len(names))
+		for i, name := range names {
+			fileNames[i] = `"` + name + `"`
+		}
+		responseString := `{"Code":200,"Status":"OK","Info":"","Data":{"Files":[` +
+			strings.Join(fileNames, ",") + `]}}`
+		session.WriteClient(responseString)
+	} else {
+		session.WriteClient(`{"Code":200,"Status":"OK","Info":"","Data":{"Files":[]}}`)
+	}
 }
 
 func commandListDirs(session *sessionState) {
@@ -247,9 +255,9 @@ func commandListDirs(session *sessionState) {
 		return
 	}
 
-	response := NewServerResponse(200, "OK")
-	response.Data["Directories"] = strings.Join(names, ",")
-	session.SendResponse(*response)
+	responseString := `{"Code":200,"Status":"OK","Info":"","Data":{"Directories":[` +
+		strings.Join(names, ",") + `]}}`
+	session.WriteClient(responseString)
 }
 
 func commandMkDir(session *sessionState) {

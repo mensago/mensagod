@@ -10,18 +10,21 @@ from pymensago.retval import RetVal, ExceptionThrown
 from pymensago.serverconn import ServerConnection
 
 from integration_setup import login_admin, regcode_admin, setup_test, init_server, init_user, \
-	init_user2
+	init_user2, reset_workspace_dir
 
 
 server_response = {
 	'title' : 'Mensago Server Response',
 	'type' : 'object',
-	'required' : [ 'Code', 'Status', 'Data' ],
+	'required' : [ 'Code', 'Status', 'Info', 'Data' ],
 	'properties' : {
 		'Code' : {
 			'type' : 'integer'
 		},
 		'Status' : {
+			'type' : 'string'
+		},
+		'Info' : {
 			'type' : 'string'
 		},
 		'Data' : {
@@ -49,7 +52,7 @@ def make_test_file(path: str, file_size=-1, file_name='') -> RetVal:
 	fhandle.write('0' * file_size)
 	fhandle.close()
 	
-	return RetVal()
+	return RetVal().set_values({ 'name':file_name, 'size':file_size })
 
 
 def setup_testdir(name) -> str:
@@ -126,13 +129,108 @@ def test_getquotainfo():
 def test_list():
 	'''Tests the LIST command'''
 
+	dbconn = setup_test()
+	dbdata = init_server(dbconn)
+
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+
+	reset_workspace_dir(dbdata)
+
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
+	
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
+
 	# Subtest #1: Nonexistent path
 
+	conn.send_message({
+		'Action': 'LIST',
+		'Data': {
+			'Path': '/ 11111111-1111-1111-1111-111111111111'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 404, 'test_list: #1 failed to handle missing path'
+	
 	# Subtest #2: Path is a file
+
+	admin_dir = os.path.join(dbdata['configfile']['global']['workspace_dir'],
+		dbdata['admin_wid'])
+	status = make_test_file(admin_dir)
+	assert not status.error(), "test_list: #2 failed to create test file"
+
+	conn.send_message({
+		'Action': 'LIST',
+		'Data': {
+			'Path': ' '.join(['/', dbdata['admin_wid'], status['name']])
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, 'test_list: #2 failed to handle path as file'
 
 	# Subtest #3: Empty directory
 
+	os.mkdir(os.path.join(admin_dir, '11111111-1111-1111-1111-111111111111'))
+
+	conn.send_message({
+		'Action': 'LIST',
+		'Data': {
+			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_list: #3 failed to handle empty directory'
+	assert 'Files' in response['Data'] and len(response['Data']['Files']) == 0, \
+		'test_list: #3 failed to have empty response for empty directory'
+
 	# Subtest #4: A list of files
+
+	for i in range(1,6):
+		tempname = '.'.join([str(1000 * i), '500', str(uuid.uuid4())])
+		try:
+			fhandle = open(os.path.join(admin_dir, '11111111-1111-1111-1111-111111111111', 
+				tempname), 'w')
+		except Exception as e:
+			return RetVal(ExceptionThrown, e)
+		
+		fhandle.write('0' * 500)
+		fhandle.close()
+		
+	conn.send_message({
+		'Action': 'LIST',
+		'Data': {
+			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_list: #4 failed to handle non-empty directory'
+	assert 'Files' in response['Data'] and len(response['Data']['Files']) == 5, \
+		'test_list: #4 failed to list all files in directory'
+
+	# Subtest #5: A list of files with time specifier
+
+	conn.send_message({
+		'Action': 'LIST',
+		'Data': {
+			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111',
+			'Time': '3000'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_list: #5 failed to handle non-empty directory'
+	assert 'Files' in response['Data'] and len(response['Data']['Files']) == 3, \
+		'test_list: #5 failed to filter files'
+
 
 
 def test_listdirs():
@@ -516,6 +614,7 @@ def test_upload():
 
 
 if __name__ == '__main__':
-	test_getquotainfo()
+	# test_getquotainfo()
+	test_list()
 	# test_setquota()
 	# test_upload()
