@@ -444,7 +444,7 @@ def test_rmdir():
 	# Subtest #1: Bad directory name
 
 	conn.send_message({
-		'Action': 'MKDIR',
+		'Action': 'RMDIR',
 		'Data': {
 			'Path': '/ ' + dbdata['admin_wid'] + ' some_dir_name',
 			'Recursive': 'False'
@@ -474,7 +474,7 @@ def test_rmdir():
 		'55555555-5555-5555-5555-555555555555'
 	])
 	conn.send_message({
-		'Action': 'MKDIR',
+		'Action': 'RMDIR',
 		'Data': {
 			'Path': multipath,
 			'Recursive': 'False'
@@ -494,7 +494,6 @@ def test_rmdir():
 	assert response['Code'] == 408, 'test_rmdir: #3 failed to handle non-empty directory'
 
 	# Subtest #4: Actual success - non-recursively remove an empty directory
-
 
 	conn.send_message({
 		'Action': 'RMDIR',
