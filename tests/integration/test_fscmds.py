@@ -474,7 +474,7 @@ def test_rmdir():
 		'55555555-5555-5555-5555-555555555555'
 	])
 	conn.send_message({
-		'Action': 'RMDIR',
+		'Action': 'MKDIR',
 		'Data': {
 			'Path': multipath,
 			'Recursive': 'False'
