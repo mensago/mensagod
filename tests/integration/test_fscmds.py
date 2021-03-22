@@ -521,11 +521,74 @@ def test_rmdir():
 def test_select():
 	'''Tests the SELECT command'''
 
+	dbconn = setup_test()
+	dbdata = init_server(dbconn)
+
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+
+	reset_workspace_dir(dbdata)
+
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
+	
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
+
 	# Subtest #1: Nonexistent path
 
+	conn.send_message({
+		'Action': 'SELECT',
+		'Data': {
+			'Path': '/ 11111111-1111-1111-1111-111111111111'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 404, 'test_select: #1 failed to handle missing path'
+	
 	# Subtest #2: Path is a file
 
+	admin_dir = os.path.join(dbdata['configfile']['global']['workspace_dir'],
+		dbdata['admin_wid'])
+	status = make_test_file(admin_dir)
+	assert not status.error(), "test_select: #2 failed to create test file"
+
+	conn.send_message({
+		'Action': 'SELECT',
+		'Data': {
+			'Path': ' '.join(['/', dbdata['admin_wid'], status['name']])
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, 'test_select: #2 failed to handle path as file'
+
 	# Subtest #3: Actual success
+
+	innerpath = ' '.join(['/', dbdata['admin_wid'], '22222222-2222-2222-2222-222222222222'])
+	conn.send_message({
+		'Action': 'MKDIR',
+		'Data': {
+			'Path': innerpath
+		}
+	})
+
+	conn.send_message({
+		'Action': 'SELECT',
+		'Data': {
+			'Path': innerpath
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_select: #3 failed to work correctly'
+
 
 
 def test_setquota():
@@ -851,6 +914,7 @@ if __name__ == '__main__':
 	# test_list()
 	# test_listdirs()
 	# test_mkdir()
-	test_rmdir()
+	# test_rmdir()
 	# test_setquota()
+	test_select()
 	# test_upload()
