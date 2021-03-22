@@ -337,7 +337,7 @@ func (lfs *LocalFSHandler) ListFiles(path string, afterTime int64) ([]string, er
 	list, _ := handle.Readdirnames(0)
 
 	pattern := regexp.MustCompile(
-		`^[0-9]+\\.[0-9]+\\.[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$`)
+		`^[0-9]+\.[0-9]+\.[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$`)
 
 	out := make([]string, 0, len(list))
 	for _, name := range list {
