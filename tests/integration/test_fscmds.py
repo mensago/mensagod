@@ -327,13 +327,78 @@ def test_listdirs():
 def test_mkdir():
 	'''Tests the MKDIR command'''
 
+	dbconn = setup_test()
+	dbdata = init_server(dbconn)
+
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+
+	reset_workspace_dir(dbdata)
+
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
+	
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
+
 	# Subtest #1: Bad directory name
 
-	# Subtest #2: Directory already exists
+	conn.send_message({
+		'Action': 'MKDIR',
+		'Data': {
+			'Path': '/ ' + dbdata['admin_wid'] + ' some_dir_name'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, 'test_mkdir: #1 failed to handle bad path'
+	
 
-	# Subtest #3: Actual success - 1 directory
+	# Subtest #2: Actual success - 1 directory
+
+	conn.send_message({
+		'Action': 'MKDIR',
+		'Data': {
+			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_mkdir: #2 failed to create legitimate directory'
+
+	# Subtest #3: Directory already exists
+
+	conn.send_message({
+		'Action': 'MKDIR',
+		'Data': {
+			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 408, 'test_mkdir: #3 failed to handle existing directory'
 
 	# Subtest #4: Actual success - nested directories
+
+	multipath = ' '.join(['/', dbdata['admin_wid'],
+		'22222222-2222-2222-2222-222222222222',
+		'33333333-3333-3333-3333-333333333333',
+		'44444444-4444-4444-4444-444444444444',
+		'55555555-5555-5555-5555-555555555555'
+	])
+	conn.send_message({
+		'Action': 'MKDIR',
+		'Data': {
+			'Path': multipath
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_mkdir: #2 failed to create legitimate directory'
 
 
 def test_move():
@@ -695,6 +760,7 @@ def test_upload():
 if __name__ == '__main__':
 	# test_getquotainfo()
 	# test_list()
-	test_listdirs()
+	# test_listdirs()
+	test_mkdir()
 	# test_setquota()
 	# test_upload()
