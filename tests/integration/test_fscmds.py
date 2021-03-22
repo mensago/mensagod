@@ -446,7 +446,8 @@ def test_rmdir():
 	conn.send_message({
 		'Action': 'MKDIR',
 		'Data': {
-			'Path': '/ ' + dbdata['admin_wid'] + ' some_dir_name'
+			'Path': '/ ' + dbdata['admin_wid'] + ' some_dir_name',
+			'Recursive': 'False'
 		}
 	})
 	response = conn.read_response(server_response)
@@ -457,7 +458,8 @@ def test_rmdir():
 	conn.send_message({
 		'Action': 'RMDIR',
 		'Data': {
-			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111',
+			'Recursive': 'False'
 		}
 	})
 	response = conn.read_response(server_response)
@@ -474,7 +476,8 @@ def test_rmdir():
 	conn.send_message({
 		'Action': 'MKDIR',
 		'Data': {
-			'Path': multipath
+			'Path': multipath,
+			'Recursive': 'False'
 		}
 	})
 	response = conn.read_response(server_response)
