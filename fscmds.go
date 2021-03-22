@@ -359,6 +359,7 @@ func commandRmDir(session *sessionState) {
 	}
 	if !exists {
 		session.SendStringResponse(404, "NOT FOUND", "Path does not exist")
+		return
 	}
 
 	recurseStr := strings.ToLower(session.Message.Data["Recursive"])
