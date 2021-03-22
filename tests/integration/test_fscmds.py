@@ -418,15 +418,102 @@ def test_move():
 def test_rmdir():
 	'''Tests the RMDIR command'''
 
+	dbconn = setup_test()
+	dbdata = init_server(dbconn)
+
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+
+	reset_workspace_dir(dbdata)
+
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
+	
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
+
+
 	# Subtest #1: Bad directory name
+
+	conn.send_message({
+		'Action': 'MKDIR',
+		'Data': {
+			'Path': '/ ' + dbdata['admin_wid'] + ' some_dir_name'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, 'test_rmdir: #1 failed to handle bad path'
 
 	# Subtest #2: Directory doesn't exist
 
+	conn.send_message({
+		'Action': 'RMDIR',
+		'Data': {
+			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 404, 'test_rmdir: #2 failed to handle nonexistent directory'
+
 	# Subtest #3: Non-recursive call fails because of non-empty directory
+
+	multipath = ' '.join(['/', dbdata['admin_wid'],
+		'22222222-2222-2222-2222-222222222222',
+		'33333333-3333-3333-3333-333333333333',
+		'44444444-4444-4444-4444-444444444444',
+		'55555555-5555-5555-5555-555555555555'
+	])
+	conn.send_message({
+		'Action': 'MKDIR',
+		'Data': {
+			'Path': multipath
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_rmdir: #3 failed to create test hierarchy'
+
+	conn.send_message({
+		'Action': 'RMDIR',
+		'Data': {
+			'Path': '/ ' + dbdata['admin_wid'] + ' 22222222-2222-2222-2222-222222222222',
+			'Recursive': 'False'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 408, 'test_rmdir: #3 failed to handle non-empty directory'
 
 	# Subtest #4: Actual success - non-recursively remove an empty directory
 
+
+	conn.send_message({
+		'Action': 'RMDIR',
+		'Data': {
+			'Path': multipath,
+			'Recursive': 'False'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_rmdir: #4 failed to remove an empty directory'
+
 	# Subtest #5: Actual success - recursively remove files and subdirectories
+
+	conn.send_message({
+		'Action': 'RMDIR',
+		'Data': {
+			'Path': '/ ' + dbdata['admin_wid'] + ' 22222222-2222-2222-2222-222222222222',
+			'Recursive': 'True'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_rmdir: #5 failed to remove an empty directory'
 
 
 def test_select():
@@ -761,6 +848,7 @@ if __name__ == '__main__':
 	# test_getquotainfo()
 	# test_list()
 	# test_listdirs()
-	test_mkdir()
+	# test_mkdir()
+	test_rmdir()
 	# test_setquota()
 	# test_upload()
