@@ -51,6 +51,7 @@ func commandCopy(session *sessionState) {
 	}
 	if !exists {
 		session.SendStringResponse(404, "NOT FOUND", "Source does not exist")
+		return
 	}
 
 	exists, err = fsh.Exists(session.Message.Data["DestDir"])
@@ -60,6 +61,33 @@ func commandCopy(session *sessionState) {
 	}
 	if !exists {
 		session.SendStringResponse(404, "NOT FOUND", "Destination does not exist")
+		return
+	}
+
+	// Arguments have been validated, do a quota check
+	parts := strings.Split(session.Message.Data["SourceFile"], " ")
+
+	if !fshandler.ValidateFileName(parts[len(parts)-1]) {
+		session.SendStringResponse(400, "BAD REQUEST", "Bad source path")
+		return
+	}
+
+	nameparts := strings.Split(parts[len(parts)-1], ".")
+	fileSize, err := strconv.ParseInt(nameparts[1], 10, 64)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+
+	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+
+	if diskQuota != 0 && uint64(fileSize)+diskUsage > diskQuota {
+		session.SendStringResponse(409, "QUOTA INSUFFICIENT", "")
+		return
 	}
 
 	newName, err := fsh.CopyFile(session.Message.Data["SourceFile"],

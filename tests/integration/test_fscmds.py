@@ -71,20 +71,136 @@ def setup_testdir(name) -> str:
 	os.mkdir(testdir)
 	return testdir
 
+
 def test_copy():
 	'''Tests the COPY command'''
 
+	dbconn = setup_test()
+	dbdata = init_server(dbconn)
+
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+
+	reset_workspace_dir(dbdata)
+
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
+	
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
+
+	# Set up the directory hierarchy
+
+	admin_dir = os.path.join(dbdata['configfile']['global']['workspace_dir'],
+		dbdata['admin_wid'])
+	inner_dir = os.path.join(admin_dir, '11111111-1111-1111-1111-111111111111')
+	os.mkdir(inner_dir)
+
 	# Subtest #1: Nonexistent source file
 
+	conn.send_message({
+		'Action': 'COPY',
+		'Data': {
+			'SourceFile': '/ ' + dbdata['admin_wid'] + ' 1.1.01234567-89ab-cdef-0123-456789abcdef',
+			'DestDir': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 404, 'test_copy: #1 failed to handle nonexistent source file'
+
 	# Subtest #2: Nonexistent destination directory
+	
+	# By making this 1MB + 1byte, the file's mere existence will put us over the limit of the 1MB
+	# disk quota
+	status = make_test_file(admin_dir, file_size=0x10_0001)
+	assert not status.error(), 'test_copy: #2 failed to create a test file'
+	testfile1 = status['name']
+
+	conn.send_message({
+		'Action': 'COPY',
+		'Data': {
+			'SourceFile': f"/ {dbdata['admin_wid']} {testfile1}",
+			'DestDir': f"/ {dbdata['admin_wid']} 22222222-2222-2222-2222-222222222222"
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 404, 'test_copy: #2 failed to handle nonexistent destination dir'
 
 	# Subtest #3: Source path is a directory
 
+	conn.send_message({
+		'Action': 'COPY',
+		'Data': {
+			'SourceFile': f"/ {dbdata['admin_wid']}",
+			'DestDir': f"/ {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111"
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, 'test_copy: #3 failed to handle directory as source'
+
 	# Subtest #4: Destination is file path
+
+	# Normally each file on the system has a unique name, but having a duplicate in this case 
+	# won't matter
+	status = make_test_file(inner_dir, 102400, testfile1)
+	conn.send_message({
+		'Action': 'COPY',
+		'Data': {
+			'SourceFile': f"/ {dbdata['admin_wid']} {testfile1}",
+			'DestDir': f"/ {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111 {testfile1}"
+
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, 'test_copy: #4 failed to handle file as destination'
 
 	# Subtest #5: Insufficient quota remaining
 
+	# The administrator normally can't have a quota. We'll just fix that just for this one test
+	# *heh*
+
+	# We actually have to do an update instead of an insert because the quota checks in earlier
+	# calls ensure that there is a quota record for admin in the database
+	cur = dbconn.cursor()
+	cur.execute(f"UPDATE quotas	SET quota=1 WHERE wid='{dbdata['admin_wid']}'")
+	dbconn.commit()
+
+	conn.send_message({
+		'Action': 'COPY',
+		'Data': {
+			'SourceFile': f"/ {dbdata['admin_wid']} {testfile1}",
+			'DestDir': f"/ {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111"
+
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 409, 'test_copy: #5 failed to handle quota limit'
+
+	# We need this to be unlimited for later tests
+	cur = dbconn.cursor()
+	cur.execute(f"UPDATE quotas SET quota=0 WHERE wid = '{dbdata['admin_wid']}'")
+	dbconn.commit()
+
 	# Subtest #6: Actual success
+
+	conn.send_message({
+		'Action': 'COPY',
+		'Data': {
+			'SourceFile': f"/ {dbdata['admin_wid']} {testfile1}",
+			'DestDir': f"/ {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111"
+
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_copy: #6 failed to succeed'
 
 
 def test_getquotainfo():
@@ -590,7 +706,6 @@ def test_select():
 	assert response['Code'] == 200, 'test_select: #3 failed to work correctly'
 
 
-
 def test_setquota():
 	'''Tests the SETQUOTA command'''
 
@@ -910,11 +1025,12 @@ def test_upload():
 
 
 if __name__ == '__main__':
+	test_copy()
 	# test_getquotainfo()
 	# test_list()
 	# test_listdirs()
 	# test_mkdir()
 	# test_rmdir()
 	# test_setquota()
-	test_select()
+	# test_select()
 	# test_upload()
