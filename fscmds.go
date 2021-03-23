@@ -346,6 +346,7 @@ func commandMove(session *sessionState) {
 	}
 	if !exists {
 		session.SendStringResponse(404, "NOT FOUND", "Source does not exist")
+		return
 	}
 
 	exists, err = fsh.Exists(session.Message.Data["DestDir"])
@@ -355,6 +356,7 @@ func commandMove(session *sessionState) {
 	}
 	if !exists {
 		session.SendStringResponse(404, "NOT FOUND", "Destination does not exist")
+		return
 	}
 
 	err = fsh.MoveFile(session.Message.Data["SourceFile"], session.Message.Data["DestDir"])

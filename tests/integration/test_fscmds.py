@@ -520,15 +520,104 @@ def test_mkdir():
 def test_move():
 	'''Tests the MOVE command'''
 
+	dbconn = setup_test()
+	dbdata = init_server(dbconn)
+
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+
+	reset_workspace_dir(dbdata)
+
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
+	
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
+
+	# Set up the directory hierarchy
+
+	admin_dir = os.path.join(dbdata['configfile']['global']['workspace_dir'],
+		dbdata['admin_wid'])
+	inner_dir = os.path.join(admin_dir, '11111111-1111-1111-1111-111111111111')
+	os.mkdir(inner_dir)
+
 	# Subtest #1: Nonexistent source file
 
+	conn.send_message({
+		'Action': 'MOVE',
+		'Data': {
+			'SourceFile': '/ ' + dbdata['admin_wid'] + ' 1.1.01234567-89ab-cdef-0123-456789abcdef',
+			'DestDir': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 404, 'test_move: #1 failed to handle nonexistent source file'
+
 	# Subtest #2: Nonexistent destination directory
+	
+	status = make_test_file(admin_dir)
+	assert not status.error(), 'test_move: #2 failed to create a test file'
+	testfile1 = status['name']
+
+	conn.send_message({
+		'Action': 'MOVE',
+		'Data': {
+			'SourceFile': f"/ {dbdata['admin_wid']} {testfile1}",
+			'DestDir': f"/ {dbdata['admin_wid']} 22222222-2222-2222-2222-222222222222"
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 404, 'test_move: #2 failed to handle nonexistent destination dir'
 
 	# Subtest #3: Source path is a directory
 
+	conn.send_message({
+		'Action': 'MOVE',
+		'Data': {
+			'SourceFile': f"/ {dbdata['admin_wid']}",
+			'DestDir': f"/ {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111"
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, 'test_move: #3 failed to handle directory as source'
+
 	# Subtest #4: Destination is file path
 
+	# Normally each file on the system has a unique name, but having a duplicate in this case 
+	# won't matter
+	status = make_test_file(inner_dir, 102400, testfile1)
+	conn.send_message({
+		'Action': 'MOVE',
+		'Data': {
+			'SourceFile': f"/ {dbdata['admin_wid']} {testfile1}",
+			'DestDir': f"/ {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111 {testfile1}"
+
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, 'test_copy: #4 failed to handle file as destination'
+
+	os.remove(os.path.join(inner_dir, status['name']))
+	
 	# Subtest #5: Actual success
+
+	conn.send_message({
+		'Action': 'MOVE',
+		'Data': {
+			'SourceFile': f"/ {dbdata['admin_wid']} {testfile1}",
+			'DestDir': f"/ {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111"
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_copy: #6 failed to succeed'
 
 
 def test_rmdir():
@@ -1027,11 +1116,12 @@ def test_upload():
 
 
 if __name__ == '__main__':
-	test_copy()
+	# test_copy()
 	# test_getquotainfo()
 	# test_list()
 	# test_listdirs()
 	# test_mkdir()
+	test_move()
 	# test_rmdir()
 	# test_setquota()
 	# test_select()

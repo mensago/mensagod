@@ -109,7 +109,7 @@ func (lfs *LocalFSHandler) CopyFile(source string, dest string) (string, error) 
 	newPath := filepath.Join(destAnpath.ProviderPath(), newName)
 	_, err = os.Stat(newPath)
 	if err == nil {
-		return "", errors.New("source exists in destination path")
+		return "", os.ErrExist
 	}
 
 	sourceHandle, err := os.Open(srcAnpath.ProviderPath())
@@ -456,10 +456,10 @@ func (lfs *LocalFSHandler) MoveFile(source string, dest string) error {
 	}
 
 	newPath := filepath.Join(destAnpath.ProviderPath(), filepath.Base(srcAnpath.ProviderPath()))
-	fmt.Println(newPath)
+
 	_, err = os.Stat(newPath)
 	if err == nil {
-		return errors.New("source exists in destination path")
+		return os.ErrExist
 	}
 
 	return os.Rename(srcAnpath.ProviderPath(), newPath)
