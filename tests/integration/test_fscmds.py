@@ -793,6 +793,8 @@ def test_upload():
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
+	reset_workspace_dir(dbdata)
+
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
 				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
