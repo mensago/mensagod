@@ -1440,9 +1440,9 @@ func IsTimestampValid(timestr string) error {
 		return fmt.Errorf("bad timestr seconds")
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	timestamp, _ := time.Parse("20060102T030405Z", timestr)
-	if now.Before(timestamp) {
+	if now.After(timestamp) {
 		return errors.New("timestamp is later than expiration date")
 	}
 
