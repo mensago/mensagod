@@ -14,6 +14,7 @@ import toml
 from pymensago.cryptostring import CryptoString
 from pymensago.encryption import EncryptionPair, Password, PublicKey, SigningPair
 import pymensago.keycard as keycard
+import pymensago.iscmds as iscmds
 import pymensago.serverconn as serverconn
 
 # Keys used in the various tests. 
@@ -456,7 +457,7 @@ def keycard_admin(config, conn) -> dict:
 		'Public-Encryption-Key':epair.get_public_key()
 	})
 
-	status = serverconn.addentry(conn, entry, CryptoString(config['ovkey']), crspair)	
+	status = iscmds.addentry(conn, entry, CryptoString(config['ovkey']), crspair)	
 	assert not status.error(), f"test_addentry: failed to add entry: {status.info()}"
 
 	return {
@@ -469,7 +470,7 @@ def init_user(config: dict, conn: serverconn.ServerConnection):
 	'''Creates a test user for command testing'''
 	
 	userwid = '33333333-3333-3333-3333-333333333333'
-	status = serverconn.preregister(conn, userwid, 'csimons', 'example.net')
+	status = iscmds.preregister(conn, userwid, 'csimons', 'example.net')
 	assert not status.error(), "init_user(): uid preregistration failed"
 	assert status['domain'] == 'example.net' and 'wid' in status and 'regcode' in status and \
 		status['uid'] == 'csimons', "init_user(): failed to return expected data"
@@ -478,7 +479,7 @@ def init_user(config: dict, conn: serverconn.ServerConnection):
 	password = Password('MyS3cretPassw*rd')
 	devpair = EncryptionPair()
 	devid = '11111111-1111-1111-1111-111111111111'
-	status = serverconn.regcode(conn, 'csimons', regdata['regcode'], password.hashstring,
+	status = iscmds.regcode(conn, 'csimons', regdata['regcode'], password.hashstring,
 		devid, devpair, 'example.net')
 	assert not status.error(), "init_user(): uid regcode failed"
 
@@ -498,7 +499,7 @@ def init_user2(config: dict, conn: serverconn.ServerConnection):
 	'''Creates a second test user for command testing'''
 	
 	userwid = '44444444-4444-4444-4444-444444444444'
-	status = serverconn.preregister(conn, userwid, 'fkingsley', 'example.net')
+	status = iscmds.preregister(conn, userwid, 'fkingsley', 'example.net')
 	assert not status.error(), "init_user2(): uid preregistration failed"
 	assert status['domain'] == 'example.net' and 'wid' in status and 'regcode' in status and \
 		status['uid'] == 'fkingsley', "init_user2(): failed to return expected data"
@@ -507,7 +508,7 @@ def init_user2(config: dict, conn: serverconn.ServerConnection):
 	password = Password('MyS3cretPassw*rd')
 	devpair = EncryptionPair()
 	devid = '11111111-1111-1111-1111-111111111111'
-	status = serverconn.regcode(conn, 'fkingsley', regdata['regcode'], password.hashstring,
+	status = iscmds.regcode(conn, 'fkingsley', regdata['regcode'], password.hashstring,
 		devid, devpair, 'example.net')
 	assert not status.error(), "init_user2(): uid regcode failed"
 

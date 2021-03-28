@@ -1,6 +1,7 @@
 from pymensago.encryption import EncryptionPair, SigningPair
 from pymensago.cryptostring import CryptoString
 import pymensago.keycard as keycard
+import pymensago.iscmds as iscmds
 import pymensago.serverconn as serverconn
 from integration_setup import load_server_config_file, setup_test, init_server, regcode_admin, \
 	login_admin
@@ -215,13 +216,13 @@ def test_unregister():
 	assert response['Code'] == 200 and response['Status'] == 'OK'
 
 	# Set up for subtest #2: log in as the user
-	status = serverconn.login(conn, userwid, CryptoString(dbdata['oekey']))
+	status = iscmds.login(conn, userwid, CryptoString(dbdata['oekey']))
 	assert not status.error(), f"test_unregister(): user login phase failed: {status.info()}"
 
-	status = serverconn.password(conn, userwid, pwhash)
+	status = iscmds.password(conn, userwid, pwhash)
 	assert not status.error(), f"test_unregister(): password phase failed: {status.info()}"
 
-	status = serverconn.device(conn, devid, devpair)
+	status = iscmds.device(conn, devid, devpair)
 	assert not status.error(), f"test_unregister(): device phase failed: {status.info()}"
 
 	# As a general rule, these mensagod integration tests don't call the regular pymensago client 
@@ -245,7 +246,7 @@ def test_unregister():
 
 	status = usercard.is_data_compliant()
 	assert not status.error(), f"test_unregister: user card not compliant: {status.info()}"
-	status = serverconn.addentry(conn, usercard, CryptoString(dbdata['ovkey']), crspair)
+	status = iscmds.addentry(conn, usercard, CryptoString(dbdata['ovkey']), crspair)
 	assert not status.error(), f"test_unregister: addentry() failed: {status.info()}\n" \
 		f"Server Info: {status['Info']}"
 

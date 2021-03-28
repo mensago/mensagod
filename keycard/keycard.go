@@ -1411,8 +1411,8 @@ func (card Keycard) VerifyChain(path string, clobber bool) (bool, error) {
 	return true, nil
 }
 
-// IsTimestampValid returns true if the timestamp for the entry is valid
-func IsTimestampValid(timestr string) error {
+// check formatting for both timestamps and expiration dates
+func validateTimeString(timestr string) error {
 	pattern := regexp.MustCompile("^[[:digit:]]{8}T[[:digit:]]{6}Z$")
 	if !pattern.MatchString(timestr) {
 		return errors.New("bad timestr format")
@@ -1440,6 +1440,17 @@ func IsTimestampValid(timestr string) error {
 		return fmt.Errorf("bad timestr seconds")
 	}
 
+	return nil
+}
+
+// IsTimestampValid returns true if the timestamp for the entry is valid
+func IsTimestampValid(timestr string) error {
+
+	err := validateTimeString(timestr)
+	if err != nil {
+		return err
+	}
+
 	now := time.Now().UTC()
 	timestamp, err := time.Parse("20060102T150405Z", timestr)
 	if err != nil {
@@ -1447,6 +1458,26 @@ func IsTimestampValid(timestr string) error {
 	}
 	if now.Before(timestamp) {
 		return errors.New("timestamp is in the future")
+	}
+
+	return nil
+}
+
+// IsExpirationValid returns true if the expiration for the entry is valid
+func IsExpirationValid(timestr string) error {
+
+	err := validateTimeString(timestr)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now().UTC()
+	timestamp, err := time.Parse("20060102T150405Z", timestr)
+	if err != nil {
+		return err
+	}
+	if now.After(timestamp) {
+		return errors.New("expiration has past")
 	}
 
 	return nil

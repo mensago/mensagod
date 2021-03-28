@@ -67,7 +67,7 @@ func commandDevice(session *sessionState) {
 	// The device is part of the workspace, so now we issue undergo a challenge-response
 	// to ensure that the device really is authorized and the key wasn't stolen by an impostor
 
-	success, err = challengeDevice(session, "CURVE25519", session.Message.Data["Device-Key"])
+	success, _ = challengeDevice(session, "CURVE25519", session.Message.Data["Device-Key"])
 	if !success {
 		lockout, err := logFailure(session, "device", session.WID)
 		if err != nil {
@@ -118,7 +118,7 @@ func commandDevKey(session *sessionState) {
 		return
 	}
 
-	success, err := dbhandler.CheckDevice(session.WID, session.Message.Data["Device-ID"],
+	_, err := dbhandler.CheckDevice(session.WID, session.Message.Data["Device-ID"],
 		oldkey.AsString())
 
 	if err != nil {
@@ -138,7 +138,7 @@ func commandDevKey(session *sessionState) {
 		return
 	}
 
-	success, err = dualChallengeDevice(session, oldkey, newkey)
+	success, _ := dualChallengeDevice(session, oldkey, newkey)
 	if !success {
 		session.SendStringResponse(401, "UNAUTHORIZED", "")
 		return
@@ -346,7 +346,7 @@ func commandPassword(session *sessionState) {
 		d, err = time.ParseDuration(delayString)
 		if err != nil {
 			logging.Writef("Bad login failure delay string %s. Sleeping 3s.", delayString)
-			d, err = time.ParseDuration("3s")
+			d, _ = time.ParseDuration("3s")
 		}
 		time.Sleep(d)
 		return
@@ -403,7 +403,7 @@ func commandResetPassword(session *sessionState) {
 
 	var expires string
 	if session.Message.HasField("Expires") && session.Message.Data["Expires"] != "" {
-		err = keycard.IsTimestampValid(session.Message.Data["Expires"])
+		err = keycard.IsExpirationValid(session.Message.Data["Expires"])
 		if err != nil {
 			session.SendStringResponse(400, "BAD REQUEST", "Bad Expires field")
 			return
