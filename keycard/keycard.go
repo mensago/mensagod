@@ -1445,8 +1445,8 @@ func IsTimestampValid(timestr string) error {
 	if err != nil {
 		return err
 	}
-	if now.After(timestamp) {
-		return errors.New("timestamp is later than expiration date")
+	if now.Before(timestamp) {
+		return errors.New("timestamp is in the future")
 	}
 
 	return nil
