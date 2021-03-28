@@ -98,7 +98,7 @@ type Entry struct {
 }
 
 // IsDataCompliant checks only the data fields of the entry to ensure that they are valid
-func (entry Entry) IsDataCompliant() bool {
+func (entry *Entry) IsDataCompliant() bool {
 	if entry.Type != "User" && entry.Type != "Organization" {
 		return false
 	}
@@ -334,7 +334,7 @@ func (entry *Entry) Set(data []byte) error {
 
 		if parts[0] == "Type" {
 			if parts[1] != entry.Type {
-				return fmt.Errorf("Can't use %s data on %s entries", parts[1], entry.Type)
+				return fmt.Errorf("can't use %s data on %s entries", parts[1], entry.Type)
 			}
 		} else if strings.HasSuffix(parts[0], "Signature") {
 			sigNameParts := strings.SplitN(parts[0], "-", 2)
@@ -685,14 +685,14 @@ func NewOrgEntry() *Entry {
 
 // validateOrgEntry checks the validity all OrgEntry data fields to ensure the data in them
 // meets basic data validity checks
-func (entry Entry) validateOrgEntry() (bool, error) {
+func (entry *Entry) validateOrgEntry() (bool, error) {
 	// Required field: Index
 	pattern := regexp.MustCompile("[[:digit:]]+")
 	if !pattern.MatchString(entry.Fields["Index"]) {
 		return false, errors.New("bad index")
 	}
 	var intValue int
-	intValue, err := strconv.Atoi(entry.Fields["Index"])
+	intValue, _ = strconv.Atoi(entry.Fields["Index"])
 	if intValue < 1 {
 		return false, errors.New("bad index value")
 	}
@@ -720,7 +720,7 @@ func (entry Entry) validateOrgEntry() (bool, error) {
 	// Required field: Primary Verification Key
 	// We can't actually verify the key data, but we can ensure that it at least decodes from Base85
 	var keystr cs.CryptoString
-	err = keystr.Set(entry.Fields["Primary-Verification-Key"])
+	err := keystr.Set(entry.Fields["Primary-Verification-Key"])
 	if err != nil {
 		return false, errors.New("bad primary verification key")
 	}
@@ -743,7 +743,7 @@ func (entry Entry) validateOrgEntry() (bool, error) {
 		return false, errors.New("bad time to live")
 	}
 
-	intValue, err = strconv.Atoi(entry.Fields["Time-To-Live"])
+	intValue, _ = strconv.Atoi(entry.Fields["Time-To-Live"])
 	if intValue < 1 || intValue > 30 {
 		return false, errors.New("time to live out of range")
 	}
@@ -778,15 +778,15 @@ func (entry Entry) validateOrgEntry() (bool, error) {
 		return false, fmt.Errorf("bad timestamp date %s", err.Error())
 	}
 
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][9:11])
+	intValue, _ = strconv.Atoi(entry.Fields["Timestamp"][9:11])
 	if intValue > 23 {
 		return false, fmt.Errorf("bad timestamp hours")
 	}
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][11:13])
+	intValue, _ = strconv.Atoi(entry.Fields["Timestamp"][11:13])
 	if intValue > 59 {
 		return false, fmt.Errorf("bad timestamp minutes")
 	}
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][13:15])
+	intValue, _ = strconv.Atoi(entry.Fields["Timestamp"][13:15])
 	if intValue > 59 {
 		return false, fmt.Errorf("bad timestamp seconds")
 	}
@@ -891,14 +891,14 @@ func NewUserEntry() *Entry {
 // validateUserEntry checks the validity all UserEntry data fields to ensure the data in them
 // meets basic data validity checks. Note that this function only checks data format; it does
 // not fail if the entry's Expires field is past due, the Timestamp field is in the future, etc.
-func (entry Entry) validateUserEntry() (bool, error) {
+func (entry *Entry) validateUserEntry() (bool, error) {
 	// Required field: Index
 	pattern := regexp.MustCompile("[[:digit:]]+")
 	if !pattern.MatchString(entry.Fields["Index"]) {
 		return false, errors.New("bad index")
 	}
 	var intValue int
-	intValue, err := strconv.Atoi(entry.Fields["Index"])
+	intValue, _ = strconv.Atoi(entry.Fields["Index"])
 	if intValue < 1 {
 		return false, errors.New("bad index value")
 	}
@@ -923,7 +923,7 @@ func (entry Entry) validateUserEntry() (bool, error) {
 	// Required field: Contact Request Verification Key
 	// We can't actually verify the key data, but we can ensure that it at least decodes from Base85
 	var keystr cs.CryptoString
-	err = keystr.Set(entry.Fields["Contact-Request-Verification-Key"])
+	err := keystr.Set(entry.Fields["Contact-Request-Verification-Key"])
 	if err != nil {
 		return false, errors.New("bad contact request verification key")
 	}
@@ -954,7 +954,7 @@ func (entry Entry) validateUserEntry() (bool, error) {
 	if !pattern.MatchString(entry.Fields["Time-To-Live"]) {
 		return false, errors.New("bad time to live")
 	}
-	intValue, err = strconv.Atoi(entry.Fields["Time-To-Live"])
+	intValue, _ = strconv.Atoi(entry.Fields["Time-To-Live"])
 	if intValue < 1 || intValue > 30 {
 		return false, errors.New("time to live out of range")
 	}
@@ -989,15 +989,15 @@ func (entry Entry) validateUserEntry() (bool, error) {
 		return false, fmt.Errorf("bad timestamp date %s", err.Error())
 	}
 
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][9:11])
+	intValue, _ = strconv.Atoi(entry.Fields["Timestamp"][9:11])
 	if intValue > 23 {
 		return false, fmt.Errorf("bad timestamp hours")
 	}
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][11:13])
+	intValue, _ = strconv.Atoi(entry.Fields["Timestamp"][11:13])
 	if intValue > 59 {
 		return false, fmt.Errorf("bad timestamp minutes")
 	}
-	intValue, err = strconv.Atoi(entry.Fields["Timestamp"][13:15])
+	intValue, _ = strconv.Atoi(entry.Fields["Timestamp"][13:15])
 	if intValue > 59 {
 		return false, fmt.Errorf("bad timestamp seconds")
 	}
@@ -1427,21 +1427,24 @@ func IsTimestampValid(timestr string) error {
 	}
 
 	var intValue int
-	intValue, err = strconv.Atoi(timestr[9:11])
+	intValue, _ = strconv.Atoi(timestr[9:11])
 	if intValue > 23 {
 		return fmt.Errorf("bad timestr hours")
 	}
-	intValue, err = strconv.Atoi(timestr[11:13])
+	intValue, _ = strconv.Atoi(timestr[11:13])
 	if intValue > 59 {
 		return fmt.Errorf("bad timestr minutes")
 	}
-	intValue, err = strconv.Atoi(timestr[13:15])
+	intValue, _ = strconv.Atoi(timestr[13:15])
 	if intValue > 59 {
 		return fmt.Errorf("bad timestr seconds")
 	}
 
 	now := time.Now().UTC()
-	timestamp, _ := time.Parse("20060102T030405Z", timestr)
+	timestamp, err := time.Parse("20060102T150405Z", timestr)
+	if err != nil {
+		return err
+	}
 	if now.After(timestamp) {
 		return errors.New("timestamp is later than expiration date")
 	}
