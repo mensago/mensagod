@@ -265,10 +265,10 @@ func commandRegCode(session *sessionState) {
 
 	var wid, uid string
 	if session.Message.HasField("Workspace-ID") {
-		wid, uid, err = dbhandler.CheckRegCode(session.Message.Data["Workspace-ID"], domain, true,
+		wid, uid, _ = dbhandler.CheckRegCode(session.Message.Data["Workspace-ID"], domain, true,
 			session.Message.Data["Reg-Code"])
 	} else {
-		wid, uid, err = dbhandler.CheckRegCode(session.Message.Data["User-ID"], domain, false,
+		wid, uid, _ = dbhandler.CheckRegCode(session.Message.Data["User-ID"], domain, false,
 			session.Message.Data["Reg-Code"])
 	}
 
@@ -552,7 +552,7 @@ func commandUnregister(session *sessionState) {
 	}
 
 	// You also don't delete aliases with this command
-	isAlias, err := dbhandler.IsAlias(wid)
+	isAlias, _ := dbhandler.IsAlias(wid)
 	if isAlias {
 		session.SendStringResponse(403, "FORBIDDEN", "Aliases aren't removed with this command")
 		return

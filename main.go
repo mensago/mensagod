@@ -123,7 +123,7 @@ func (s *sessionState) GetRequest() (ClientRequest, error) {
 
 	err = json.Unmarshal(buffer[:bytesRead], &out)
 
-	return out, nil
+	return out, err
 }
 
 // SendResponse sends a JSON response message to the client
@@ -134,7 +134,7 @@ func (s sessionState) SendResponse(msg ServerResponse) (err error) {
 	}
 
 	_, err = s.Connection.Write([]byte(out))
-	return nil
+	return err
 }
 
 // SendStringResponse is a syntactic sugar command for quickly sending error responses. The Info
@@ -411,7 +411,7 @@ func logFailure(session *sessionState, failType string, wid string) (bool, error
 	// At this point, the connection should be terminated. However, an empty lockTime
 	// means that although there has been a failure, the count for this IP address is
 	// still under the limit.
-	lockTime, err := getLockout(session, failType, wid)
+	lockTime, _ := getLockout(session, failType, wid)
 	if len(lockTime) > 0 {
 		response := NewServerResponse(405, "TERMINATED")
 		response.Data["Lock-Time"] = lockTime
