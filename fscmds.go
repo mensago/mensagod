@@ -276,13 +276,13 @@ func commandListDirs(session *sessionState) {
 		return
 	}
 
-	if session.Message.Validate([]string{"Path"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
-		return
+	listPath := session.CurrentPath.MensagoPath()
+	if session.Message.HasField("Path") {
+		listPath = session.Message.Data["Path"]
 	}
 
 	fsh := fshandler.GetFSProvider()
-	names, err := fsh.ListDirectories(session.Message.Data["Path"])
+	names, err := fsh.ListDirectories(listPath)
 	if err != nil {
 		handleFSError(session, err)
 		return
