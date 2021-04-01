@@ -93,6 +93,7 @@ func commandDevice(session *sessionState) {
 	if !exists {
 		fsp.MakeDirectory("/ " + session.WID)
 	}
+	session.CurrentPath.Set("/ " + session.WID)
 
 	session.LoginState = loginClientSession
 	session.SendStringResponse(200, "OK", "")
