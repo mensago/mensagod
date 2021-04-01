@@ -232,9 +232,9 @@ func commandList(session *sessionState) {
 		return
 	}
 
-	if session.Message.Validate([]string{"Path"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
-		return
+	listPath := session.CurrentPath.MensagoPath()
+	if session.Message.HasField("Path") {
+		listPath = session.Message.Data["Path"]
 	}
 
 	var err error
@@ -248,7 +248,7 @@ func commandList(session *sessionState) {
 	}
 
 	fsh := fshandler.GetFSProvider()
-	names, err := fsh.ListFiles(session.Message.Data["Path"], int64(unixTime))
+	names, err := fsh.ListFiles(listPath, int64(unixTime))
 	if err != nil {
 		handleFSError(session, err)
 		return
