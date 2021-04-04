@@ -125,6 +125,63 @@ func commandDelete(session *sessionState) {
 	session.SendStringResponse(200, "OK", "")
 }
 
+func commandDownload(session *sessionState) {
+	// Command syntax:
+	// DOWNLOAD(Path,Offset=0)
+
+	if session.LoginState != loginClientSession {
+		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		return
+	}
+
+	if session.Message.Validate([]string{"Path"}) != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	fsp := fshandler.GetFSProvider()
+	exists, err := fsp.Exists(session.Message.Data["Path"])
+	if err != nil {
+		if err == fshandler.ErrBadPath {
+			session.SendStringResponse(400, "BAD REQUEST", "Bad file path")
+		} else {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		}
+		return
+	}
+	if !exists {
+		session.SendStringResponse(404, "NOT FOUND", "")
+		return
+	}
+
+	// Check permissions. Users can download from an individual workspace only if it is their own
+	// or from multiuser workspaces if they have the appropriate permissions. Until multiuser
+	// workspaces are implemented, we can make this check pretty simple.
+	if !strings.HasPrefix(session.Message.Data["Path"], "/ "+session.WID) {
+		session.SendStringResponse(403, "FORBIDDEN", "Can only download from your own workspace")
+		return
+	}
+
+	pathParts := strings.Split(session.Message.Data["Path"], " ")
+	filename := pathParts[len(pathParts)-1]
+	if !fshandler.ValidateFileName(filename) {
+		session.SendStringResponse(400, "BAD REQUEST", "Path is not a file")
+		return
+	}
+	filenameParts := strings.Split(filename, ".")
+	if len(filenameParts) != 3 {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+
+	// response := NewServerResponse(100, "CONTINUE")
+	// response.Data["Size"] = filenameParts[1]
+	// session.SendResponse(*response)
+
+	// TODO: Finish implementing
+	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
+}
+
 func commandExists(session *sessionState) {
 	// Command syntax:
 	// EXISTS(Path)

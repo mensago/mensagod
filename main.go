@@ -274,6 +274,8 @@ func processCommand(session *sessionState) {
 		commandDevice(session)
 	case "DEVKEY":
 		commandDevKey(session)
+	case "DOWNLOAD":
+		commandDownload(session)
 	case "EXISTS":
 		commandExists(session)
 	case "GETQUOTAINFO":
