@@ -154,6 +154,26 @@ func commandDownload(session *sessionState) {
 		return
 	}
 
+	var resumeOffset int64
+	if session.Message.HasField("Offset") {
+		resumeOffset, err = strconv.ParseInt(session.Message.Data["Offset"], 10, 64)
+		if err != nil || resumeOffset < 1 {
+			session.SendStringResponse(400, "BAD REQUEST", "Bad resume offset")
+			return
+		}
+
+		fileSize, err := fsp.GetFileSize(session.Message.Data["Path"])
+		if err != nil {
+			handleFSError(session, err)
+			return
+		}
+
+		if resumeOffset > fileSize {
+			session.SendStringResponse(400, "BAD REQUEST", "Resume offset greater than file size")
+			return
+		}
+	}
+
 	// Check permissions. Users can download from an individual workspace only if it is their own
 	// or from multiuser workspaces if they have the appropriate permissions. Until multiuser
 	// workspaces are implemented, we can make this check pretty simple.
@@ -174,12 +194,32 @@ func commandDownload(session *sessionState) {
 		return
 	}
 
-	// response := NewServerResponse(100, "CONTINUE")
-	// response.Data["Size"] = filenameParts[1]
-	// session.SendResponse(*response)
+	response := NewServerResponse(100, "CONTINUE")
+	response.Data["Size"] = filenameParts[1]
+	session.SendResponse(*response)
 
-	// TODO: Finish implementing
-	session.SendStringResponse(301, "NOT IMPLEMENTED", "")
+	request, err := session.GetRequest()
+	if err != nil && err.Error() != "EOF" {
+		return
+	}
+	session.Message = request
+
+	if request.Action == "CANCEL" {
+		return
+	}
+
+	if request.Action != "DOWNLOAD" || !request.HasField("Size") ||
+		request.Data["Size"] != filenameParts[1] {
+		session.SendStringResponse(400, "BAD REQUEST", "File size confirmation mismatch")
+		return
+	}
+
+	handle, err := fsp.OpenFile(session.Message.Data["Path"])
+	if err != nil {
+		handleFSError(session, err)
+		return
+	}
+	session.SendFileData(handle, resumeOffset)
 }
 
 func commandExists(session *sessionState) {
