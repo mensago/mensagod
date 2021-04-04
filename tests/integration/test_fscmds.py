@@ -204,6 +204,189 @@ def test_copy():
 	assert response['Code'] == 200, 'test_copy: #6 failed to succeed'
 
 
+def test_download():
+	'''This tests the command DOWNLOAD'''
+
+	dbconn = setup_test()
+	dbdata = init_server(dbconn)
+
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+
+	reset_workspace_dir(dbdata)
+
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
+	
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
+
+	init_user(dbdata, conn)
+	
+	# Subtest #1: Missing parameters
+	
+	conn.send_message({'Action': 'DOWNLOAD','Data': {}})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, 'test_download: #1 failed to handle missing parameter'
+
+	# Subtest #2: Non-existent path
+
+	conn.send_message({
+		'Action': 'DOWNLOAD',
+		'Data': {
+			'Path': '/ ' + dbdata['admin_wid'] + ' 22222222-2222-2222-2222-222222222222' + 
+				' 1000.1000.22222222-2222-2222-2222-222222222222'
+		}
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 404, 'test_download: #2 failed to handle non-existent path'
+
+	# Subtest #3: Actual success
+
+	status = make_test_file(os.path.join(dbdata['configfile']['global']['workspace_dir'], 
+		dbdata['admin_wid']), file_size=1000)
+	assert not status.error(), f"test_download: #3 failed to create test file: {status.info}"
+	testname = status['name']
+
+	conn.send_message({
+		'Action': 'DOWNLOAD',
+		'Data': {
+			'Path': f"/ {dbdata['admin_wid']} {testname}"
+		}
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 100, 'test_download: #3 failed to proceed to file download'
+	assert 'Size' in response['Data'] and response['Data']['Size'] == '1000', \
+		'test_download: #3 server failed to respond with file size'
+
+	conn.send_message({
+		'Action': 'DOWNLOAD',
+		'Data': {
+			'Path': f"/ {dbdata['admin_wid']} {testname}",
+			'Size': '1000'
+		}
+	})
+
+	rawdata = conn.read()
+	assert len(rawdata) == 1000, 'test_download: #3 downloaded file had wrong length'
+
+	# Set up an interrupted transfer
+
+	# conn.send_message({
+	# 	'Action': 'UPLOAD',
+	# 	'Data': {
+	# 		'Size': str(1000),
+	# 		'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
+	# 		'Path': '/ ' + dbdata['admin_wid']
+	# 	}
+	# })
+
+	# response = conn.read_response(server_response)
+	# tempFileName = response['Data']['TempName']
+	# assert response['Code'] == 100, 'test_download: #6 failed to proceed to file upload'
+	# assert tempFileName != '', 'test_download: #6 server failed to return temp file name'
+
+	# conn.write('0' * 500)
+	# del conn
+	
+	# conn = ServerConnection()
+	# assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+	# login_admin(dbdata, conn)
+
+	# # Subtest #7: Resume offset larger than size of data stored server-side
+
+	# conn.send_message({
+	# 	'Action': 'UPLOAD',
+	# 	'Data': {
+	# 		'Size': str(1000),
+	# 		'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
+	# 		'Path': '/ ' + dbdata['admin_wid'],
+	# 		'TempName': tempFileName,
+	# 		'Offset': '2000'
+	# 	}
+	# })
+
+	# response = conn.read_response(server_response)
+	# assert response['Code'] == 400, 'test_download: #7 failed to handle offset > file size'
+
+
+	# # Subtest #8: Resume interrupted transfer - exact match
+
+	# conn.send_message({
+	# 	'Action': 'UPLOAD',
+	# 	'Data': {
+	# 		'Size': str(1000),
+	# 		'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
+	# 		'Path': '/ ' + dbdata['admin_wid'],
+	# 		'TempName': tempFileName,
+	# 		'Offset': '500'
+	# 	}
+	# })
+
+	# response = conn.read_response(server_response)
+	# assert response['Code'] == 100, 'test_download: #8 failed to proceed to file upload'
+
+	# conn.write('0' * 500)
+
+	# response = conn.read_response(server_response)
+	# assert response['Code'] == 200, 'test_download: #8 failed to resume with exact offset match'
+
+	# # Set up one last interrupted transfer
+
+	# conn.send_message({
+	# 	'Action': 'UPLOAD',
+	# 	'Data': {
+	# 		'Size': str(1000),
+	# 		'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
+	# 		'Path': '/ ' + dbdata['admin_wid']
+	# 	}
+	# })
+
+	# response = conn.read_response(server_response)
+	# tempFileName = response['Data']['TempName']
+	# assert response['Code'] == 100, 'test_download: #6 failed to proceed to file upload'
+	# assert tempFileName != '', 'test_download: #6 server failed to return temp file name'
+
+	# conn.write('0' * 500)
+	# del conn
+	
+	# conn = ServerConnection()
+	# assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+	# login_admin(dbdata, conn)
+
+	# # Subtest #9: Overlapping resume
+
+	# conn.send_message({
+	# 	'Action': 'UPLOAD',
+	# 	'Data': {
+	# 		'Size': str(1000),
+	# 		'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
+	# 		'Path': '/ ' + dbdata['admin_wid'],
+	# 		'TempName': tempFileName,
+	# 		'Offset': '400'
+	# 	}
+	# })
+
+	# response = conn.read_response(server_response)
+	# assert response['Code'] == 100, 'test_download: #9 failed to proceed to file upload'
+
+	# conn.write('0' * 600)
+
+	# response = conn.read_response(server_response)
+	# assert response['Code'] == 200, 'test_download: #9 failed to resume with overlapping offset'
+
+
 def test_getquotainfo():
 	'''This tests the command GETQUOTAINFO, which gets both the quota for the workspace and the 
 	disk usage'''
@@ -1118,11 +1301,12 @@ def test_upload():
 
 if __name__ == '__main__':
 	# test_copy()
+	test_download()
 	# test_getquotainfo()
 	# test_list()
 	# test_listdirs()
 	# test_mkdir()
-	test_move()
+	# test_move()
 	# test_rmdir()
 	# test_setquota()
 	# test_select()
