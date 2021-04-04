@@ -217,6 +217,21 @@ func (lfs *LocalFSHandler) GetDiskUsage(path string) (uint64, error) {
 	return totalSize, err
 }
 
+func (lfs *LocalFSHandler) GetFileSize(path string) (int64, error) {
+	// Path validation handled in Set()
+	var anpath LocalAnPath
+	err := anpath.Set(path)
+	if err != nil {
+		return -1, err
+	}
+
+	info, err := os.Stat(anpath.ProviderPath())
+	if err != nil {
+		return -1, err
+	}
+	return info.Size(), nil
+}
+
 // InstallTempFile moves a file from the temporary file area to its location in a workspace
 func (lfs *LocalFSHandler) InstallTempFile(wid string, name string, dest string) (string, error) {
 	pattern := regexp.MustCompile(`[\da-fA-F]{8}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{12}`)
@@ -559,6 +574,19 @@ func (lfs *LocalFSHandler) RemoveDirectory(path string, recursive bool) error {
 		return os.RemoveAll(anpath.LocalPath)
 	}
 	return os.Remove(anpath.LocalPath)
+}
+
+// SeekFile performs a file pointer seek from the file's beginning. Unlike the os.Seek() function,
+// SeekFile returns an error if a seek beyond the end of the file is requested
+func (lfs *LocalFSHandler) SeekFile(handle string, offset int64) error {
+
+	lfsh, exists := lfs.Files[handle]
+	if !exists {
+		return os.ErrNotExist
+	}
+
+	_, err := lfsh.Handle.Seek(offset, 0)
+	return err
 }
 
 // Select confirms that the given path is a valid working directory for the user

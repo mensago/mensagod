@@ -194,6 +194,60 @@ func (s *sessionState) ReadFileData(fileSize uint64, fileHandle *os.File) (uint6
 	return totalRead, nil
 }
 
+func (s *sessionState) SendFileData(path string, offset int64) (int64, error) {
+
+	fsp := fshandler.GetFSProvider()
+
+	fileSize, err := fsp.GetFileSize(path)
+	if err != nil {
+		return -1, err
+	}
+
+	var totalWritten int64
+	buffer := make([]byte, MaxCommandLength)
+
+	fileHandle, err := fsp.OpenFile(path)
+	if err != nil {
+		return -1, err
+	}
+
+	if offset > 0 {
+		err := fsp.SeekFile(fileHandle, offset)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	for totalWritten < fileSize {
+
+		bytesRead, err := fsp.ReadFile(fileHandle, buffer)
+		if err != nil {
+			if err.Error() != "EOF" {
+				fmt.Println("Error reading from file: ", err.Error())
+			}
+			return int64(totalWritten), err
+		}
+
+		bytesWritten, err := s.Connection.Write(buffer[:bytesRead])
+		if err != nil {
+			ne, ok := err.(*net.OpError)
+			if ok && ne.Timeout() {
+				s.IsTerminating = true
+				return 0, errors.New("connection timed out")
+			}
+
+			if err.Error() != "EOF" {
+				fmt.Println("Error writing to client: ", err.Error())
+			}
+			return totalWritten, err
+		}
+
+		totalWritten += int64(bytesWritten)
+	}
+
+	return totalWritten, nil
+}
+
 // -------------------------------------------------------------------------------------------
 // Function Definitions
 // -------------------------------------------------------------------------------------------
