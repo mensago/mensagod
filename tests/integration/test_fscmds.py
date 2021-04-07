@@ -7,6 +7,7 @@ import uuid
 
 from pymensago.cryptostring import CryptoString
 from pymensago.encryption import EncryptionPair
+from pymensago.hash import blake2hash
 from pymensago.retval import RetVal, ExceptionThrown
 from pymensago.serverconn import ServerConnection
 
@@ -281,91 +282,60 @@ def test_download():
 	rawdata = conn.read()
 	assert len(rawdata) == 1000, 'test_download: #3 downloaded file had wrong length'
 
-	# Set up an interrupted transfer
+	# Set up an 'interrupted' transfer
 
-	# conn.send_message({
-	# 	'Action': 'UPLOAD',
-	# 	'Data': {
-	# 		'Size': str(1000),
-	# 		'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-	# 		'Path': '/ ' + dbdata['admin_wid']
-	# 	}
-	# })
+	status = make_test_file(os.path.join(dbdata['configfile']['global']['workspace_dir'], 
+		dbdata['admin_wid']), file_size=1000)
+	assert not status.error(), f"test_download: #4 failed to create test file: {status.info}"
+	testname = status['name']
 
-	# response = conn.read_response(server_response)
-	# tempFileName = response['Data']['TempName']
-	# assert response['Code'] == 100, 'test_download: #6 failed to proceed to file upload'
-	# assert tempFileName != '', 'test_download: #6 server failed to return temp file name'
+	# Subtest #7: Resume offset larger than size of data stored server-side
 
-	# conn.write('0' * 500)
-	# del conn
-	
-	# conn = ServerConnection()
-	# assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
-	# login_admin(dbdata, conn)
+	conn.send_message({
+		'Action': 'DOWNLOAD',
+		'Data': {
+			'Path': f"/ {dbdata['admin_wid']} {testname}",
+			'Offset': '2500'
+		}
+	})
 
-	# # Subtest #7: Resume offset larger than size of data stored server-side
-
-	# conn.send_message({
-	# 	'Action': 'UPLOAD',
-	# 	'Data': {
-	# 		'Size': str(1000),
-	# 		'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-	# 		'Path': '/ ' + dbdata['admin_wid'],
-	# 		'TempName': tempFileName,
-	# 		'Offset': '2000'
-	# 	}
-	# })
-
-	# response = conn.read_response(server_response)
-	# assert response['Code'] == 400, 'test_download: #7 failed to handle offset > file size'
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, 'test_download: #4 failed to handle offset > file size'
 
 
-	# # Subtest #8: Resume interrupted transfer - exact match
+	# Subtest #5: Resume interrupted transfer - exact match
 
-	# conn.send_message({
-	# 	'Action': 'UPLOAD',
-	# 	'Data': {
-	# 		'Size': str(1000),
-	# 		'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-	# 		'Path': '/ ' + dbdata['admin_wid'],
-	# 		'TempName': tempFileName,
-	# 		'Offset': '500'
-	# 	}
-	# })
+	conn.send_message({
+		'Action': 'DOWNLOAD',
+		'Data': {
+			'Path': f"/ {dbdata['admin_wid']} {testname}",
+			'Offset': '500'
+		}
+	})
 
-	# response = conn.read_response(server_response)
-	# assert response['Code'] == 100, 'test_download: #8 failed to proceed to file upload'
+	response = conn.read_response(server_response)
+	assert response['Code'] == 100, 'test_download: #3 failed to proceed to file download'
+	assert 'Size' in response['Data'] and response['Data']['Size'] == '1000', \
+		'test_download: #5 server failed to respond with file size'
 
-	# conn.write('0' * 500)
+	conn.send_message({
+		'Action': 'DOWNLOAD',
+		'Data': {
+			'Path': f"/ {dbdata['admin_wid']} {testname}",
+			'Offset': '500',
+			'Size': '1000'
+		}
+	})
 
-	# response = conn.read_response(server_response)
-	# assert response['Code'] == 200, 'test_download: #8 failed to resume with exact offset match'
+	rawdata = conn.read()
+	assert len(rawdata) == 500, 'test_download: #5 resumed data had wrong length'
 
-	# # Set up one last interrupted transfer
+	assert blake2hash((('0' * 500) +  rawdata).encode()) == \
+		'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp', \
+		'test_download: #8 resumed file hash failure'
 
-	# conn.send_message({
-	# 	'Action': 'UPLOAD',
-	# 	'Data': {
-	# 		'Size': str(1000),
-	# 		'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-	# 		'Path': '/ ' + dbdata['admin_wid']
-	# 	}
-	# })
 
-	# response = conn.read_response(server_response)
-	# tempFileName = response['Data']['TempName']
-	# assert response['Code'] == 100, 'test_download: #6 failed to proceed to file upload'
-	# assert tempFileName != '', 'test_download: #6 server failed to return temp file name'
-
-	# conn.write('0' * 500)
-	# del conn
-	
-	# conn = ServerConnection()
-	# assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
-	# login_admin(dbdata, conn)
-
-	# # Subtest #9: Overlapping resume
+	# # Subtest #6: Overlapping resume
 
 	# conn.send_message({
 	# 	'Action': 'UPLOAD',
