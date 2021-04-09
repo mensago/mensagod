@@ -335,28 +335,6 @@ def test_download():
 		'test_download: #8 resumed file hash failure'
 
 
-	# # Subtest #6: Overlapping resume
-
-	# conn.send_message({
-	# 	'Action': 'UPLOAD',
-	# 	'Data': {
-	# 		'Size': str(1000),
-	# 		'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-	# 		'Path': '/ ' + dbdata['admin_wid'],
-	# 		'TempName': tempFileName,
-	# 		'Offset': '400'
-	# 	}
-	# })
-
-	# response = conn.read_response(server_response)
-	# assert response['Code'] == 100, 'test_download: #9 failed to proceed to file upload'
-
-	# conn.write('0' * 600)
-
-	# response = conn.read_response(server_response)
-	# assert response['Code'] == 200, 'test_download: #9 failed to resume with overlapping offset'
-
-
 def test_getquotainfo():
 	'''This tests the command GETQUOTAINFO, which gets both the quota for the workspace and the 
 	disk usage'''
