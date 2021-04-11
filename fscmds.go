@@ -214,12 +214,11 @@ func commandDownload(session *sessionState) {
 		return
 	}
 
-	handle, err := fsp.OpenFile(session.Message.Data["Path"])
+	_, err = session.SendFileData(session.Message.Data["Path"], resumeOffset)
 	if err != nil {
 		handleFSError(session, err)
 		return
 	}
-	session.SendFileData(handle, resumeOffset)
 }
 
 func commandExists(session *sessionState) {
