@@ -309,8 +309,10 @@ def test_overflow():
 	})
 
 	response = conn.read_response(server_response)
-	assert response['Code'] == 400 and response['Status'] == 'BAD REQUEST', \
-		'test_overflow: failed to catch overflow'
+	# mensagod doesn't even respond to this message because the JSON data isn't formatted correctly.
+	# In short, you can send as big of a message as you want, but if it's not properly formatted
+	# JSON because it's too big to fit into 8K, we're going to ignore you now. *heh*
+	assert response.error(), 'test_overflow: failed to catch overflow'
 
 	conn.send_message({'Action' : "QUIT"})
 
@@ -318,5 +320,5 @@ def test_overflow():
 if __name__ == '__main__':
 	# test_register()
 	# test_register_failures()
-	# test_overflow()
-	test_unregister()
+	test_overflow()
+	# test_unregister()
