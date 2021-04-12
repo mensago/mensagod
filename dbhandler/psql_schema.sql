@@ -58,6 +58,8 @@ CREATE TABLE quotas(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, usage BIGIN
 -- 3: MOVE. An item has been moved. update_data contains two paths, the source and the destination.
 --    The source path contains the directory path, and in the case of a file, the file name. The 
 --    destination contains only a folder path.
+-- 4: ROTATE. Keys have been rotated. update_data contains the path to the encrypted key storage
+--    package.
 
 CREATE TABLE updates(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, update_type INTEGER,
 	update_data VARCHAR(2048));
