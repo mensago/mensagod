@@ -12,7 +12,6 @@ import (
 
 	"github.com/darkwyrm/mensagod/config"
 	"github.com/darkwyrm/mensagod/fshandler"
-	"github.com/google/uuid"
 )
 
 // setupTest initializes the global config and resets the database
@@ -91,7 +90,7 @@ func generateRandomFile(dir string, size int) (string, error) {
 		return "", err
 	}
 
-	filedata := make([]byte, size, size)
+	filedata := make([]byte, size)
 	for j := range filedata {
 		filedata[j] = 48
 	}
@@ -131,35 +130,6 @@ func makeTestFiles(dir string, count int) error {
 		time.Sleep(time.Millisecond * 500)
 	}
 	return nil
-}
-
-// MakeTestDirectories creates a number of randomly-named directories and returns their names
-func makeTestDirectories(path string, count int) ([]string, error) {
-	if count > 50 || count < 1 {
-		return nil, errors.New("Count out of range")
-	}
-
-	var anpath fshandler.LocalAnPath
-	err := anpath.Set(path)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = os.Stat(anpath.ProviderPath())
-	if err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
-
-	names := make([]string, count)
-	for i := 0; i < count; i++ {
-		dirname := uuid.New().String()
-		dirpath := filepath.Join(anpath.ProviderPath(), dirname)
-		err := os.Mkdir(dirpath, 0777)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return names, nil
 }
 
 // ensureTestDirectory makes sure a specific test directory exists. The path is expected to be

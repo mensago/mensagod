@@ -3,7 +3,6 @@ package dbhandler
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"regexp"
@@ -25,7 +24,6 @@ import (
 
 var (
 	connected bool
-	serverLog *log.Logger
 	dbConn    *sql.DB
 )
 
@@ -352,7 +350,7 @@ func ResetPassword(wid string, passcode string, expires string) error {
 // 64 characters and store it in the database.
 func SetPassword(wid string, password string) error {
 	if len(password) > 128 {
-		return errors.New("Password string has a maximum 128 characters")
+		return errors.New("password string has a maximum 128 characters")
 	}
 	passHash := ezcrypt.HashPassword(password)
 	_, err := dbConn.Exec(`UPDATE workspaces SET password=$1 WHERE wid=$2`, passHash, wid)
@@ -476,7 +474,7 @@ func PreregWorkspace(wid string, uid string, domain string, wordList *diceware.W
 	wordcount int) (string, error) {
 
 	if len(wid) > 36 || len(uid) > 128 {
-		return "", errors.New("Bad parameter length")
+		return "", errors.New("bad parameter length")
 	}
 
 	if len(uid) > 0 {
@@ -502,9 +500,9 @@ func PreregWorkspace(wid string, uid string, domain string, wordList *diceware.W
 		}
 	}
 
-	regcode, err := diceware.RollWords(wordcount, "-", *wordList)
+	regcode, _ := diceware.RollWords(wordcount, "-", *wordList)
 
-	_, err = dbConn.Exec(`INSERT INTO prereg(wid, uid, domain, regcode) VALUES($1, $2, $3, $4)`,
+	_, err := dbConn.Exec(`INSERT INTO prereg(wid, uid, domain, regcode) VALUES($1, $2, $3, $4)`,
 		wid, uid, domain, regcode)
 
 	return regcode, err
@@ -922,7 +920,7 @@ func SetQuotaUsage(wid string, total uint64) error {
 
 // ValidateUUID just returns whether or not a string is a valid UUID.
 func ValidateUUID(uuid string) bool {
-	pattern := regexp.MustCompile("[\\da-fA-F]{8}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{4}-?[\\da-fA-F]{12}")
+	pattern := regexp.MustCompile(`[\da-fA-F]{8}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{12}`)
 	if len(uuid) != 36 && len(uuid) != 32 {
 		return false
 	}
