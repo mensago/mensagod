@@ -210,6 +210,7 @@ func (s *sessionState) SendFileData(path string, offset int64) (int64, error) {
 	if err != nil {
 		return -1, err
 	}
+	defer fsp.CloseFile(fileHandle)
 
 	if offset > 0 {
 		err := fsp.SeekFile(fileHandle, offset)
