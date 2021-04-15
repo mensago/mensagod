@@ -97,3 +97,22 @@ func GetSyncRecords(wid string, unixtime int64) ([]UpdateRecord, error) {
 
 	return out, nil
 }
+
+func CullOldSyncRecords(wid string, unixtime int64) error {
+	if !ValidateUUID(wid) {
+		return errors.New("bad workspace id")
+	}
+
+	if unixtime < 0 {
+		return errors.New("bad time")
+	}
+
+	// sqlStatement := `DELETE FROM updates
+	// WHERE unixtime - $1 > 0`
+	// _, err = dbConn.Exec(sqlStatement, failType, source, locktime)
+	// if err != nil {
+	// 	logging.Write("dbhandler.CheckLockout: couldn't remove lockout from db")
+	// 	return err
+	// }
+	return errors.New("unimplemented")
+}

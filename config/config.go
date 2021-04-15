@@ -93,6 +93,10 @@ func SetupConfig() diceware.Wordlist {
 	// Max message size in MiB. max_file_size takes precedence over this value
 	viper.SetDefault("global.max_message_size", 50)
 
+	// Max age of sync records in days. Any records older than the oldest device login timestamp
+	// minus this number of days are purged. Defaults to 1 week, which should be plenty.
+	viper.SetDefault("global.max_sync_age", 7)
+
 	// Diceware settings for registration code and password reset code generation
 	viper.SetDefault("security.diceware_wordlist", "eff_short_prefix")
 	viper.SetDefault("security.diceware_wordcount", 6)
