@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/darkwyrm/mensagod/logging"
+	"github.com/spf13/viper"
 )
 
 // Sync-related functions
@@ -107,12 +108,11 @@ func CullOldSyncRecords(wid string, unixtime int64) error {
 		return errors.New("bad time")
 	}
 
-	// sqlStatement := `DELETE FROM updates
-	// WHERE unixtime - $1 > 0`
-	// _, err = dbConn.Exec(sqlStatement, failType, source, locktime)
-	// if err != nil {
-	// 	logging.Write("dbhandler.CheckLockout: couldn't remove lockout from db")
-	// 	return err
-	// }
-	return errors.New("unimplemented")
+	threshold := unixtime - (viper.GetInt64("global.max_sync_age") * 86400)
+	_, err := dbConn.Exec(`DELETE FROM updates WHERE unixtime - $1 > 0`, threshold)
+	if err != nil {
+		logging.Write("dbhandler.CullOldSyncRecords: failed to cull old records")
+		return err
+	}
+	return nil
 }
