@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/dbhandler"
@@ -97,6 +98,12 @@ func commandCopy(session *sessionState) {
 		return
 	}
 
+	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
+		Type: dbhandler.UpdateAdd,
+		Data: session.Message.Data["DestDir"] + " " + newName,
+		Time: time.Now().UTC().Unix(),
+	})
+
 	response := NewServerResponse(200, "OK")
 	response.Data["NewName"] = newName
 	session.SendResponse(*response)
@@ -122,6 +129,11 @@ func commandDelete(session *sessionState) {
 		return
 	}
 
+	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
+		Type: dbhandler.UpdateDelete,
+		Data: session.Message.Data["Path"],
+		Time: time.Now().UTC().Unix(),
+	})
 	session.SendStringResponse(200, "OK", "")
 }
 
@@ -417,6 +429,11 @@ func commandMkDir(session *sessionState) {
 		return
 	}
 
+	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
+		Type: dbhandler.UpdateAdd,
+		Data: session.Message.Data["Path"],
+		Time: time.Now().UTC().Unix(),
+	})
 	session.SendStringResponse(200, "OK", "")
 }
 
@@ -461,6 +478,11 @@ func commandMove(session *sessionState) {
 		return
 	}
 
+	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
+		Type: dbhandler.UpdateMove,
+		Data: session.Message.Data["SourceFile"] + " " + session.Message.Data["DestDir"],
+		Time: time.Now().UTC().Unix(),
+	})
 	session.SendStringResponse(200, "OK", "")
 }
 
@@ -507,6 +529,11 @@ func commandRmDir(session *sessionState) {
 	}
 	dbhandler.ModifyQuotaUsage(session.WID, int64(usage)*-1)
 
+	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
+		Type: dbhandler.UpdateDelete,
+		Data: session.Message.Data["Path"],
+		Time: time.Now().UTC().Unix(),
+	})
 	session.SendStringResponse(200, "OK", "")
 }
 
@@ -732,6 +759,11 @@ func commandUpload(session *sessionState) {
 	}
 
 	dbhandler.ModifyQuotaUsage(session.WID, fileSize)
+	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
+		Type: dbhandler.UpdateAdd,
+		Data: session.Message.Data["Path"],
+		Time: time.Now().UTC().Unix(),
+	})
 
 	response = NewServerResponse(200, "OK")
 	response.Data["FileName"] = realName
