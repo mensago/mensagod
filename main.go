@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -335,6 +336,8 @@ func processCommand(session *sessionState) {
 		commandExists(session)
 	case "GETQUOTAINFO":
 		commandGetQuotaInfo(session)
+	case "GETUPDATES":
+		commandGetUpdates(session)
 	case "GETWID":
 		commandGetWID(session)
 	case "ISCURRENT":
@@ -393,6 +396,33 @@ func commandCancel(session *sessionState) {
 		session.LoginState = loginNoSession
 	}
 	session.SendStringResponse(200, "OK", "")
+}
+
+func commandGetUpdates(session *sessionState) {
+	// Command syntax:
+	// GETUPDATES(Time)
+
+	if !session.Message.HasField("Time") {
+		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	unixtime, err := strconv.ParseInt(session.Message.Data["Time"], 10, 64)
+	if err != nil {
+		session.SendStringResponse(400, "BAD REQUEST", "Bad time value")
+		return
+	}
+
+	records, err := dbhandler.GetSyncRecords(session.WID, unixtime)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+
+	// The code is set to return a maximum of 75 records.
+
+	fmt.Printf("Record count: %d", len(records))
+	session.SendStringResponse(301, "NOT IMPLEMENTED", "Not yet implemented. Sorry!")
 }
 
 func commandSetStatus(session *sessionState) {
