@@ -440,6 +440,14 @@ if rows[0][0] is False:
 				"purpose VARCHAR(8) NOT NULL, fingerprint VARCHAR(96) NOT NULL);")
 
 
+cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
+			"n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'updates' "
+			"AND c.relkind = 'r');")
+rows = cur.fetchall()
+if rows[0][0] is False:
+	cur.execute("CREATE TABLE updates(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, "
+				"update_type INTEGER, update_data VARCHAR(2048), unixtime BIGINT);")
+
 # create the org's keys and put them in the table
 
 ekey = dict()
