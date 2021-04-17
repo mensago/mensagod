@@ -30,10 +30,9 @@ var gDiceWordList diceware.Wordlist
 // Types
 // -------------------------------------------------------------------------------------------
 
-// MaxCommandLength is the maximum number of bytes an Mensago command is permitted to be, including
-// end-of-line terminator. Note that bulk transfers are not subject to this restriction -- just the
-// initial command.
-const MaxCommandLength = 1024
+// MaxCommandLength is the maximum number of bytes an Mensago command is permitted to be. Note that
+// bulk transfers are not subject to this restriction -- just the initial command.
+const MaxCommandLength = 8192
 
 type loginStatus int
 
@@ -419,10 +418,10 @@ func commandGetUpdates(session *sessionState) {
 		return
 	}
 
-	// The code is set to return a maximum of 75 records.
-
-	fmt.Printf("Record count: %d", len(records))
-	session.SendStringResponse(301, "NOT IMPLEMENTED", "Not yet implemented. Sorry!")
+	// The code is set to return a maximum of 75 records. It's still very easily possible that
+	// the response could be larger than 8K, so we need to put this thing together very carefully
+	responseString := createUpdateResponse(&records)
+	session.WriteClient(responseString)
 }
 
 func commandSetStatus(session *sessionState) {
@@ -478,6 +477,41 @@ func commandSetStatus(session *sessionState) {
 	}
 
 	session.SendStringResponse(200, "OK", "")
+}
+
+// createUpdateResponse takes a list of UpdateRecords and returns a ServerResponse which is smaller
+// than the maximum response size of 8K. Great care must be taken here because the size of a
+// Mensago path can vary greatly in size -- a workspace-level path is 38 bytes without any file
+// name appended to it. These things add up quickly.
+func createUpdateResponse(records *[]dbhandler.UpdateRecord) string {
+
+	lookupTable := map[dbhandler.UpdateType]string{
+		dbhandler.UpdateAdd:    "CREATE",
+		dbhandler.UpdateDelete: "DELETE",
+		dbhandler.UpdateMove:   "MOVE",
+		dbhandler.UpdateRotate: "ROTATE",
+	}
+
+	out := []string{`{"Code":200,"Data":{"Updates":[`}
+	responseSize := 34
+	for i, record := range *records {
+
+		recordString := fmt.Sprintf(`{"Type":"%s","Path":"%s","Time":"%d"},`,
+			lookupTable[record.Type], record.Data, record.Time)
+
+		if responseSize+len(recordString)+1 > MaxCommandLength {
+			break
+		}
+		responseSize += len(recordString)
+		if i > 1 {
+			out = append(out, ","+recordString)
+			responseSize++
+		} else {
+			out = append(out, recordString)
+		}
+	}
+	out = append(out, "]}}")
+	return strings.Join(out, "")
 }
 
 // logFailure is for logging the different types of client failures which can potentially
