@@ -93,7 +93,7 @@ def setup_updates(dbconn, dbdata: dict) -> dict:
 	
 	files = {}
 	files['new'] = []
-	for i in range(5):
+	for i in range(100):
 		status = make_test_file(dirs['new'])
 		assert not status.error(), f"setup_updates: failed to create test file: {status.info}"
 		files['new'].append(status['name'])
@@ -101,7 +101,7 @@ def setup_updates(dbconn, dbdata: dict) -> dict:
 		path = f"/ {dbdata['admin_wid']} new {status['name']}"
 
 		# we make the timestamp for each of the new files about a day apart
-		filetime = now - ((5-i) * 86400)
+		filetime = now - ((100-i) * 86400)
 
 		cur.execute("INSERT INTO updates(wid,update_type,update_data,unixtime) VALUES("
 			f"'{dbdata['admin_wid']}',1,'{path}','{filetime}')")
@@ -135,7 +135,32 @@ def test_get_updates():
 	regcode_admin(dbdata, conn)
 	login_admin(dbdata, conn)
 
-	setup_updates(dbconn, dbdata)
+	entries = setup_updates(dbconn, dbdata)
+	now = int(time.time())
+
+	# Subtest #1: missing parameter
+	conn.send_message({'Action': 'GETUPDATES','Data': {}})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, 'test_get_updates: #1 failed to handle missing parameter'
+
+	# Subtest #2: get updates from the last 5 days
+	conn.send_message({
+		'Action': 'GETUPDATES',
+		'Data': { 'Time': str(now - (86400 * 5)) }
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_get_updates: #2 failed to get updates'
+	assert len(response['Data']['Updates']) == 4, "failed to get updates from the last 5 days"
+	
+	# Subtest #3: test out handling more updates than will fit into 1 response
+	conn.send_message({
+		'Action': 'GETUPDATES',
+		'Data': { 'Time': 0 }
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_get_updates: #3 failed to get updates'
 
 	conn.disconnect()
 

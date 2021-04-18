@@ -492,18 +492,18 @@ func createUpdateResponse(records *[]dbhandler.UpdateRecord) string {
 		dbhandler.UpdateRotate: "ROTATE",
 	}
 
-	out := []string{`{"Code":200,"Data":{"Updates":[`}
-	responseSize := 34
+	out := []string{`{"Code":200,"Status":"OK","Info":"","Data":{"Updates":[`}
+	responseSize := 55
 	for i, record := range *records {
 
-		recordString := fmt.Sprintf(`{"Type":"%s","Path":"%s","Time":"%d"},`,
+		recordString := fmt.Sprintf(`{"Type":"%s","Path":"%s","Time":"%d"}`,
 			lookupTable[record.Type], record.Data, record.Time)
 
 		if responseSize+len(recordString)+1 > MaxCommandLength {
 			break
 		}
 		responseSize += len(recordString)
-		if i > 1 {
+		if i > 0 {
 			out = append(out, ","+recordString)
 			responseSize++
 		} else {
