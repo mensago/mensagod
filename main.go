@@ -302,11 +302,16 @@ func connectionWorker(conn net.Conn) {
 		"\"Status\":\"OK\"}\r\n")
 	for {
 		request, err := session.GetRequest()
-		if err == ErrJSONUnmarshal {
-			session.SendStringResponse(400, "BAD REQUEST", "JSON error")
-			conn.SetReadDeadline(time.Now().Add(time.Minute * 30))
-			conn.SetWriteDeadline(time.Now().Add(time.Minute * 10))
-			continue
+		if err != nil {
+			if err == ErrJSONUnmarshal {
+				session.SendStringResponse(400, "BAD REQUEST", "JSON error")
+				conn.SetReadDeadline(time.Now().Add(time.Minute * 30))
+				conn.SetWriteDeadline(time.Now().Add(time.Minute * 10))
+				continue
+			}
+			if err.Error() != "EOF" {
+				break
+			}
 		}
 		session.Message = request
 
