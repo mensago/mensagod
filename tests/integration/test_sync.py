@@ -135,7 +135,7 @@ def test_get_updates():
 	regcode_admin(dbdata, conn)
 	login_admin(dbdata, conn)
 
-	entries = setup_updates(dbconn, dbdata)
+	setup_updates(dbconn, dbdata)
 	now = int(time.time())
 
 	# Subtest #1: missing parameter
@@ -156,11 +156,12 @@ def test_get_updates():
 	# Subtest #3: test out handling more updates than will fit into 1 response
 	conn.send_message({
 		'Action': 'GETUPDATES',
-		'Data': { 'Time': 0 }
+		'Data': { 'Time': '0' }
 	})
 
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_get_updates: #3 failed to get updates'
+	assert len(response['Data']['Updates']) < 75, "test_get_updates: #3 returned all possible updates"
 
 	conn.disconnect()
 
