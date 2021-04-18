@@ -26,6 +26,8 @@ var ServerLog *log.Logger
 // gDiceWordList is a copy of the word list for preregistration code generation
 var gDiceWordList diceware.Wordlist
 
+var ErrJSONUnmarshal = errors.New("unmarshalling failure")
+
 // -------------------------------------------------------------------------------------------
 // Types
 // -------------------------------------------------------------------------------------------
@@ -122,8 +124,11 @@ func (s *sessionState) GetRequest() (ClientRequest, error) {
 	}
 
 	err = json.Unmarshal(buffer[:bytesRead], &out)
+	if err != nil {
+		return out, ErrJSONUnmarshal
+	}
 
-	return out, err
+	return out, nil
 }
 
 // SendResponse sends a JSON response message to the client
@@ -297,8 +302,11 @@ func connectionWorker(conn net.Conn) {
 		"\"Status\":\"OK\"}\r\n")
 	for {
 		request, err := session.GetRequest()
-		if err != nil && err.Error() != "EOF" {
-			break
+		if err == ErrJSONUnmarshal {
+			session.SendStringResponse(400, "BAD REQUEST", "JSON error")
+			conn.SetReadDeadline(time.Now().Add(time.Minute * 30))
+			conn.SetWriteDeadline(time.Now().Add(time.Minute * 10))
+			continue
 		}
 		session.Message = request
 
