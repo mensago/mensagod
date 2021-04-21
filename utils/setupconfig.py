@@ -115,15 +115,15 @@ else:
 #	- required keycard fields
 
 config = dict()
-default_workspace_path = '/var/mensago'
+default_data_path = '/var/mensago'
 if server_platform == 'windows':
-	default_workspace_path = os.environ['PROGRAMDATA'] + '\\mensago'
+	default_data_path = os.environ['PROGRAMDATA'] + '\\mensago'
 
 
 # location of workspace data
-tempstr = input(f'Where should workspace data be stored? [{default_workspace_path}]: ')
+tempstr = input(f'Where should server-side user data be stored? [{default_data_path}]: ')
 if tempstr == '':
-	tempstr = default_workspace_path
+	tempstr = default_data_path
 
 if not os.path.exists(tempstr):
 	choice = input(f"{tempstr} doesn't exist. Create it? [Y/n]: ")
@@ -139,7 +139,7 @@ if not os.path.exists(tempstr):
 			if choice == 'yes' or choice == 'y':
 				sys.exit(0)
 
-config['workspace_path'] = tempstr
+config['top_path'] = tempstr
 
 # registration type
 
@@ -612,7 +612,7 @@ if server_platform != 'windows':
 		create_user = True
 	
 	if create_user:
-		cmd = ['useradd', '-d', config['workspace_path'], '-M', '-g', config['server_group'],
+		cmd = ['useradd', '-d', config['top_path'], '-M', '-g', config['server_group'],
 			'--system', '-s', '/bin/false', config['server_user']]
 		
 		pipe = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -713,13 +713,13 @@ fhandle.write('''
 ''' + 'domain = "' + config['org_domain'] + '"' + os.linesep)
 
 fhandle.write('''
-# The location where workspace data is stored. The default for Windows is 
+# The location where user data is stored. The default for Windows is 
 # "C:\\ProgramData\\mensago", but for other platforms is "/var/mensago".
-# workspace_dir = "/var/mensago"
+# top_dir = "/var/mensago"
 ''')
 
-if config['workspace_path'] != default_workspace_path:
-	fhandle.write('workspace_dir = "' + config['workspace_path'] + '"' + os.linesep)
+if config['top_path'] != default_data_path:
+	fhandle.write('top_dir = "' + config['top_path'] + '"' + os.linesep)
 
 fhandle.write('''
 # The type of registration. 'public' is open to outside registration requests,

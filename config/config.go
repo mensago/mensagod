@@ -60,12 +60,14 @@ func SetupConfig() diceware.Wordlist {
 			programData = "C:\\ProgramData"
 		}
 
-		viper.SetDefault("global.workspace_dir", filepath.Join(programData, "mensago"))
+		viper.SetDefault("global.top_dir", filepath.Join(programData, "mensago"))
+		viper.SetDefault("global.workspace_dir", filepath.Join(programData, "mensago", "wsp"))
 		viper.Set("global.log_dir", filepath.Join(programData, "mensagod"))
 		viper.SetConfigName("serverconfig")
 		viper.AddConfigPath(filepath.Join(programData, "mensagod"))
 	default:
-		viper.SetDefault("global.workspace_dir", "/var/mensago/")
+		viper.SetDefault("global.top_dir", "/var/mensago")
+		viper.SetDefault("global.workspace_dir", "/var/mensago/wsp")
 		viper.Set("global.log_dir", "/var/log/mensagod/")
 		viper.SetConfigName("serverconfig")
 		viper.AddConfigPath("/etc/mensagod/")
