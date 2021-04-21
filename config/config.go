@@ -141,24 +141,20 @@ func SetupConfig() diceware.Wordlist {
 
 	logging.Init(logLocation, true)
 
-	_, err = os.Stat(viper.GetString("global.workspace_dir"))
-	if os.IsNotExist(err) {
-		err = os.Mkdir(viper.GetString("global.workspace_dir"), 0600)
-		if err != nil {
-			fmt.Printf("Unable to create workspace directory %s. Exiting. Error: %s",
-				viper.GetString("global.workspace_dir"), err)
-			os.Exit(1)
-		}
+	dirList := []string{
+		viper.GetString("global.top_dir"),
+		filepath.Join(viper.GetString("global.top_dir"), "out"),
+		filepath.Join(viper.GetString("global.top_dir"), "tmp"),
+		filepath.Join(viper.GetString("global.top_dir"), "wsp"),
 	}
-
-	tempDirPath := filepath.Join(viper.GetString("global.workspace_dir"), "tmp")
-	_, err = os.Stat(tempDirPath)
-	if os.IsNotExist(err) {
-		err = os.Mkdir(tempDirPath, 0600)
-		if err != nil {
-			fmt.Printf("Unable to create workspace temporary directory %s. Exiting. Error: %s",
-				tempDirPath, err)
-			os.Exit(1)
+	for _, dir := range dirList {
+		_, err = os.Stat(dir)
+		if os.IsNotExist(err) {
+			err = os.Mkdir(dir, 0600)
+			if err != nil {
+				fmt.Printf("Unable to create data directory %s. Exiting. Error: %s", dir, err)
+				os.Exit(1)
+			}
 		}
 	}
 
