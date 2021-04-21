@@ -631,7 +631,7 @@ func HashFile(path string, hash cs.CryptoString) (bool, error) {
 		return false, cs.ErrUnsupportedAlgorithm
 	}
 
-	workspaceRoot := viper.GetString("global.workspace_dir")
+	workspaceRoot := viper.GetString("global.top_dir")
 	pathParts := strings.Split(path, " ")
 	localPath := filepath.Join(workspaceRoot,
 		strings.Join(pathParts[1:], string(filepath.Separator)))
