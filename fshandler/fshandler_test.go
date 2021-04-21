@@ -719,7 +719,7 @@ func TestLocalFSHandler_MakeTempFile(t *testing.T) {
 			err.Error())
 	}
 
-	expectedPath := filepath.Join(viper.GetString("global.workspace_dir"), "tmp", wid, name)
+	expectedPath := filepath.Join(viper.GetString("global.top_dir"), "tmp", wid, name)
 	_, err = os.Stat(expectedPath)
 	if err != nil {
 		t.Fatalf("TestLocalFSHandler_MakeTempFile: failed to stat temp file: %s",
@@ -806,7 +806,7 @@ func TestLocalFSHandler_MoveFile(t *testing.T) {
 	tempHandle.Close()
 
 	// Rename the new temp file to match exactly to the name of the file from the previous subtest
-	topDir := viper.GetString("global.workspace_dir")
+	topDir := viper.GetString("global.top_dir")
 	os.Rename(filepath.Join(topDir, "tmp", wid, tempName),
 		filepath.Join(topDir, "tmp", wid, existingName))
 

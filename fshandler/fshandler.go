@@ -159,7 +159,7 @@ func (lfs *LocalFSHandler) DeleteFile(path string) error {
 
 // DeleteTempFile deletes the specified temporary file.
 func (lfs *LocalFSHandler) DeleteTempFile(wid string, name string) error {
-	tmppath := filepath.Join(viper.GetString("global.workspace_dir"), "tmp", wid, name)
+	tmppath := filepath.Join(viper.GetString("global.top_dir"), "tmp", wid, name)
 
 	_, err := os.Stat(tmppath)
 	if err != nil {
@@ -246,7 +246,7 @@ func (lfs *LocalFSHandler) InstallTempFile(wid string, name string, dest string)
 		return "", errors.New("bad tempfile name")
 	}
 
-	srcpath := filepath.Join(viper.GetString("global.workspace_dir"), "tmp", wid, name)
+	srcpath := filepath.Join(viper.GetString("global.top_dir"), "tmp", wid, name)
 
 	var destAnpath LocalAnPath
 	err := destAnpath.Set(dest)
@@ -397,7 +397,7 @@ func (lfs *LocalFSHandler) MakeTempFile(wid string) (*os.File, string, error) {
 		return nil, "", errors.New("bad workspace id")
 	}
 
-	tempDirPath := filepath.Join(viper.GetString("global.workspace_dir"), "tmp", wid)
+	tempDirPath := filepath.Join(viper.GetString("global.top_dir"), "tmp", wid)
 
 	stat, err := os.Stat(tempDirPath)
 	if err != nil {
@@ -515,7 +515,7 @@ func (lfs *LocalFSHandler) OpenTempFile(wid string, name string, offset int64) (
 		return nil, errors.New("bad workspace id")
 	}
 
-	tempFilePath := filepath.Join(filepath.Join(viper.GetString("global.workspace_dir"), "tmp", wid),
+	tempFilePath := filepath.Join(filepath.Join(viper.GetString("global.top_dir"), "tmp", wid),
 		name)
 
 	openFlags := os.O_RDWR

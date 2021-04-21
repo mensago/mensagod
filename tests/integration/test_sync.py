@@ -11,7 +11,7 @@ from pymensago.retval import RetVal, ExceptionThrown
 from pymensago.serverconn import ServerConnection
 
 from integration_setup import login_admin, regcode_admin, setup_test, init_server, \
-	reset_workspace_dir
+	reset_top_dir
 
 server_response = {
 	'title' : 'Mensago Server Response',
@@ -119,7 +119,7 @@ def test_get_updates():
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
-	reset_workspace_dir(dbdata)
+	reset_top_dir(dbdata)
 
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \

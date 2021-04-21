@@ -98,9 +98,11 @@ def load_server_config_file() -> dict:
 	serverconfig.setdefault('global', dict())
 
 	if platform.system() == 'Windows':
-		serverconfig['global'].setdefault('workspace_dir','C:\\ProgramData\\mensago')
+		serverconfig['global'].setdefault('top_dir','C:\\ProgramData\\mensago')
+		serverconfig['global'].setdefault('workspace_dir','C:\\ProgramData\\mensago\\wsp')
 	else:
-		serverconfig['global'].setdefault('workspace_dir','/var/mensago')
+		serverconfig['global'].setdefault('top_dir','/var/mensago')
+		serverconfig['global'].setdefault('workspace_dir','/var/mensago/wsp')
 	serverconfig['global'].setdefault('registration','private')
 	serverconfig['global'].setdefault('default_quota',0)
 
@@ -305,10 +307,10 @@ def validate_uuid(indata):
 	return True
 
 
-def reset_workspace_dir(config: dict):
+def reset_top_dir(config: dict):
 	'''Resets the system workspace storage directory to an empty skeleton'''
 
-	glob_list = glob(os.path.join(config['configfile']['global']['workspace_dir'],'*'))
+	glob_list = glob(os.path.join(config['configfile']['global']['top_dir'],'*'))
 	if not glob_list:
 		return
 	
@@ -324,7 +326,9 @@ def reset_workspace_dir(config: dict):
 			except:
 				assert False, f"Unable to delete file {glob_item}"
 	
-	os.mkdir(os.path.join(config['configfile']['global']['workspace_dir'],'tmp'))
+	os.mkdir(os.path.join(config['configfile']['global']['top_dir'],'out'))
+	os.mkdir(os.path.join(config['configfile']['global']['top_dir'],'tmp'))
+	os.mkdir(os.path.join(config['configfile']['global']['top_dir'],'wsp'))
 
 
 def regcode_admin(config, conn):

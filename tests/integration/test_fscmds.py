@@ -12,7 +12,7 @@ from pymensago.retval import RetVal, ExceptionThrown
 from pymensago.serverconn import ServerConnection
 
 from integration_setup import login_admin, regcode_admin, setup_test, init_server, init_user, \
-	init_user2, reset_workspace_dir
+	init_user2, reset_top_dir
 
 
 server_response = {
@@ -83,7 +83,7 @@ def test_copy():
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
-	reset_workspace_dir(dbdata)
+	reset_top_dir(dbdata)
 
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
@@ -214,7 +214,7 @@ def test_download():
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
-	reset_workspace_dir(dbdata)
+	reset_top_dir(dbdata)
 
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
@@ -345,7 +345,7 @@ def test_getquotainfo():
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
-	reset_workspace_dir(dbdata)
+	reset_top_dir(dbdata)
 
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
@@ -385,7 +385,7 @@ def test_list():
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
-	reset_workspace_dir(dbdata)
+	reset_top_dir(dbdata)
 
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
@@ -491,7 +491,7 @@ def test_listdirs():
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
-	reset_workspace_dir(dbdata)
+	reset_top_dir(dbdata)
 
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
@@ -581,7 +581,7 @@ def test_mkdir():
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
-	reset_workspace_dir(dbdata)
+	reset_top_dir(dbdata)
 
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
@@ -658,7 +658,7 @@ def test_move():
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
-	reset_workspace_dir(dbdata)
+	reset_top_dir(dbdata)
 
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
@@ -761,7 +761,7 @@ def test_rmdir():
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
-	reset_workspace_dir(dbdata)
+	reset_top_dir(dbdata)
 
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
@@ -864,7 +864,7 @@ def test_select():
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
-	reset_workspace_dir(dbdata)
+	reset_top_dir(dbdata)
 
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
@@ -1014,7 +1014,7 @@ def test_upload():
 	conn = ServerConnection()
 	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
 
-	reset_workspace_dir(dbdata)
+	reset_top_dir(dbdata)
 
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
