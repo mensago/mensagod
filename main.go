@@ -13,6 +13,7 @@ import (
 
 	"github.com/darkwyrm/mensagod/config"
 	"github.com/darkwyrm/mensagod/dbhandler"
+	"github.com/darkwyrm/mensagod/delivery"
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/everlastingbeta/diceware"
@@ -260,6 +261,7 @@ func (s *sessionState) SendFileData(path string, offset int64) (int64, error) {
 
 func main() {
 	gDiceWordList = config.SetupConfig()
+	delivery.Init()
 
 	dbhandler.Connect()
 	if !dbhandler.IsConnected() {
