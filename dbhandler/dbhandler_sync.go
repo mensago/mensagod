@@ -111,7 +111,7 @@ func CullOldSyncRecords(wid string, unixtime int64) error {
 		return errors.New("bad time")
 	}
 
-	threshold := unixtime - (viper.GetInt64("global.max_sync_age") * 86400)
+	threshold := unixtime - (viper.GetInt64("performance.max_sync_age") * 86400)
 	_, err := dbConn.Exec(`DELETE FROM updates WHERE unixtime - $1 > 0`, threshold)
 	if err != nil {
 		logging.Write("dbhandler.CullOldSyncRecords: failed to cull old records")

@@ -750,14 +750,6 @@ if config['quota_size'] != '0':
 	fhandle.write('default_quota = ' + config['quota_size'] + os.linesep)
 
 fhandle.write('''
-# The maximum size in MiB of a file stored on the server. Note that this is the size of the actual 
-# data stored on disk. Encoding adds 25%% overhead.
-# max_file_size = 50
-#
-# The maximum size in MiB of a message. The value of max_file_size takes precedence if this value
-# is larger than the value of max_file_size.
-# max_message_size = 50
-#
 # Location for log files. This directory requires full permissions for the user mensagod runs as.
 # On Windows, this defaults to the same location as the server config file, i.e. 
 # C:\\ProgramData\\mensagod
@@ -769,6 +761,37 @@ fhandle.write('''
 # The interface and port to listen on
 # listen_ip = "127.0.0.1"
 # port = "2001"
+
+[performance]
+# Items in this section are for performance tuning. They are set to defaults
+# which should work for most environments. Care should be used when changing
+# any of these values.
+# 
+# The maximum size in MiB of a file stored on the server. Note that this is 
+# the size of the actual data stored on disk. Encoding adds 25%% overhead.
+# max_file_size = 50
+#
+# The maximum size in MiB of a message. The value of max_file_size takes 
+# precedence if this value is larger than the value of max_file_size.
+# max_message_size = 50
+#
+# Max age of sync records in days. Any records older than the oldest device 
+# login timestamp minus this number of days are purged. Defaults to 1 week,
+# which should be plenty.
+#
+# performance.max_sync_age = 7
+#
+# The maximum number of worker threads created handle delivering messages,
+# both internally and externally
+#
+# performance.max_delivery_threads = 100
+#
+# The maximum number of client worker threads. Be careful in changing this
+# number -- if it is too low, client devices many not be able to connect
+# and messages may not be delivered from outside the organization, and if it
+# is set too high, client demand may overwhelm the server.
+#
+# performance.max_client_threads = 10000
 
 [security]
 # The Diceware passphrase method is used to generate preregistration and password reset codes. 
