@@ -799,6 +799,28 @@ func GetQuotaInfo(wid string) (uint64, uint64, error) {
 	return outUsage, outQuota, SetQuotaUsage(wid, outUsage)
 }
 
+// IsDomainLocal checks to see if the domain passed to it is managed by this server
+func IsDomainLocal(domain string) (bool, error) {
+	pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
+	if !pattern.MatchString(domain) {
+		return false, errors.New("bad domain")
+	}
+
+	row := dbConn.QueryRow(`SELECT domain FROM workspaces WHERE domain=$1`, domain)
+	var tempString string
+	err := row.Scan(&tempString)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// No entry in the table
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
+}
+
 // ModifyQuotaUsage modifies the disk usage by a relative amount, specified in bytes. Note that if
 func ModifyQuotaUsage(wid string, amount int64) (uint64, error) {
 	row := dbConn.QueryRow(`SELECT usage FROM quotas WHERE wid=$1`, wid)
