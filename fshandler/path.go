@@ -89,6 +89,12 @@ func (ap *LocalAnPath) MensagoPath() string {
 	return ap.Path
 }
 
+func ConvertToLocal(path string) string {
+	workspaceRoot := viper.GetString("global.workspace_dir")
+	pathParts := strings.Split(path, " ")
+	return filepath.Join(workspaceRoot, strings.Join(pathParts[1:], string(filepath.Separator)))
+}
+
 // ValidateMensagoPath confirms the validity of an Mensago path
 func ValidateMensagoPath(path string) bool {
 
