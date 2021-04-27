@@ -94,26 +94,10 @@ func deliveryWorker() {
 		// - Check if workspace has any active client connections. If it does, send an update
 		//		message to the client workers that there is a new message
 
-		// External Delivery
-		// - Connect to external server using SERVERID. TL;DR: sending and receiving servers get
-		//		PEK from each other's DNS record and use random encrypted challenges to mutually
-		//		authenticate.
+		// External Delivery is not needed for demo completeness. Instead we will delete the
+		// message and push a bounce message into the sender's workspace for now.
 
-		//		- Sending server gets receiving server's PEK from its DNS record
-		//		- Sender generates receiver challenge and encrypts it with receiver's PEK
-		//		- Sender issues SERVERID command with receiver's encrypted challenge and desired
-		//			recipient domain
-		// 		- Receiver gets PEK from sending server's DNS record
-		//		- Receiver generates sender challenge and encrypts it with sender's PEK
-		//		- Receiver descrypts its own challenge and attaches it and the sender's encrypted
-		//			challenge to the response
-		//		- Sender confirms the receiver's successful response
-		//		- Sender decrypts the receiver's challenge, attaches the decrypted response, and
-		//			sends it to the receiver
-		//		- Receiver confirm's sender's successful decryption
-		//		- Receiver notifies sender is authenticated. Sender may proceed.
-		// - Sender issues DELIVER command and uploads message
-		// - Receiver decrypts sender information and returns appropriate delivery response code
+		// TODO: implement External Delivery
 	}
 
 	workerLock.Lock()
