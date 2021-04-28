@@ -2,8 +2,13 @@ package delivery
 
 import (
 	"container/list"
+	"errors"
+	"os"
 	"sync"
 
+	"github.com/darkwyrm/mensagod/dbhandler"
+	"github.com/darkwyrm/mensagod/fshandler"
+	"github.com/darkwyrm/mensagod/logging"
 	"github.com/spf13/viper"
 )
 
@@ -80,19 +85,27 @@ func deliveryWorker() {
 			break
 		}
 
-		// Delivery Handling
-		// - get an item from the queue
-		// - check the path and ensure file exists. The internal data structure will have been
-		//		verified when the file was uploaded for delivery
-		// - check the destination domain. Follow the appropriate protocol below based on its
-		//		destination
+		localPath := fshandler.ConvertToLocal(msgInfo.Path)
+		_, err := os.Stat(localPath)
+		if err != nil {
+			continue
+		}
 
-		// Internal Delivery
-		// - Load file and decrypt recipient information
-		// - Get workspace ID from recipient information and move file to the /new directory for
-		//		the recipient
-		// - Check if workspace has any active client connections. If it does, send an update
-		//		message to the client workers that there is a new message
+		// The Recipient field will contain a domain, not a full address
+		isLocal, err := dbhandler.IsDomainLocal(msgInfo.Recipient)
+		if err != nil {
+			logging.Writef("Error getting domain %s: %s", msgInfo.Recipient, err)
+			continue
+		}
+
+		if isLocal {
+			// TODO: Local Delivery
+			// - Load file and decrypt recipient information
+			// - Get workspace ID from recipient information and move file to the /new directory for
+			//		the recipient
+			// - Check if workspace has any active client connections. If it does, send an update
+			//		message to the client workers that there is a new message
+		}
 
 		// External Delivery is not needed for demo completeness. Instead we will delete the
 		// message and push a bounce message into the sender's workspace for now.
@@ -104,4 +117,11 @@ func deliveryWorker() {
 	workerCount--
 	workerGroup.Done()
 	workerLock.Unlock()
+}
+
+// DecryptRecipient assumes that the file passed to it has a recipient section which can be
+// decrypted by the servers Primary Encryption Key. This implies that the server is the
+// destination for the message, so it returns the workspace ID of the recipient.
+func DecryptRecipient(localPath string) (string, error) {
+	return "", errors.New("unimplemented")
 }
