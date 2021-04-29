@@ -2,7 +2,9 @@ package delivery
 
 import (
 	"container/list"
+	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"os"
 	"sync"
 
@@ -26,6 +28,15 @@ var maxWorkers int
 var workerLock sync.Mutex
 var quitFlag bool
 var quitLock sync.RWMutex
+
+type Message struct {
+	Type       string
+	Version    string
+	Recipients string
+	Sender     string
+	Date       string
+	MessageID  string
+}
 
 func Init() {
 	messageQueue = list.New()
@@ -122,6 +133,17 @@ func deliveryWorker() {
 // DecryptRecipient assumes that the file passed to it has a recipient section which can be
 // decrypted by the servers Primary Encryption Key. This implies that the server is the
 // destination for the message, so it returns the workspace ID of the recipient.
-func DecryptRecipient(localPath string) (string, error) {
+func DecryptRecipientHeader(localPath string) (string, error) {
+	rawData, err := ioutil.ReadFile(localPath)
+	if err != nil {
+		return "", err
+	}
+
+	var out Message
+	err = json.Unmarshal(rawData, &out)
+	if err != nil {
+		return "", errors.New("unmarshalling failure")
+	}
+
 	return "", errors.New("unimplemented")
 }
