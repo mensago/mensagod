@@ -29,7 +29,7 @@ var workerLock sync.Mutex
 var quitFlag bool
 var quitLock sync.RWMutex
 
-type Envelope struct {
+type SealedEnvelope struct {
 	Type       string
 	Version    string
 	Recipient  string
@@ -39,7 +39,17 @@ type Envelope struct {
 	Payload    string
 }
 
-type Payload struct {
+type Envelope struct {
+	Type       string
+	Version    string
+	Recipient  string
+	Sender     string
+	Date       string
+	PayloadKey string
+	Payload    MsgBody
+}
+
+type MsgBody struct {
 	From        string
 	To          string
 	Date        string
@@ -156,7 +166,7 @@ func DecryptRecipientHeader(localPath string) (string, error) {
 		return "", err
 	}
 
-	var out Envelope
+	var out SealedEnvelope
 	err = json.Unmarshal(rawData, &out)
 	if err != nil {
 		return "", errors.New("unmarshalling failure")
