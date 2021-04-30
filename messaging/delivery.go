@@ -16,12 +16,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-type messageInfo struct {
-	Sender    string
-	Recipient string
-	Path      string
-}
-
 var messageQueue *list.List
 var queueLock sync.Mutex
 var workerCount int
@@ -31,64 +25,18 @@ var workerLock sync.Mutex
 var quitFlag bool
 var quitLock sync.RWMutex
 
-type SealedEnvelope struct {
-	Type       string
-	Version    string
-	Recipient  string
-	Sender     string
-	Date       string
-	PayloadKey string
-	Payload    string
+type messageInfo struct {
+	Sender    string
+	Recipient string
+	Path      string
 }
 
-type Envelope struct {
-	Type       string
-	Version    string
-	Recipient  RecipientInfo
-	Sender     SenderInfo
-	Date       string
-	PayloadKey string
-	Payload    MsgBody
-}
-
-type RecipientInfo struct {
-	// To contains the full recipient address
-	To string
-
-	// Sender contains only the domain of origin
-	Sender string
-}
-
-type SenderInfo struct {
-	// From contains the full sender address
-	From string
-
-	// Receiver contains only the destination's domain
-	Receiver string
-}
-
-type MsgBody struct {
-	From        string
-	To          string
-	Date        string
-	ThreadID    string
-	Subject     string
-	Body        string
-	Attachments []Attachment
-}
-
-type Attachment struct {
-	Name string
-	Type string
-	Data string
-}
-
-func Init() {
+func InitDelivery() {
 	messageQueue = list.New()
 	maxWorkers = viper.GetInt("performance.max_delivery_threads")
 }
 
-func Shutdown() {
+func ShutdownDelivery() {
 	quitLock.Lock()
 	quitFlag = true
 	quitLock.Unlock()
@@ -231,4 +179,8 @@ func DecryptRecipientHeader(localPath string) (string, error) {
 	}
 
 	return out.To, nil
+}
+
+func NotifyClients(wid string) {
+	// TODO: Implement
 }

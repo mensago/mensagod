@@ -261,7 +261,7 @@ func (s *sessionState) SendFileData(path string, offset int64) (int64, error) {
 
 func main() {
 	gDiceWordList = config.SetupConfig()
-	messaging.Init()
+	messaging.InitDelivery()
 
 	dbhandler.Connect()
 	if !dbhandler.IsConnected() {
