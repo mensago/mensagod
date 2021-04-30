@@ -42,11 +42,27 @@ type SealedEnvelope struct {
 type Envelope struct {
 	Type       string
 	Version    string
-	Recipient  string
-	Sender     string
+	Recipient  RecipientInfo
+	Sender     SenderInfo
 	Date       string
 	PayloadKey string
 	Payload    MsgBody
+}
+
+type RecipientInfo struct {
+	// To contains the full recipient address
+	To string
+
+	// Sender contains only the domain of origin
+	Sender string
+}
+
+type SenderInfo struct {
+	// From contains the full sender address
+	From string
+
+	// Receiver contains only the destination's domain
+	Receiver string
 }
 
 type MsgBody struct {
