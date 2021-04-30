@@ -1,4 +1,4 @@
-package delivery
+package messaging
 
 import (
 	"container/list"
