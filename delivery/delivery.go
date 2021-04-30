@@ -6,6 +6,8 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/darkwyrm/mensagod/dbhandler"
@@ -142,23 +144,47 @@ func deliveryWorker() {
 		localPath := fshandler.ConvertToLocal(msgInfo.Path)
 		_, err := os.Stat(localPath)
 		if err != nil {
+			// TODO: Bounce (internal server error)
 			continue
 		}
 
 		// The Recipient field will contain a domain, not a full address
 		isLocal, err := dbhandler.IsDomainLocal(msgInfo.Recipient)
 		if err != nil {
-			logging.Writef("Error getting domain %s: %s", msgInfo.Recipient, err)
+			// TODO: Bounce (internal server error)
 			continue
 		}
 
 		if isLocal {
-			// TODO: Local Delivery
-			// - Load file and decrypt recipient information
-			// - Get workspace ID from recipient information and move file to the /new directory for
-			//		the recipient
-			// - Check if workspace has any active client connections. If it does, send an update
-			//		message to the client workers that there is a new message
+			recipient, err := DecryptRecipientHeader(msgInfo.Path)
+			if err != nil {
+				// TODO: Bounce (unreadable recipient header for local delivery)
+				continue
+			}
+
+			parts := strings.SplitN(recipient, "/", 1)
+			if !dbhandler.ValidateUUID(parts[0]) {
+				// TODO: Bounce (bad recipient workspace)
+				continue
+			}
+
+			destNew := fshandler.ConvertToLocal("/ " + parts[0] + " new")
+			_, err = os.Stat(destNew)
+			if err != nil {
+				err = os.MkdirAll(destNew, 0600)
+				if err != nil {
+					logging.Writef("Unable to create directory %s: %s", destNew, err)
+					continue
+				}
+			}
+
+			err = os.Rename(localPath, filepath.Join(destNew, filepath.Base(localPath)))
+			if err != nil {
+				logging.Writef("Unable to move file %s to %s: %s", localPath, destNew, err)
+				continue
+			}
+
+			// TODO: Notify client connections
 		}
 
 		// External Delivery is not needed for demo completeness. Instead we will delete the
@@ -182,11 +208,27 @@ func DecryptRecipientHeader(localPath string) (string, error) {
 		return "", err
 	}
 
-	var out SealedEnvelope
-	err = json.Unmarshal(rawData, &out)
+	var env SealedEnvelope
+	err = json.Unmarshal(rawData, &env)
 	if err != nil {
 		return "", errors.New("unmarshalling failure")
 	}
 
-	return "", errors.New("unimplemented")
+	encPair, err := dbhandler.GetEncryptionPair()
+	if err != nil {
+		return "", err
+	}
+
+	decrypted, err := encPair.Decrypt(env.Recipient)
+	if err != nil {
+		return "", err
+	}
+
+	var out RecipientInfo
+	err = json.Unmarshal(decrypted, &env)
+	if err != nil {
+		return "", errors.New("unmarshalling failure")
+	}
+
+	return out.To, nil
 }
