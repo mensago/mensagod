@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/fshandler"
@@ -126,11 +127,18 @@ func deliveryWorker() {
 				}
 			}
 
-			err = os.Rename(localPath, filepath.Join(destNew, filepath.Base(localPath)))
+			basename := filepath.Base(localPath)
+			err = os.Rename(localPath, filepath.Join(destNew, basename))
 			if err != nil {
 				logging.Writef("Unable to move file %s to %s: %s", localPath, destNew, err)
 				continue
 			}
+
+			dbhandler.AddSyncRecord(parts[0], dbhandler.UpdateRecord{
+				Type: dbhandler.UpdateAdd,
+				Data: strings.Join([]string{"/", parts[0], "new", basename}, " "),
+				Time: time.Now().UTC().Unix(),
+			})
 
 			// TODO: Notify client connections
 		}
