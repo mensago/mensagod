@@ -9,23 +9,21 @@ from pymensago.encryption import EncryptionPair, SecretKey
 
 msg_recipient = json.dumps({
 	'To': '22222222-2222-2222-2222-222222222222/example.com',
-	'Sender': 'example.com'
+	'SenderDomain': 'example.com'
 })
 
 msg_sender = json.dumps({
 	'From': '11111111-1111-1111-1111-111111111111/example.com',
-	'Recipient': 'example.com'
+	'RecipientDomain': 'example.com'
 })
 
-
 sample_envelope = {
-	'Type' : 'usermessage',
 	'Version' : '1.0',
-	'Recipient' : '',
+	'Receiver' : '',
 	'Sender' : '',
 	'Date' : '20190905 155323',
-	'PayloadKey' : '',
-	'Payload' : ''
+	'KeyHash' : '',
+	'PayloadKey' : ''
 }
 
 sample_msg = {
@@ -53,10 +51,18 @@ sample_envelope['Recipient'] = status['data']
 status = sdomain_epair.encrypt(msg_sender.encode())
 sample_envelope['Sender'] = status['data']
 
-sample_envelope['Payload'] = msg_key.encrypt(json.dumps(sample_msg).encode())
+sample_envelope['KeyHash'] = recipient_epair.get_public_hash()
+
+payload = msg_key.encrypt(json.dumps(sample_msg).encode())
 status = recipient_epair.encrypt(msg_key.get_key().encode())
 sample_envelope['PayloadKey'] = status['data']
 
-print(json.dumps(sample_envelope))
-
-
+sections = [
+	'MENSAGO',
+	json.dumps(sample_envelope, indent=4),
+	'----------',
+	msg_key.enctype,
+	payload
+]
+for section in sections:
+	print(section)
