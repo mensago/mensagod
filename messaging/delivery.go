@@ -175,7 +175,7 @@ func DecryptRecipientHeader(localPath string) (string, error) {
 		return "", err
 	}
 
-	decrypted, err := encPair.Decrypt(env.Recipient)
+	decrypted, err := encPair.Decrypt(env.Receiver)
 	if err != nil {
 		return "", err
 	}

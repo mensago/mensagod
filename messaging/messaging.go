@@ -3,7 +3,7 @@ package messaging
 type SealedEnvelope struct {
 	Type       string
 	Version    string
-	Recipient  string
+	Receiver   string
 	Sender     string
 	Date       string
 	PayloadKey string
@@ -25,7 +25,7 @@ type RecipientInfo struct {
 	To string
 
 	// Sender contains only the domain of origin
-	Sender string
+	SenderDomain string
 }
 
 type SenderInfo struct {
@@ -33,7 +33,7 @@ type SenderInfo struct {
 	From string
 
 	// Receiver contains only the destination's domain
-	Receiver string
+	RecipientDomain string
 }
 
 type MsgBody struct {
