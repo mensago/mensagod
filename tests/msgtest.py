@@ -27,6 +27,8 @@ sample_envelope = {
 }
 
 sample_msg = {
+	"Type:": "usermessage",
+	"Version": "1.0",
 	'From': '11111111-1111-1111-1111-111111111111/example.com',
 	'To': '22222222-2222-2222-2222-222222222222/example.com',
 	'Date': '20190905 155323',
