@@ -12,6 +12,7 @@ import (
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/keycard"
 	"github.com/darkwyrm/mensagod/logging"
+	"github.com/darkwyrm/mensagod/messaging"
 	"github.com/everlastingbeta/diceware"
 	"github.com/spf13/viper"
 )
@@ -96,6 +97,8 @@ func commandDevice(session *sessionState) {
 	session.CurrentPath.Set("/ " + session.WID)
 
 	session.LoginState = loginClientSession
+	messaging.RegisterWorkspace(session.WID)
+	session.LastUpdate = messaging.LastWorkspaceUpdate(session.WID)
 	session.SendStringResponse(200, "OK", "")
 }
 

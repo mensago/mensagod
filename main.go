@@ -59,6 +59,7 @@ type sessionState struct {
 	WID              string
 	WorkspaceStatus  string
 	CurrentPath      fshandler.LocalAnPath
+	LastUpdate       int64
 }
 
 // ClientRequest is for encapsulating requests from the client.
