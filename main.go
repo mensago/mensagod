@@ -355,6 +355,8 @@ func processCommand(session *sessionState) {
 		commandGetUpdates(session)
 	case "GETWID":
 		commandGetWID(session)
+	case "IDLE":
+		commandIdle(session)
 	case "ISCURRENT":
 		commandIsCurrent(session)
 	case "LIST":
@@ -369,8 +371,6 @@ func processCommand(session *sessionState) {
 		commandMkDir(session)
 	case "MOVE":
 		commandMove(session)
-	case "NOOP":
-		// Do nothing. Just resets the idle counter.
 	case "ORGCARD":
 		commandOrgCard(session)
 	case "PASSCODE":
@@ -438,6 +438,31 @@ func commandGetUpdates(session *sessionState) {
 	// the response could be larger than 8K, so we need to put this thing together very carefully
 	responseString := createUpdateResponse(&records)
 	session.WriteClient(responseString)
+}
+
+func commandIdle(session *sessionState) {
+	// Command syntax:
+	// IDLE(CountUpdates=-1)
+
+	if session.Message.HasField("CountUpdates") {
+		unixtime, err := strconv.ParseInt(session.Message.Data["Time"], 10, 64)
+		if err != nil {
+			session.SendStringResponse(400, "BAD REQUEST", "Bad time value")
+			return
+		}
+
+		recordCount, err := dbhandler.CountSyncRecords(session.WID, unixtime)
+		if err != nil {
+			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			return
+		}
+
+		response := NewServerResponse(200, "OK")
+		response.Data["UpdateCount"] = fmt.Sprintf("%d", recordCount)
+		session.SendResponse(*response)
+		return
+	}
+	session.SendStringResponse(200, "OK", "")
 }
 
 func commandSetStatus(session *sessionState) {
