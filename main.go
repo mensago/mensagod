@@ -451,7 +451,7 @@ func commandIdle(session *sessionState) {
 	// IDLE(CountUpdates=-1)
 
 	if session.Message.HasField("CountUpdates") {
-		unixtime, err := strconv.ParseInt(session.Message.Data["Time"], 10, 64)
+		unixtime, err := strconv.ParseInt(session.Message.Data["CountUpdates"], 10, 64)
 		if err != nil {
 			session.SendStringResponse(400, "BAD REQUEST", "Bad time value")
 			return

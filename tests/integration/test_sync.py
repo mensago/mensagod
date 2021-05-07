@@ -167,6 +167,17 @@ def test_get_updates():
 	assert response['Data']['UpdateCount'] == "100", \
 		"test_get_updates: #3 got wrong number of updates in count"
 
+	# Subtest #4: test out handling more updates than will fit into 1 response
+	conn.send_message({
+		'Action': 'IDLE',
+		'Data': { 'CountUpdates': str(now - (86400 * 5)) }
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_get_updates: #4 IDLE command failed'
+	assert response['Data']['UpdateCount'] == "4", \
+		"test_get_updates: #4 got wrong number of updates in count"
+
 	conn.disconnect()
 
 
