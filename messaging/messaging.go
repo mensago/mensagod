@@ -88,6 +88,19 @@ func RegisterWorkspace(wid string) error {
 	return nil
 }
 
+// IsWorkspaceRegisters checks to see if a client has been monitoring the workspace
+func IsWorkspaceRegistered(wid string) bool {
+	if !dbhandler.ValidateUUID(wid) {
+		return false
+	}
+
+	widListLock.RLock()
+	defer widListLock.RUnlock()
+
+	_, exists := widList[wid]
+	return exists
+}
+
 // Gets the UTC UNIX timestamp of the last new message notification for the workspace. If none
 // has occurred, then -1 in returned.
 func LastWorkspaceUpdate(wid string) int64 {

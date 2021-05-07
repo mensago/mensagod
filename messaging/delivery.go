@@ -134,13 +134,16 @@ func deliveryWorker() {
 				continue
 			}
 
+			timestamp := time.Now().UTC().Unix()
 			dbhandler.AddSyncRecord(parts[0], dbhandler.UpdateRecord{
 				Type: dbhandler.UpdateAdd,
 				Data: strings.Join([]string{"/", parts[0], "new", basename}, " "),
-				Time: time.Now().UTC().Unix(),
+				Time: timestamp,
 			})
 
-			// TODO: Notify client connections
+			if IsWorkspaceRegistered(parts[0]) {
+				UpdateWorkspace(parts[0], timestamp)
+			}
 		}
 
 		// External Delivery is not needed for demo completeness. Instead we will delete the
@@ -187,8 +190,4 @@ func DecryptRecipientHeader(localPath string) (string, error) {
 	}
 
 	return out.To, nil
-}
-
-func NotifyClients(wid string) {
-	// TODO: Implement
 }
