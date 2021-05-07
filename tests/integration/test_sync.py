@@ -152,6 +152,8 @@ def test_get_updates():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_get_updates: #2 failed to get updates'
 	assert len(response['Data']['Updates']) == 4, "failed to get updates from the last 5 days"
+	assert response['Data']['UpdateCount'] == "4", \
+		"test_get_updates: #2 got wrong number of updates in count"
 	
 	# Subtest #3: test out handling more updates than will fit into 1 response
 	conn.send_message({
@@ -162,6 +164,8 @@ def test_get_updates():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_get_updates: #3 failed to get updates'
 	assert len(response['Data']['Updates']) < 75, "test_get_updates: #3 returned all possible updates"
+	assert response['Data']['UpdateCount'] == "100", \
+		"test_get_updates: #3 got wrong number of updates in count"
 
 	conn.disconnect()
 
