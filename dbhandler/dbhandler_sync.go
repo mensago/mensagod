@@ -84,7 +84,8 @@ func CountSyncRecords(wid string, unixtime int64) (int64, error) {
 	// A maximum of 75 records is returned because with the shortest possible updates, a maximum
 	// of about 160 records can be returned in 8k. For more average update sizes (34 byte overhead,
 	// 104 byte record), we can only fit about 78.
-	row := dbConn.QueryRow(`COUNT FROM updates WHERE wid = $1 AND unixtime > $2`, wid, unixtime)
+	row := dbConn.QueryRow(`SELECT COUNT(wid) FROM updates WHERE wid = $1 AND unixtime > $2`,
+		wid, unixtime)
 	var count int64
 	err := row.Scan(&count)
 
