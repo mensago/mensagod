@@ -428,6 +428,12 @@ func commandGetUpdates(session *sessionState) {
 		return
 	}
 
+	recordCount, err := dbhandler.CountSyncRecords(session.WID, unixtime)
+	if err != nil {
+		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+
 	records, err := dbhandler.GetSyncRecords(session.WID, unixtime)
 	if err != nil {
 		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
@@ -436,7 +442,7 @@ func commandGetUpdates(session *sessionState) {
 
 	// The code is set to return a maximum of 75 records. It's still very easily possible that
 	// the response could be larger than 8K, so we need to put this thing together very carefully
-	responseString := createUpdateResponse(&records)
+	responseString := createUpdateResponse(&records, recordCount)
 	session.WriteClient(responseString)
 }
 
@@ -524,7 +530,7 @@ func commandSetStatus(session *sessionState) {
 // than the maximum response size of 8K. Great care must be taken here because the size of a
 // Mensago path can vary greatly in size -- a workspace-level path is 38 bytes without any file
 // name appended to it. These things add up quickly.
-func createUpdateResponse(records *[]dbhandler.UpdateRecord) string {
+func createUpdateResponse(records *[]dbhandler.UpdateRecord, totalRecords int64) string {
 
 	lookupTable := map[dbhandler.UpdateType]string{
 		dbhandler.UpdateAdd:    "CREATE",
@@ -533,8 +539,11 @@ func createUpdateResponse(records *[]dbhandler.UpdateRecord) string {
 		dbhandler.UpdateRotate: "ROTATE",
 	}
 
-	out := []string{`{"Code":200,"Status":"OK","Info":"","Data":{"Updates":[`}
-	responseSize := 55
+	out := []string{`{"Code":200,"Status":"OK","Info":"","Data":{`}
+	updateCountStr := fmt.Sprintf(`"UpdateCount":"%d",`, totalRecords)
+	out = append(out, updateCountStr+`"Updates":[`)
+
+	responseSize := 55 + len(updateCountStr)
 	for i, record := range *records {
 
 		recordString := fmt.Sprintf(`{"Type":"%s","Path":"%s","Time":"%d"}`,
