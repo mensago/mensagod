@@ -1,11 +1,13 @@
 package dbhandler
 
 import (
+	"database/sql"
 	"errors"
 	"regexp"
 	"time"
 
 	"github.com/darkwyrm/mensagod/logging"
+	"github.com/lib/pq"
 	"github.com/spf13/viper"
 )
 
@@ -67,6 +69,34 @@ func AddSyncRecord(wid string, rec UpdateRecord) error {
 	}
 
 	return err
+}
+
+// CountSyncRecords returns the number of sync records which occurred after the specified time
+func CountSyncRecords(wid string, unixtime int64) (int64, error) {
+	if !ValidateUUID(wid) {
+		return -1, errors.New("bad workspace id")
+	}
+
+	if unixtime < 0 {
+		return -1, errors.New("bad time")
+	}
+
+	// A maximum of 75 records is returned because with the shortest possible updates, a maximum
+	// of about 160 records can be returned in 8k. For more average update sizes (34 byte overhead,
+	// 104 byte record), we can only fit about 78.
+	row := dbConn.QueryRow(`COUNT FROM updates WHERE wid = $1 AND unixtime > $2`, wid, unixtime)
+	var count int64
+	err := row.Scan(&count)
+
+	switch err {
+	case sql.ErrNoRows:
+		return 0, nil
+	case nil:
+		return count, nil
+	case err.(*pq.Error):
+		logging.Writef("dbhandler.CountSyncRecords: PostgreSQL error: %s", err.Error())
+	}
+	return -1, err
 }
 
 // GetSyncRecords gets all the update records after a specified period of time
