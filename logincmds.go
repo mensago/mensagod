@@ -97,8 +97,11 @@ func commandDevice(session *sessionState) {
 	session.CurrentPath.Set("/ " + session.WID)
 
 	session.LoginState = loginClientSession
+
+	// These set up update handling for the session
 	messaging.RegisterWorkspace(session.WID)
-	session.LastUpdate = messaging.LastWorkspaceUpdate(session.WID)
+	session.LastUpdateSent = -1
+
 	session.SendQuickResponse(200, "OK", "")
 }
 

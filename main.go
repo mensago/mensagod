@@ -59,7 +59,7 @@ type sessionState struct {
 	WID              string
 	WorkspaceStatus  string
 	CurrentPath      fshandler.LocalAnPath
-	LastUpdate       int64
+	LastUpdateSent   int64
 }
 
 // ClientRequest is for encapsulating requests from the client.
@@ -134,7 +134,11 @@ func (s *sessionState) GetRequest() (ClientRequest, error) {
 }
 
 // SendResponse sends a JSON response message to the client
-func (s sessionState) SendResponse(msg ServerResponse) (err error) {
+func (s *sessionState) SendResponse(msg ServerResponse) (err error) {
+	if msg.Code == 200 {
+		s.AppendUpdateField(&msg)
+	}
+
 	out, err := json.Marshal(msg)
 	if err != nil {
 		return err
@@ -146,8 +150,40 @@ func (s sessionState) SendResponse(msg ServerResponse) (err error) {
 
 // SendQuickResponse is a syntactic sugar command for quickly sending error responses. The Info
 // field can contain additional information related to the return code
-func (s sessionState) SendQuickResponse(code int, status string, info string) (err error) {
-	return s.SendResponse(ServerResponse{code, status, info, map[string]string{}})
+func (s *sessionState) SendQuickResponse(code int, status string, info string) (err error) {
+	msg := ServerResponse{code, status, info, map[string]string{}}
+	if code == 200 {
+		s.AppendUpdateField(&msg)
+	}
+	return s.SendResponse(msg)
+}
+
+// AppendUpdateField handles push notifications to clients. If a `200 OK` success code is sent and
+// the worker goroutine has not sent an update since that time, then this method appends the
+// UpdateCount field to the response so that the device has been notified of pending updates
+func (s *sessionState) AppendUpdateField(msg *ServerResponse) {
+	if s.LoginState != loginClientSession {
+		return
+	}
+
+	lastUpdate := messaging.LastWorkspaceUpdate(s.WID)
+
+	// lastUpdate == -1 if the workspace has not received any updates yet. This doesn't happen
+	// often, but it does happen to new workspaces.
+	if lastUpdate == -1 || lastUpdate <= s.LastUpdateSent {
+		return
+	}
+
+	updateCount, err := dbhandler.CountSyncRecords(s.WID, s.LastUpdateSent)
+	if err != nil {
+		logging.Writef("Error counting updates for wid %s: %s", s.WID, err.Error())
+		return
+	}
+
+	if updateCount > 0 {
+		msg.Data["UpdateCount"] = fmt.Sprintf("%d", updateCount)
+		s.LastUpdateSent = time.Now().UTC().Unix()
+	}
 }
 
 func (s *sessionState) ReadClient() (string, error) {
