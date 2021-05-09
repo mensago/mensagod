@@ -16,18 +16,18 @@ import (
 
 func handleFSError(session *sessionState, err error) {
 	if os.IsNotExist(err) {
-		session.SendStringResponse(404, "NOT FOUND", "")
+		session.SendQuickResponse(404, "NOT FOUND", "")
 		return
 	}
 	if os.IsExist(err) {
-		session.SendStringResponse(408, "RESOURCE EXISTS", "")
+		session.SendQuickResponse(408, "RESOURCE EXISTS", "")
 		return
 	}
 	if os.IsPermission(err) {
-		session.SendStringResponse(403, "FORBIDDEN", "")
+		session.SendQuickResponse(403, "FORBIDDEN", "")
 		return
 	}
-	session.SendStringResponse(400, "BAD REQUEST", err.Error())
+	session.SendQuickResponse(400, "BAD REQUEST", err.Error())
 }
 
 func commandCopy(session *sessionState) {
@@ -35,12 +35,12 @@ func commandCopy(session *sessionState) {
 	// COPY(SourceFile, DestDir)
 
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
 	if session.Message.Validate([]string{"SourceFile", "DestDir"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
@@ -51,7 +51,7 @@ func commandCopy(session *sessionState) {
 		return
 	}
 	if !exists {
-		session.SendStringResponse(404, "NOT FOUND", "Source does not exist")
+		session.SendQuickResponse(404, "NOT FOUND", "Source does not exist")
 		return
 	}
 
@@ -61,7 +61,7 @@ func commandCopy(session *sessionState) {
 		return
 	}
 	if !exists {
-		session.SendStringResponse(404, "NOT FOUND", "Destination does not exist")
+		session.SendQuickResponse(404, "NOT FOUND", "Destination does not exist")
 		return
 	}
 
@@ -69,25 +69,25 @@ func commandCopy(session *sessionState) {
 	parts := strings.Split(session.Message.Data["SourceFile"], " ")
 
 	if !fshandler.ValidateFileName(parts[len(parts)-1]) {
-		session.SendStringResponse(400, "BAD REQUEST", "Bad source path")
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad source path")
 		return
 	}
 
 	nameparts := strings.Split(parts[len(parts)-1], ".")
 	fileSize, err := strconv.ParseInt(nameparts[1], 10, 64)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 
 	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 
 	if diskQuota != 0 && uint64(fileSize)+diskUsage > diskQuota {
-		session.SendStringResponse(409, "QUOTA INSUFFICIENT", "")
+		session.SendQuickResponse(409, "QUOTA INSUFFICIENT", "")
 		return
 	}
 
@@ -113,12 +113,12 @@ func commandDelete(session *sessionState) {
 	// Command syntax:
 	// DELETE(FilePath)
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
 	if session.Message.Validate([]string{"Path"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
@@ -134,7 +134,7 @@ func commandDelete(session *sessionState) {
 		Data: session.Message.Data["Path"],
 		Time: time.Now().UTC().Unix(),
 	})
-	session.SendStringResponse(200, "OK", "")
+	session.SendQuickResponse(200, "OK", "")
 }
 
 func commandDownload(session *sessionState) {
@@ -142,12 +142,12 @@ func commandDownload(session *sessionState) {
 	// DOWNLOAD(Path,Offset=0)
 
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
 	if session.Message.Validate([]string{"Path"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
@@ -155,14 +155,14 @@ func commandDownload(session *sessionState) {
 	exists, err := fsp.Exists(session.Message.Data["Path"])
 	if err != nil {
 		if err == fshandler.ErrBadPath {
-			session.SendStringResponse(400, "BAD REQUEST", "Bad file path")
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad file path")
 		} else {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		}
 		return
 	}
 	if !exists {
-		session.SendStringResponse(404, "NOT FOUND", "")
+		session.SendQuickResponse(404, "NOT FOUND", "")
 		return
 	}
 
@@ -170,7 +170,7 @@ func commandDownload(session *sessionState) {
 	if session.Message.HasField("Offset") {
 		resumeOffset, err = strconv.ParseInt(session.Message.Data["Offset"], 10, 64)
 		if err != nil || resumeOffset < 1 {
-			session.SendStringResponse(400, "BAD REQUEST", "Bad resume offset")
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad resume offset")
 			return
 		}
 
@@ -181,7 +181,7 @@ func commandDownload(session *sessionState) {
 		}
 
 		if resumeOffset > fileSize {
-			session.SendStringResponse(400, "BAD REQUEST", "Resume offset greater than file size")
+			session.SendQuickResponse(400, "BAD REQUEST", "Resume offset greater than file size")
 			return
 		}
 	}
@@ -190,19 +190,19 @@ func commandDownload(session *sessionState) {
 	// or from multiuser workspaces if they have the appropriate permissions. Until multiuser
 	// workspaces are implemented, we can make this check pretty simple.
 	if !strings.HasPrefix(session.Message.Data["Path"], "/ "+session.WID) {
-		session.SendStringResponse(403, "FORBIDDEN", "Can only download from your own workspace")
+		session.SendQuickResponse(403, "FORBIDDEN", "Can only download from your own workspace")
 		return
 	}
 
 	pathParts := strings.Split(session.Message.Data["Path"], " ")
 	filename := pathParts[len(pathParts)-1]
 	if !fshandler.ValidateFileName(filename) {
-		session.SendStringResponse(400, "BAD REQUEST", "Path is not a file")
+		session.SendQuickResponse(400, "BAD REQUEST", "Path is not a file")
 		return
 	}
 	filenameParts := strings.Split(filename, ".")
 	if len(filenameParts) != 3 {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 
@@ -222,7 +222,7 @@ func commandDownload(session *sessionState) {
 
 	if request.Action != "DOWNLOAD" || !request.HasField("Size") ||
 		request.Data["Size"] != filenameParts[1] {
-		session.SendStringResponse(400, "BAD REQUEST", "File size confirmation mismatch")
+		session.SendQuickResponse(400, "BAD REQUEST", "File size confirmation mismatch")
 		return
 	}
 
@@ -238,12 +238,12 @@ func commandExists(session *sessionState) {
 	// EXISTS(Path)
 
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
 	if !session.Message.HasField("Path") {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
@@ -255,9 +255,9 @@ func commandExists(session *sessionState) {
 	}
 
 	if exists {
-		session.SendStringResponse(200, "OK", "")
+		session.SendQuickResponse(200, "OK", "")
 	} else {
-		session.SendStringResponse(404, "NOT FOUND", "")
+		session.SendQuickResponse(404, "NOT FOUND", "")
 	}
 }
 
@@ -266,14 +266,14 @@ func commandGetQuotaInfo(session *sessionState) {
 	// GETQUOTAINFO(Workspace='')
 
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
 	adminAddress := "admin/" + viper.GetString("global.domain")
 	adminWid, err := dbhandler.ResolveAddress(adminAddress)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandGetQuotaInfo: Error resolving admin address: %s", err)
 		return
 	}
@@ -282,13 +282,13 @@ func commandGetQuotaInfo(session *sessionState) {
 
 	if session.Message.HasField("Workspaces") {
 		if !isAdmin {
-			session.SendStringResponse(403, "FORBIDDEN", "Only admin can use the Workspaces field")
+			session.SendQuickResponse(403, "FORBIDDEN", "Only admin can use the Workspaces field")
 			return
 		}
 
 		widList := strings.Split(session.Message.Data["Workspaces"], ",")
 		if len(widList) > 100 {
-			session.SendStringResponse(414, "LIMIT REACHED", "No more than 100 workspaces at once")
+			session.SendQuickResponse(414, "LIMIT REACHED", "No more than 100 workspaces at once")
 		}
 
 		quotaList := make([]string, len(widList))
@@ -296,13 +296,13 @@ func commandGetQuotaInfo(session *sessionState) {
 		for i, rawwid := range widList {
 			wid := strings.TrimSpace(rawwid)
 			if !dbhandler.ValidateUUID(wid) {
-				session.SendStringResponse(400, "BAD REQUEST", "Bad workspace ID "+wid)
+				session.SendQuickResponse(400, "BAD REQUEST", "Bad workspace ID "+wid)
 				return
 			}
 
 			u, q, err := dbhandler.GetQuotaInfo(wid)
 			if err != nil {
-				session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+				session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 				logging.Writef("commandGetQuotaInfo: Error getting quota info for workspace %s: %s",
 					wid, err)
 				return
@@ -320,7 +320,7 @@ func commandGetQuotaInfo(session *sessionState) {
 
 	u, q, err := dbhandler.GetQuotaInfo(session.WID)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandGetQuotaInfo: Error getting quota info for workspace %s: %s",
 			session.WID, err)
 		return
@@ -336,7 +336,7 @@ func commandList(session *sessionState) {
 	// Command syntax:
 	// LIST(Time=0)
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
@@ -350,7 +350,7 @@ func commandList(session *sessionState) {
 	if session.Message.HasField("Time") {
 		unixTime, err = strconv.ParseInt(session.Message.Data["Time"], 10, 64)
 		if err != nil {
-			session.SendStringResponse(400, "BAD REQUEST", "Bad time field")
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad time field")
 			return
 		}
 	}
@@ -380,7 +380,7 @@ func commandListDirs(session *sessionState) {
 	// LISTDIRS(path)
 
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
@@ -413,12 +413,12 @@ func commandMkDir(session *sessionState) {
 	// Command syntax:
 	// MKDIR(Path)
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
 	if session.Message.Validate([]string{"Path"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
@@ -434,7 +434,7 @@ func commandMkDir(session *sessionState) {
 		Data: session.Message.Data["Path"],
 		Time: time.Now().UTC().Unix(),
 	})
-	session.SendStringResponse(200, "OK", "")
+	session.SendQuickResponse(200, "OK", "")
 }
 
 func commandMove(session *sessionState) {
@@ -442,12 +442,12 @@ func commandMove(session *sessionState) {
 	// MOVE(SourceFile, DestDir)
 
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
 	if session.Message.Validate([]string{"SourceFile", "DestDir"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
@@ -458,7 +458,7 @@ func commandMove(session *sessionState) {
 		return
 	}
 	if !exists {
-		session.SendStringResponse(404, "NOT FOUND", "Source does not exist")
+		session.SendQuickResponse(404, "NOT FOUND", "Source does not exist")
 		return
 	}
 
@@ -468,7 +468,7 @@ func commandMove(session *sessionState) {
 		return
 	}
 	if !exists {
-		session.SendStringResponse(404, "NOT FOUND", "Destination does not exist")
+		session.SendQuickResponse(404, "NOT FOUND", "Destination does not exist")
 		return
 	}
 
@@ -483,19 +483,19 @@ func commandMove(session *sessionState) {
 		Data: session.Message.Data["SourceFile"] + " " + session.Message.Data["DestDir"],
 		Time: time.Now().UTC().Unix(),
 	})
-	session.SendStringResponse(200, "OK", "")
+	session.SendQuickResponse(200, "OK", "")
 }
 
 func commandRmDir(session *sessionState) {
 	// Command syntax:
 	// RMDIR(Path, Recursive)
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
 	if session.Message.Validate([]string{"Path", "Recursive"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
@@ -506,7 +506,7 @@ func commandRmDir(session *sessionState) {
 		return
 	}
 	if !exists {
-		session.SendStringResponse(404, "NOT FOUND", "Path does not exist")
+		session.SendQuickResponse(404, "NOT FOUND", "Path does not exist")
 		return
 	}
 
@@ -534,7 +534,7 @@ func commandRmDir(session *sessionState) {
 		Data: session.Message.Data["Path"],
 		Time: time.Now().UTC().Unix(),
 	})
-	session.SendStringResponse(200, "OK", "")
+	session.SendQuickResponse(200, "OK", "")
 }
 
 func commandSelect(session *sessionState) {
@@ -542,12 +542,12 @@ func commandSelect(session *sessionState) {
 	// SELECT(Path)
 
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
 	if !session.Message.HasField("Path") {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
@@ -564,31 +564,31 @@ func commandSetQuota(session *sessionState) {
 	// SETQUOTA(Workspaces, Size)
 
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
 	if session.Message.Validate([]string{"Workspaces", "Size"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
 	quotaSize, err := strconv.ParseInt(session.Message.Data["Size"], 10, 64)
 	if err != nil || quotaSize < 1 {
-		session.SendStringResponse(400, "BAD REQUEST", "Bad quota size")
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad quota size")
 		return
 	}
 
 	adminAddress := "admin/" + viper.GetString("global.domain")
 	adminWid, err := dbhandler.ResolveAddress(adminAddress)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandSetQuota: Error resolving admin address: %s", err)
 		return
 	}
 
 	if session.LoginState != loginClientSession || session.WID != adminWid {
-		session.SendStringResponse(403, "FORBIDDEN", "Only admin can use this")
+		session.SendQuickResponse(403, "FORBIDDEN", "Only admin can use this")
 		return
 	}
 
@@ -598,18 +598,18 @@ func commandSetQuota(session *sessionState) {
 	for _, rawWID := range workspaces {
 		w := strings.TrimSpace(rawWID)
 		if !dbhandler.ValidateUUID(w) {
-			session.SendStringResponse(400, "BAD REQUEST", fmt.Sprintf("Bad workspace ID %s", w))
+			session.SendQuickResponse(400, "BAD REQUEST", fmt.Sprintf("Bad workspace ID %s", w))
 			return
 		}
 
 		err = dbhandler.SetQuota(w, uint64(quotaSize))
 		if err != nil {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 			return
 		}
 	}
 
-	session.SendStringResponse(200, "OK", "")
+	session.SendQuickResponse(200, "OK", "")
 }
 
 func commandUpload(session *sessionState) {
@@ -617,19 +617,19 @@ func commandUpload(session *sessionState) {
 	// UPLOAD(Size,Hash,Name="",Offset=0)
 
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
 	if session.Message.Validate([]string{"Size", "Hash", "Path"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
 	// Both Name and Hash must be present when resuming
 	if (session.Message.HasField("TempName") && !session.Message.HasField("Offset")) ||
 		(session.Message.HasField("Offset") && !session.Message.HasField("TempName")) {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
@@ -637,13 +637,13 @@ func commandUpload(session *sessionState) {
 	var fileHash cs.CryptoString
 	err := fileHash.Set(session.Message.Data["Hash"])
 	if err != nil {
-		session.SendStringResponse(400, "BAD REQUEST", err.Error())
+		session.SendQuickResponse(400, "BAD REQUEST", err.Error())
 		return
 	}
 
 	fileSize, err = strconv.ParseInt(session.Message.Data["Size"], 10, 64)
 	if err != nil || fileSize < 1 {
-		session.SendStringResponse(400, "BAD REQUEST", "Bad file size")
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad file size")
 		return
 	}
 
@@ -651,32 +651,32 @@ func commandUpload(session *sessionState) {
 	exists, err := fsp.Exists(session.Message.Data["Path"])
 	if err != nil {
 		if err == fshandler.ErrBadPath {
-			session.SendStringResponse(400, "BAD REQUEST", "Bad file path")
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad file path")
 		} else {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		}
 		return
 	}
 	if !exists {
-		session.SendStringResponse(404, "NOT FOUND", "")
+		session.SendQuickResponse(404, "NOT FOUND", "")
 		return
 	}
 
 	var resumeOffset int64
 	if session.Message.HasField("TempName") {
 		if !fshandler.ValidateTempFileName(session.Message.Data["TempName"]) {
-			session.SendStringResponse(400, "BAD REQUEST", "Bad file name")
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad file name")
 			return
 		}
 
 		resumeOffset, err = strconv.ParseInt(session.Message.Data["Offset"], 10, 64)
 		if err != nil || resumeOffset < 1 {
-			session.SendStringResponse(400, "BAD REQUEST", "Bad resume offset")
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad resume offset")
 			return
 		}
 
 		if resumeOffset > fileSize {
-			session.SendStringResponse(400, "BAD REQUEST", "Resume offset greater than file size")
+			session.SendQuickResponse(400, "BAD REQUEST", "Resume offset greater than file size")
 			return
 		}
 	}
@@ -684,7 +684,7 @@ func commandUpload(session *sessionState) {
 	// An administrator can dictate how large a file can be stored on the server
 
 	if fileSize > int64(viper.GetInt("global.max_file_size"))*0x10_0000 {
-		session.SendStringResponse(414, "LIMIT REACHED", "")
+		session.SendQuickResponse(414, "LIMIT REACHED", "")
 		return
 	}
 
@@ -692,12 +692,12 @@ func commandUpload(session *sessionState) {
 
 	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 
 	if diskQuota != 0 && uint64(fileSize)+diskUsage > diskQuota {
-		session.SendStringResponse(409, "QUOTA INSUFFICIENT", "")
+		session.SendQuickResponse(409, "QUOTA INSUFFICIENT", "")
 		return
 	}
 
@@ -708,14 +708,14 @@ func commandUpload(session *sessionState) {
 		tempHandle, err = fsp.OpenTempFile(session.WID, tempName, resumeOffset)
 
 		if err != nil {
-			session.SendStringResponse(400, "BAD REQUEST", err.Error())
+			session.SendQuickResponse(400, "BAD REQUEST", err.Error())
 			return
 		}
 
 	} else {
 		tempHandle, tempName, err = fsp.MakeTempFile(session.WID)
 		if err != nil {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 			return
 		}
 	}
@@ -740,21 +740,21 @@ func commandUpload(session *sessionState) {
 		fileHash)
 	if err != nil {
 		if err == cs.ErrUnsupportedAlgorithm {
-			session.SendStringResponse(309, "UNSUPPORTED ALGORITHM", "")
+			session.SendQuickResponse(309, "UNSUPPORTED ALGORITHM", "")
 		} else {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		}
 		return
 	}
 	if !hashMatch {
 		fsp.DeleteTempFile(session.WID, tempName)
-		session.SendStringResponse(410, "HASH MISMATCH", "")
+		session.SendQuickResponse(410, "HASH MISMATCH", "")
 		return
 	}
 
 	realName, err := fsp.InstallTempFile(session.WID, tempName, session.Message.Data["Path"])
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 

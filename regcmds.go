@@ -19,12 +19,12 @@ func commandGetWID(session *sessionState) {
 	// command syntax:
 	// GETWID(User-ID, Domain="")
 	if !session.Message.HasField("User-ID") {
-		session.SendStringResponse(400, "BAD REQUEST", "")
+		session.SendQuickResponse(400, "BAD REQUEST", "")
 		return
 	}
 
 	if strings.ContainsAny(session.Message.Data["User-ID"], "/\"") {
-		session.SendStringResponse(400, "BAD REQUEST", "Bad User-ID")
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad User-ID")
 		return
 	}
 
@@ -33,7 +33,7 @@ func commandGetWID(session *sessionState) {
 		domain = session.Message.Data["Domain"]
 		pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
 		if !pattern.MatchString(domain) {
-			session.SendStringResponse(400, "BAD REQUEST", "Bad Domain")
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad Domain")
 			return
 		}
 	} else {
@@ -67,13 +67,13 @@ func commandPreregister(session *sessionState) {
 	adminAddress := "admin/" + viper.GetString("global.domain")
 	adminWid, err := dbhandler.ResolveAddress(adminAddress)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandPreregister: Error resolving address: %s", err)
 		return
 	}
 
 	if session.LoginState != loginClientSession || session.WID != adminWid {
-		session.SendStringResponse(403, "FORBIDDEN", "Only admin can use this")
+		session.SendQuickResponse(403, "FORBIDDEN", "Only admin can use this")
 		return
 	}
 
@@ -82,13 +82,13 @@ func commandPreregister(session *sessionState) {
 	if session.Message.HasField("User-ID") {
 		uid = session.Message.Data["User-ID"]
 		if strings.ContainsAny(uid, "/\"") {
-			session.SendStringResponse(400, "BAD REQUEST", "Bad User-ID")
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad User-ID")
 			return
 		}
 
 		success, _ := dbhandler.CheckUserID(session.Message.Data["User-ID"])
 		if success {
-			session.SendStringResponse(408, "RESOURCE EXISTS", "User-ID exists")
+			session.SendQuickResponse(408, "RESOURCE EXISTS", "User-ID exists")
 			return
 		}
 	}
@@ -102,7 +102,7 @@ func commandPreregister(session *sessionState) {
 	} else if session.Message.HasField("Workspace-ID") {
 		wid = session.Message.Data["Workspace-ID"]
 		if !dbhandler.ValidateUUID(wid) {
-			session.SendStringResponse(400, "BAD REQUEST", "Bad Workspace-ID")
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad Workspace-ID")
 			return
 		}
 	}
@@ -112,7 +112,7 @@ func commandPreregister(session *sessionState) {
 		domain = session.Message.Data["Domain"]
 		pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
 		if !pattern.MatchString(domain) {
-			session.SendStringResponse(400, "BAD REQUEST", "Bad Domain")
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad Domain")
 			return
 		}
 	}
@@ -124,7 +124,7 @@ func commandPreregister(session *sessionState) {
 	if wid != "" {
 		haswid, _ = dbhandler.CheckWorkspace(wid)
 		if haswid {
-			session.SendStringResponse(408, "RESOURCE EXISTS", "")
+			session.SendQuickResponse(408, "RESOURCE EXISTS", "")
 			return
 		}
 	} else {
@@ -139,12 +139,12 @@ func commandPreregister(session *sessionState) {
 		viper.GetInt("security.diceware_wordcount"))
 	if err != nil {
 		if err.Error() == "uid exists" {
-			session.SendStringResponse(408, "RESOURCE EXISTS", "")
+			session.SendQuickResponse(408, "RESOURCE EXISTS", "")
 			return
 		}
 		logging.Write(fmt.Sprintf("Internal server error. commandPreregister.PreregWorkspace. "+
 			"Error: %s\n", err))
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 
@@ -153,7 +153,7 @@ func commandPreregister(session *sessionState) {
 	if err != nil {
 		logging.Writef("commandPreregister: Failed to check workspace %s existence: %s",
 			wid, err)
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 	if !exists {
@@ -161,7 +161,7 @@ func commandPreregister(session *sessionState) {
 		if err != nil {
 			logging.Writef("commandPreregister: Failed to create workspace %s top directory: %s",
 				wid, err)
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 			return
 		}
 	}
@@ -183,50 +183,50 @@ func commandRegCode(session *sessionState) {
 
 	if session.Message.Validate([]string{"Reg-Code", "Password-Hash", "Device-ID",
 		"Device-Key"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 	if !dbhandler.ValidateUUID(session.Message.Data["Device-ID"]) {
-		session.SendStringResponse(400, "BAD REQUEST", "Invalid Device-ID")
+		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Device-ID")
 		return
 	}
 
 	if len(session.Message.Data["Reg-Code"]) > 128 {
-		session.SendStringResponse(400, "BAD REQUEST", "Invalid reg code")
+		session.SendQuickResponse(400, "BAD REQUEST", "Invalid reg code")
 		return
 	}
 
 	// The password field is expected to contain an Argon2id password hash
 	isArgon, err := ezcrypt.IsArgonHash(session.Message.Data["Password-Hash"])
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandRegCode: error check password hash: %s", err)
 		return
 	}
 
 	if !isArgon {
-		session.SendStringResponse(400, "BAD REQUEST", "Invalid password hash")
+		session.SendQuickResponse(400, "BAD REQUEST", "Invalid password hash")
 		return
 	}
 
 	if !dbhandler.ValidateUUID(session.Message.Data["Device-ID"]) {
-		session.SendStringResponse(400, "BAD REQUEST", "Bad device ID")
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad device ID")
 		return
 	}
 	// check to see if this is a workspace ID
 
 	if session.Message.HasField("User-ID") {
 		if strings.ContainsAny(session.Message.Data["User-ID"], "/\"") {
-			session.SendStringResponse(400, "BAD REQUEST", "Invalid User-ID")
+			session.SendQuickResponse(400, "BAD REQUEST", "Invalid User-ID")
 			return
 		}
 	} else if session.Message.HasField("Workspace-ID") {
 		if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
-			session.SendStringResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
+			session.SendQuickResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
 			return
 		}
 	} else {
-		session.SendStringResponse(400, "BAD REQUEST", "")
+		session.SendQuickResponse(400, "BAD REQUEST", "")
 		return
 	}
 
@@ -235,7 +235,7 @@ func commandRegCode(session *sessionState) {
 		domain = session.Message.Data["Domain"]
 		pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
 		if !pattern.MatchString(domain) {
-			session.SendStringResponse(400, "BAD REQUEST", "Bad Domain")
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad Domain")
 			return
 		}
 	}
@@ -254,12 +254,12 @@ func commandRegCode(session *sessionState) {
 
 	var devkey cryptostring.CryptoString
 	if devkey.Set(session.Message.Data["Device-Key"]) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Bad Device-Key")
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad Device-Key")
 		return
 	}
 
 	if devkey.Prefix != "CURVE25519" {
-		session.SendStringResponse(309, "ENCRYPTION TYPE NOT SUPPORTED", "Supported: CURVE25519")
+		session.SendQuickResponse(309, "ENCRYPTION TYPE NOT SUPPORTED", "Supported: CURVE25519")
 		return
 	}
 
@@ -282,21 +282,21 @@ func commandRegCode(session *sessionState) {
 	err = dbhandler.AddWorkspace(wid, uid, domain, session.Message.Data["Password-Hash"], "active",
 		"individual")
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
 		return
 	}
 
 	err = dbhandler.SetWorkspaceStatus(wid, "active")
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Internal server error. commandRegister.SetWorkspaceStatus. Error: %s\n", err)
 		return
 	}
 
 	err = dbhandler.AddDevice(wid, session.Message.Data["Device-ID"], devkey, "active")
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
 		return
 	}
@@ -313,7 +313,7 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	session.SendStringResponse(201, "REGISTERED", "")
+	session.SendQuickResponse(201, "REGISTERED", "")
 }
 
 func commandRegister(session *sessionState) {
@@ -322,11 +322,11 @@ func commandRegister(session *sessionState) {
 
 	if session.Message.Validate([]string{"Workspace-ID", "Password-Hash", "Device-ID",
 		"Device-Key"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 	if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
-		session.SendStringResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
+		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
 		return
 	}
 
@@ -335,7 +335,7 @@ func commandRegister(session *sessionState) {
 	if session.Message.HasField("User-ID") {
 		uid = session.Message.Data["User-ID"]
 		if strings.ContainsAny(uid, "/\"") {
-			session.SendStringResponse(400, "BAD REQUEST", "Bad User-ID")
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad User-ID")
 			return
 		}
 	}
@@ -344,20 +344,20 @@ func commandRegister(session *sessionState) {
 	if session.Message.HasField("Type") {
 		wtype = session.Message.Data["Type"]
 		if wtype != "shared" && wtype != "individual" {
-			session.SendStringResponse(400, "BAD REQUEST", "Bad Type")
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad Type")
 			return
 		}
 
 		// TODO: Eliminate this when shared workspaces are implemented
 		if wtype == "shared" {
-			session.SendStringResponse(301, "NOT IMPLEMENTED", "")
+			session.SendQuickResponse(301, "NOT IMPLEMENTED", "")
 			return
 		}
 	}
 	regType := strings.ToLower(viper.GetString("global.registration"))
 
 	if regType == "private" {
-		session.SendStringResponse(304, "REGISTRATION CLOSED", "")
+		session.SendQuickResponse(304, "REGISTRATION CLOSED", "")
 		return
 	}
 
@@ -401,7 +401,7 @@ func commandRegister(session *sessionState) {
 			}
 		}
 		if !clientInSubnet {
-			session.SendStringResponse(304, "REGISTRATION CLOSED", "")
+			session.SendQuickResponse(304, "REGISTRATION CLOSED", "")
 			return
 		}
 		workspaceStatus = "active"
@@ -413,12 +413,12 @@ func commandRegister(session *sessionState) {
 
 	var devkey cryptostring.CryptoString
 	if devkey.Set(session.Message.Data["Device-Key"]) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Bad Device-Key")
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad Device-Key")
 		return
 	}
 
 	if devkey.Prefix != "CURVE25519" {
-		session.SendStringResponse(309, "ENCRYPTION TYPE NOT SUPPORTED", "Supported: CURVE25519")
+		session.SendQuickResponse(309, "ENCRYPTION TYPE NOT SUPPORTED", "Supported: CURVE25519")
 		return
 	}
 
@@ -426,7 +426,7 @@ func commandRegister(session *sessionState) {
 		viper.GetString("global.domain"), session.Message.Data["Password-Hash"], workspaceStatus,
 		wtype)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
 		return
 	}
@@ -434,7 +434,7 @@ func commandRegister(session *sessionState) {
 	devid := uuid.New().String()
 	err = dbhandler.AddDevice(session.Message.Data["Workspace-ID"], devid, devkey, "active")
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
 		return
 	}
@@ -444,7 +444,7 @@ func commandRegister(session *sessionState) {
 	if err != nil {
 		logging.Writef("commandPreregister: Failed to check workspace %s existence: %s",
 			session.Message.Data["Workspace-ID"], err)
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 	if !exists {
@@ -452,13 +452,13 @@ func commandRegister(session *sessionState) {
 		if err != nil {
 			logging.Writef("commandPreregister: Failed to create workspace %s top directory: %s",
 				session.Message.Data["Workspace-ID"], err)
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 			return
 		}
 	}
 
 	if regType == "moderated" {
-		session.SendStringResponse(101, "PENDING", "")
+		session.SendQuickResponse(101, "PENDING", "")
 	} else {
 		response := NewServerResponse(201, "REGISTERED")
 		response.Data["Domain"] = viper.GetString("global.domain")
@@ -468,43 +468,43 @@ func commandRegister(session *sessionState) {
 
 func commandUnrecognized(session *sessionState) {
 	// command used when not recognized
-	session.SendStringResponse(400, "BAD REQUEST", "Unrecognized command")
+	session.SendQuickResponse(400, "BAD REQUEST", "Unrecognized command")
 }
 
 func commandUnregister(session *sessionState) {
 	// command syntax:
 	// UNREGISTER(Password-Hash)
 	if !session.Message.HasField("Password-Hash") {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "Must be logged in for this command")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "Must be logged in for this command")
 	}
 
 	match, err := dbhandler.CheckPassword(session.WID, session.Message.Data["Password-Hash"])
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Unregister: error checking password: %s", err.Error())
 		return
 	}
 	if !match {
-		session.SendStringResponse(401, "UNAUTHORIZED", "Password mismatch")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "Password mismatch")
 		return
 	}
 
 	regType := strings.ToLower(viper.GetString("global.registration"))
 	if regType == "private" || regType == "moderated" {
 		// TODO: submit admin request to delete workspace
-		// session.SendStringResponse(101, "PENDING", "Pending administrator approval")
-		session.SendStringResponse(301, "NOT IMPLEMENTED", "Not implemented yet. Sorry!")
+		// session.SendQuickResponse(101, "PENDING", "Pending administrator approval")
+		session.SendQuickResponse(301, "NOT IMPLEMENTED", "Not implemented yet. Sorry!")
 		return
 	}
 
 	adminWid, err := dbhandler.ResolveAddress("admin/" + viper.GetString("global.domain"))
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Write("Unregister: failed to resolve admin account")
 		return
 	}
@@ -514,14 +514,14 @@ func commandUnregister(session *sessionState) {
 	wid := session.WID
 	if session.Message.HasField("Workspace-ID") {
 		if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
-			session.SendStringResponse(400, "BAD REQUEST", "Bad Workspace-ID")
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad Workspace-ID")
 			return
 		}
 
 		if session.WID != session.Message.Data["Workspace-ID"] {
 
 			if session.WID != adminWid {
-				session.SendStringResponse(401, "UNAUTHORIZED",
+				session.SendQuickResponse(401, "UNAUTHORIZED",
 					"Only admin can unregister other workspaces")
 				return
 			}
@@ -532,7 +532,7 @@ func commandUnregister(session *sessionState) {
 
 	// You can't unregister the admin account
 	if wid == adminWid {
-		session.SendStringResponse(403, "FORBIDDEN", "Can't unregister the admin account")
+		session.SendQuickResponse(403, "FORBIDDEN", "Can't unregister the admin account")
 		return
 	}
 
@@ -540,12 +540,12 @@ func commandUnregister(session *sessionState) {
 	for _, builtin := range []string{"support", "abuse"} {
 		address, err := dbhandler.ResolveAddress(builtin + "/" + viper.GetString("global.domain"))
 		if err != nil {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 			logging.Write("Unregister: failed to resolve account " + builtin)
 			return
 		}
 		if wid == address {
-			session.SendStringResponse(403, "FORBIDDEN",
+			session.SendQuickResponse(403, "FORBIDDEN",
 				fmt.Sprintf("Can't unregister the built-in %s account", builtin))
 			return
 		}
@@ -554,23 +554,23 @@ func commandUnregister(session *sessionState) {
 	// You also don't delete aliases with this command
 	isAlias, _ := dbhandler.IsAlias(wid)
 	if isAlias {
-		session.SendStringResponse(403, "FORBIDDEN", "Aliases aren't removed with this command")
+		session.SendQuickResponse(403, "FORBIDDEN", "Aliases aren't removed with this command")
 		return
 	}
 
 	err = dbhandler.RemoveWorkspace(wid)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Unregister: error removing workspace from db: %s", err.Error())
 		return
 	}
 
 	err = fshandler.GetFSProvider().RemoveDirectory("/ "+wid, true)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Unregister: error removing workspace from filesystem: %s", err.Error())
 		return
 	}
 
-	session.SendStringResponse(202, "UNREGISTERED", "")
+	session.SendQuickResponse(202, "UNREGISTERED", "")
 }

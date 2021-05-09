@@ -22,19 +22,19 @@ func commandDevice(session *sessionState) {
 	// DEVICE(Device-ID,Device-Key)
 
 	if session.Message.Validate([]string{"Device-ID", "Device-Key"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
 	if !dbhandler.ValidateUUID(session.Message.Data["Device-ID"]) ||
 		session.LoginState != loginAwaitingSessionID {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
 	var devkey cryptostring.CryptoString
 	if devkey.Set(session.Message.Data["Device-Key"]) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Bad Device-Key")
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad Device-Key")
 		return
 	}
 
@@ -43,11 +43,11 @@ func commandDevice(session *sessionState) {
 	if err != nil {
 		if err.Error() == "cancel" {
 			session.LoginState = loginNoSession
-			session.SendStringResponse(200, "OK", "")
+			session.SendQuickResponse(200, "OK", "")
 			return
 		}
 
-		session.SendStringResponse(400, "BAD REQUEST", "Bad Device-ID or Device-Key")
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad Device-ID or Device-Key")
 		return
 	}
 
@@ -73,14 +73,14 @@ func commandDevice(session *sessionState) {
 		lockout, err := logFailure(session, "device", session.WID)
 		if err != nil {
 			// No need to log here -- logFailure does that.
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 			return
 		}
 
 		// If locked out, the client has already been notified of the connection termination and
 		// all that is left is to exit the command handler
 		if !lockout {
-			session.SendStringResponse(401, "UNAUTHORIZED", "")
+			session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		}
 		return
 	}
@@ -88,7 +88,7 @@ func commandDevice(session *sessionState) {
 	fsp := fshandler.GetFSProvider()
 	exists, err := fsp.Exists("/ " + session.WID)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 	if !exists {
@@ -99,7 +99,7 @@ func commandDevice(session *sessionState) {
 	session.LoginState = loginClientSession
 	messaging.RegisterWorkspace(session.WID)
 	session.LastUpdate = messaging.LastWorkspaceUpdate(session.WID)
-	session.SendStringResponse(200, "OK", "")
+	session.SendQuickResponse(200, "OK", "")
 }
 
 func commandDevKey(session *sessionState) {
@@ -107,18 +107,18 @@ func commandDevKey(session *sessionState) {
 	// DEVKEY(Device-ID, Old-Key, New-Key)
 
 	if session.Message.Validate([]string{"Device-ID", "Old-Key", "New-Key"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
 	var oldkey cryptostring.CryptoString
 	if oldkey.Set(session.Message.Data["Old-Key"]) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Bad Old-Key")
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad Old-Key")
 		return
 	}
 
@@ -128,35 +128,35 @@ func commandDevKey(session *sessionState) {
 	if err != nil {
 		if err.Error() == "cancel" {
 			session.LoginState = loginNoSession
-			session.SendStringResponse(200, "OK", "")
+			session.SendQuickResponse(200, "OK", "")
 			return
 		}
 
-		session.SendStringResponse(400, "BAD REQUEST", "Bad Device-ID or Device-Key")
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad Device-ID or Device-Key")
 		return
 	}
 
 	var newkey cryptostring.CryptoString
 	if newkey.Set(session.Message.Data["New-Key"]) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Bad New-Key")
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad New-Key")
 		return
 	}
 
 	success, _ := dualChallengeDevice(session, oldkey, newkey)
 	if !success {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
 	err = dbhandler.UpdateDevice(session.WID, session.Message.Data["Device-ID"], oldkey.AsString(),
 		newkey.AsString())
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandDevKey: error updating device: %s", err.Error())
 		return
 	}
 
-	session.SendStringResponse(200, "OK", "")
+	session.SendQuickResponse(200, "OK", "")
 }
 
 func commandLogin(session *sessionState) {
@@ -165,22 +165,22 @@ func commandLogin(session *sessionState) {
 
 	// PLAIN authentication is currently the only supported type
 	if session.Message.Validate([]string{"Login-Type", "Workspace-ID", "Challenge"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
 	if session.Message.Data["Login-Type"] != "PLAIN" {
-		session.SendStringResponse(400, "BAD REQUEST", "Invalid login type")
+		session.SendQuickResponse(400, "BAD REQUEST", "Invalid login type")
 		return
 	}
 
 	if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
-		session.SendStringResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
+		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
 		return
 	}
 
 	if session.LoginState != loginNoSession {
-		session.SendStringResponse(400, "BAD REQUEST", "Session state mismatch")
+		session.SendQuickResponse(400, "BAD REQUEST", "Session state mismatch")
 		return
 	}
 
@@ -204,33 +204,33 @@ func commandLogin(session *sessionState) {
 			return
 		}
 
-		session.SendStringResponse(404, "NOT FOUND", "")
+		session.SendQuickResponse(404, "NOT FOUND", "")
 		return
 	}
 
 	switch session.WorkspaceStatus {
 	case "disabled":
-		session.SendStringResponse(407, "UNAVAILABLE", "account disabled")
+		session.SendQuickResponse(407, "UNAVAILABLE", "account disabled")
 		return
 	case "awaiting":
-		session.SendStringResponse(101, "PENDING", "")
+		session.SendQuickResponse(101, "PENDING", "")
 		return
 	case "active", "approved":
 		break
 	default:
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 
 	// We got this far, so decrypt the challenge and send it to the client
 	keypair, err := dbhandler.GetEncryptionPair()
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 	decryptedChallenge, err := keypair.Decrypt(session.Message.Data["Challenge"])
 	if err != nil {
-		session.SendStringResponse(306, "KEY FAILURE", "Challenge decryption failure")
+		session.SendQuickResponse(306, "KEY FAILURE", "Challenge decryption failure")
 		return
 	}
 
@@ -244,7 +244,7 @@ func commandLogin(session *sessionState) {
 func commandLogout(session *sessionState) {
 	// command syntax:
 	// LOGOUT
-	session.SendStringResponse(200, "OK", "")
+	session.SendQuickResponse(200, "OK", "")
 	session.LoginState = loginNoSession
 	session.WID = ""
 	session.WorkspaceStatus = ""
@@ -255,23 +255,23 @@ func commandPasscode(session *sessionState) {
 	// PASSCODE(Workspace-ID, Reset-Code, Password-Hash)
 
 	if session.LoginState != loginNoSession {
-		session.SendStringResponse(403, "FORBIDDEN", "Can't reset a password while logged in")
+		session.SendQuickResponse(403, "FORBIDDEN", "Can't reset a password while logged in")
 		return
 	}
 
 	if session.Message.Validate([]string{"Workspace-ID", "Reset-Code", "Password-Hash"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
 	if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
-		session.SendStringResponse(400, "BAD REQUEST", "bad workspace ID")
+		session.SendQuickResponse(400, "BAD REQUEST", "bad workspace ID")
 		return
 	}
 
 	goodPass, err := ezcrypt.IsArgonHash(session.Message.Data["Password-Hash"])
 	if !goodPass || err != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "bad password hash")
+		session.SendQuickResponse(400, "BAD REQUEST", "bad password hash")
 		return
 	}
 
@@ -279,13 +279,13 @@ func commandPasscode(session *sessionState) {
 		session.Message.Data["Reset-Code"])
 	if err != nil {
 		if err.Error() == "expired" {
-			session.SendStringResponse(415, "EXPIRED", "")
+			session.SendQuickResponse(415, "EXPIRED", "")
 			dbhandler.DeletePasscode(session.Message.Data["Workspace-ID"],
 				session.Message.Data["Reset-Code"])
 			return
 		}
 
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandPasscode: Error checking passcode: %s", err.Error())
 		return
 	}
@@ -295,18 +295,18 @@ func commandPasscode(session *sessionState) {
 		if terminate || err != nil {
 			return
 		}
-		session.SendStringResponse(402, "AUTHENTICATION FAILURE", "")
+		session.SendQuickResponse(402, "AUTHENTICATION FAILURE", "")
 		return
 	}
 
 	err = dbhandler.SetPassword(session.WID, session.Message.Data["Password-Hash"])
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandPasscode: failed to update password: %s", err.Error())
 		return
 	}
 
-	session.SendStringResponse(200, "OK", "")
+	session.SendQuickResponse(200, "OK", "")
 }
 
 func commandPassword(session *sessionState) {
@@ -316,24 +316,24 @@ func commandPassword(session *sessionState) {
 	// This command takes a numeric hash of the user's password and compares it to what is submitted
 	// by the user.
 	if !session.Message.HasField("Password-Hash") {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
 	goodPass, err := ezcrypt.IsArgonHash(session.Message.Data["Password-Hash"])
 	if !goodPass || err != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "bad password hash")
+		session.SendQuickResponse(400, "BAD REQUEST", "bad password hash")
 		return
 	}
 
 	if session.LoginState != loginAwaitingPassword {
-		session.SendStringResponse(400, "BAD REQUEST", "Session state mismatch")
+		session.SendQuickResponse(400, "BAD REQUEST", "Session state mismatch")
 		return
 	}
 
 	match, err := dbhandler.CheckPassword(session.WID, session.Message.Data["Password-Hash"])
 	if err != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Password check error")
+		session.SendQuickResponse(400, "BAD REQUEST", "Password check error")
 		return
 	}
 
@@ -343,7 +343,7 @@ func commandPassword(session *sessionState) {
 			return
 		}
 
-		session.SendStringResponse(402, "AUTHENTICATION FAILURE", "")
+		session.SendQuickResponse(402, "AUTHENTICATION FAILURE", "")
 
 		var d time.Duration
 		delayString := viper.GetString("security.failure_delay_sec") + "s"
@@ -357,7 +357,7 @@ func commandPassword(session *sessionState) {
 	}
 
 	session.LoginState = loginAwaitingSessionID
-	session.SendStringResponse(100, "CONTINUE", "")
+	session.SendQuickResponse(100, "CONTINUE", "")
 }
 
 func commandResetPassword(session *sessionState) {
@@ -367,29 +367,29 @@ func commandResetPassword(session *sessionState) {
 	adminAddress := "admin/" + viper.GetString("global.domain")
 	adminWid, err := dbhandler.ResolveAddress(adminAddress)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandResetPassword: Error resolving address: %s", err)
 		return
 	}
 
 	if session.LoginState != loginClientSession || session.WID != adminWid {
-		session.SendStringResponse(403, "FORBIDDEN", "Only admin can use this")
+		session.SendQuickResponse(403, "FORBIDDEN", "Only admin can use this")
 	}
 
 	if !session.Message.HasField("Workspace-ID") {
-		session.SendStringResponse(400, "BAD REQUEST", "missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "missing required field")
 		return
 	}
 
 	if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
-		session.SendStringResponse(400, "BAD REQUEST", "Bad Workspace-ID")
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad Workspace-ID")
 		return
 	}
 
 	var passcode string
 	if session.Message.HasField("Reset-Code") && session.Message.Data["Reset-Code"] != "" {
 		if len(session.Message.Data["Reset-Code"]) < 8 {
-			session.SendStringResponse(400, "BAD REQUEST",
+			session.SendQuickResponse(400, "BAD REQUEST",
 				"Reset-Code must be at least 8 code points")
 			return
 		}
@@ -399,7 +399,7 @@ func commandResetPassword(session *sessionState) {
 		passcode, err = diceware.RollWords(viper.GetInt("security.diceware_wordcount"), "-",
 			gDiceWordList)
 		if err != nil {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 			logging.Writef("resetpassword: Failed to generate passcode: %s", err.Error())
 			return
 		}
@@ -409,7 +409,7 @@ func commandResetPassword(session *sessionState) {
 	if session.Message.HasField("Expires") && session.Message.Data["Expires"] != "" {
 		err = keycard.IsExpirationValid(session.Message.Data["Expires"])
 		if err != nil {
-			session.SendStringResponse(400, "BAD REQUEST", "Bad Expires field")
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad Expires field")
 			return
 		}
 		expires = session.Message.Data["Expires"]
@@ -422,7 +422,7 @@ func commandResetPassword(session *sessionState) {
 
 	err = dbhandler.ResetPassword(session.Message.Data["Workspace-ID"], passcode, expires)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandResetPassword: failed to add password reset code: %s", err.Error())
 		return
 	}
@@ -438,46 +438,46 @@ func commandSetPassword(session *sessionState) {
 	// SETPASSWORD(Password-Hash, NewPassword-Hash)
 
 	if session.Message.Validate([]string{"Password-Hash", "NewPassword-Hash"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
 	goodPass, err := ezcrypt.IsArgonHash(session.Message.Data["Password-Hash"])
 	if !goodPass || err != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "bad old password hash")
+		session.SendQuickResponse(400, "BAD REQUEST", "bad old password hash")
 		return
 	}
 
 	goodPass, err = ezcrypt.IsArgonHash(session.Message.Data["NewPassword-Hash"])
 	if !goodPass || err != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "bad new password hash")
+		session.SendQuickResponse(400, "BAD REQUEST", "bad new password hash")
 		return
 	}
 
 	match, err := dbhandler.CheckPassword(session.WID, session.Message.Data["Password-Hash"])
 	if err != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Password check error")
+		session.SendQuickResponse(400, "BAD REQUEST", "Password check error")
 		return
 	}
 
 	if !match {
-		session.SendStringResponse(402, "AUTHENTICATION FAILURE", "")
+		session.SendQuickResponse(402, "AUTHENTICATION FAILURE", "")
 		return
 	}
 
 	err = dbhandler.SetPassword(session.WID, session.Message.Data["NewPassword-Hash"])
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandSetPassword: failed to update password: %s", err.Error())
 		return
 	}
 
-	session.SendStringResponse(200, "OK", "")
+	session.SendQuickResponse(200, "OK", "")
 }
 
 func challengeDevice(session *sessionState, keytype string, devkeystr string) (bool, error) {
@@ -490,7 +490,7 @@ func challengeDevice(session *sessionState, keytype string, devkeystr string) (b
 
 	randBytes := make([]byte, 32)
 	if _, err := rand.Read(randBytes); err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("challengeDevice: error checking lockout: %s", err.Error())
 		return false, err
 	}
@@ -506,7 +506,7 @@ func challengeDevice(session *sessionState, keytype string, devkeystr string) (b
 	encryptedChallenge, err := devkey.Encrypt([]byte(challenge))
 
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return false, err
 	}
 
@@ -527,15 +527,15 @@ func challengeDevice(session *sessionState, keytype string, devkeystr string) (b
 	}
 
 	if request.Action != "DEVICE" {
-		session.SendStringResponse(400, "BAD REQUEST", "Session state mismatch")
+		session.SendQuickResponse(400, "BAD REQUEST", "Session state mismatch")
 		return false, nil
 	}
 	if request.Validate([]string{"Device-ID", "Device-Key", "Response"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return false, nil
 	}
 	if request.Data["Device-Key"] != devkeystr {
-		session.SendStringResponse(400, "BAD REQUEST", "Device key mismatch")
+		session.SendQuickResponse(400, "BAD REQUEST", "Device key mismatch")
 		return false, nil
 	}
 
@@ -558,7 +558,7 @@ func dualChallengeDevice(session *sessionState, oldkey cryptostring.CryptoString
 	randBytes := make([]byte, 32)
 	_, err := rand.Read(randBytes)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("challengeDevice: error checking lockout: %s", err.Error())
 		return false, err
 	}
@@ -568,7 +568,7 @@ func dualChallengeDevice(session *sessionState, oldkey cryptostring.CryptoString
 	encryptedChallenge, err := encryptor.Encrypt([]byte(challenge))
 
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return false, err
 	}
 
@@ -577,7 +577,7 @@ func dualChallengeDevice(session *sessionState, oldkey cryptostring.CryptoString
 
 	_, err = rand.Read(randBytes)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("challengeDevice: error checking lockout: %s", err.Error())
 		return false, err
 	}
@@ -587,7 +587,7 @@ func dualChallengeDevice(session *sessionState, oldkey cryptostring.CryptoString
 	encryptedNewChallenge, err := encryptor.Encrypt([]byte(newChallenge))
 
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return false, err
 	}
 	response.Data["New-Challenge"] = encryptedNewChallenge
@@ -607,11 +607,11 @@ func dualChallengeDevice(session *sessionState, oldkey cryptostring.CryptoString
 	}
 
 	if request.Action != "DEVKEY" {
-		session.SendStringResponse(400, "BAD REQUEST", "Session state mismatch")
+		session.SendQuickResponse(400, "BAD REQUEST", "Session state mismatch")
 		return false, nil
 	}
 	if request.Validate([]string{"Response", "New-Response"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return false, nil
 	}
 

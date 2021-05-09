@@ -144,9 +144,9 @@ func (s sessionState) SendResponse(msg ServerResponse) (err error) {
 	return err
 }
 
-// SendStringResponse is a syntactic sugar command for quickly sending error responses. The Info
+// SendQuickResponse is a syntactic sugar command for quickly sending error responses. The Info
 // field can contain additional information related to the return code
-func (s sessionState) SendStringResponse(code int, status string, info string) (err error) {
+func (s sessionState) SendQuickResponse(code int, status string, info string) (err error) {
 	return s.SendResponse(ServerResponse{code, status, info, map[string]string{}})
 }
 
@@ -307,7 +307,7 @@ func connectionWorker(conn net.Conn) {
 		request, err := session.GetRequest()
 		if err != nil {
 			if err == ErrJSONUnmarshal {
-				session.SendStringResponse(400, "BAD REQUEST", "JSON error")
+				session.SendQuickResponse(400, "BAD REQUEST", "JSON error")
 				conn.SetReadDeadline(time.Now().Add(time.Minute * 30))
 				conn.SetWriteDeadline(time.Now().Add(time.Minute * 10))
 				continue
@@ -410,7 +410,7 @@ func commandCancel(session *sessionState) {
 	if session.LoginState != loginClientSession {
 		session.LoginState = loginNoSession
 	}
-	session.SendStringResponse(200, "OK", "")
+	session.SendQuickResponse(200, "OK", "")
 }
 
 func commandGetUpdates(session *sessionState) {
@@ -418,25 +418,25 @@ func commandGetUpdates(session *sessionState) {
 	// GETUPDATES(Time)
 
 	if !session.Message.HasField("Time") {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
 	unixtime, err := strconv.ParseInt(session.Message.Data["Time"], 10, 64)
 	if err != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Bad time value")
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad time value")
 		return
 	}
 
 	recordCount, err := dbhandler.CountSyncRecords(session.WID, unixtime)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 
 	records, err := dbhandler.GetSyncRecords(session.WID, unixtime)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 
@@ -453,13 +453,13 @@ func commandIdle(session *sessionState) {
 	if session.Message.HasField("CountUpdates") {
 		unixtime, err := strconv.ParseInt(session.Message.Data["CountUpdates"], 10, 64)
 		if err != nil {
-			session.SendStringResponse(400, "BAD REQUEST", "Bad time value")
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad time value")
 			return
 		}
 
 		recordCount, err := dbhandler.CountSyncRecords(session.WID, unixtime)
 		if err != nil {
-			session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 			return
 		}
 
@@ -468,7 +468,7 @@ func commandIdle(session *sessionState) {
 		session.SendResponse(*response)
 		return
 	}
-	session.SendStringResponse(200, "OK", "")
+	session.SendQuickResponse(200, "OK", "")
 }
 
 func commandSetStatus(session *sessionState) {
@@ -476,12 +476,12 @@ func commandSetStatus(session *sessionState) {
 	// SETSTATUS(wid, status)
 
 	if session.Message.Validate([]string{"Workspace-ID", "Status"}) != nil {
-		session.SendStringResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
 	if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
-		session.SendStringResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
+		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
 		return
 	}
 
@@ -489,41 +489,41 @@ func commandSetStatus(session *sessionState) {
 	case "active", "disabled", "approved":
 		break
 	default:
-		session.SendStringResponse(400, "BAD REQUEST", "Invalid Status")
+		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Status")
 		return
 	}
 
 	if session.LoginState != loginClientSession {
-		session.SendStringResponse(401, "UNAUTHORIZED", "")
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
 	adminAddress := "admin/" + viper.GetString("global.domain")
 	adminWid, err := dbhandler.ResolveAddress(adminAddress)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandPreregister: Error resolving address: %s", err)
 		return
 	}
 	if session.WID != adminWid {
-		session.SendStringResponse(403, "FORBIDDEN", "Only admin can use this")
+		session.SendQuickResponse(403, "FORBIDDEN", "Only admin can use this")
 		return
 	}
 
 	if session.Message.Data["Workspace-ID"] == session.WID {
-		session.SendStringResponse(403, "FORBIDDEN", "admin status can't be changed")
+		session.SendQuickResponse(403, "FORBIDDEN", "admin status can't be changed")
 		return
 	}
 
 	err = dbhandler.SetWorkspaceStatus(session.Message.Data["Workspace-ID"],
 		session.Message.Data["Status"])
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandSetStatus: error setting workspace status: %s", err.Error())
 		return
 	}
 
-	session.SendStringResponse(200, "OK", "")
+	session.SendQuickResponse(200, "OK", "")
 }
 
 // createUpdateResponse takes a list of UpdateRecords and returns a ServerResponse which is smaller
@@ -573,7 +573,7 @@ func logFailure(session *sessionState, failType string, wid string) (bool, error
 	remoteip := strings.Split(session.Connection.RemoteAddr().String(), ":")[0]
 	err := dbhandler.LogFailure(failType, wid, remoteip)
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("logFailure: error logging failure: %s", err.Error())
 		return true, err
 	}
@@ -616,7 +616,7 @@ func getLockout(session *sessionState, failType string, wid string) (string, err
 
 	lockTime, err := dbhandler.CheckLockout(failType, wid, session.Connection.RemoteAddr().String())
 	if err != nil {
-		session.SendStringResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("getLockout: error checking lockout: %s", err.Error())
 		return "", err
 	}
