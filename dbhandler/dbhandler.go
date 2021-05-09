@@ -372,22 +372,22 @@ func CheckPassword(wid string, password string) (bool, error) {
 	return ezcrypt.VerifyPasswordHash(password, dbhash)
 }
 
-// AddDevice is used for adding a device to a workspace. It generates a new session string for the
-// device, adds it to the device table, sets the device status, and returns the session string for
-// the new device.
+// AddDevice is used for adding a device to a workspace. The initial last login is set to when
+// this method is called because a new device is only at certain times, such as at registration
+// or when a user logs into a workspace on a new device.
 func AddDevice(wid string, devid string, devkey cryptostring.CryptoString, status string) error {
+	timestamp := fmt.Sprintf("%d", time.Now().UTC().Unix())
 	var err error
-	sqlStatement := `INSERT INTO iwkspc_devices(wid, devid, devkey, status) ` +
-		`VALUES($1, $2, $3, $4)`
-	_, err = dbConn.Exec(sqlStatement, wid, devid, devkey.AsString(), status)
+	sqlStatement := `INSERT INTO iwkspc_devices(wid, devid, devkey, lastlogin, status) ` +
+		`VALUES($1, $2, $3, $4, $5)`
+	_, err = dbConn.Exec(sqlStatement, wid, devid, devkey.AsString(), timestamp, status)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-// RemoveDevice removes a session string for a workspace. It returns true if successful and false
-// if not.
+// RemoveDevice removes a device from a workspace. It returns true if successful and false if not.
 func RemoveDevice(wid string, devid string) (bool, error) {
 	if len(devid) != 40 {
 		return false, errors.New("invalid session string")
@@ -399,7 +399,7 @@ func RemoveDevice(wid string, devid string) (bool, error) {
 	return true, nil
 }
 
-// CheckDevice checks a session string on a workspace and returns true or false if there is a match.
+// CheckDevice checks if a device has been added to a workspace.
 func CheckDevice(wid string, devid string, devkey string) (bool, error) {
 	row := dbConn.QueryRow(`SELECT status FROM iwkspc_devices WHERE wid=$1 AND 
 		devid=$2 AND devkey=$3`, wid, devid, devkey)
@@ -423,6 +423,18 @@ func UpdateDevice(wid string, devid string, oldkey string, newkey string) error 
 		devid=$3 AND devkey=$4`, newkey, wid, devid, oldkey)
 
 	return err
+}
+
+// UpdateLastLogin sets the last login timestamp for a device
+func UpdateLastLogin(wid string, devid string) error {
+	// TODO: Implement
+	return errors.New("Unimplemented")
+}
+
+// GetLastLogin gets the last time a device logged in UTC time, UNIX format
+func GetLastLogin(wid string, devid string) (int64, error) {
+	// TODO: Implement
+	return -1, errors.New("Unimplemented")
 }
 
 // CheckUserID works the same as CheckWorkspace except that it checks for user IDs

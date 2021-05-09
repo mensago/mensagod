@@ -57,6 +57,7 @@ type sessionState struct {
 	LoginState       loginStatus
 	IsTerminating    bool
 	WID              string
+	DevID            string
 	WorkspaceStatus  string
 	CurrentPath      fshandler.LocalAnPath
 	LastUpdateSent   int64

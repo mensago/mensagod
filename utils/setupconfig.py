@@ -380,7 +380,7 @@ rows = cur.fetchall()
 if rows[0][0] is False:
 	cur.execute("CREATE TABLE iwkspc_devices(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL, "
 				"devid CHAR(36) NOT NULL, devkey VARCHAR(1000) NOT NULL, "
-				"status VARCHAR(16) NOT NULL);")
+				"lastlogin VARCHAR(32) NOT NULL, status VARCHAR(16) NOT NULL);")
 
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
