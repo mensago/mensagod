@@ -311,9 +311,6 @@ def reset_top_dir(config: dict):
 	'''Resets the system workspace storage directory to an empty skeleton'''
 
 	glob_list = glob(os.path.join(config['configfile']['global']['top_dir'],'*'))
-	if not glob_list:
-		return
-	
 	for glob_item in glob_list:
 		if os.path.isfile(glob_item):
 			try:
@@ -326,9 +323,9 @@ def reset_top_dir(config: dict):
 			except:
 				assert False, f"Unable to delete file {glob_item}"
 	
-	os.mkdir(os.path.join(config['configfile']['global']['top_dir'],'out'))
-	os.mkdir(os.path.join(config['configfile']['global']['top_dir'],'tmp'))
-	os.mkdir(os.path.join(config['configfile']['global']['top_dir'],'wsp'))
+	os.mkdir(os.path.join(config['configfile']['global']['top_dir'],'out'), mode=0o770)
+	os.mkdir(os.path.join(config['configfile']['global']['top_dir'],'tmp'), mode=0o770)
+	os.mkdir(os.path.join(config['configfile']['global']['top_dir'],'wsp'), mode=0o770)
 
 
 def regcode_admin(config, conn):

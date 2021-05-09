@@ -402,7 +402,7 @@ func (lfs *LocalFSHandler) MakeTempFile(wid string) (*os.File, string, error) {
 	stat, err := os.Stat(tempDirPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			err = os.MkdirAll(tempDirPath, 0600)
+			err = os.MkdirAll(tempDirPath, 0770)
 			if err != nil {
 				return nil, "", err
 			}
@@ -522,7 +522,7 @@ func (lfs *LocalFSHandler) OpenTempFile(wid string, name string, offset int64) (
 	if offset < 0 {
 		openFlags |= os.O_APPEND
 	}
-	handle, err := os.OpenFile(tempFilePath, openFlags, 0600)
+	handle, err := os.OpenFile(tempFilePath, openFlags, 0770)
 	if err != nil {
 		return nil, err
 	}

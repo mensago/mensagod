@@ -120,7 +120,7 @@ func deliveryWorker() {
 			destNew := fshandler.ConvertToLocal("/ " + parts[0] + " new")
 			_, err = os.Stat(destNew)
 			if err != nil {
-				err = os.MkdirAll(destNew, 0600)
+				err = os.MkdirAll(destNew, 0770)
 				if err != nil {
 					logging.Writef("Unable to create directory %s: %s", destNew, err)
 					continue

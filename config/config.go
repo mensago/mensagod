@@ -137,7 +137,7 @@ func SetupConfig() diceware.Wordlist {
 
 	logLocation := filepath.Join(viper.GetString("global.log_dir"), "mensagod.log")
 	if _, err := os.Stat(viper.GetString("global.log_dir")); os.IsNotExist(err) {
-		err = os.Mkdir(viper.GetString("global.log_dir"), 0600)
+		err = os.Mkdir(viper.GetString("global.log_dir"), 0770)
 		if err != nil {
 			fmt.Printf("Unable to create log directory %s. Exiting. Error: %s",
 				viper.GetString("global.log_dir"), err)
@@ -156,7 +156,7 @@ func SetupConfig() diceware.Wordlist {
 	for _, dir := range dirList {
 		_, err = os.Stat(dir)
 		if os.IsNotExist(err) {
-			err = os.Mkdir(dir, 0600)
+			err = os.Mkdir(dir, 0770)
 			if err != nil {
 				fmt.Printf("Unable to create data directory %s. Exiting. Error: %s", dir, err)
 				os.Exit(1)
