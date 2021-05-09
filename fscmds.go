@@ -683,7 +683,7 @@ func commandUpload(session *sessionState) {
 
 	// An administrator can dictate how large a file can be stored on the server
 
-	if fileSize > int64(viper.GetInt("global.max_file_size"))*0x10_0000 {
+	if fileSize > int64(viper.GetInt("performance.max_file_size"))*0x10_0000 {
 		session.SendQuickResponse(414, "LIMIT REACHED", "")
 		return
 	}
