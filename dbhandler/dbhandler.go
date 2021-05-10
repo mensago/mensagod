@@ -238,6 +238,20 @@ func ResolveAddress(addr string) (string, error) {
 	return wid, nil
 }
 
+func ResolveWID(wid string) (string, error) {
+	var domain string
+	row := dbConn.QueryRow(`SELECT domain FROM workspaces WHERE wid = $1`, wid)
+	err := row.Scan(&domain)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// No entry in the table
+			return "", nil
+		}
+		return "", err
+	}
+	return strings.Join([]string{wid, domain}, "/"), nil
+}
+
 // CheckLockout corresponds to LogFailure() in that it checks to see if said
 // source has a lockout timestamp and returns it if there is or an empty string if not.
 // It also has the added benefit of resetting a counter to 0 if there is an expired
