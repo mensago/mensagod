@@ -427,14 +427,33 @@ func UpdateDevice(wid string, devid string, oldkey string, newkey string) error 
 
 // UpdateLastLogin sets the last login timestamp for a device
 func UpdateLastLogin(wid string, devid string) error {
-	// TODO: Implement
-	return errors.New("Unimplemented")
+	timestamp := time.Now().UTC().Unix()
+	_, err := dbConn.Exec(`UPDATE iwkspc_devices SET lastlogin=$1 WHERE wid=$2 AND 
+		devid=$3`, timestamp, wid, devid)
+
+	return err
 }
 
 // GetLastLogin gets the last time a device logged in UTC time, UNIX format
 func GetLastLogin(wid string, devid string) (int64, error) {
-	// TODO: Implement
-	return -1, errors.New("Unimplemented")
+	row := dbConn.QueryRow(`SELECT lastlogin FROM iwkspc_devices WHERE wid=$1`, wid)
+
+	var lastlogin int64
+	err := row.Scan(&lastlogin)
+
+	switch err {
+	case sql.ErrNoRows:
+		break
+	case nil:
+		return lastlogin, nil
+	case err.(*pq.Error):
+		logging.Writef("dbhandler.CheckUserID: PostgreSQL error reading workspaces: %s",
+			err.Error())
+	default:
+		logging.Writef("dbhandler.CheckUserID: unexpected error reading workspaces: %s",
+			err.Error())
+	}
+	return -1, err
 }
 
 // CheckUserID works the same as CheckWorkspace except that it checks for user IDs
