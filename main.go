@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -546,19 +547,9 @@ func commandSend(session *sessionState) {
 		return
 	}
 
-	fsp := fshandler.GetFSProvider()
-	exists, err := fsp.Exists(session.Message.Data["Path"])
-	if err != nil {
-		if err == fshandler.ErrBadPath {
-			session.SendQuickResponse(400, "BAD REQUEST", "Bad file path")
-		} else {
-			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		}
-		return
-	}
-	if !exists {
-		session.SendQuickResponse(404, "NOT FOUND", "")
-		return
+	domainPattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
+	if !domainPattern.MatchString(session.Message.Data["Domain"]) {
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad domain")
 	}
 
 	var resumeOffset int64
@@ -582,7 +573,7 @@ func commandSend(session *sessionState) {
 
 	// An administrator can dictate how large a file can be stored on the server
 
-	if fileSize > int64(viper.GetInt("performance.max_file_size"))*0x10_0000 {
+	if fileSize > int64(viper.GetInt("performance.max_message_size"))*0x10_0000 {
 		session.SendQuickResponse(414, "LIMIT REACHED", "")
 		return
 	}
@@ -600,6 +591,7 @@ func commandSend(session *sessionState) {
 		return
 	}
 
+	fsp := fshandler.GetFSProvider()
 	var tempHandle *os.File
 	var tempName string
 	if resumeOffset > 0 {
@@ -651,8 +643,15 @@ func commandSend(session *sessionState) {
 		return
 	}
 
-	// TODO: Queue for delivery
+	address, err := dbhandler.ResolveWID(session.WID)
+	if err != nil {
+		logging.Writef("commandSend: Unable to resolve WID %s", err)
+		fsp.DeleteTempFile(session.WID, tempName)
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+	}
 
+	fsp.InstallTempFile(session.WID, tempName, "/ out")
+	messaging.PushMessage(address, session.Message.Data["Domain"], "/ out "+tempName)
 	session.SendQuickResponse(200, "OK", "")
 }
 
