@@ -98,11 +98,20 @@ func commandDevice(session *sessionState) {
 
 	session.LoginState = loginClientSession
 
-	// These set up update handling for the session
 	messaging.RegisterWorkspace(session.WID)
-	session.LastUpdateSent = -1
-
+	lastLogin, err := dbhandler.GetLastLogin(session.WID, session.Message.Data["Device-ID"])
+	if err != nil {
+		logging.Writef("commandDevice: error getting last login for %s:%s: %s", session.WID,
+			session.Message.Data["Device-ID"], err.Error())
+		lastLogin = -1
+	}
+	session.LastUpdateSent = lastLogin
 	session.SendQuickResponse(200, "OK", "")
+	err = dbhandler.UpdateLastLogin(session.WID, session.Message.Data["Device-ID"])
+	if err != nil {
+		logging.Writef("commandDevice: error setting last login for %s:%s: %s", session.WID,
+			session.Message.Data["Device-ID"], err.Error())
+	}
 }
 
 func commandDevKey(session *sessionState) {
