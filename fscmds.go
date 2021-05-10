@@ -614,7 +614,7 @@ func commandSetQuota(session *sessionState) {
 
 func commandUpload(session *sessionState) {
 	// Command syntax:
-	// UPLOAD(Size,Hash,Name="",Offset=0)
+	// UPLOAD(Size,Hash,Path,Name="",Offset=0)
 
 	if session.LoginState != loginClientSession {
 		session.SendQuickResponse(401, "UNAUTHORIZED", "")
