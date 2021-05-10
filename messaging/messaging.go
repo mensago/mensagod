@@ -20,7 +20,7 @@ type SealedEnvelope struct {
 type Envelope struct {
 	Type       string
 	Version    string
-	Recipient  RecipientInfo
+	Receiver   RecipientInfo
 	Sender     SenderInfo
 	Date       string
 	PayloadKey string
