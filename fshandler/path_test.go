@@ -9,19 +9,29 @@ import (
 
 func TestValidateMensagoPath(t *testing.T) {
 
-	testPath1 := "/ 3e782960-a762-4def-8038-a1d0a3cd951d e5c2f479-b9db-4475-8152-e76605e731fc"
-	if ValidateMensagoPath(testPath1) != true {
-		t.Fatal("ValidateMensagoPath didn't validate a valid path")
+	goodTestPaths := []string{
+		"/ 3e782960-a762-4def-8038-a1d0a3cd951d e5c2f479-b9db-4475-8152-e76605e731fc",
+		"/ wsp 3e782960-a762-4def-8038-a1d0a3cd951d e5c2f479-b9db-4475-8152-e76605e731fc",
 	}
 
-	testPath2 := "3e782960-a762-4def-8038-a1d0a3cd951d e5c2f479-b9db-4475-8152-e76605e731fc"
-	if ValidateMensagoPath(testPath2) != false {
-		t.Fatal("ValidateMensagoPath subtest #2 validated a bad path")
+	badTestPaths := []string{
+		// Missing the initial /
+		"3e782960-a762-4def-8038-a1d0a3cd951d e5c2f479-b9db-4475-8152-e76605e731fc",
+
+		// Leading whitespace
+		" / 3e782960-a762-4def-8038-a1d0a3cd951d e5c2f479-b9db-4475-8152-e76605e731fc",
 	}
 
-	testPath3 := " / 3e782960-a762-4def-8038-a1d0a3cd951d e5c2f479-b9db-4475-8152-e76605e731fc"
-	if ValidateMensagoPath(testPath3) != false {
-		t.Fatal("ValidateMensagoPath subtest #3 validated a bad path")
+	for i, path := range goodTestPaths {
+		if ValidateMensagoPath(path) != true {
+			t.Fatalf("ValidateMensagoPath didn't validate good test path #%d", i+1)
+		}
+	}
+
+	for i, path := range badTestPaths {
+		if ValidateMensagoPath(path) != false {
+			t.Fatalf("ValidateMensagoPath validated bad test path #%d", i+1)
+		}
 	}
 }
 
