@@ -676,7 +676,7 @@ func NewOrgEntry() *Entry {
 	self.Fields["Time-To-Live"] = "30"
 	self.SetExpiration(-1)
 
-	now := time.Now()
+	now := time.Now().UTC()
 	self.Fields["Timestamp"] = fmt.Sprintf("%d%02d%02dT%02d%02d%02dZ", now.Year(), now.Month(),
 		now.Day(), now.Hour(), now.Minute(), now.Second())
 
@@ -881,7 +881,7 @@ func NewUserEntry() *Entry {
 	self.Fields["Index"] = "1"
 	self.Fields["Time-To-Live"] = "30"
 	self.SetExpiration(-1)
-	now := time.Now()
+	now := time.Now().UTC()
 	self.Fields["Timestamp"] = fmt.Sprintf("%d%02d%02dT%02d%02d%02dZ", now.Year(), now.Month(),
 		now.Day(), now.Hour(), now.Minute(), now.Second())
 

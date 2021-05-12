@@ -2,8 +2,11 @@ package messaging
 
 import (
 	"errors"
+	"fmt"
 	"sync"
+	"time"
 
+	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/dbhandler"
 )
 
@@ -57,6 +60,47 @@ type Attachment struct {
 	Name string
 	Type string
 	Data string
+}
+
+// Allocate a new message
+func NewMessage() *Envelope {
+	var out Envelope
+	out.Version = "1.0"
+	out.Payload.Attachments = make([]Attachment, 0)
+	return &out
+}
+
+// Seal turns a regular unencrypted message into encrypted one ready for transport
+func (e *Envelope) Seal(recipientKey cs.CryptoString) (*SealedEnvelope, error) {
+	// Implementation:
+	// Set sender information, marshal to JSON, get org key, encrypt, and assign
+	// Set recipient information, marshal to JSON, encrypt with supplied key, and assign
+	// Generate ephemeral message key, encrypt, and assign
+	// Marshal payload to JSON, encrypt with ephemeral message key, and assign
+
+	// TODO: Finish implementing
+
+	return nil, errors.New("Unimplemented")
+}
+
+func (se *SealedEnvelope) Send(address string) error {
+	now := time.Now().UTC()
+	se.Date = fmt.Sprintf("%d%02d%02dT%02d%02d%02dZ", now.Year(), now.Month(), now.Day(), now.Hour(),
+		now.Minute(), now.Second())
+
+	// TODO: Finish implementing
+
+	return errors.New("Unimplemented")
+}
+
+func (se *SealedEnvelope) SendLocal(wid string) error {
+	now := time.Now().UTC()
+	se.Date = fmt.Sprintf("%d%02d%02dT%02d%02d%02dZ", now.Year(), now.Month(), now.Day(), now.Hour(),
+		now.Minute(), now.Second())
+
+	// TODO: Finish implementing
+
+	return errors.New("Unimplemented")
 }
 
 // widList is a map of workspace IDs to UNIX timestamps used for update notifications. The
