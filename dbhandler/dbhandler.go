@@ -753,17 +753,19 @@ func AddEntry(entry *keycard.Entry) error {
 	return err
 }
 
-// GetPrimarySigningKey obtains the organization's primary signing key as an CryptoString
-func GetPrimarySigningKey() (string, error) {
-	row := dbConn.QueryRow(`SELECT privkey FROM orgkeys WHERE purpose = 'sign' ` +
+// GetPrimarySigningPair obtains the organization's primary signing and verification keys
+func GetPrimarySigningPair() (*ezcrypt.SigningPair, error) {
+	row := dbConn.QueryRow(`SELECT pubkey,privkey FROM orgkeys WHERE purpose = 'sign' ` +
 		`ORDER BY rowid DESC LIMIT 1`)
 
-	var psk string
-	err := row.Scan(&psk)
+	var verkey, signkey string
+	err := row.Scan(&verkey, &signkey)
 	if err == nil {
-		return psk, nil
+		keypair := ezcrypt.NewSigningPair(cryptostring.New(verkey),
+			cryptostring.New(signkey))
+		return keypair, nil
 	}
-	return "", err
+	return nil, err
 }
 
 // GetEncryptionPair returns the organization's encryption keypair as an EncryptionPair

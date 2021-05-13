@@ -159,25 +159,17 @@ func commandAddEntry(session *sessionState) {
 	// If we managed to get this far, we can (theoretically) trust the initial data set given to us
 	// by the client. Here we sign the data with the organization's signing key
 
-	pskstring, err := dbhandler.GetPrimarySigningKey()
+	pskpair, err := dbhandler.GetPrimarySigningPair()
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERRROR", "")
 		logging.Write("ERROR AddEntry: missing primary signing key in database.")
 		return
 	}
 
-	var psk cryptostring.CryptoString
-	err = psk.Set(pskstring)
-	if err != nil || psk.RawData() == nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERRROR", "")
-		logging.Write("ERROR AddEntry: corrupted primary signing key in database.")
-		return
-	}
-
 	// We bypass the nacl/sign module because it requires a 64-bit private key. We, however, pass
 	// around the 32-bit ed25519 seeds used to generate the keys. Thus, we have to skip using
 	// nacl.Sign() and go directly to the equivalent code in the ed25519 module.
-	pskBytes := ed25519.NewKeyFromSeed(psk.RawData())
+	pskBytes := ed25519.NewKeyFromSeed(pskpair.PrivateKey.RawData())
 	rawSignature := ed25519.Sign(pskBytes, entry.MakeByteString(-1))
 	if rawSignature == nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERRROR", "")

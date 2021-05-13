@@ -443,36 +443,3 @@ func TestDBHandler_SetQuotaUsage(t *testing.T) {
 		t.Fatalf("TestDBHandler_SetQuotaUsage: #2: got the wrong usage size: %d", usage)
 	}
 }
-
-// TODO: Tests to write:
-
-// AddDevice
-// AddEntry
-// AddWorkspace
-// CheckDevice
-// CheckLockout
-// CheckPasscode
-// CheckPassword
-// CheckRegCode
-// CheckUserID
-// CheckWorkspace
-// DeletePasscode
-// DeleteRegCode
-// GetAliases
-// GetMensagoAddressType
-// GetEncryptionPair
-// GetLastEntry
-// GetOrgEntries
-// GetPrimarySigningKey
-// GetUserEntries
-// IsAlias
-// LogFailure
-// PreregWorkspace
-// RemoveDevice
-// RemoveExpiredPasscodes
-// RemoveWorkspace
-// ResetPassword
-// ResolveAddress
-// SetPassword
-// SetWorkspaceStatus
-// UpdateDevice
