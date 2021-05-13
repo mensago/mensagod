@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -97,7 +99,7 @@ func (e *Envelope) Seal(recipientKey cs.CryptoString) (*SealedEnvelope, error) {
 	if err != nil {
 		return nil, err
 	}
-	sPubKey := ezcrypt.NewEncryptionKey(*sOrgKeyCS)
+	sPubKey := ezcrypt.NewEncryptionKey(sOrgKeyCS)
 	out.Sender, err = sPubKey.Encrypt([]byte(rawJSON))
 	if err != nil {
 		return nil, err
@@ -199,15 +201,43 @@ func UpdateWorkspace(wid string, timestamp int64) error {
 }
 
 // GetOrgEncryptionKey obtains an organization's encryption key and returns it as a CryptoString
-func GetOrgEncryptionKey(domain string) (*cs.CryptoString, error) {
+func GetOrgEncryptionKey(domain string) (cs.CryptoString, error) {
 
-	// TODO: Implement
-	return nil, errors.New("unimplemented")
+	pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
+	if !pattern.MatchString(domain) {
+		return cs.CryptoString{}, errors.New("bad domain")
+	}
+
+	if strings.ToLower(domain) == strings.ToLower(viper.GetString("global.domain")) {
+		encpair, err := dbhandler.GetEncryptionPair()
+		if err != nil {
+			return cs.CryptoString{}, err
+		}
+		return encpair.PublicKey, nil
+	}
+
+	// TODO: Implement getting keys for external servers
+
+	return cs.CryptoString{}, errors.New("unimplemented")
 }
 
 // GetOrgEncryptionKey obtains an organization's verification key and returns it as a CryptoString
-func GetOrgVerificationKey(domain string) (*cs.CryptoString, error) {
+func GetOrgVerificationKey(domain string) (cs.CryptoString, error) {
 
-	// TODO: Implement
-	return nil, errors.New("unimplemented")
+	pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
+	if !pattern.MatchString(domain) {
+		return cs.CryptoString{}, errors.New("bad domain")
+	}
+
+	if strings.ToLower(domain) == strings.ToLower(viper.GetString("global.domain")) {
+		signpair, err := dbhandler.GetPrimarySigningPair()
+		if err != nil {
+			return cs.CryptoString{}, err
+		}
+		return signpair.PublicKey, nil
+	}
+
+	// TODO: Implement getting keys for external servers
+
+	return cs.CryptoString{}, errors.New("unimplemented")
 }
