@@ -1,6 +1,7 @@
 package messaging
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -8,6 +9,8 @@ import (
 
 	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/dbhandler"
+	"github.com/darkwyrm/mensagod/ezcrypt"
+	"github.com/spf13/viper"
 )
 
 type SealedEnvelope struct {
@@ -70,7 +73,8 @@ func NewMessage() *Envelope {
 	return &out
 }
 
-// Seal turns a regular unencrypted message into encrypted one ready for transport
+// Seal turns a regular unencrypted message into encrypted one ready for transport. Note that the
+// process used for this function is specific to sealing system messages sent by the server.
 func (e *Envelope) Seal(recipientKey cs.CryptoString) (*SealedEnvelope, error) {
 	// Implementation:
 	// Set sender information, marshal to JSON, get org key, encrypt, and assign
@@ -78,9 +82,30 @@ func (e *Envelope) Seal(recipientKey cs.CryptoString) (*SealedEnvelope, error) {
 	// Generate ephemeral message key, encrypt, and assign
 	// Marshal payload to JSON, encrypt with ephemeral message key, and assign
 
+	var out SealedEnvelope
+
+	// Set sender information, marshal to JSON, get org key, encrypt, and assign
+	e.Sender.From = viper.GetString("global.domain")
+	e.Receiver.SenderDomain = e.Sender.From
+
+	rawJSON, err := json.Marshal(e.Sender)
+	if err != nil {
+		return nil, err
+	}
+
+	sOrgKeyCS, err := GetOrgEncryptionKey(e.Sender.From)
+	if err != nil {
+		return nil, err
+	}
+	sPubKey := ezcrypt.NewEncryptionKey(*sOrgKeyCS)
+	out.Sender, err = sPubKey.Encrypt([]byte(rawJSON))
+	if err != nil {
+		return nil, err
+	}
+
 	// TODO: Finish implementing
 
-	return nil, errors.New("Unimplemented")
+	return &out, errors.New("Unimplemented")
 }
 
 func (se *SealedEnvelope) Send(address string) error {
@@ -171,4 +196,18 @@ func UpdateWorkspace(wid string, timestamp int64) error {
 	widList[wid] = timestamp
 
 	return nil
+}
+
+// GetOrgEncryptionKey obtains an organization's encryption key and returns it as a CryptoString
+func GetOrgEncryptionKey(domain string) (*cs.CryptoString, error) {
+
+	// TODO: Implement
+	return nil, errors.New("unimplemented")
+}
+
+// GetOrgEncryptionKey obtains an organization's verification key and returns it as a CryptoString
+func GetOrgVerificationKey(domain string) (*cs.CryptoString, error) {
+
+	// TODO: Implement
+	return nil, errors.New("unimplemented")
 }
