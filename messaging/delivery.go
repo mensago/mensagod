@@ -93,27 +93,27 @@ func deliveryWorker() {
 		localPath := fshandler.ConvertToLocal(msgInfo.Path)
 		_, err := os.Stat(localPath)
 		if err != nil {
-			// TODO: Bounce (internal server error)
+			Bounce(300, &map[string]string{"RECIPIENTADDRESS": "messaging.deliveryWorker.1"})
 			continue
 		}
 
 		// The Recipient field will contain a domain, not a full address
 		isLocal, err := dbhandler.IsDomainLocal(msgInfo.Recipient)
 		if err != nil {
-			// TODO: Bounce (internal server error)
+			Bounce(300, &map[string]string{"RECIPIENTADDRESS": "messaging.deliveryWorker.2"})
 			continue
 		}
 
 		if isLocal {
 			recipient, err := DecryptRecipientHeader(msgInfo.Path)
 			if err != nil {
-				// TODO: Bounce (unreadable recipient header for local delivery)
+				Bounce(503, nil)
 				continue
 			}
 
 			parts := strings.SplitN(recipient, "/", 1)
 			if !dbhandler.ValidateUUID(parts[0]) {
-				// TODO: Bounce (bad recipient workspace)
+				Bounce(504, &map[string]string{"RECIPIENTADDRESS": parts[0]})
 				continue
 			}
 
@@ -191,3 +191,34 @@ func DecryptRecipientHeader(localPath string) (string, error) {
 
 	return out.To, nil
 }
+
+// Bounce() is used to send delivery reports to local users
+func Bounce(errorCode int, extraData *map[string]string) {
+
+}
+
+const bounce300Body string = `The server was unable to deliver your message because of an internal error. Please contact technical support for your account with the information provided below.
+
+----------
+Technical Support Information
+Error Code: 300 INTERNAL SERVER ERROR
+Internal Error Code: %INTERNALCODE%
+Date: %TIMESTAMP%
+`
+
+const bounce503Body string = `The server was unable to deliver your message because the recipient's address was formatted incorrectly.
+
+----------
+Technical Support Information
+Error Code: 503 BAD RECIPIENT ADDRESS
+Recipent Address: %RECIPIENTADDRESS%
+Date: %TIMESTAMP%
+`
+
+const bounce504Body string = `The server was unable to deliver your message because it was unable to decrypt the recipient's address. This might be a problem with your program.
+
+----------
+Technical Support Information
+Error Code: 504 UNREADABLE RECIPIENT ADDRESS
+Date: %TIMESTAMP%
+`
