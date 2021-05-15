@@ -438,7 +438,7 @@ func HashPassword(password string) string {
 func VerifyPasswordHash(password string, hashPass string) (bool, error) {
 	splitValues := strings.Split(hashPass, "$")
 	if len(splitValues) != 6 {
-		return false, errors.New("Invalid Argon hash string")
+		return false, errors.New("invalid argon hash string")
 	}
 
 	var version int
@@ -447,7 +447,7 @@ func VerifyPasswordHash(password string, hashPass string) (bool, error) {
 		return false, err
 	}
 	if version != argon2.Version {
-		return false, errors.New("Unsupported Argon version")
+		return false, errors.New("unsupported argon version")
 	}
 
 	var ramUsage, iterations uint32
