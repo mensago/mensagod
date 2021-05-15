@@ -139,7 +139,7 @@ func GetOrgEncryptionKey(domain string) (cs.CryptoString, error) {
 		return cs.CryptoString{}, errors.New("bad domain")
 	}
 
-	if strings.ToLower(domain) == strings.ToLower(viper.GetString("global.domain")) {
+	if strings.EqualFold(domain, viper.GetString("global.domain")) {
 		encpair, err := dbhandler.GetEncryptionPair()
 		if err != nil {
 			return cs.CryptoString{}, err
@@ -160,7 +160,7 @@ func GetOrgVerificationKey(domain string) (cs.CryptoString, error) {
 		return cs.CryptoString{}, errors.New("bad domain")
 	}
 
-	if strings.ToLower(domain) == strings.ToLower(viper.GetString("global.domain")) {
+	if strings.EqualFold(domain, viper.GetString("global.domain")) {
 		signpair, err := dbhandler.GetPrimarySigningPair()
 		if err != nil {
 			return cs.CryptoString{}, err
