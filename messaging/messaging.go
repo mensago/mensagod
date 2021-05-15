@@ -1,16 +1,13 @@
 package messaging
 
 import (
-	"encoding/json"
 	"errors"
 	"regexp"
 	"strings"
 	"sync"
-	"time"
 
 	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/dbhandler"
-	"github.com/darkwyrm/mensagod/ezcrypt"
 	"github.com/spf13/viper"
 )
 
@@ -21,7 +18,6 @@ type SealedEnvelope struct {
 	Sender     string
 	Date       string
 	PayloadKey string
-	Payload    string
 }
 
 type Envelope struct {
@@ -31,7 +27,6 @@ type Envelope struct {
 	Sender     SenderInfo
 	Date       string
 	PayloadKey string
-	Payload    MsgBody
 }
 
 type RecipientInfo struct {
@@ -64,65 +59,6 @@ type Attachment struct {
 	Name string
 	Type string
 	Data string
-}
-
-// Allocate a new message
-func NewMessage() *Envelope {
-	var out Envelope
-	out.Version = "1.0"
-	out.Payload.Attachments = make([]Attachment, 0)
-	return &out
-}
-
-// Seal turns a regular unencrypted message into encrypted one ready for transport. Note that the
-// process used for this function is specific to sealing system messages sent by the server.
-func (e *Envelope) Seal(recipientKey cs.CryptoString) (*SealedEnvelope, error) {
-	// Implementation:
-	// Set sender information, marshal to JSON, get org key, encrypt, and assign
-	// Set recipient information, marshal to JSON, encrypt with supplied key, and assign
-	// Generate ephemeral message key, encrypt, and assign
-	// Marshal payload to JSON, encrypt with ephemeral message key, and assign
-
-	var out SealedEnvelope
-
-	// Set sender information, marshal to JSON, get org key, encrypt, and assign
-	e.Sender.From = viper.GetString("global.domain")
-	e.Receiver.SenderDomain = e.Sender.From
-
-	rawJSON, err := json.Marshal(e.Sender)
-	if err != nil {
-		return nil, err
-	}
-
-	sOrgKeyCS, err := GetOrgEncryptionKey(e.Sender.From)
-	if err != nil {
-		return nil, err
-	}
-	sPubKey := ezcrypt.NewEncryptionKey(sOrgKeyCS)
-	out.Sender, err = sPubKey.Encrypt([]byte(rawJSON))
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: Finish implementing
-
-	return &out, errors.New("Unimplemented")
-}
-
-func (se *SealedEnvelope) Send(address string) error {
-	se.Date = time.Now().UTC().Format("20060102T030405Z")
-
-	// TODO: Finish implementing
-
-	return errors.New("Unimplemented")
-}
-
-func (se *SealedEnvelope) SendLocal(wid string) error {
-	se.Date = time.Now().UTC().Format("20060102T030405Z")
-
-	// TODO: Finish implementing
-
-	return errors.New("Unimplemented")
 }
 
 // widList is a map of workspace IDs to UNIX timestamps used for update notifications. The
