@@ -11,9 +11,13 @@ import (
 	"sync"
 	"time"
 
+	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/dbhandler"
+	"github.com/darkwyrm/mensagod/ezcrypt"
 	"github.com/darkwyrm/mensagod/fshandler"
+	"github.com/darkwyrm/mensagod/keycard"
 	"github.com/darkwyrm/mensagod/logging"
+	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
 
@@ -27,9 +31,9 @@ var quitFlag bool
 var quitLock sync.RWMutex
 
 type messageInfo struct {
-	Sender    string
-	Recipient string
-	Path      string
+	Sender   string
+	Receiver string
+	Path     string
 }
 
 func InitDelivery() {
@@ -46,7 +50,7 @@ func ShutdownDelivery() {
 
 // PushMessage enqueues a message for delivery
 func PushMessage(sender string, recipientDomain string, path string) {
-	info := messageInfo{Sender: sender, Recipient: recipientDomain, Path: path}
+	info := messageInfo{Sender: sender, Receiver: recipientDomain, Path: path}
 	queueLock.Lock()
 	messageQueue.PushBack(info)
 	queueLock.Unlock()
@@ -93,27 +97,27 @@ func deliveryWorker() {
 		localPath := fshandler.ConvertToLocal(msgInfo.Path)
 		_, err := os.Stat(localPath)
 		if err != nil {
-			Bounce(300, &map[string]string{"RECIPIENTADDRESS": "messaging.deliveryWorker.1"})
+			Bounce(300, msgInfo, &map[string]string{"INTERNALCODE": "messaging.deliveryWorker.1"})
 			continue
 		}
 
-		// The Recipient field will contain a domain, not a full address
-		isLocal, err := dbhandler.IsDomainLocal(msgInfo.Recipient)
+		// The Receiver field will contain a domain, not a full address
+		isLocal, err := dbhandler.IsDomainLocal(msgInfo.Receiver)
 		if err != nil {
-			Bounce(300, &map[string]string{"RECIPIENTADDRESS": "messaging.deliveryWorker.2"})
+			Bounce(300, msgInfo, &map[string]string{"INTERNALCODE": "messaging.deliveryWorker.2"})
 			continue
 		}
 
 		if isLocal {
 			recipient, err := DecryptRecipientHeader(msgInfo.Path)
 			if err != nil {
-				Bounce(503, nil)
+				Bounce(504, msgInfo, nil)
 				continue
 			}
 
 			parts := strings.SplitN(recipient, "/", 1)
 			if !dbhandler.ValidateUUID(parts[0]) {
-				Bounce(504, &map[string]string{"RECIPIENTADDRESS": parts[0]})
+				Bounce(503, msgInfo, &map[string]string{"RECIPIENTADDRESS": parts[0]})
 				continue
 			}
 
@@ -146,10 +150,12 @@ func deliveryWorker() {
 			}
 		}
 
+		// TODO: implement External Delivery
+
 		// External Delivery is not needed for demo completeness. Instead we will delete the
 		// message and push a bounce message into the sender's workspace for now.
-
-		// TODO: implement External Delivery
+		Bounce(301, msgInfo, nil)
+		os.Remove(msgInfo.Path)
 	}
 
 	workerLock.Lock()
@@ -193,8 +199,170 @@ func DecryptRecipientHeader(localPath string) (string, error) {
 }
 
 // Bounce() is used to send delivery reports to local users
-func Bounce(errorCode int, extraData *map[string]string) {
+func Bounce(errorCode int, info *messageInfo, extraData *map[string]string) {
 
+	orgDomain := viper.GetString("global.domain")
+	now := time.Now().UTC()
+	encPair, err := dbhandler.GetEncryptionPair()
+	if err != nil {
+		logging.Writef("Bounce: unable to get org encryption pair: %s", err.Error())
+		return
+	}
+
+	userCard, err := keycard.GetKeycard(info.Sender)
+	if err != nil {
+		logging.Writef("Bounce: unable to obtain keycard for sender %s: %s", info.Sender,
+			err.Error())
+		return
+	}
+
+	rawUserKeyString := userCard.Entries[len(userCard.Entries)-1].Fields["Encryption-Key"]
+	var userKeyString cs.CryptoString
+	err = userKeyString.Set(rawUserKeyString)
+	if err != nil {
+		logging.Writef("Bounce: error setting encryption key for sender %s: %s", info.Sender,
+			err.Error())
+		return
+	}
+	userKey := ezcrypt.NewEncryptionKey(userKeyString)
+
+	var msg SealedEnvelope
+	msg.Type = "deliveryreport"
+	msg.Version = "1.0"
+
+	receiver := RecipientInfo{
+		To:           info.Sender,
+		SenderDomain: orgDomain,
+	}
+	rawJSON, err := json.Marshal(receiver)
+	if err != nil {
+		logging.Writef("Bounce: unable to marshal receiver info: %s", err.Error())
+		return
+	}
+	msg.Receiver, err = encPair.Encrypt([]byte(rawJSON))
+	if err != nil {
+		logging.Writef("Bounce: unable to encrypt receiver info: %s", err.Error())
+		return
+	}
+
+	sender := SenderInfo{
+		From:            orgDomain,
+		RecipientDomain: orgDomain,
+	}
+	rawJSON, err = json.Marshal(sender)
+	if err != nil {
+		logging.Writef("Bounce: unable to marshal sender info: %s", err.Error())
+		return
+	}
+	msg.Sender, err = encPair.Encrypt([]byte(rawJSON))
+	if err != nil {
+		logging.Writef("Bounce: unable to encrypt sender info: %s", err.Error())
+		return
+	}
+
+	msg.Date = now.Format("20060102T030405Z")
+
+	// PayloadKey
+	msgKey := ezcrypt.GenerateSymmetricKey()
+	encPayloadKey, err := userKey.Encrypt(msgKey.Key.RawData())
+	if err != nil {
+		logging.Writef("Bounce: unable to encrypt payload key for sender %s: %s", info.Sender,
+			err.Error())
+		return
+	}
+	msg.PayloadKey = encPayloadKey
+
+	var payload MsgBody
+	payload.From = orgDomain
+	payload.To = info.Sender
+	payload.Date = msg.Date
+	payload.ThreadID = uuid.New().String()
+
+	switch errorCode {
+	case 300:
+		payload.Subject = "Delivery Report: Internal Server Error"
+		internalCode, exists := (*extraData)["INTERNALCODE"]
+		if exists {
+			payload.Body = strings.Replace(bounce300Body, "%INTERNALCODE%", internalCode, 1)
+		} else {
+			payload.Body = bounce300Body
+		}
+	case 503:
+		payload.Subject = "Delivery Report: Bad Recipient Address"
+		recipientAddress, exists := (*extraData)["RECIPIENTADDRESS"]
+		if exists {
+			payload.Body = strings.Replace(bounce300Body, "%RECIPIENTADDRESS%", recipientAddress, 1)
+		} else {
+			payload.Body = bounce503Body
+		}
+	case 504:
+		payload.Subject = "Delivery Report: Unreadable Recipient Address"
+		payload.Body = bounce504Body
+	case 301:
+		payload.Subject = "Delivery Report: External Delivery Not Implemented"
+		payload.Body = bounce301Body
+	default:
+		logging.Writef("Bounce: unhandled error code %d", errorCode)
+		return
+	}
+
+	payload.Body = strings.Replace(payload.Body, "%TIMESTAMP%",
+		time.Now().UTC().Format("2006-01-02 03:04:05"), 1)
+	rawJSON, err = json.Marshal(payload)
+	if err != nil {
+		logging.Writef("Bounce: unable to marshal payload for sender %s: %s", info.Sender,
+			err.Error())
+		return
+	}
+
+	encryptedPayload, err := msgKey.Encrypt(rawJSON)
+	if err != nil {
+		logging.Writef("Bounce: unable to encrypt payload for sender %s: %s", info.Sender,
+			err.Error())
+		return
+	}
+
+	rawJSON, err = json.Marshal(msg)
+	if err != nil {
+		logging.Writef("Bounce: unable to marshal message for sender %s: %s", info.Sender,
+			err.Error())
+		return
+	}
+
+	fsp := fshandler.GetFSProvider()
+	handle, tempName, err := fsp.MakeTempFile(info.Sender)
+	if err != nil {
+		logging.Writef("Bounce: unable to create temp file for message for sender %s: %s",
+			info.Sender, err.Error())
+		return
+	}
+	handle.WriteString(strings.Join(
+		[]string{
+			string(rawJSON), "\r\n",
+			"----------\r\n",
+			"XSALSA20\r\n",
+			encryptedPayload,
+		}, ""))
+	handle.Close()
+
+	msgFileName, err := fsp.InstallTempFile(info.Sender, tempName, "/ "+info.Sender+" new")
+	if err != nil {
+		logging.Writef("Bounce: unable to install temp file for sender %s: %s",
+			info.Sender, err.Error())
+		return
+	}
+
+	parts := strings.SplitN(info.Sender, "/", 1)
+	timestamp := time.Now().UTC().Unix()
+	dbhandler.AddSyncRecord(parts[0], dbhandler.UpdateRecord{
+		Type: dbhandler.UpdateAdd,
+		Data: strings.Join([]string{"/", parts[0], "new", msgFileName}, " "),
+		Time: timestamp,
+	})
+
+	if IsWorkspaceRegistered(parts[0]) {
+		UpdateWorkspace(parts[0], timestamp)
+	}
 }
 
 const bounce300Body string = `The server was unable to deliver your message because of an internal error. Please contact technical support for your account with the information provided below.
@@ -222,3 +390,5 @@ Technical Support Information
 Error Code: 504 UNREADABLE RECIPIENT ADDRESS
 Date: %TIMESTAMP%
 `
+
+const bounce301Body string = `The server was unable to deliver your message because external delivery is not yet implemented. Sorry!`
