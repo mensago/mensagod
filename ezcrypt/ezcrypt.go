@@ -597,7 +597,7 @@ func VerifyPasswordHash(password string, hashPass string) (bool, error) {
 
 // IsArgonHash checks to see if the string passed is an Argon2id password hash
 func IsArgonHash(hashstr string) (bool, error) {
-	// TODO: revisit and make more robust
+	// TODO: POSTDEMO: revisit and make more robust
 
 	if !strings.HasPrefix(hashstr, "$argon2id") {
 		return false, errors.New("bad prefix")

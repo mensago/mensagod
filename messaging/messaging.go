@@ -147,7 +147,7 @@ func GetOrgEncryptionKey(domain string) (cs.CryptoString, error) {
 		return encpair.PublicKey, nil
 	}
 
-	// TODO: Implement getting keys for external servers
+	// TODO: POSTDEMO: Implement getting keys for external servers
 
 	return cs.CryptoString{}, errors.New("unimplemented")
 }
@@ -168,7 +168,7 @@ func GetOrgVerificationKey(domain string) (cs.CryptoString, error) {
 		return signpair.PublicKey, nil
 	}
 
-	// TODO: Implement getting keys for external servers
+	// TODO: POSTDEMO: Implement getting keys for external servers
 
 	return cs.CryptoString{}, errors.New("unimplemented")
 }

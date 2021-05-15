@@ -348,7 +348,7 @@ func commandRegister(session *sessionState) {
 			return
 		}
 
-		// TODO: Eliminate this when shared workspaces are implemented
+		// TODO: POSTDEMO: Eliminate this when shared workspaces are implemented
 		if wtype == "shared" {
 			session.SendQuickResponse(301, "NOT IMPLEMENTED", "")
 			return
@@ -379,7 +379,7 @@ func commandRegister(session *sessionState) {
 		}
 	}
 
-	// TODO: Check number of recent registration requests from this IP
+	// TODO: POSTDEMO: Check number of recent registration requests from this IP
 
 	var workspaceStatus string
 	switch regType {

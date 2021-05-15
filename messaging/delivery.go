@@ -150,7 +150,7 @@ func deliveryWorker() {
 			}
 		}
 
-		// TODO: implement External Delivery
+		// TODO: POSTDEMO: implement External Delivery
 
 		// External Delivery is not needed for demo completeness. Instead we will delete the
 		// message and push a bounce message into the sender's workspace for now.
