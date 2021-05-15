@@ -10,12 +10,13 @@ import (
 	"strings"
 
 	"github.com/darkwyrm/b85"
-	"github.com/darkwyrm/mensagod/cryptostring"
+	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/nacl/box"
+	"golang.org/x/crypto/nacl/secretbox"
 )
 
 // This module creates some classes which make working with Twisted Edwards Curve encryption
@@ -32,11 +33,11 @@ type VerificationKey struct {
 	PublicHash     string
 	encryptionType string
 	keyType        string
-	key            cryptostring.CryptoString
+	key            cs.CryptoString
 }
 
 // NewVerificationKey creates a new verification key from a CryptoString
-func NewVerificationKey(key cryptostring.CryptoString) *VerificationKey {
+func NewVerificationKey(key cs.CryptoString) *VerificationKey {
 	var newkey VerificationKey
 	if newkey.Set(key) != nil {
 		return nil
@@ -57,7 +58,7 @@ func (vkey VerificationKey) GetType() string {
 
 // Verify uses the internal verification key with the passed data and signature and returns true
 // if the signature has verified the data with that key.
-func (vkey VerificationKey) Verify(data []byte, signature cryptostring.CryptoString) (bool, error) {
+func (vkey VerificationKey) Verify(data []byte, signature cs.CryptoString) (bool, error) {
 	if !signature.IsValid() {
 		return false, errors.New("invalid signature")
 	}
@@ -81,7 +82,7 @@ func (vkey VerificationKey) Verify(data []byte, signature cryptostring.CryptoStr
 }
 
 // Set assigns a CryptoString value to the key
-func (vkey *VerificationKey) Set(key cryptostring.CryptoString) error {
+func (vkey *VerificationKey) Set(key cs.CryptoString) error {
 	if key.Prefix != "ED25519" {
 		return errors.New("unsupported signing algorithm")
 	}
@@ -99,13 +100,13 @@ type SigningPair struct {
 	PrivateHash    string
 	encryptionType string
 	keyType        string
-	PublicKey      cryptostring.CryptoString
-	PrivateKey     cryptostring.CryptoString
+	PublicKey      cs.CryptoString
+	PrivateKey     cs.CryptoString
 }
 
 // NewSigningPair creates a new SigningPair object from two CryptoString objects
-func NewSigningPair(pubkey cryptostring.CryptoString,
-	privkey cryptostring.CryptoString) *SigningPair {
+func NewSigningPair(pubkey cs.CryptoString,
+	privkey cs.CryptoString) *SigningPair {
 	var newpair SigningPair
 	if newpair.Set(pubkey, privkey) != nil {
 		return nil
@@ -125,8 +126,8 @@ func (spair SigningPair) GetType() string {
 }
 
 // Set assigns a pair of CryptoString values to the EncryptionPair
-func (spair *SigningPair) Set(pubkey cryptostring.CryptoString,
-	privkey cryptostring.CryptoString) error {
+func (spair *SigningPair) Set(pubkey cs.CryptoString,
+	privkey cs.CryptoString) error {
 
 	if pubkey.Prefix != "ED25519" || privkey.Prefix != "ED25519" {
 		return errors.New("unsupported signing algorithm")
@@ -148,13 +149,13 @@ func (spair SigningPair) Generate() error {
 	if err != nil {
 		return err
 	}
-	return spair.Set(cryptostring.New("ED25519:"+b85.Encode(verkey[:])),
-		cryptostring.New("ED25519:"+b85.Encode(signkey.Seed())))
+	return spair.Set(cs.New("ED25519:"+b85.Encode(verkey[:])),
+		cs.New("ED25519:"+b85.Encode(signkey.Seed())))
 }
 
 // Sign cryptographically signs a byte slice.
-func (spair SigningPair) Sign(data []byte) (cryptostring.CryptoString, error) {
-	var out cryptostring.CryptoString
+func (spair SigningPair) Sign(data []byte) (cs.CryptoString, error) {
+	var out cs.CryptoString
 
 	signkeyDecoded := spair.PrivateKey.RawData()
 	if signkeyDecoded == nil {
@@ -173,7 +174,7 @@ func (spair SigningPair) Sign(data []byte) (cryptostring.CryptoString, error) {
 
 // Verify uses the internal verification key with the passed data and signature and returns true
 // if the signature has verified the data with that key.
-func (spair SigningPair) Verify(data []byte, signature cryptostring.CryptoString) (bool, error) {
+func (spair SigningPair) Verify(data []byte, signature cs.CryptoString) (bool, error) {
 	if !signature.IsValid() {
 		return false, errors.New("invalid signature")
 	}
@@ -202,12 +203,12 @@ type EncryptionPair struct {
 	PrivateHash    string
 	encryptionType string
 	keyType        string
-	PublicKey      cryptostring.CryptoString
-	PrivateKey     cryptostring.CryptoString
+	PublicKey      cs.CryptoString
+	PrivateKey     cs.CryptoString
 }
 
 // NewEncryptionPair creates a new EncryptionPair object from two CryptoString objects
-func NewEncryptionPair(pubkey cryptostring.CryptoString, privkey cryptostring.CryptoString) *EncryptionPair {
+func NewEncryptionPair(pubkey cs.CryptoString, privkey cs.CryptoString) *EncryptionPair {
 	var newpair EncryptionPair
 
 	// All parameter validation is handled in Set
@@ -229,8 +230,8 @@ func (kpair EncryptionPair) GetType() string {
 }
 
 // Set assigns a pair of CryptoString values to the EncryptionPair
-func (kpair *EncryptionPair) Set(pubkey cryptostring.CryptoString,
-	privkey cryptostring.CryptoString) error {
+func (kpair *EncryptionPair) Set(pubkey cs.CryptoString,
+	privkey cs.CryptoString) error {
 
 	if pubkey.Prefix != "CURVE25519" || privkey.Prefix != "CURVE25519" {
 		return errors.New("unsupported encryption algorithm")
@@ -253,8 +254,8 @@ func (kpair EncryptionPair) Generate() error {
 		return err
 	}
 
-	return kpair.Set(cryptostring.New("CURVE25519:"+b85.Encode(pubkey[:])),
-		cryptostring.New("CURVE25519:"+b85.Encode(privkey[:])))
+	return kpair.Set(cs.New("CURVE25519:"+b85.Encode(pubkey[:])),
+		cs.New("CURVE25519:"+b85.Encode(privkey[:])))
 }
 
 // Encrypt encrypts byte slice using the internal public key. It returns the resulting encrypted
@@ -325,11 +326,11 @@ type EncryptionKey struct {
 	PublicHash     string
 	encryptionType string
 	keyType        string
-	PublicKey      cryptostring.CryptoString
+	PublicKey      cs.CryptoString
 }
 
 // NewEncryptionKey creates a new EncryptionKey object from a CryptoString of the public key
-func NewEncryptionKey(pubkey cryptostring.CryptoString) *EncryptionKey {
+func NewEncryptionKey(pubkey cs.CryptoString) *EncryptionKey {
 	var newkey EncryptionKey
 
 	// All parameter validation is handled in Set
@@ -351,7 +352,7 @@ func (ekey EncryptionKey) GetType() string {
 }
 
 // Set assigns a pair of CryptoString values to the EncryptionKey
-func (ekey *EncryptionKey) Set(pubkey cryptostring.CryptoString) error {
+func (ekey *EncryptionKey) Set(pubkey cs.CryptoString) error {
 
 	if pubkey.Prefix != "CURVE25519" {
 		return errors.New("unsupported encryption algorithm")
@@ -387,6 +388,125 @@ func (ekey EncryptionKey) Encrypt(data []byte) (string, error) {
 	}
 
 	return b85.Encode(encryptedData), nil
+}
+
+// SymmetricKey defines a symmetric encryption key
+type SymmetricKey struct {
+	Hash           string
+	encryptionType string
+	keyType        string
+	Key            cs.CryptoString
+}
+
+// NewSymmetricKey creates a new NewSymmetricKey object from a CryptoString of the key
+func NewSymmetricKey(keyString cs.CryptoString) *SymmetricKey {
+	var newkey SymmetricKey
+
+	// All parameter validation is handled in Set
+	if newkey.Set(keyString) != nil {
+		return nil
+	}
+
+	return &newkey
+}
+
+// NewSymmetricKey creates a new NewSymmetricKey object from a CryptoString of the key
+func GenerateSymmetricKey() *SymmetricKey {
+	var newkey SymmetricKey
+
+	keyBytes := make([]byte, 32)
+	rand.Read(keyBytes)
+
+	var keyString cs.CryptoString
+	keyString.Prefix = "XSALSA20"
+	keyString.Data = b85.Encode(keyBytes)
+
+	// All parameter validation is handled in Set
+	if newkey.Set(keyString) != nil {
+		return nil
+	}
+
+	return &newkey
+}
+
+// GetEncryptionType returns the algorithm used by the key
+func (key SymmetricKey) GetEncryptionType() string {
+	return key.encryptionType
+}
+
+// GetType returns the type of key -- asymmetric or symmetric
+func (key SymmetricKey) GetType() string {
+	return key.keyType
+}
+
+// Set assigns a pair of CryptoString values to the SymmetricKey
+func (key *SymmetricKey) Set(keyString cs.CryptoString) error {
+
+	if keyString.Prefix != "XSALSA20" {
+		return errors.New("unsupported encryption algorithm")
+	}
+	key.Key = keyString
+
+	sum := blake2b.Sum256([]byte(keyString.AsString()))
+	key.Hash = "BLAKE2B-256:" + b85.Encode(sum[:])
+
+	return nil
+}
+
+// Encrypt encrypts byte slice using the internal key. It returns the resulting encrypted
+// data as a Base85-encoded string that amounts to a CryptoString without the prefix.
+func (key SymmetricKey) Encrypt(data []byte) (string, error) {
+	if data == nil {
+		return "", nil
+	}
+
+	keyDecoded := key.Key.RawData()
+	if keyDecoded == nil {
+		return "", errors.New("decoding error in symmetric key")
+	}
+
+	var nonce [24]byte
+	rand.Read(nonce[:])
+
+	// This kind of stupid is why this class is even necessary
+	var tempPtr [32]byte
+	ptrAdapter := tempPtr[0:32]
+	copy(ptrAdapter, keyDecoded)
+
+	encryptedData := secretbox.Seal(nil, data, &nonce, &tempPtr)
+
+	return b85.Encode(encryptedData), nil
+}
+
+// Decrypt decrypts a string of encrypted data which is Base85 encoded using the internal key.
+func (key SymmetricKey) Decrypt(data string) ([]byte, error) {
+	if data == "" {
+		return nil, nil
+	}
+
+	keyDecoded := key.Key.RawData()
+	if keyDecoded == nil {
+		return nil, errors.New("decoding error in symmetric key")
+	}
+
+	var nonce [24]byte
+
+	// This kind of stupid is why this class is even necessary
+	var tempPtr [32]byte
+	ptrAdapter := tempPtr[0:32]
+	copy(ptrAdapter, keyDecoded)
+
+	decodedData, err := b85.Decode(data)
+	if err != nil {
+		return nil, errors.New("decoding error in data")
+	}
+
+	decryptedData, ok := secretbox.Open(nil, decodedData, &nonce, &tempPtr)
+	if !ok {
+		return nil, errors.New("decryption failed")
+	}
+
+	return decryptedData, nil
 }
 
 // HashPassword turns a string into an Argon2 password hash.

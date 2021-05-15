@@ -46,3 +46,5 @@ func TestEZCryptSignVerify(t *testing.T) {
 		t.Fatal("SigningPair.Verify() failed")
 	}
 }
+
+// TODO: Make SymmetricKey tests
