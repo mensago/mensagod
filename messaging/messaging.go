@@ -3,7 +3,6 @@ package messaging
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"regexp"
 	"strings"
 	"sync"
@@ -111,9 +110,7 @@ func (e *Envelope) Seal(recipientKey cs.CryptoString) (*SealedEnvelope, error) {
 }
 
 func (se *SealedEnvelope) Send(address string) error {
-	now := time.Now().UTC()
-	se.Date = fmt.Sprintf("%d%02d%02dT%02d%02d%02dZ", now.Year(), now.Month(), now.Day(), now.Hour(),
-		now.Minute(), now.Second())
+	se.Date = time.Now().UTC().Format("20060102T030405Z")
 
 	// TODO: Finish implementing
 
@@ -121,9 +118,7 @@ func (se *SealedEnvelope) Send(address string) error {
 }
 
 func (se *SealedEnvelope) SendLocal(wid string) error {
-	now := time.Now().UTC()
-	se.Date = fmt.Sprintf("%d%02d%02dT%02d%02d%02dZ", now.Year(), now.Month(), now.Day(), now.Hour(),
-		now.Minute(), now.Second())
+	se.Date = time.Now().UTC().Format("20060102T030405Z")
 
 	// TODO: Finish implementing
 
