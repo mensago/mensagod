@@ -15,6 +15,7 @@ import (
 	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/fshandler"
+	"github.com/darkwyrm/mensagod/keycard_cache"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/messaging"
 	"github.com/darkwyrm/mensagod/misc"
@@ -300,6 +301,7 @@ func (s *sessionState) SendFileData(path string, offset int64) (int64, error) {
 func main() {
 	gDiceWordList = config.SetupConfig()
 	messaging.InitDelivery()
+	keycard_cache.InitCache()
 
 	dbhandler.Connect()
 	if !dbhandler.IsConnected() {
