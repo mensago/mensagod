@@ -2,17 +2,18 @@ package main
 
 import (
 	"crypto/rand"
-	"errors"
 	"time"
 
 	"github.com/darkwyrm/b85"
 	"github.com/darkwyrm/mensagod/cryptostring"
+	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/ezcrypt"
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/keycard"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/messaging"
+	"github.com/darkwyrm/mensagod/misc"
 	"github.com/everlastingbeta/diceware"
 	"github.com/spf13/viper"
 )
@@ -511,7 +512,7 @@ func challengeDevice(session *sessionState, keytype string, devkeystr string) (b
 	// should just be a matter of doing a string comparison to determine success
 	challenge := b85.Encode(randBytes)
 	if keytype != "CURVE25519" {
-		return false, errors.New("unsupported key type")
+		return false, cs.ErrUnsupportedAlgorithm
 	}
 
 	devkey := ezcrypt.NewEncryptionKey(cryptostring.New(devkeystr))
@@ -535,7 +536,7 @@ func challengeDevice(session *sessionState, keytype string, devkeystr string) (b
 		return false, err
 	}
 	if request.Action == "CANCEL" {
-		return false, errors.New("cancel")
+		return false, misc.ErrCanceled
 	}
 
 	if request.Action != "DEVICE" {
@@ -564,7 +565,7 @@ func dualChallengeDevice(session *sessionState, oldkey cryptostring.CryptoString
 	// This is just like challengeDevice, but using two keys, an old one and a new one
 
 	if oldkey.Prefix != "CURVE25519" || newkey.Prefix != "CURVE25519" {
-		return false, errors.New("unsupported key type")
+		return false, cs.ErrUnsupportedAlgorithm
 	}
 
 	randBytes := make([]byte, 32)
@@ -615,7 +616,7 @@ func dualChallengeDevice(session *sessionState, oldkey cryptostring.CryptoString
 		return false, err
 	}
 	if request.Action == "CANCEL" {
-		return false, errors.New("cancel")
+		return false, misc.ErrCanceled
 	}
 
 	if request.Action != "DEVKEY" {

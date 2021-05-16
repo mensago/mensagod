@@ -1,7 +1,6 @@
 package dbhandler
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/keycard"
 	"github.com/darkwyrm/mensagod/logging"
+	"github.com/darkwyrm/mensagod/misc"
 	"github.com/everlastingbeta/diceware"
 	"github.com/lib/pq"
 	"github.com/spf13/viper"
@@ -80,15 +80,15 @@ func IsConnected() bool {
 func LogFailure(failType string, wid string, sourceip string) error {
 	if failType == "" {
 		logging.Write("LogFailure(): empty fail type")
-		return errors.New("empty fail type")
+		return misc.ErrMissingArgument
 	}
 
 	if sourceip == "" {
 		logging.Write("LogFailure(): empty source IP")
-		return errors.New("empty source ip")
+		return misc.ErrMissingArgument
 	} else if net.ParseIP(sourceip) == nil {
 		logging.Writef("LogFailure(): bad source IP %s", sourceip)
-		return errors.New("bad source ip")
+		return misc.ErrBadArgument
 	}
 
 	// Timestamp must be ISO8601 without a timezone ('Z' suffix allowable)
@@ -178,13 +178,13 @@ func GetMensagoAddressType(addr string) int {
 func ResolveAddress(addr string) (string, error) {
 	parts := strings.Split(addr, "/")
 	if len(parts) != 2 {
-		return "", errors.New("invalid address")
+		return "", misc.ErrInvalidAddress
 	}
 
 	// Validate the domain portion of the address
 	pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
 	if !pattern.MatchString(parts[1]) {
-		return "", errors.New("invalid domain")
+		return "", misc.ErrInvalidDomain
 	}
 
 	// Is this a workspace address?
@@ -192,7 +192,7 @@ func ResolveAddress(addr string) (string, error) {
 
 	pattern = regexp.MustCompile("[\\\"]|[[:space:]]")
 	if pattern.MatchString(parts[0]) {
-		return "", errors.New("invalid user id")
+		return "", misc.ErrInvalidID
 	}
 
 	if isWid {
@@ -205,7 +205,7 @@ func ResolveAddress(addr string) (string, error) {
 		if err != nil {
 			if err == sql.ErrNoRows {
 				// No entry in the table
-				return "", errors.New("workspace not found")
+				return "", misc.ErrNotFound
 			}
 			return "", err
 		}
@@ -230,7 +230,7 @@ func ResolveAddress(addr string) (string, error) {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// No entry in the table
-			return "", errors.New("workspace not found")
+			return "", misc.ErrNotFound
 		}
 		return "", err
 	}
@@ -324,7 +324,7 @@ func CheckPasscode(wid string, passcode string) (bool, error) {
 	}
 
 	if codestamp.Before(time.Now().UTC()) {
-		return true, errors.New("expired")
+		return true, misc.ErrExpired
 	}
 
 	return true, nil
@@ -364,7 +364,7 @@ func ResetPassword(wid string, passcode string, expires string) error {
 // 64 characters and store it in the database.
 func SetPassword(wid string, password string) error {
 	if len(password) > 128 {
-		return errors.New("password string has a maximum 128 characters")
+		return misc.ErrOutOfRange
 	}
 	passHash := ezcrypt.HashPassword(password)
 	_, err := dbConn.Exec(`UPDATE workspaces SET password=$1 WHERE wid=$2`, passHash, wid)
@@ -404,7 +404,7 @@ func AddDevice(wid string, devid string, devkey cryptostring.CryptoString, statu
 // RemoveDevice removes a device from a workspace. It returns true if successful and false if not.
 func RemoveDevice(wid string, devid string) (bool, error) {
 	if len(devid) != 40 {
-		return false, errors.New("invalid session string")
+		return false, misc.ErrBadArgument
 	}
 	_, err := dbConn.Exec(`DELETE FROM iwkspc_devices WHERE wid=$1 AND devid=$2`, wid, devid)
 	if err != nil {
@@ -518,7 +518,7 @@ func PreregWorkspace(wid string, uid string, domain string, wordList *diceware.W
 	wordcount int) (string, error) {
 
 	if len(wid) > 36 || len(uid) > 128 {
-		return "", errors.New("bad parameter length")
+		return "", misc.ErrBadArgument
 	}
 
 	if len(uid) > 0 {
@@ -527,7 +527,7 @@ func PreregWorkspace(wid string, uid string, domain string, wordList *diceware.W
 		err := row.Scan(&hasuid)
 
 		if hasuid != "" {
-			return "", errors.New("uid exists")
+			return "", misc.ErrExists
 		}
 
 		switch err {
@@ -566,7 +566,7 @@ func CheckRegCode(id string, domain string, iswid bool, regcode string) (string,
 		if err != nil {
 			if err == sql.ErrNoRows {
 				// No entry in the table
-				return "", "", errors.New("regcode not found")
+				return "", "", misc.ErrNotFound
 			}
 			return "", "", err
 		}
@@ -574,7 +574,7 @@ func CheckRegCode(id string, domain string, iswid bool, regcode string) (string,
 		if wid == id {
 			return wid, uid, nil
 		}
-		return "", "", errors.New("wid mismatch")
+		return "", "", misc.ErrMismatch
 	}
 
 	row := dbConn.QueryRow(`SELECT wid,uid FROM prereg WHERE regcode = $1 AND uid = $2 `+
@@ -583,7 +583,7 @@ func CheckRegCode(id string, domain string, iswid bool, regcode string) (string,
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// No entry in the table
-			return "", "", errors.New("regcode not found")
+			return "", "", misc.ErrNotFound
 		}
 		return "", "", err
 	}
@@ -849,7 +849,7 @@ func GetQuotaInfo(wid string) (uint64, uint64, error) {
 func IsDomainLocal(domain string) (bool, error) {
 	pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
 	if !pattern.MatchString(domain) {
-		return false, errors.New("bad domain")
+		return false, misc.ErrBadArgument
 	}
 
 	row := dbConn.QueryRow(`SELECT domain FROM workspaces WHERE domain=$1`, domain)

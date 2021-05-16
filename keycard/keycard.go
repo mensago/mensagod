@@ -19,6 +19,7 @@ import (
 	"github.com/darkwyrm/gostringlist"
 	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/logging"
+	"github.com/darkwyrm/mensagod/misc"
 	"github.com/zeebo/blake3"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/nacl/box"
@@ -241,12 +242,12 @@ func (entry Entry) MakeByteString(siglevel int) []byte {
 // Save saves the entry to disk
 func (entry Entry) Save(path string, clobber bool) error {
 	if len(path) < 1 {
-		return errors.New("empty path")
+		return misc.ErrMissingArgument
 	}
 
 	_, err := os.Stat(path)
 	if !os.IsNotExist(err) && !clobber {
-		return errors.New("file exists")
+		return os.ErrExist
 	}
 
 	return ioutil.WriteFile(path, entry.MakeByteString(-1), 0644)
@@ -255,7 +256,7 @@ func (entry Entry) Save(path string, clobber bool) error {
 // SetField sets an entry field to the specified value.
 func (entry *Entry) SetField(fieldName string, fieldValue string) error {
 	if len(fieldName) < 1 {
-		return errors.New("empty field name")
+		return misc.ErrMissingArgument
 	}
 	entry.Fields[fieldName] = fieldValue
 
@@ -282,7 +283,7 @@ func (entry *Entry) Set(data []byte) error {
 	// CAUTION: This function needs to be extra careful because it handles untrusted data
 
 	if len(data) < 1 {
-		return errors.New("empty byte field")
+		return misc.ErrMissingArgument
 	}
 
 	lines := strings.Split(string(data), "\r\n")
@@ -298,7 +299,7 @@ func (entry *Entry) Set(data []byte) error {
 			}
 			stripHeader = true
 		} else if lines[0] != "Type:Organization" {
-			return errors.New("entry type-data type mismatch")
+			return misc.ErrMismatch
 		}
 
 	} else if entry.Type == "User" {
@@ -308,7 +309,7 @@ func (entry *Entry) Set(data []byte) error {
 			}
 			stripHeader = true
 		} else if lines[0] != "Type:User" {
-			return errors.New("entry type-data type mismatch")
+			return misc.ErrMismatch
 		}
 	} else {
 		return errors.New("bad entry type")

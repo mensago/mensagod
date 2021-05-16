@@ -1,7 +1,6 @@
 package fshandler
 
 import (
-	"errors"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/darkwyrm/mensagod/config"
 	cs "github.com/darkwyrm/mensagod/cryptostring"
+	"github.com/darkwyrm/mensagod/misc"
 	"github.com/spf13/viper"
 )
 
@@ -66,7 +66,7 @@ func resetWorkspaceDir() error {
 // and as large as 10k
 func generateRandomFile(dir string, size int) (string, error) {
 	if size > 10240 || size < 100 {
-		return "", errors.New("Size out of range")
+		return "", misc.ErrOutOfRange
 	}
 
 	var anpath LocalAnPath
@@ -97,7 +97,7 @@ func generateRandomFile(dir string, size int) (string, error) {
 
 func makeTestFiles(dir string, count int) error {
 	if count > 50 || count < 1 {
-		return errors.New("File count out of range")
+		return misc.ErrOutOfRange
 	}
 
 	var anpath LocalAnPath
@@ -125,7 +125,7 @@ func makeTestFiles(dir string, count int) error {
 // MakeTestDirectories creates a number of randomly-named directories and returns their names
 // func makeTestDirectories(path string, count int) ([]string, error) {
 // 	if count > 50 || count < 1 {
-// 		return nil, errors.New("Count out of range")
+// 		return nil, misc.ErrOutOfRange
 // 	}
 
 // 	var anpath LocalAnPath

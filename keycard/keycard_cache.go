@@ -1,15 +1,17 @@
 package keycard
 
-import "errors"
+import (
+	"github.com/darkwyrm/mensagod/misc"
+)
 
 func GetKeycard(address string) (*Keycard, error) {
 
 	// TODO: Implement GetKeycard
-	return nil, errors.New("unimplemented")
+	return nil, misc.ErrUnimplemented
 }
 
 func ResolveAddress(address string) (string, error) {
 
 	// TODO: Implement ResolveAddress
-	return "", errors.New("unimplemented")
+	return "", misc.ErrUnimplemented
 }

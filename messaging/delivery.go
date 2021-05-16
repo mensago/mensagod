@@ -3,7 +3,6 @@ package messaging
 import (
 	"container/list"
 	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,6 +16,7 @@ import (
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/keycard"
 	"github.com/darkwyrm/mensagod/logging"
+	"github.com/darkwyrm/mensagod/misc"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
@@ -176,7 +176,7 @@ func DecryptRecipientHeader(localPath string) (string, error) {
 	var env SealedEnvelope
 	err = json.Unmarshal(rawData, &env)
 	if err != nil {
-		return "", errors.New("unmarshalling failure")
+		return "", misc.ErrJSONUnmarshal
 	}
 
 	encPair, err := dbhandler.GetEncryptionPair()
@@ -192,7 +192,7 @@ func DecryptRecipientHeader(localPath string) (string, error) {
 	var out RecipientInfo
 	err = json.Unmarshal(decrypted, &env)
 	if err != nil {
-		return "", errors.New("unmarshalling failure")
+		return "", misc.ErrJSONUnmarshal
 	}
 
 	return out.To, nil

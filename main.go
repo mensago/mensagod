@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -118,7 +117,7 @@ func (s *sessionState) GetRequest() (ClientRequest, error) {
 		ne, ok := err.(*net.OpError)
 		if ok && ne.Timeout() {
 			s.IsTerminating = true
-			return out, errors.New("connection timed out")
+			return out, misc.ErrTimedOut
 		}
 
 		if err.Error() != "EOF" {
@@ -195,7 +194,7 @@ func (s *sessionState) ReadClient() (string, error) {
 		ne, ok := err.(*net.OpError)
 		if ok && ne.Timeout() {
 			s.IsTerminating = true
-			return "", errors.New("connection timed out")
+			return "", misc.ErrTimedOut
 		}
 
 		if err.Error() != "EOF" {
@@ -223,7 +222,7 @@ func (s *sessionState) ReadFileData(fileSize uint64, fileHandle *os.File) (uint6
 			ne, ok := err.(*net.OpError)
 			if ok && ne.Timeout() {
 				s.IsTerminating = true
-				return 0, errors.New("connection timed out")
+				return 0, misc.ErrTimedOut
 			}
 
 			if err.Error() != "EOF" {
@@ -279,7 +278,7 @@ func (s *sessionState) SendFileData(path string, offset int64) (int64, error) {
 			ne, ok := err.(*net.OpError)
 			if ok && ne.Timeout() {
 				s.IsTerminating = true
-				return 0, errors.New("connection timed out")
+				return 0, misc.ErrTimedOut
 			}
 
 			if err.Error() != "EOF" {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/darkwyrm/mensagod/logging"
+	"github.com/darkwyrm/mensagod/misc"
 	"github.com/lib/pq"
 	"github.com/spf13/viper"
 )
@@ -43,7 +44,7 @@ var filePathPattern = regexp.MustCompile(
 // AddSyncRecord adds a record to the update table
 func AddSyncRecord(wid string, rec UpdateRecord) error {
 	if !ValidateUUID(wid) {
-		return errors.New("bad workspace id")
+		return misc.ErrInvalidID
 	}
 
 	switch rec.Type {
@@ -74,11 +75,11 @@ func AddSyncRecord(wid string, rec UpdateRecord) error {
 // CountSyncRecords returns the number of sync records which occurred after the specified time
 func CountSyncRecords(wid string, unixtime int64) (int64, error) {
 	if !ValidateUUID(wid) {
-		return -1, errors.New("bad workspace id")
+		return -1, misc.ErrInvalidID
 	}
 
 	if unixtime < 0 {
-		return -1, errors.New("bad time")
+		return -1, misc.ErrBadArgument
 	}
 
 	// A maximum of 75 records is returned because with the shortest possible updates, a maximum
@@ -103,11 +104,11 @@ func CountSyncRecords(wid string, unixtime int64) (int64, error) {
 // GetSyncRecords gets all the update records after a specified period of time
 func GetSyncRecords(wid string, unixtime int64) ([]UpdateRecord, error) {
 	if !ValidateUUID(wid) {
-		return nil, errors.New("bad workspace id")
+		return nil, misc.ErrInvalidID
 	}
 
 	if unixtime < 0 {
-		return nil, errors.New("bad time")
+		return nil, misc.ErrBadArgument
 	}
 
 	// A maximum of 75 records is returned because with the shortest possible updates, a maximum
@@ -135,11 +136,11 @@ func GetSyncRecords(wid string, unixtime int64) ([]UpdateRecord, error) {
 
 func CullOldSyncRecords(wid string, unixtime int64) error {
 	if !ValidateUUID(wid) {
-		return errors.New("bad workspace id")
+		return misc.ErrInvalidID
 	}
 
 	if unixtime < 0 {
-		return errors.New("bad time")
+		return misc.ErrBadArgument
 	}
 
 	threshold := unixtime - (viper.GetInt64("performance.max_sync_age") * 86400)

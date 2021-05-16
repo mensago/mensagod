@@ -2,7 +2,6 @@ package dbhandler
 
 import (
 	"database/sql"
-	"errors"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/darkwyrm/mensagod/config"
 	"github.com/darkwyrm/mensagod/fshandler"
+	"github.com/darkwyrm/mensagod/misc"
 )
 
 // setupTest initializes the global config and resets the database
@@ -76,7 +76,7 @@ func resetWorkspaceDir() error {
 // and as large as 10k
 func generateRandomFile(dir string, size int) (string, error) {
 	if size > 10240 || size < 100 {
-		return "", errors.New("Size out of range")
+		return "", misc.ErrOutOfRange
 	}
 
 	var anpath fshandler.LocalAnPath
@@ -107,7 +107,7 @@ func generateRandomFile(dir string, size int) (string, error) {
 
 func makeTestFiles(dir string, count int) error {
 	if count > 50 || count < 1 {
-		return errors.New("File count out of range")
+		return misc.ErrOutOfRange
 	}
 
 	var anpath fshandler.LocalAnPath

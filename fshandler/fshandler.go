@@ -17,11 +17,14 @@ import (
 	"github.com/darkwyrm/b85"
 	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/logging"
+	"github.com/darkwyrm/mensagod/misc"
 	"github.com/spf13/viper"
 	"github.com/zeebo/blake3"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/sha3"
 )
+
+var ErrBadEntryType = errors.New("bad entry type")
 
 // LocalFSHandler represents local storage on the server
 type LocalFSHandler struct {
@@ -82,10 +85,10 @@ func (lfs *LocalFSHandler) CopyFile(source string, dest string) (string, error) 
 		return "", err
 	}
 	if !stat.Mode().IsRegular() {
-		return "", errors.New("source path is a not file")
+		return "", ErrBadEntryType
 	}
 	if !ValidateFileName(filepath.Base(srcAnpath.ProviderPath())) {
-		return "", errors.New("bad filename format")
+		return "", misc.ErrBadArgument
 	}
 
 	// Path validation handled in FromPath()
@@ -100,7 +103,7 @@ func (lfs *LocalFSHandler) CopyFile(source string, dest string) (string, error) 
 		return "", err
 	}
 	if !stat.IsDir() {
-		return "", errors.New("destination path is not a directory")
+		return "", ErrBadEntryType
 	}
 
 	parts := strings.Split(filepath.Base(srcAnpath.ProviderPath()), ".")
@@ -236,14 +239,14 @@ func (lfs *LocalFSHandler) GetFileSize(path string) (int64, error) {
 func (lfs *LocalFSHandler) InstallTempFile(wid string, name string, dest string) (string, error) {
 	pattern := regexp.MustCompile(`[\da-fA-F]{8}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{12}`)
 	if (len(wid) != 36 && len(wid) != 32) || !pattern.MatchString(wid) {
-		return "", errors.New("bad workspace id")
+		return "", misc.ErrInvalidID
 	}
 
 	pattern = regexp.MustCompile(
 		`^[0-9]+\.` +
 			`[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$`)
 	if !pattern.MatchString(name) {
-		return "", errors.New("bad tempfile name")
+		return "", misc.ErrBadArgument
 	}
 
 	srcpath := filepath.Join(viper.GetString("global.top_dir"), "tmp", wid, name)
@@ -259,7 +262,7 @@ func (lfs *LocalFSHandler) InstallTempFile(wid string, name string, dest string)
 		return "", err
 	}
 	if !stat.Mode().IsRegular() {
-		return "", errors.New("source path is a not file")
+		return "", ErrBadEntryType
 	}
 	filesize := stat.Size()
 
@@ -268,7 +271,7 @@ func (lfs *LocalFSHandler) InstallTempFile(wid string, name string, dest string)
 		return "", err
 	}
 	if !stat.Mode().IsDir() {
-		return "", errors.New("destination path is a not directory")
+		return "", ErrBadEntryType
 	}
 
 	parts := strings.Split(name, ".")
@@ -296,7 +299,7 @@ func (lfs *LocalFSHandler) ListDirectories(path string) ([]string, error) {
 		return nil, err
 	}
 	if !stat.IsDir() {
-		return nil, errors.New("directory path is a file")
+		return nil, ErrBadEntryType
 	}
 
 	handle, err := os.Open(anpath.ProviderPath())
@@ -340,7 +343,7 @@ func (lfs *LocalFSHandler) ListFiles(path string, afterTime int64) ([]string, er
 		return nil, err
 	}
 	if !stat.IsDir() {
-		return nil, errors.New("directory path is a file")
+		return nil, ErrBadEntryType
 	}
 
 	handle, err := os.Open(anpath.ProviderPath())
@@ -394,7 +397,7 @@ func (lfs *LocalFSHandler) MakeTempFile(wid string) (*os.File, string, error) {
 
 	pattern := regexp.MustCompile(`[\da-fA-F]{8}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{12}`)
 	if (len(wid) != 36 && len(wid) != 32) || !pattern.MatchString(wid) {
-		return nil, "", errors.New("bad workspace id")
+		return nil, "", misc.ErrInvalidID
 	}
 
 	tempDirPath := filepath.Join(viper.GetString("global.top_dir"), "tmp", wid)
@@ -411,7 +414,7 @@ func (lfs *LocalFSHandler) MakeTempFile(wid string) (*os.File, string, error) {
 		}
 	} else {
 		if !stat.Mode().IsDir() {
-			return nil, "", errors.New("destination path is a not directory")
+			return nil, "", ErrBadEntryType
 		}
 	}
 
@@ -452,7 +455,7 @@ func (lfs *LocalFSHandler) MoveFile(source string, dest string) error {
 		return err
 	}
 	if !stat.Mode().IsRegular() {
-		return errors.New("source path is a not file")
+		return ErrBadEntryType
 	}
 
 	// Path validation handled in FromPath()
@@ -467,7 +470,7 @@ func (lfs *LocalFSHandler) MoveFile(source string, dest string) error {
 		return err
 	}
 	if !stat.IsDir() {
-		return errors.New("destination path is not a directory")
+		return ErrBadEntryType
 	}
 
 	newPath := filepath.Join(destAnpath.ProviderPath(), filepath.Base(srcAnpath.ProviderPath()))
@@ -512,7 +515,7 @@ func (lfs *LocalFSHandler) OpenTempFile(wid string, name string, offset int64) (
 
 	pattern := regexp.MustCompile(`[\da-fA-F]{8}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{12}`)
 	if (len(wid) != 36 && len(wid) != 32) || !pattern.MatchString(wid) {
-		return nil, errors.New("bad workspace id")
+		return nil, misc.ErrInvalidID
 	}
 
 	tempFilePath := filepath.Join(filepath.Join(viper.GetString("global.top_dir"), "tmp", wid),
@@ -567,7 +570,7 @@ func (lfs *LocalFSHandler) RemoveDirectory(path string, recursive bool) error {
 		return err
 	}
 	if !stat.IsDir() {
-		return errors.New("directory path is a file")
+		return ErrBadEntryType
 	}
 
 	if recursive {
@@ -604,7 +607,7 @@ func (lfs *LocalFSHandler) Select(path string) (LocalAnPath, error) {
 		return anpath, err
 	}
 	if !stat.IsDir() {
-		return anpath, errors.New("directory path is a file")
+		return anpath, ErrBadEntryType
 	}
 
 	return anpath, nil

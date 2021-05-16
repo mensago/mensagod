@@ -1,13 +1,13 @@
 package messaging
 
 import (
-	"errors"
 	"regexp"
 	"strings"
 	"sync"
 
 	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/dbhandler"
+	"github.com/darkwyrm/mensagod/misc"
 	"github.com/spf13/viper"
 )
 
@@ -76,7 +76,7 @@ func init() {
 // already been registered, nothing happens.
 func RegisterWorkspace(wid string) error {
 	if !dbhandler.ValidateUUID(wid) {
-		return errors.New("invalid workspace id")
+		return misc.ErrInvalidID
 	}
 
 	widListLock.Lock()
@@ -120,7 +120,7 @@ func LastWorkspaceUpdate(wid string) int64 {
 // UpdateWorkspace updates the timestamp for the last new message for a workspace
 func UpdateWorkspace(wid string, timestamp int64) error {
 	if !dbhandler.ValidateUUID(wid) {
-		return errors.New("invalid workspace id")
+		return misc.ErrInvalidID
 	}
 
 	widListLock.Lock()
@@ -136,7 +136,7 @@ func GetOrgEncryptionKey(domain string) (cs.CryptoString, error) {
 
 	pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
 	if !pattern.MatchString(domain) {
-		return cs.CryptoString{}, errors.New("bad domain")
+		return cs.CryptoString{}, misc.ErrInvalidDomain
 	}
 
 	if strings.EqualFold(domain, viper.GetString("global.domain")) {
@@ -149,7 +149,7 @@ func GetOrgEncryptionKey(domain string) (cs.CryptoString, error) {
 
 	// TODO: POSTDEMO: Implement getting keys for external servers
 
-	return cs.CryptoString{}, errors.New("unimplemented")
+	return cs.CryptoString{}, misc.ErrUnimplemented
 }
 
 // GetOrgEncryptionKey obtains an organization's verification key and returns it as a CryptoString
@@ -157,7 +157,7 @@ func GetOrgVerificationKey(domain string) (cs.CryptoString, error) {
 
 	pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
 	if !pattern.MatchString(domain) {
-		return cs.CryptoString{}, errors.New("bad domain")
+		return cs.CryptoString{}, misc.ErrInvalidDomain
 	}
 
 	if strings.EqualFold(domain, viper.GetString("global.domain")) {
@@ -170,5 +170,5 @@ func GetOrgVerificationKey(domain string) (cs.CryptoString, error) {
 
 	// TODO: POSTDEMO: Implement getting keys for external servers
 
-	return cs.CryptoString{}, errors.New("unimplemented")
+	return cs.CryptoString{}, misc.ErrUnimplemented
 }
