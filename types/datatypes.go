@@ -18,6 +18,7 @@ type Address struct {
 var widPattern = regexp.MustCompile(`[\da-fA-F]{8}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{12}`)
 var uidPattern1 = regexp.MustCompile("[[:space:]]+")
 var uidPattern2 = regexp.MustCompile("[\\\\/\"]")
+var domainPattern = regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
 
 // IsWorkspace returns true if the ID is a workspace ID, not a user ID
 func (a Address) IsWorkspace() bool {
@@ -32,14 +33,14 @@ func (a Address) IsValid() bool {
 		if len(a.ID) != 36 && len(a.ID) != 32 {
 			return false
 		}
-		return widPattern.MatchString(a.ID)
+		return widPattern.MatchString(a.ID) && domainPattern.MatchString(a.Domain)
 	// Mensago address
 	case 2:
 		if uidPattern1.MatchString(a.ID) || uidPattern2.MatchString(a.ID) {
 			return false
 		}
 
-		if utf8.RuneCountInString(a.ID) <= 64 {
+		if utf8.RuneCountInString(a.ID) <= 64 && domainPattern.MatchString(a.Domain) {
 			return true
 		}
 	// uninitialized or bad type
@@ -74,4 +75,8 @@ func (a *Address) Set(addr string) error {
 		a.IDType = 2
 	}
 	return nil
+}
+
+func ValidateDomain(domain string) bool {
+	return domainPattern.MatchString(domain)
 }
