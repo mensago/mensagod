@@ -340,8 +340,21 @@ func connectionWorker(conn net.Conn) {
 	session.Connection = conn
 	session.LoginState = loginNoSession
 
-	session.WriteClient("{\"Name\":\"Mensago\",\"Version\":\"0.1\",\"Code\":200," +
-		"\"Status\":\"OK\"}\r\n")
+	greetingData := struct {
+		Name    string
+		Version string
+		Code    int
+		Status  string
+		Date    string
+	}{
+		Name:    "Mensago",
+		Version: "0.1",
+		Code:    200,
+		Status:  "OK",
+		Date:    time.Now().UTC().Format("20060102T150405Z"),
+	}
+	greeting, _ := json.Marshal(greetingData)
+	session.WriteClient(string(greeting))
 	for {
 		request, err := session.GetRequest()
 		if err != nil {
