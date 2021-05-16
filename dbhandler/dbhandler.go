@@ -441,9 +441,8 @@ func UpdateDevice(wid string, devid string, oldkey string, newkey string) error 
 
 // UpdateLastLogin sets the last login timestamp for a device
 func UpdateLastLogin(wid string, devid string) error {
-	timestamp := time.Now().UTC().Unix()
 	_, err := dbConn.Exec(`UPDATE iwkspc_devices SET lastlogin=$1 WHERE wid=$2 AND 
-		devid=$3`, timestamp, wid, devid)
+		devid=$3`, time.Now().UTC().Unix(), wid, devid)
 
 	return err
 }
