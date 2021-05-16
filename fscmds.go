@@ -11,6 +11,7 @@ import (
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/logging"
+	"github.com/darkwyrm/mensagod/misc"
 	"github.com/spf13/viper"
 )
 
@@ -154,7 +155,7 @@ func commandDownload(session *sessionState) {
 	fsp := fshandler.GetFSProvider()
 	exists, err := fsp.Exists(session.Message.Data["Path"])
 	if err != nil {
-		if err == fshandler.ErrBadPath {
+		if err == misc.ErrBadPath {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad file path")
 		} else {
 			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
@@ -653,7 +654,7 @@ func commandUpload(session *sessionState) {
 	fsp := fshandler.GetFSProvider()
 	exists, err := fsp.Exists(session.Message.Data["Path"])
 	if err != nil {
-		if err == fshandler.ErrBadPath {
+		if err == misc.ErrBadPath {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad file path")
 		} else {
 			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")

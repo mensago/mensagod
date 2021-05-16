@@ -1,19 +1,16 @@
 package fshandler
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/darkwyrm/mensagod/misc"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
-
-// ErrBadPath is returned when a bad path is passed to a function
-var ErrBadPath = errors.New("invalid path")
 
 // AnPath encapsulates all the translation between a standard Mensago path into whatever format
 // a filesystem needs. These are leveraged by the filesytem providers to assist with going between
@@ -66,7 +63,7 @@ func (ap *LocalAnPath) Set(path string) error {
 	}
 
 	if !ValidateMensagoPath(path) {
-		return ErrBadPath
+		return misc.ErrBadPath
 	}
 
 	ap.Path = path

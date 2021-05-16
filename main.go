@@ -18,6 +18,7 @@ import (
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/messaging"
+	"github.com/darkwyrm/mensagod/misc"
 	"github.com/everlastingbeta/diceware"
 	_ "github.com/lib/pq"
 	"github.com/spf13/viper"
@@ -28,8 +29,6 @@ var ServerLog *log.Logger
 
 // gDiceWordList is a copy of the word list for preregistration code generation
 var gDiceWordList diceware.Wordlist
-
-var ErrJSONUnmarshal = errors.New("unmarshalling failure")
 
 // -------------------------------------------------------------------------------------------
 // Types
@@ -130,7 +129,7 @@ func (s *sessionState) GetRequest() (ClientRequest, error) {
 
 	err = json.Unmarshal(buffer[:bytesRead], &out)
 	if err != nil {
-		return out, ErrJSONUnmarshal
+		return out, misc.ErrJSONUnmarshal
 	}
 
 	return out, nil
@@ -358,7 +357,7 @@ func connectionWorker(conn net.Conn) {
 	for {
 		request, err := session.GetRequest()
 		if err != nil {
-			if err == ErrJSONUnmarshal {
+			if err == misc.ErrJSONUnmarshal {
 				session.SendQuickResponse(400, "BAD REQUEST", "JSON error")
 				conn.SetReadDeadline(time.Now().Add(time.Minute * 30))
 				conn.SetWriteDeadline(time.Now().Add(time.Minute * 10))
