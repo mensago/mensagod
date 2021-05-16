@@ -916,6 +916,8 @@ def test_select():
 			'Path': innerpath
 		}
 	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_select: #3 failed to create test directory'
 
 	conn.send_message({
 		'Action': 'SELECT',

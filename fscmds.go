@@ -555,8 +555,11 @@ func commandSelect(session *sessionState) {
 	path, err := fsh.Select(session.Message.Data["Path"])
 	if err != nil {
 		handleFSError(session, err)
+		return
 	}
 	session.CurrentPath = path
+
+	session.SendQuickResponse(200, "OK", "")
 }
 
 func commandSetQuota(session *sessionState) {
