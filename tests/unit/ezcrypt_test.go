@@ -47,4 +47,23 @@ func TestEZCryptSignVerify(t *testing.T) {
 	}
 }
 
-// TODO: Make SymmetricKey tests
+func TestEZCryptSymEncryptDecrypt(t *testing.T) {
+	keystring := cryptostring.New("XSALSA20:hlibDY}Ls{F!yG83!a#E$|Nd3?MQ@9G=Q{7PB(@O")
+	secretkey := ezcrypt.NewSymmetricKey(keystring)
+
+	testData := "This is some encryption test data"
+	encryptedData, err := secretkey.Encrypt([]byte(testData))
+	if err != nil || encryptedData == "" {
+		t.Fatal("SymmetricKey.Encrypt() failed")
+	}
+
+	decryptedRaw, err := secretkey.Decrypt(encryptedData)
+	if err != nil || decryptedRaw == nil {
+		t.Fatal("SymmetricKey.Decrypt() failed")
+	}
+
+	if string(decryptedRaw) != testData {
+		t.Fatal("SymmetricKey decrypted data mismatch")
+	}
+
+}

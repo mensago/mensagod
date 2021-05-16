@@ -32,7 +32,6 @@ type CryptoKey interface {
 type VerificationKey struct {
 	PublicHash     string
 	encryptionType string
-	keyType        string
 	key            cs.CryptoString
 }
 
@@ -53,7 +52,7 @@ func (vkey VerificationKey) GetEncryptionType() string {
 
 // GetType returns the type of key -- asymmetric or symmetric
 func (vkey VerificationKey) GetType() string {
-	return vkey.keyType
+	return "asymmetric"
 }
 
 // Verify uses the internal verification key with the passed data and signature and returns true
@@ -87,6 +86,7 @@ func (vkey *VerificationKey) Set(key cs.CryptoString) error {
 		return errors.New("unsupported signing algorithm")
 	}
 	vkey.key = key
+	vkey.encryptionType = key.Prefix
 
 	sum := blake2b.Sum256([]byte(vkey.key.AsString()))
 	vkey.PublicHash = "BLAKE2B-256:" + b85.Encode(sum[:])
@@ -125,7 +125,7 @@ func (spair SigningPair) GetType() string {
 	return spair.keyType
 }
 
-// Set assigns a pair of CryptoString values to the EncryptionPair
+// Set assigns a pair of CryptoString values to the SigningPair
 func (spair *SigningPair) Set(pubkey cs.CryptoString,
 	privkey cs.CryptoString) error {
 
@@ -134,6 +134,7 @@ func (spair *SigningPair) Set(pubkey cs.CryptoString,
 	}
 	spair.PublicKey = pubkey
 	spair.PrivateKey = privkey
+	spair.encryptionType = pubkey.Prefix
 
 	sum := blake2b.Sum256([]byte(pubkey.AsString()))
 	spair.PublicHash = "BLAKE2B-256:" + b85.Encode(sum[:])
@@ -238,6 +239,7 @@ func (kpair *EncryptionPair) Set(pubkey cs.CryptoString,
 	}
 	kpair.PublicKey = pubkey
 	kpair.PrivateKey = privkey
+	kpair.encryptionType = pubkey.Prefix
 
 	sum := blake2b.Sum256([]byte(pubkey.AsString()))
 	kpair.PublicHash = "BLAKE2B-256:" + b85.Encode(sum[:])
@@ -325,7 +327,6 @@ func (kpair EncryptionPair) Decrypt(data string) ([]byte, error) {
 type EncryptionKey struct {
 	PublicHash     string
 	encryptionType string
-	keyType        string
 	PublicKey      cs.CryptoString
 }
 
@@ -348,7 +349,7 @@ func (ekey EncryptionKey) GetEncryptionType() string {
 
 // GetType returns the type of key -- asymmetric or symmetric
 func (ekey EncryptionKey) GetType() string {
-	return ekey.keyType
+	return "asymmetric"
 }
 
 // Set assigns a pair of CryptoString values to the EncryptionKey
@@ -358,6 +359,7 @@ func (ekey *EncryptionKey) Set(pubkey cs.CryptoString) error {
 		return errors.New("unsupported encryption algorithm")
 	}
 	ekey.PublicKey = pubkey
+	ekey.encryptionType = pubkey.Prefix
 
 	sum := blake2b.Sum256([]byte(pubkey.AsString()))
 	ekey.PublicHash = "BLAKE2B-256:" + b85.Encode(sum[:])
@@ -394,7 +396,6 @@ func (ekey EncryptionKey) Encrypt(data []byte) (string, error) {
 type SymmetricKey struct {
 	Hash           string
 	encryptionType string
-	keyType        string
 	Key            cs.CryptoString
 }
 
@@ -436,7 +437,7 @@ func (key SymmetricKey) GetEncryptionType() string {
 
 // GetType returns the type of key -- asymmetric or symmetric
 func (key SymmetricKey) GetType() string {
-	return key.keyType
+	return "symmetric"
 }
 
 // Set assigns a pair of CryptoString values to the SymmetricKey
@@ -446,6 +447,7 @@ func (key *SymmetricKey) Set(keyString cs.CryptoString) error {
 		return errors.New("unsupported encryption algorithm")
 	}
 	key.Key = keyString
+	key.encryptionType = keyString.Prefix
 
 	sum := blake2b.Sum256([]byte(keyString.AsString()))
 	key.Hash = "BLAKE2B-256:" + b85.Encode(sum[:])
@@ -468,14 +470,14 @@ func (key SymmetricKey) Encrypt(data []byte) (string, error) {
 	var nonce [24]byte
 	rand.Read(nonce[:])
 
-	// This kind of stupid is why this class is even necessary
-	var tempPtr [32]byte
-	ptrAdapter := tempPtr[0:32]
-	copy(ptrAdapter, keyDecoded)
+	var keyAdapter [32]byte
+	copy(keyAdapter[:], keyDecoded)
 
-	encryptedData := secretbox.Seal(nil, data, &nonce, &tempPtr)
+	var out = make([]byte, 24)
+	copy(out, nonce[:])
+	out = secretbox.Seal(out, data, &nonce, &keyAdapter)
 
-	return b85.Encode(encryptedData), nil
+	return b85.Encode(out), nil
 }
 
 // Decrypt decrypts a string of encrypted data which is Base85 encoded using the internal key.
@@ -489,19 +491,18 @@ func (key SymmetricKey) Decrypt(data string) ([]byte, error) {
 		return nil, errors.New("decoding error in symmetric key")
 	}
 
-	var nonce [24]byte
-
-	// This kind of stupid is why this class is even necessary
-	var tempPtr [32]byte
-	ptrAdapter := tempPtr[0:32]
-	copy(ptrAdapter, keyDecoded)
+	var keyAdapter [32]byte
+	copy(keyAdapter[:], keyDecoded)
 
 	decodedData, err := b85.Decode(data)
 	if err != nil {
 		return nil, errors.New("decoding error in data")
 	}
 
-	decryptedData, ok := secretbox.Open(nil, decodedData, &nonce, &tempPtr)
+	var nonce [24]byte
+	copy(nonce[:], decodedData)
+
+	decryptedData, ok := secretbox.Open(nil, decodedData[24:], &nonce, &keyAdapter)
 	if !ok {
 		return nil, errors.New("decryption failed")
 	}
