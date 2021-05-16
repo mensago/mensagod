@@ -105,6 +105,9 @@ func SetupConfig() diceware.Wordlist {
 	// The maximum number of client threads.
 	viper.SetDefault("performance.max_client_threads", 10_000)
 
+	// The size of the keycard cache
+	viper.SetDefault("performance.keycard_cache_size", 5_000)
+
 	// Diceware settings for registration code and password reset code generation
 	viper.SetDefault("security.diceware_wordlist", "eff_short_prefix")
 	viper.SetDefault("security.diceware_wordcount", 6)

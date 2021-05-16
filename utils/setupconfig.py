@@ -792,6 +792,10 @@ fhandle.write('''
 # is set too high, client demand may overwhelm the server.
 #
 # performance.max_client_threads = 10000
+#
+# The maximum number of keycards to keep in the in-memory cache. This number
+# has a direct effect on the server's memory usage, so adjust this with care.
+# performance.keycard_cache_size = 5000
 
 [security]
 # The Diceware passphrase method is used to generate preregistration and password reset codes. 
