@@ -25,18 +25,20 @@ func InitCache() {
 	cardCache = make(map[string]cardCacheItem)
 }
 
-func GetKeycard(address types.Address, cardType string) (*keycard.Keycard, error) {
+func GetKeycard(address types.Address, cardType string) (keycard.Keycard, error) {
+
+	var out keycard.Keycard
 
 	// TODO: Finish implementing GetKeycard
 
 	if cardType != "User" && cardType != "Organization" {
-		return nil, misc.ErrBadArgument
+		return out, misc.ErrBadArgument
 	}
 
-	// waddr, err := ResolveAddress(address)
-	_, err := ResolveAddress(address)
+	waddr, err := ResolveAddress(address)
+	// _, err := ResolveAddress(address)
 	if err != nil {
-		return nil, err
+		return out, err
 	}
 
 	// TODO: check cache for card
@@ -44,16 +46,23 @@ func GetKeycard(address types.Address, cardType string) (*keycard.Keycard, error
 	// Card not in the cache, so begin the actual lookup
 	isLocal, err := dbhandler.IsDomainLocal(address.AsString())
 	if err != nil {
-		return nil, err
+		return out, err
 	}
 
 	if isLocal {
-		// TODO: get entries from database and convert to card
+		if cardType == "User" {
+			out, err = dbhandler.GetUserKeycard(waddr.AsString())
+		} else {
+			out, err = dbhandler.GetOrgKeycard()
+		}
+		if err != nil {
+			return out, err
+		}
 
-		// - call dbhandler.GetOrgEntries or GetUserEntries as appropriate
-		// - convert entries to card
-		// - add card to cache and return copy
-		return nil, misc.ErrUnimplemented
+		// TODO: convert to use pointers internally
+		// TODO: add card to cache
+
+		return out, nil
 	}
 
 	// TODO: POSTDEMO: implement external keycard resolution
@@ -64,7 +73,7 @@ func GetKeycard(address types.Address, cardType string) (*keycard.Keycard, error
 	// - convert entries to card
 	// - add card to cache and return copy
 
-	return nil, misc.ErrUnimplemented
+	return out, misc.ErrUnimplemented
 }
 
 // ResolveAddress takes a Mensago address and returns the workspace address. Unlike the function

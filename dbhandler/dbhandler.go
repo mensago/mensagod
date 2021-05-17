@@ -743,6 +743,18 @@ func AddEntry(entry *keycard.Entry) error {
 	return err
 }
 
+func GetUserKeycard(wid string) (keycard.Keycard, error) {
+	// TODO: Implement GetUserKeycard
+	var out keycard.Keycard
+	return out, misc.ErrUnimplemented
+}
+
+func GetOrgKeycard() (keycard.Keycard, error) {
+	// TODO: Implement GetOrgKeycard
+	var out keycard.Keycard
+	return out, misc.ErrUnimplemented
+}
+
 // GetPrimarySigningPair obtains the organization's primary signing and verification keys
 func GetPrimarySigningPair() (*ezcrypt.SigningPair, error) {
 	row := dbConn.QueryRow(`SELECT pubkey,privkey FROM orgkeys WHERE purpose = 'sign' ` +
