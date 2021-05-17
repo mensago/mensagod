@@ -726,15 +726,6 @@ func GetUserEntries(wid string, startIndex int, endIndex int) ([]string, error) 
 	return out, nil
 }
 
-// GetLastEntry returns the last entry in the database
-func GetLastEntry() (string, error) {
-	row := dbConn.QueryRow(`SELECT entry FROM keycards ORDER BY rowid DESC LIMIT 1`)
-
-	var entry string
-	err := row.Scan(&entry)
-	return entry, err
-}
-
 // AddEntry adds an entry to the database. The caller is responsible for validation of *ALL* data
 // passed to this command.
 func AddEntry(entry *keycard.Entry) error {
