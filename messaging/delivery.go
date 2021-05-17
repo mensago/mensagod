@@ -14,9 +14,10 @@ import (
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/ezcrypt"
 	"github.com/darkwyrm/mensagod/fshandler"
-	"github.com/darkwyrm/mensagod/keycard"
+	"github.com/darkwyrm/mensagod/keycard_cache"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/misc"
+	"github.com/darkwyrm/mensagod/types"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
@@ -209,7 +210,13 @@ func Bounce(errorCode int, info *messageInfo, extraData *map[string]string) {
 		return
 	}
 
-	userCard, err := keycard.GetKeycard(info.Sender)
+	var addr types.Address
+	err = addr.Set(info.Sender)
+	if err != nil {
+		logging.Writef("Bounce: invalid sender addres %s", info.Sender)
+		return
+	}
+	userCard, err := keycard_cache.GetKeycard(addr, "User")
 	if err != nil {
 		logging.Writef("Bounce: unable to obtain keycard for sender %s: %s", info.Sender,
 			err.Error())
