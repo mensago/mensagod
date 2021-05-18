@@ -743,16 +743,55 @@ func AddEntry(entry *keycard.Entry) error {
 	return err
 }
 
+// GetUserKeycard obtains a user's entire keycard as a Keycard object
 func GetUserKeycard(wid string) (keycard.Keycard, error) {
-	// TODO: Implement GetUserKeycard
 	var out keycard.Keycard
-	return out, misc.ErrUnimplemented
+	out.Type = "User"
+	out.Entries = make([]keycard.Entry, 0)
+
+	err := loadKeycardEntries(&out, wid)
+	return out, err
 }
 
+// GetUserKeycard obtains a organization's entire keycard as a Keycard object
 func GetOrgKeycard() (keycard.Keycard, error) {
-	// TODO: Implement GetOrgKeycard
 	var out keycard.Keycard
-	return out, misc.ErrUnimplemented
+	out.Type = "Organization"
+	out.Entries = make([]keycard.Entry, 0)
+
+	err := loadKeycardEntries(&out, "organization")
+	return out, err
+}
+
+// loadKeycardEntries does all the heavy lifting of converting entries into a keycard for both
+// Get*Keycard functions
+func loadKeycardEntries(card *keycard.Keycard, owner string) error {
+	if card == nil || owner == "" {
+		return misc.ErrMissingArgument
+	}
+
+	rows, err := dbConn.Query(`SELECT entry FROM keycards WHERE owner = $1 ORDER BY index`, owner)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var entryString string
+		err := rows.Scan(&entryString)
+		if err != nil {
+			return err
+		}
+
+		entry := keycard.NewUserEntry()
+		err = entry.Set([]byte(entryString))
+		if err != nil {
+			return err
+		}
+		card.Entries = append(card.Entries, *entry)
+	}
+
+	return nil
 }
 
 // GetPrimarySigningPair obtains the organization's primary signing and verification keys
