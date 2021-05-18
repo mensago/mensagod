@@ -359,6 +359,11 @@ func (entry *Entry) Set(data []byte) error {
 	return nil
 }
 
+func (entry *Entry) Duplicate() (*Entry, error) {
+	// TODO: Implement Entry.Duplicate()
+	return nil, misc.ErrUnimplemented
+}
+
 // SetExpiration enables custom expiration dates, the standard being 90 days for user entries and
 // 1 year for organizations.
 func (entry *Entry) SetExpiration(numdays int16) error {
