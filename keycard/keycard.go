@@ -359,7 +359,7 @@ func (entry *Entry) Set(data []byte) error {
 	return nil
 }
 
-func (entry *Entry) Duplicate() (*Entry, error) {
+func (entry *Entry) Duplicate() *Entry {
 	var out Entry
 	out.Type = entry.Type
 
@@ -376,7 +376,7 @@ func (entry *Entry) Duplicate() (*Entry, error) {
 	out.Hash = entry.Hash
 	copy(out.Keys, entry.Keys)
 
-	return &out, nil
+	return &out
 }
 
 // SetExpiration enables custom expiration dates, the standard being 90 days for user entries and
@@ -1290,6 +1290,16 @@ func (entry Entry) VerifyChain(previous *Entry) (bool, error) {
 type Keycard struct {
 	Type    string
 	Entries []Entry
+}
+
+func (card *Keycard) Duplicate() *Keycard {
+	var out Keycard
+	out.Type = card.Type
+	out.Entries = make([]Entry, len(card.Entries))
+	for i, entry := range card.Entries {
+		out.Entries[i] = *entry.Duplicate()
+	}
+	return &out
 }
 
 // Load writes the entire entry chain to one file with optional overwrite
