@@ -360,8 +360,23 @@ func (entry *Entry) Set(data []byte) error {
 }
 
 func (entry *Entry) Duplicate() (*Entry, error) {
-	// TODO: Implement Entry.Duplicate()
-	return nil, misc.ErrUnimplemented
+	var out Entry
+	out.Type = entry.Type
+
+	out.Fields = make(map[string]string, len(entry.Fields))
+	for item, value := range entry.Fields {
+		out.Fields[item] = value
+	}
+	out.FieldNames = entry.FieldNames.Copy()
+	out.RequiredFields = entry.RequiredFields.Copy()
+
+	out.Signatures = make(map[string]string, len(entry.Signatures))
+	copy(out.SignatureInfo.Items, entry.SignatureInfo.Items)
+	out.PrevHash = entry.PrevHash
+	out.Hash = entry.Hash
+	copy(out.Keys, entry.Keys)
+
+	return &out, nil
 }
 
 // SetExpiration enables custom expiration dates, the standard being 90 days for user entries and
