@@ -1,8 +1,8 @@
 package keycard_cache
 
 import (
+	"container/list"
 	"sync"
-	"time"
 
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/keycard"
@@ -11,18 +11,51 @@ import (
 	"github.com/spf13/viper"
 )
 
-type cardCacheItem struct {
-	Card        keycard.Keycard
-	LastUpdated time.Time
+type cacheItem struct {
+	Card      *keycard.Keycard
+	QueueItem *list.Element
 }
 
-var cardCache map[string]cardCacheItem
-var cacheLock sync.RWMutex
-var cacheCapacity int64
+type keycardCache struct {
+	Items     map[string]*cacheItem
+	ItemQueue *list.List
+	Lock      sync.RWMutex
+	Capacity  int64
+}
+
+var cardCache keycardCache
 
 func InitCache() {
-	cacheCapacity = viper.GetInt64("performance.keycard_cache_size")
-	cardCache = make(map[string]cardCacheItem)
+	cardCache.Items = make(map[string]*cacheItem)
+	cardCache.Capacity = viper.GetInt64("performance.keycard_cache_size")
+	cardCache.ItemQueue = list.New()
+}
+
+func (c *keycardCache) GetCard(owner string) (keycard.Keycard, error) {
+
+	var item *cacheItem
+
+	c.Lock.RLock()
+	item, exists := c.Items[owner]
+	if !exists {
+		defer c.Lock.RUnlock()
+		return keycard.Keycard{}, misc.ErrNotFound
+	}
+	c.Lock.RUnlock()
+
+	c.Lock.Lock()
+	defer c.Lock.Unlock()
+
+	c.ItemQueue.MoveToFront(item.QueueItem)
+
+	out := item.Card.Duplicate()
+	return *out, misc.ErrUnimplemented
+}
+
+func (c *keycardCache) Queue(card *keycard.Keycard) error {
+
+	// Implement cardCache.Queue()
+	return misc.ErrUnimplemented
 }
 
 func GetKeycard(address types.Address, cardType string) (keycard.Keycard, error) {
