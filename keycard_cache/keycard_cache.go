@@ -127,6 +127,6 @@ func ResolveAddress(address types.Address) (types.Address, error) {
 		return out, err
 	}
 
-	// TODO: Finish implementing ResolveAddress
+	// TODO: POSTDEMO: Implement external resolution in keycard_cache.ResolveAddress
 	return out, misc.ErrUnimplemented
 }
