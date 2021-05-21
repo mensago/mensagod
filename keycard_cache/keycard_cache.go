@@ -2,6 +2,8 @@ package keycard_cache
 
 import (
 	"container/list"
+	"errors"
+	"strings"
 	"sync"
 
 	"github.com/darkwyrm/mensagod/dbhandler"
@@ -20,14 +22,14 @@ type keycardCache struct {
 	Items     map[string]*cacheItem
 	ItemQueue *list.List
 	Lock      sync.RWMutex
-	Capacity  int64
+	Capacity  int
 }
 
 var cardCache keycardCache
 
 func InitCache() {
 	cardCache.Items = make(map[string]*cacheItem)
-	cardCache.Capacity = viper.GetInt64("performance.keycard_cache_size")
+	cardCache.Capacity = viper.GetInt("performance.keycard_cache_size")
 	cardCache.ItemQueue = list.New()
 }
 
@@ -54,8 +56,36 @@ func (c *keycardCache) GetCard(owner string) (keycard.Keycard, error) {
 
 func (c *keycardCache) Queue(card *keycard.Keycard) error {
 
-	// Implement cardCache.Queue()
-	return misc.ErrUnimplemented
+	c.Lock.Lock()
+	defer c.Lock.Unlock()
+
+	// If the queue is at capacity, pop the last one off the back
+	if len(c.Items) == c.Capacity {
+		lastElement := c.ItemQueue.Back()
+		lastItem, ok := c.ItemQueue.Remove(lastElement).(*cacheItem)
+		if !ok {
+			return errors.New("bug: interface cast failure in keycardCache.Queue")
+		}
+
+		waddr := strings.Join([]string{lastItem.Card.Entries[0].Fields["Workspace-ID"], "/",
+			lastItem.Card.Entries[0].Fields["Domain"]}, "")
+		delete(cardCache.Items, waddr)
+	}
+
+	var newItem cacheItem
+	newItem.QueueItem = c.ItemQueue.PushFront(&newItem)
+	newItem.Card = card.Duplicate()
+
+	var owner string
+	if card.Type == "Organization" {
+		owner = card.Entries[0].Fields["Domain"]
+	} else {
+		owner = strings.Join([]string{card.Entries[0].Fields["Workspace-ID"], "/",
+			card.Entries[0].Fields["Domain"]}, "")
+	}
+	c.Items[owner] = &newItem
+
+	return nil
 }
 
 func GetKeycard(address types.Address, cardType string) (*keycard.Keycard, error) {
