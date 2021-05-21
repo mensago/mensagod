@@ -130,9 +130,3 @@ func ResolveAddress(address types.Address) (types.Address, error) {
 	// TODO: Finish implementing ResolveAddress
 	return out, misc.ErrUnimplemented
 }
-
-func convertEntriesToObject([]string) (*keycard.Keycard, error) {
-
-	// TODO: Implement convertEntriesToObject
-	return nil, misc.ErrUnimplemented
-}
