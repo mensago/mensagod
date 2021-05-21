@@ -58,28 +58,30 @@ func (c *keycardCache) Queue(card *keycard.Keycard) error {
 	return misc.ErrUnimplemented
 }
 
-func GetKeycard(address types.Address, cardType string) (keycard.Keycard, error) {
+func GetKeycard(address types.Address, cardType string) (*keycard.Keycard, error) {
 
 	var out keycard.Keycard
 
-	// TODO: Finish implementing GetKeycard
-
 	if cardType != "User" && cardType != "Organization" {
-		return out, misc.ErrBadArgument
+		return nil, misc.ErrBadArgument
 	}
 
 	waddr, err := ResolveAddress(address)
-	// _, err := ResolveAddress(address)
 	if err != nil {
-		return out, err
+		return nil, err
 	}
 
-	// TODO: check cache for card
+	// In this case, if we got some other error besides ErrNotFound, we definitely want to return
+	// here. At the same time, if we have success
+	out, err = cardCache.GetCard(waddr.AsString())
+	if err != misc.ErrNotFound {
+		return &out, err
+	}
 
 	// Card not in the cache, so begin the actual lookup
 	isLocal, err := dbhandler.IsDomainLocal(address.AsString())
 	if err != nil {
-		return out, err
+		return nil, err
 	}
 
 	if isLocal {
@@ -89,13 +91,11 @@ func GetKeycard(address types.Address, cardType string) (keycard.Keycard, error)
 			out, err = dbhandler.GetOrgKeycard()
 		}
 		if err != nil {
-			return out, err
+			return nil, err
 		}
 
-		// TODO: convert to use pointers internally
-		// TODO: add card to cache
-
-		return out, nil
+		cardCache.Queue(&out)
+		return &out, nil
 	}
 
 	// TODO: POSTDEMO: implement external keycard resolution
@@ -106,7 +106,7 @@ func GetKeycard(address types.Address, cardType string) (keycard.Keycard, error)
 	// - convert entries to card
 	// - add card to cache and return copy
 
-	return out, misc.ErrUnimplemented
+	return nil, misc.ErrUnimplemented
 }
 
 // ResolveAddress takes a Mensago address and returns the workspace address. Unlike the function
