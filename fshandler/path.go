@@ -68,7 +68,7 @@ func (ap *LocalAnPath) Set(path string) error {
 
 	ap.Path = path
 
-	workspaceRoot := viper.GetString("global.workspace_dir")
+	workspaceRoot := viper.GetString("global.top_dir")
 	pathParts := strings.Split(path, " ")
 	ap.LocalPath = filepath.Join(workspaceRoot,
 		strings.Join(pathParts[1:], string(filepath.Separator)))
@@ -87,7 +87,7 @@ func (ap *LocalAnPath) MensagoPath() string {
 }
 
 func ConvertToLocal(path string) string {
-	workspaceRoot := viper.GetString("global.workspace_dir")
+	workspaceRoot := viper.GetString("global.top_dir")
 	pathParts := strings.Split(path, " ")
 	return filepath.Join(workspaceRoot, strings.Join(pathParts[1:], string(filepath.Separator)))
 }
