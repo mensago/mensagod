@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"regexp"
@@ -23,9 +22,6 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/spf13/viper"
 )
-
-// ServerLog is the global logging object
-var ServerLog *log.Logger
 
 // gDiceWordList is a copy of the word list for preregistration code generation
 var gDiceWordList diceware.Wordlist
