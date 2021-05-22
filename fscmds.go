@@ -344,6 +344,14 @@ func commandList(session *sessionState) {
 	listPath := session.CurrentPath.MensagoPath()
 	if session.Message.HasField("Path") {
 		listPath = session.Message.Data["Path"]
+
+		switch {
+		case listPath == "/ wsp":
+		case strings.HasPrefix(listPath, "/ tmp"):
+		case listPath == "/ out":
+			session.SendQuickResponse(401, "UNAUTHORIZED", "")
+			return
+		}
 	}
 
 	var err error
@@ -388,6 +396,14 @@ func commandListDirs(session *sessionState) {
 	listPath := session.CurrentPath.MensagoPath()
 	if session.Message.HasField("Path") {
 		listPath = session.Message.Data["Path"]
+
+		switch {
+		case listPath == "/ wsp":
+		case strings.HasPrefix(listPath, "/ tmp"):
+		case listPath == "/ out":
+			session.SendQuickResponse(401, "UNAUTHORIZED", "")
+			return
+		}
 	}
 
 	fsh := fshandler.GetFSProvider()
