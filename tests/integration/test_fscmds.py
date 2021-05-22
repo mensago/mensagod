@@ -422,7 +422,7 @@ def test_list():
 	conn.send_message({
 		'Action': 'LIST',
 		'Data': {
-			'Path': ' '.join(['/', dbdata['admin_wid'], status['name']])
+			'Path': ' '.join(['/ wsp', dbdata['admin_wid'], status['name']])
 		}
 	})
 	response = conn.read_response(server_response)
@@ -528,7 +528,7 @@ def test_listdirs():
 	conn.send_message({
 		'Action': 'LIST',
 		'Data': {
-			'Path': ' '.join(['/', dbdata['admin_wid'], status['name']])
+			'Path': ' '.join(['/ wsp', dbdata['admin_wid'], status['name']])
 		}
 	})
 	response = conn.read_response(server_response)
@@ -804,7 +804,7 @@ def test_rmdir():
 
 	# Subtest #3: Non-recursive call fails because of non-empty directory
 
-	multipath = ' '.join(['/', dbdata['admin_wid'],
+	multipath = ' '.join(['/ wsp', dbdata['admin_wid'],
 		'22222222-2222-2222-2222-222222222222',
 		'33333333-3333-3333-3333-333333333333',
 		'44444444-4444-4444-4444-444444444444',
@@ -901,7 +901,7 @@ def test_select():
 	conn.send_message({
 		'Action': 'SELECT',
 		'Data': {
-			'Path': ' '.join(['/', dbdata['admin_wid'], status['name']])
+			'Path': ' '.join(['/ wsp', dbdata['admin_wid'], status['name']])
 		}
 	})
 	response = conn.read_response(server_response)
@@ -909,7 +909,7 @@ def test_select():
 
 	# Subtest #3: Actual success
 
-	innerpath = ' '.join(['/', dbdata['admin_wid'], '22222222-2222-2222-2222-222222222222'])
+	innerpath = ' '.join(['/ wsp', dbdata['admin_wid'], '22222222-2222-2222-2222-222222222222'])
 	conn.send_message({
 		'Action': 'MKDIR',
 		'Data': {
