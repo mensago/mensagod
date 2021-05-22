@@ -42,15 +42,6 @@ func (p *Pool) Add(count uint) uint {
 	return count
 }
 
-// Count returns the current number of worker threads
-func (p *Pool) Count() uint {
-	p.workerLock.RLock()
-	defer p.workerLock.RUnlock()
-
-	out := p.workerCount
-	return out
-}
-
 // Wait simply waits for all workers to exit
 func (p *Pool) Wait() {
 	p.workerLock.Lock()
@@ -81,5 +72,23 @@ func (p *Pool) IsQuitting() bool {
 	defer p.quitLock.RUnlock()
 
 	out := p.quitFlag
+	return out
+}
+
+// Count returns the current number of worker threads
+func (p *Pool) Count() uint {
+	p.workerLock.RLock()
+	defer p.workerLock.RUnlock()
+
+	out := p.workerCount
+	return out
+}
+
+// IsFull returns true if the number of worker threads is greater than or equal to its capacity
+func (p *Pool) IsFull() bool {
+	p.workerLock.RLock()
+	defer p.workerLock.RUnlock()
+
+	out := p.workerCount >= p.capacity
 	return out
 }
