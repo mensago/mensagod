@@ -10,7 +10,7 @@ type Pool struct {
 	workerCount uint
 	workerGroup sync.WaitGroup
 	capacity    uint
-	workerLock  sync.Mutex
+	workerLock  sync.RWMutex
 	quitFlag    bool
 	quitLock    sync.RWMutex
 }
@@ -40,6 +40,15 @@ func (p *Pool) Add(count uint) uint {
 	}
 
 	return count
+}
+
+// Count returns the current number of worker threads
+func (p *Pool) Count() uint {
+	p.workerLock.RLock()
+	defer p.workerLock.RUnlock()
+
+	out := p.workerCount
+	return out
 }
 
 // Wait simply waits for all workers to exit
