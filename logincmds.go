@@ -86,7 +86,7 @@ func commandDevice(session *sessionState) {
 	}
 
 	fsp := fshandler.GetFSProvider()
-	exists, err := fsp.Exists("/ " + session.WID)
+	exists, err := fsp.Exists("/ wsp " + session.WID)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return

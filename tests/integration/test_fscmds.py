@@ -244,7 +244,7 @@ def test_download():
 	conn.send_message({
 		'Action': 'DOWNLOAD',
 		'Data': {
-			'Path': '/ ' + dbdata['admin_wid'] + ' 22222222-2222-2222-2222-222222222222' + 
+			'Path': '/ wsp ' + dbdata['admin_wid'] + ' 22222222-2222-2222-2222-222222222222' + 
 				' 1000.1000.22222222-2222-2222-2222-222222222222'
 		}
 	})
@@ -254,7 +254,7 @@ def test_download():
 
 	# Subtest #3: Actual success
 
-	status = make_test_file(os.path.join(dbdata['configfile']['global']['workspace_dir'], 
+	status = make_test_file(os.path.join(dbdata['configfile']['global']['workspace_dir'],
 		dbdata['admin_wid']), file_size=1000)
 	assert not status.error(), f"test_download: #3 failed to create test file: {status.info}"
 	testname = status['name']
@@ -262,7 +262,7 @@ def test_download():
 	conn.send_message({
 		'Action': 'DOWNLOAD',
 		'Data': {
-			'Path': f"/ {dbdata['admin_wid']} {testname}"
+			'Path': f"/ wsp {dbdata['admin_wid']} {testname}"
 		}
 	})
 
@@ -274,7 +274,7 @@ def test_download():
 	conn.send_message({
 		'Action': 'DOWNLOAD',
 		'Data': {
-			'Path': f"/ {dbdata['admin_wid']} {testname}",
+			'Path': f"/ wsp {dbdata['admin_wid']} {testname}",
 			'Size': '1000'
 		}
 	})
@@ -284,7 +284,7 @@ def test_download():
 
 	# Set up an 'interrupted' transfer
 
-	status = make_test_file(os.path.join(dbdata['configfile']['global']['workspace_dir'], 
+	status = make_test_file(os.path.join(dbdata['configfile']['global']['workspace_dir'],
 		dbdata['admin_wid']), file_size=1000)
 	assert not status.error(), f"test_download: #4 failed to create test file: {status.info}"
 	testname = status['name']
@@ -294,7 +294,7 @@ def test_download():
 	conn.send_message({
 		'Action': 'DOWNLOAD',
 		'Data': {
-			'Path': f"/ {dbdata['admin_wid']} {testname}",
+			'Path': f"/ wsp {dbdata['admin_wid']} {testname}",
 			'Offset': '2500'
 		}
 	})
@@ -308,7 +308,7 @@ def test_download():
 	conn.send_message({
 		'Action': 'DOWNLOAD',
 		'Data': {
-			'Path': f"/ {dbdata['admin_wid']} {testname}",
+			'Path': f"/ wsp {dbdata['admin_wid']} {testname}",
 			'Offset': '500'
 		}
 	})
@@ -321,7 +321,7 @@ def test_download():
 	conn.send_message({
 		'Action': 'DOWNLOAD',
 		'Data': {
-			'Path': f"/ {dbdata['admin_wid']} {testname}",
+			'Path': f"/ wsp {dbdata['admin_wid']} {testname}",
 			'Offset': '500',
 			'Size': '1000'
 		}
@@ -363,7 +363,7 @@ def test_getquotainfo():
 
 	init_user(dbdata, conn)
 	
-	status = make_test_file(os.path.join(dbdata['configfile']['global']['workspace_dir'], 
+	status = make_test_file(os.path.join(dbdata['configfile']['global']['workspace_dir'],
 		dbdata['admin_wid']), file_size=1000)
 	assert not status.error(), f"Failed to create test workspace file: {status.info}"
 
@@ -435,7 +435,7 @@ def test_list():
 	conn.send_message({
 		'Action': 'LIST',
 		'Data': {
-			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+			'Path': '/ wsp ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
 		}
 	})
 	response = conn.read_response(server_response)
@@ -459,7 +459,7 @@ def test_list():
 	conn.send_message({
 		'Action': 'LIST',
 		'Data': {
-			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+			'Path': '/ wsp ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
 		}
 	})
 	response = conn.read_response(server_response)
@@ -472,7 +472,7 @@ def test_list():
 	conn.send_message({
 		'Action': 'LIST',
 		'Data': {
-			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111',
+			'Path': '/ wsp ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111',
 			'Time': '3000'
 		}
 	})
@@ -541,7 +541,7 @@ def test_listdirs():
 	conn.send_message({
 		'Action': 'LISTDIRS',
 		'Data': {
-			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+			'Path': '/ wsp ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
 		}
 	})
 	response = conn.read_response(server_response)
@@ -563,7 +563,7 @@ def test_listdirs():
 	conn.send_message({
 		'Action': 'LISTDIRS',
 		'Data': {
-			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+			'Path': '/ wsp ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
 		}
 	})
 	response = conn.read_response(server_response)
@@ -602,7 +602,7 @@ def test_mkdir():
 	conn.send_message({
 		'Action': 'MKDIR',
 		'Data': {
-			'Path': '/ ' + dbdata['admin_wid'] + ' some_dir_name'
+			'Path': '/ wsp ' + dbdata['admin_wid'] + ' some_dir_name'
 		}
 	})
 	response = conn.read_response(server_response)
@@ -614,7 +614,7 @@ def test_mkdir():
 	conn.send_message({
 		'Action': 'MKDIR',
 		'Data': {
-			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+			'Path': '/ wsp ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
 		}
 	})
 	response = conn.read_response(server_response)
@@ -625,7 +625,7 @@ def test_mkdir():
 	conn.send_message({
 		'Action': 'MKDIR',
 		'Data': {
-			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+			'Path': '/ wsp ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
 		}
 	})
 	response = conn.read_response(server_response)
@@ -783,7 +783,7 @@ def test_rmdir():
 	conn.send_message({
 		'Action': 'RMDIR',
 		'Data': {
-			'Path': '/ ' + dbdata['admin_wid'] + ' some_dir_name',
+			'Path': '/ wsp ' + dbdata['admin_wid'] + ' some_dir_name',
 			'Recursive': 'False'
 		}
 	})
@@ -795,7 +795,7 @@ def test_rmdir():
 	conn.send_message({
 		'Action': 'RMDIR',
 		'Data': {
-			'Path': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111',
+			'Path': '/ wsp ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111',
 			'Recursive': 'False'
 		}
 	})
@@ -823,7 +823,7 @@ def test_rmdir():
 	conn.send_message({
 		'Action': 'RMDIR',
 		'Data': {
-			'Path': '/ ' + dbdata['admin_wid'] + ' 22222222-2222-2222-2222-222222222222',
+			'Path': '/ wsp ' + dbdata['admin_wid'] + ' 22222222-2222-2222-2222-222222222222',
 			'Recursive': 'False'
 		}
 	})
@@ -847,7 +847,7 @@ def test_rmdir():
 	conn.send_message({
 		'Action': 'RMDIR',
 		'Data': {
-			'Path': '/ ' + dbdata['admin_wid'] + ' 22222222-2222-2222-2222-222222222222',
+			'Path': '/ wsp ' + dbdata['admin_wid'] + ' 22222222-2222-2222-2222-222222222222',
 			'Recursive': 'True'
 		}
 	})
@@ -1041,7 +1041,7 @@ def test_upload():
 		'Data': {
 			'Size': '1000',
 			# Hash parameter is missing
-			'Path': '/ ' + dbdata['admin_wid']
+			'Path': '/ wsp ' + dbdata['admin_wid']
 		}
 	})
 
@@ -1055,7 +1055,7 @@ def test_upload():
 		'Data': {
 			'Size': '1000',
 			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-			'Path': '/ ' + dbdata['admin_wid'] + ' 22222222-2222-2222-2222-222222222222'
+			'Path': '/ wsp ' + dbdata['admin_wid'] + ' 22222222-2222-2222-2222-222222222222'
 		}
 	})
 
@@ -1069,7 +1069,7 @@ def test_upload():
 		'Data': {
 			'Size': str(0x4000_0000 * 200), # 200GiB isn't all that big :P
 			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-			'Path': '/ ' + dbdata['admin_wid']
+			'Path': '/ wsp ' + dbdata['admin_wid']
 		}
 	})
 
@@ -1092,7 +1092,7 @@ def test_upload():
 		'Data': {
 			'Size': str(0x10_0000 * 30), # 30MiB
 			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-			'Path': '/ ' + dbdata['admin_wid']
+			'Path': '/ wsp ' + dbdata['admin_wid']
 		}
 	})
 
@@ -1111,7 +1111,7 @@ def test_upload():
 		'Data': {
 			'Size': str(1000),
 			'Hash': r'BLAKE2B-256:5(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-			'Path': '/ ' + dbdata['admin_wid']
+			'Path': '/ wsp ' + dbdata['admin_wid']
 		}
 	})
 
@@ -1130,7 +1130,7 @@ def test_upload():
 		'Data': {
 			'Size': str(1000),
 			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-			'Path': '/ ' + dbdata['admin_wid']
+			'Path': '/ wsp ' + dbdata['admin_wid']
 		}
 	})
 
@@ -1149,7 +1149,7 @@ def test_upload():
 		'Data': {
 			'Size': str(1000),
 			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-			'Path': '/ ' + dbdata['admin_wid']
+			'Path': '/ wsp ' + dbdata['admin_wid']
 		}
 	})
 
@@ -1172,7 +1172,7 @@ def test_upload():
 		'Data': {
 			'Size': str(1000),
 			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-			'Path': '/ ' + dbdata['admin_wid'],
+			'Path': '/ wsp ' + dbdata['admin_wid'],
 			'TempName': tempFileName,
 			'Offset': '2000'
 		}
@@ -1189,7 +1189,7 @@ def test_upload():
 		'Data': {
 			'Size': str(1000),
 			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-			'Path': '/ ' + dbdata['admin_wid'],
+			'Path': '/ wsp ' + dbdata['admin_wid'],
 			'TempName': tempFileName,
 			'Offset': '500'
 		}
@@ -1210,7 +1210,7 @@ def test_upload():
 		'Data': {
 			'Size': str(1000),
 			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-			'Path': '/ ' + dbdata['admin_wid']
+			'Path': '/ wsp ' + dbdata['admin_wid']
 		}
 	})
 
@@ -1233,7 +1233,7 @@ def test_upload():
 		'Data': {
 			'Size': str(1000),
 			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp',
-			'Path': '/ ' + dbdata['admin_wid'],
+			'Path': '/ wsp ' + dbdata['admin_wid'],
 			'TempName': tempFileName,
 			'Offset': '400'
 		}
@@ -1250,8 +1250,8 @@ def test_upload():
 
 
 if __name__ == '__main__':
-	test_copy()
-	# test_download()
+	# test_copy()
+	test_download()
 	# test_getquotainfo()
 	# test_list()
 	# test_listdirs()

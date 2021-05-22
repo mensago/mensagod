@@ -190,7 +190,7 @@ func commandDownload(session *sessionState) {
 	// Check permissions. Users can download from an individual workspace only if it is their own
 	// or from multiuser workspaces if they have the appropriate permissions. Until multiuser
 	// workspaces are implemented, we can make this check pretty simple.
-	if !strings.HasPrefix(session.Message.Data["Path"], "/ "+session.WID) {
+	if !strings.HasPrefix(session.Message.Data["Path"], "/ wsp "+session.WID) {
 		session.SendQuickResponse(403, "FORBIDDEN", "Can only download from your own workspace")
 		return
 	}
