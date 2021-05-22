@@ -18,18 +18,13 @@ import (
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/misc"
 	"github.com/darkwyrm/mensagod/types"
+	"github.com/darkwyrm/mensagod/workerpool"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
 
 var messageQueue *list.List
 var queueLock sync.Mutex
-var workerCount int
-var workerGroup sync.WaitGroup
-var maxWorkers int
-var workerLock sync.Mutex
-var quitFlag bool
-var quitLock sync.RWMutex
 
 type messageInfo struct {
 	Sender   string
@@ -37,16 +32,15 @@ type messageInfo struct {
 	Path     string
 }
 
+var deliveryPool *workerpool.Pool
+
 func InitDelivery() {
 	messageQueue = list.New()
-	maxWorkers = viper.GetInt("performance.max_delivery_threads")
+	deliveryPool = workerpool.New(uint(viper.GetInt("performance.max_delivery_threads")))
 }
 
 func ShutdownDelivery() {
-	quitLock.Lock()
-	quitFlag = true
-	quitLock.Unlock()
-	workerGroup.Wait()
+	deliveryPool.Quit()
 }
 
 // PushMessage enqueues a message for delivery
@@ -56,13 +50,9 @@ func PushMessage(sender string, recipientDomain string, path string) {
 	messageQueue.PushBack(info)
 	queueLock.Unlock()
 
-	workerLock.Lock()
-	if workerCount < maxWorkers {
-		workerCount++
-		workerGroup.Add(1)
+	if deliveryPool.Add(1) > 0 {
 		go deliveryWorker()
 	}
-	workerLock.Unlock()
 }
 
 // popMessage removes a message from the queue
@@ -82,13 +72,12 @@ func popMessage() *messageInfo {
 }
 
 func deliveryWorker() {
+	defer deliveryPool.Done()
+
 	for {
-		quitLock.RLock()
-		if quitFlag {
-			quitLock.RUnlock()
+		if deliveryPool.IsQuitting() {
 			break
 		}
-		quitLock.RUnlock()
 
 		msgInfo := popMessage()
 		if msgInfo == nil {
@@ -158,11 +147,6 @@ func deliveryWorker() {
 		Bounce(301, msgInfo, nil)
 		os.Remove(msgInfo.Path)
 	}
-
-	workerLock.Lock()
-	workerCount--
-	workerGroup.Done()
-	workerLock.Unlock()
 }
 
 // DecryptRecipient assumes that the file passed to it has a recipient section which can be
