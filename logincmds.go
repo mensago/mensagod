@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/darkwyrm/b85"
-	"github.com/darkwyrm/mensagod/cryptostring"
 	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/ezcrypt"
@@ -33,7 +32,7 @@ func commandDevice(session *sessionState) {
 		return
 	}
 
-	var devkey cryptostring.CryptoString
+	var devkey cs.CryptoString
 	if devkey.Set(session.Message.Data["Device-Key"]) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad Device-Key")
 		return
@@ -129,7 +128,7 @@ func commandDevKey(session *sessionState) {
 		return
 	}
 
-	var oldkey cryptostring.CryptoString
+	var oldkey cs.CryptoString
 	if oldkey.Set(session.Message.Data["Old-Key"]) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad Old-Key")
 		return
@@ -149,7 +148,7 @@ func commandDevKey(session *sessionState) {
 		return
 	}
 
-	var newkey cryptostring.CryptoString
+	var newkey cs.CryptoString
 	if newkey.Set(session.Message.Data["New-Key"]) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad New-Key")
 		return
@@ -515,7 +514,7 @@ func challengeDevice(session *sessionState, keytype string, devkeystr string) (b
 		return false, cs.ErrUnsupportedAlgorithm
 	}
 
-	devkey := ezcrypt.NewEncryptionKey(cryptostring.New(devkeystr))
+	devkey := ezcrypt.NewEncryptionKey(cs.New(devkeystr))
 	encryptedChallenge, err := devkey.Encrypt([]byte(challenge))
 
 	if err != nil {
@@ -560,8 +559,8 @@ func challengeDevice(session *sessionState, keytype string, devkeystr string) (b
 	return true, nil
 }
 
-func dualChallengeDevice(session *sessionState, oldkey cryptostring.CryptoString,
-	newkey cryptostring.CryptoString) (bool, error) {
+func dualChallengeDevice(session *sessionState, oldkey cs.CryptoString,
+	newkey cs.CryptoString) (bool, error) {
 	// This is just like challengeDevice, but using two keys, an old one and a new one
 
 	if oldkey.Prefix != "CURVE25519" || newkey.Prefix != "CURVE25519" {
