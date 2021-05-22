@@ -87,6 +87,7 @@ func main() {
 
 			continue
 		}
+		clientPool.Add(1)
 		go connectionWorker(conn)
 	}
 }
