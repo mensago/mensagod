@@ -101,7 +101,7 @@ def test_copy():
 
 	# Set up the directory hierarchy
 
-	admin_dir = os.path.join(dbdata['configfile']['global']['workspace_dir'],
+	admin_dir = os.path.join(dbdata['configfile']['global']['workspace_dir'],'wsp',
 		dbdata['admin_wid'])
 	inner_dir = os.path.join(admin_dir, '11111111-1111-1111-1111-111111111111')
 	os.mkdir(inner_dir)
@@ -111,8 +111,8 @@ def test_copy():
 	conn.send_message({
 		'Action': 'COPY',
 		'Data': {
-			'SourceFile': '/ ' + dbdata['admin_wid'] + ' 1.1.01234567-89ab-cdef-0123-456789abcdef',
-			'DestDir': '/ ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+			'SourceFile': '/ wsp ' + dbdata['admin_wid'] + ' 1.1.01234567-89ab-cdef-0123-456789abcdef',
+			'DestDir': '/ wsp ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
 		}
 	})
 	response = conn.read_response(server_response)
@@ -129,8 +129,8 @@ def test_copy():
 	conn.send_message({
 		'Action': 'COPY',
 		'Data': {
-			'SourceFile': f"/ {dbdata['admin_wid']} {testfile1}",
-			'DestDir': f"/ {dbdata['admin_wid']} 22222222-2222-2222-2222-222222222222"
+			'SourceFile': f"/ wsp {dbdata['admin_wid']} {testfile1}",
+			'DestDir': f"/ wsp {dbdata['admin_wid']} 22222222-2222-2222-2222-222222222222"
 		}
 	})
 	response = conn.read_response(server_response)
@@ -141,8 +141,8 @@ def test_copy():
 	conn.send_message({
 		'Action': 'COPY',
 		'Data': {
-			'SourceFile': f"/ {dbdata['admin_wid']}",
-			'DestDir': f"/ {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111"
+			'SourceFile': f"/ wsp {dbdata['admin_wid']}",
+			'DestDir': f"/ wsp {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111"
 		}
 	})
 	response = conn.read_response(server_response)
@@ -156,8 +156,8 @@ def test_copy():
 	conn.send_message({
 		'Action': 'COPY',
 		'Data': {
-			'SourceFile': f"/ {dbdata['admin_wid']} {testfile1}",
-			'DestDir': f"/ {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111 {testfile1}"
+			'SourceFile': f"/ wsp {dbdata['admin_wid']} {testfile1}",
+			'DestDir': f"/ wsp {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111 {testfile1}"
 
 		}
 	})
@@ -178,8 +178,8 @@ def test_copy():
 	conn.send_message({
 		'Action': 'COPY',
 		'Data': {
-			'SourceFile': f"/ {dbdata['admin_wid']} {testfile1}",
-			'DestDir': f"/ {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111"
+			'SourceFile': f"/ wsp {dbdata['admin_wid']} {testfile1}",
+			'DestDir': f"/ wsp {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111"
 
 		}
 	})
@@ -196,8 +196,8 @@ def test_copy():
 	conn.send_message({
 		'Action': 'COPY',
 		'Data': {
-			'SourceFile': f"/ {dbdata['admin_wid']} {testfile1}",
-			'DestDir': f"/ {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111"
+			'SourceFile': f"/ wsp {dbdata['admin_wid']} {testfile1}",
+			'DestDir': f"/ wsp {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111"
 
 		}
 	})
@@ -702,8 +702,8 @@ def test_move():
 	conn.send_message({
 		'Action': 'MOVE',
 		'Data': {
-			'SourceFile': f"/ {dbdata['admin_wid']} {testfile1}",
-			'DestDir': f"/ {dbdata['admin_wid']} 22222222-2222-2222-2222-222222222222"
+			'SourceFile': f"/ wsp {dbdata['admin_wid']} {testfile1}",
+			'DestDir': f"/ wsp {dbdata['admin_wid']} 22222222-2222-2222-2222-222222222222"
 		}
 	})
 	response = conn.read_response(server_response)
@@ -714,8 +714,8 @@ def test_move():
 	conn.send_message({
 		'Action': 'MOVE',
 		'Data': {
-			'SourceFile': f"/ {dbdata['admin_wid']}",
-			'DestDir': f"/ {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111"
+			'SourceFile': f"/ wsp {dbdata['admin_wid']}",
+			'DestDir': f"/ wsp {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111"
 		}
 	})
 	response = conn.read_response(server_response)
@@ -729,8 +729,8 @@ def test_move():
 	conn.send_message({
 		'Action': 'MOVE',
 		'Data': {
-			'SourceFile': f"/ {dbdata['admin_wid']} {testfile1}",
-			'DestDir': f"/ {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111 {testfile1}"
+			'SourceFile': f"/ wsp {dbdata['admin_wid']} {testfile1}",
+			'DestDir': f"/ wsp {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111 {testfile1}"
 
 		}
 	})
@@ -744,8 +744,8 @@ def test_move():
 	conn.send_message({
 		'Action': 'MOVE',
 		'Data': {
-			'SourceFile': f"/ {dbdata['admin_wid']} {testfile1}",
-			'DestDir': f"/ {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111"
+			'SourceFile': f"/ wsp {dbdata['admin_wid']} {testfile1}",
+			'DestDir': f"/ wsp {dbdata['admin_wid']} 11111111-1111-1111-1111-111111111111"
 		}
 	})
 	response = conn.read_response(server_response)
@@ -1250,8 +1250,8 @@ def test_upload():
 
 
 if __name__ == '__main__':
-	# test_copy()
-	test_download()
+	test_copy()
+	# test_download()
 	# test_getquotainfo()
 	# test_list()
 	# test_listdirs()
