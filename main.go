@@ -18,6 +18,7 @@ import (
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/messaging"
 	"github.com/darkwyrm/mensagod/misc"
+	"github.com/darkwyrm/mensagod/workerpool"
 	"github.com/everlastingbeta/diceware"
 	"github.com/spf13/viper"
 )
@@ -29,10 +30,21 @@ var gDiceWordList diceware.Wordlist
 // bulk transfers are not subject to this restriction -- just the initial command.
 const MaxCommandLength = 8192
 
+var clientPool *workerpool.Pool
+
+type greetingStruct struct {
+	Name    string
+	Version string
+	Code    int
+	Status  string
+	Date    string
+}
+
 func main() {
 	gDiceWordList = config.SetupConfig()
 	messaging.InitDelivery()
 	keycard_cache.InitCache()
+	clientPool = workerpool.New(viper.GetUint("performance.max_client_threads"))
 
 	dbhandler.Connect()
 	if !dbhandler.IsConnected() {
@@ -58,12 +70,31 @@ func main() {
 			fmt.Println("Error accepting a connection: ", err.Error())
 			os.Exit(1)
 		}
+
+		if clientPool.IsFull() {
+			noCanHazData := greetingStruct{
+				Name:    "Mensago",
+				Version: "0.1",
+				Code:    303,
+				Status:  "SERVER UNAVAILABLE",
+				Date:    time.Now().UTC().Format("20060102T150405Z"),
+			}
+			noCanHazMsg, _ := json.Marshal(noCanHazData)
+
+			var session sessionState
+			session.Connection = conn
+			session.WriteClient(string(noCanHazMsg))
+
+			continue
+		}
 		go connectionWorker(conn)
 	}
 }
 
 func connectionWorker(conn net.Conn) {
 	defer conn.Close()
+	defer clientPool.Done()
+
 	conn.SetReadDeadline(time.Now().Add(time.Minute * 30))
 	conn.SetWriteDeadline(time.Now().Add(time.Minute * 10))
 
@@ -71,13 +102,7 @@ func connectionWorker(conn net.Conn) {
 	session.Connection = conn
 	session.LoginState = loginNoSession
 
-	greetingData := struct {
-		Name    string
-		Version string
-		Code    int
-		Status  string
-		Date    string
-	}{
+	greetingData := greetingStruct{
 		Name:    "Mensago",
 		Version: "0.1",
 		Code:    200,
