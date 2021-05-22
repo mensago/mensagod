@@ -42,6 +42,15 @@ func (p *Pool) Add(count uint) uint {
 	return count
 }
 
+// Wait simply waits for all workers to exit
+func (p *Pool) Wait() {
+	p.workerLock.Lock()
+	defer p.workerLock.Unlock()
+
+	p.workerGroup.Done()
+	p.workerCount = 0
+}
+
 // Done is called by worker goroutines to signify they are quitting
 func (p *Pool) Done() {
 	p.workerLock.Lock()
