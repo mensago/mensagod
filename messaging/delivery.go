@@ -36,7 +36,7 @@ var deliveryPool *workerpool.Pool
 
 func InitDelivery() {
 	messageQueue = list.New()
-	deliveryPool = workerpool.New(uint(viper.GetInt("performance.max_delivery_threads")))
+	deliveryPool = workerpool.New(viper.GetUint("performance.max_delivery_threads"))
 }
 
 func ShutdownDelivery() {
