@@ -101,7 +101,7 @@ def test_copy():
 
 	# Set up the directory hierarchy
 
-	admin_dir = os.path.join(dbdata['configfile']['global']['workspace_dir'],'wsp',
+	admin_dir = os.path.join(dbdata['configfile']['global']['workspace_dir'],
 		dbdata['admin_wid'])
 	inner_dir = os.path.join(admin_dir, '11111111-1111-1111-1111-111111111111')
 	os.mkdir(inner_dir)
