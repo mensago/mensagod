@@ -19,7 +19,6 @@ import (
 	"github.com/darkwyrm/mensagod/messaging"
 	"github.com/darkwyrm/mensagod/misc"
 	"github.com/everlastingbeta/diceware"
-	_ "github.com/lib/pq"
 	"github.com/spf13/viper"
 )
 
