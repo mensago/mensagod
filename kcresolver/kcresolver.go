@@ -1,4 +1,4 @@
-package keycard_cache
+package kcresolver
 
 import (
 	"container/list"
@@ -29,7 +29,7 @@ var cardCache keycardCache
 
 func InitCache() {
 	cardCache.Items = make(map[string]*cacheItem)
-	cardCache.Capacity = viper.GetInt("performance.keycard_cache_size")
+	cardCache.Capacity = viper.GetInt("performance.kcresolver_size")
 	cardCache.ItemQueue = list.New()
 }
 
@@ -157,6 +157,6 @@ func ResolveAddress(address types.Address) (types.Address, error) {
 		return out, err
 	}
 
-	// TODO: POSTDEMO: Implement external resolution in keycard_cache.ResolveAddress
+	// TODO: POSTDEMO: Implement external resolution in kcresolver.ResolveAddress
 	return out, misc.ErrUnimplemented
 }
