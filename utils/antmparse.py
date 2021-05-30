@@ -3,7 +3,7 @@
 # AntmConv - a conversion utility for the AnTM markup language, https://mensago.org/spec/antm/
 
 # Released under the terms of the MIT license
-# ©2019-2020 Jon Yoder <jsyoder@mailfence.com>
+# ©2019-2020 Jon Yoder <jon@yoder.cloud>
 
 import re
 
@@ -142,7 +142,7 @@ def tokenize(indata: str) -> list:
 
 test1 = '''[document language="en-us"]
 [h1]Mensago Text Markup (AnTM)[/h1]
-Jon Yoder -- jsyoder@mailfence.com -- Version 1.0, 2019-08-08
+Jon Yoder -- jon@yoder.cloud -- Version 1.0, 2019-08-08
 
 [b]Status:[/b] Review
 [b]Abstract:[/b] Rich text formatting language for client-side use

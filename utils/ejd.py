@@ -3,7 +3,7 @@
 # ejd.py: Utility for encrypting and decrypting EJD files
 
 # Released under the terms of the MIT license
-# ©2020 Jon Yoder <jsyoder@mailfence.com>
+# ©2020 Jon Yoder <jon@yoder.cloud>
 
 from base64 import b85encode, b85decode
 import hashlib

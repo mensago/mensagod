@@ -3,7 +3,7 @@
 # setupconfig - a script perform post-installation server configuration
 
 # Released under the terms of the MIT license
-# ©2019-2020 Jon Yoder <jsyoder@mailfence.com>
+# ©2019-2020 Jon Yoder <jon@yoder.cloud>
 
 import argparse
 import base64

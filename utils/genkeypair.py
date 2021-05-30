@@ -4,7 +4,7 @@
 # 	encryption key pairs
 
 # Released under the terms of the MIT license
-# ©2019-2020 Jon Yoder <jsyoder@mailfence.com>
+# ©2019-2020 Jon Yoder <jon@yoder.cloud>
 
 import base64
 import hashlib

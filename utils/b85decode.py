@@ -3,7 +3,7 @@
 # b85decode - a quick-and-dirty utility to Base85 decode a file or data from stdin
 
 # Released under the terms of the MIT license
-# ©2019-2020 Jon Yoder <jsyoder@mailfence.com>
+# ©2019-2020 Jon Yoder <jon@yoder.cloud>
 
 
 from base64 import b85decode
