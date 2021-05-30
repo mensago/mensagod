@@ -1,5 +1,5 @@
 from pymensago.encryption import EncryptionPair, Password
-from pymensago.cryptostring import CryptoString
+from pycryptostring import CryptoString
 from pymensago.serverconn import ServerConnection
 from integration_setup import setup_test, init_server, regcode_admin, login_admin
 

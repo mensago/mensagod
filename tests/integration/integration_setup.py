@@ -11,7 +11,7 @@ import time
 import psycopg2
 import toml
 
-from pymensago.cryptostring import CryptoString
+from pycryptostring import CryptoString
 from pymensago.encryption import EncryptionPair, Password, PublicKey, SigningPair
 import pymensago.keycard as keycard
 import pymensago.iscmds as iscmds

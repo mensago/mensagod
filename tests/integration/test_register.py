@@ -1,5 +1,5 @@
 from pymensago.encryption import EncryptionPair, SigningPair
-from pymensago.cryptostring import CryptoString
+from pycryptostring import CryptoString
 import pymensago.keycard as keycard
 import pymensago.iscmds as iscmds
 import pymensago.serverconn as serverconn

@@ -23,7 +23,7 @@ import psycopg2
 from termcolor import colored
 
 import pymensago.keycard as keycard
-from pymensago.cryptostring import CryptoString	
+from pycryptostring import CryptoString	
 
 def make_diceware():
 	'''Generates a diceware password'''

@@ -1,4 +1,4 @@
-from pymensago.cryptostring import CryptoString
+from pycryptostring import CryptoString
 from pymensago.encryption import EncryptionPair
 from pymensago.serverconn import ServerConnection
 

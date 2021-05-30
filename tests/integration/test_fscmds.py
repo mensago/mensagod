@@ -7,7 +7,7 @@ import uuid
 
 from retval import RetVal
 
-from pymensago.cryptostring import CryptoString
+from pycryptostring import CryptoString
 from pymensago.encryption import EncryptionPair
 from pymensago.hash import blake2hash
 from pymensago.serverconn import ServerConnection
