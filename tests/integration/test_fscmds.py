@@ -5,10 +5,11 @@ import shutil
 import time
 import uuid
 
+from retval import RetVal
+
 from pymensago.cryptostring import CryptoString
 from pymensago.encryption import EncryptionPair
 from pymensago.hash import blake2hash
-from pymensago.retval import RetVal, ExceptionThrown
 from pymensago.serverconn import ServerConnection
 
 from integration_setup import login_admin, regcode_admin, setup_test, init_server, init_user, \
@@ -49,7 +50,7 @@ def make_test_file(path: str, file_size=-1, file_name='') -> RetVal:
 	try:
 		fhandle = open(os.path.join(path, file_name), 'w')
 	except Exception as e:
-		return RetVal(ExceptionThrown, e)
+		return RetVal().wrap_exception(e)
 	
 	fhandle.write('0' * file_size)
 	fhandle.close()
