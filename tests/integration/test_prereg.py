@@ -107,6 +107,7 @@ def test_prereg():
 	assert validate_uuid(response['Data']['Workspace-ID']), 'Server returned a bad WID'
 	assert len(response['Data']['Workspace-ID']) <= 128, \
 		'Server returned a regcode longer than allowed'
+	returned_wid = response['Data']['Workspace-ID']
 
 	# Subtest #4: Plain regcode
 	regdata = response
@@ -124,6 +125,9 @@ def test_prereg():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 201 and response['Status'] == 'REGISTERED', \
 		'test_prereg: subtest #4 returned an error'
+	assert 'Workspace-ID' in response['Data'], "test_prereg: subtest #4 didn't receive a wid back"
+	assert returned_wid == response['Data']['Workspace-ID'], \
+		"test_prereg: subtest #4 received back from the server the wrong wid"
 
 
 	# Subtest #5: duplicate user ID

@@ -313,7 +313,9 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	session.SendQuickResponse(201, "REGISTERED", "")
+	response := NewServerResponse(201, "REGISTERED")
+	response.Data["Workspace-ID"] = wid
+	session.SendResponse(*response)
 }
 
 func commandRegister(session *sessionState) {
