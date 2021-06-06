@@ -16,6 +16,7 @@ from pymensago.encryption import EncryptionPair, Password, PublicKey, SigningPai
 import pymensago.keycard as keycard
 import pymensago.iscmds as iscmds
 import pymensago.serverconn as serverconn
+from pymensago.utils import MAddress
 
 # Keys used in the various tests. 
 # THESE KEYS ARE STORED ON GITHUB! DO NOT USE THESE FOR ANYTHING EXCEPT UNIT TESTS!!
@@ -64,8 +65,12 @@ import pymensago.serverconn as serverconn
 # Initial User Contact Request Encryption Key: j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph
 # Initial User Contact Request Decryption Key: 55t6A0y%S?{7c47p(R@C*X#at9Y`q5(Rc#YBS;r}
 
-# Initial User Primary Encryption Key: nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN
-# Initial User Primary Decryption Key: 4A!nTPZSVD#tm78d=-?1OIQ43{ipSpE;@il{lYkg
+# Initial User Encryption Key: nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN
+# Initial User Decryption Key: 4A!nTPZSVD#tm78d=-?1OIQ43{ipSpE;@il{lYkg
+
+# Initial User Verification Key: ED25519:k^GNIJbl3p@N=j8diO-wkNLuLcNF6#JF=@|a}wFE
+# Initial User Signing Key: ED25519:;NEoR>t9n3v%RbLJC#*%n4g%oxqzs)&~k+fH4uqi
+
 
 def load_server_config_file() -> dict:
 	'''Loads the Mensago server configuration from the config file'''
@@ -455,7 +460,7 @@ def keycard_admin(config, conn) -> dict:
 		'Domain':'example.com',
 		'Contact-Request-Verification-Key':crspair.get_public_key(),
 		'Contact-Request-Encryption-Key':crepair.get_public_key(),
-		'Public-Encryption-Key':epair.get_public_key()
+		'Encryption-Key':epair.get_public_key()
 	})
 
 	status = iscmds.addentry(conn, entry, CryptoString(config['ovkey']), crspair)	
@@ -480,8 +485,8 @@ def init_user(config: dict, conn: serverconn.ServerConnection):
 	password = Password('MyS3cretPassw*rd')
 	devpair = EncryptionPair()
 	devid = '11111111-1111-1111-1111-111111111111'
-	status = iscmds.regcode(conn, 'csimons', regdata['regcode'], password.hashstring,
-		devid, devpair, 'example.net')
+	status = iscmds.regcode(conn, MAddress('csimons/example.net'), regdata['regcode'],
+							password.hashstring, devpair)
 	assert not status.error(), "init_user(): uid regcode failed"
 
 	config['user_wid'] = userwid
@@ -509,8 +514,8 @@ def init_user2(config: dict, conn: serverconn.ServerConnection):
 	password = Password('MyS3cretPassw*rd')
 	devpair = EncryptionPair()
 	devid = '11111111-1111-1111-1111-111111111111'
-	status = iscmds.regcode(conn, 'fkingsley', regdata['regcode'], password.hashstring,
-		devid, devpair, 'example.net')
+	status = iscmds.regcode(conn, MAddress('fkingsley/example.net'), regdata['regcode'], 
+							password.hashstring, devpair)
 	assert not status.error(), "init_user2(): uid regcode failed"
 
 	config['user2_wid'] = userwid
