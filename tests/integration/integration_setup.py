@@ -59,9 +59,6 @@ from pymensago.utils import MAddress
 # Workspace-ID: 4418bf6c-000b-4bb3-8111-316e72030468
 # Domain: example.com
 
-# Initial User Signing Key: p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+
-# Initial User Verification Key: 6|HBWrxMY6-?r&Sm)_^PLPerpqOj#b&x#N_#C3}p
-
 # Initial User Contact Request Signing Key: ip52{ps^jH)t$k-9bc_RzkegpIW?}FFe~BX&<V}9
 # Initial User Contact Request Verification Key: d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D
 
