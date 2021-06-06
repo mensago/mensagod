@@ -592,7 +592,7 @@ func (entry *Entry) Chain(key cs.CryptoString, rotateOptional bool) (*Entry, map
 
 	switch entry.Type {
 	case "User":
-		outKeys, err = GenerateUserKeys(rotateOptional)
+		outKeys, err = GenerateUserKeys()
 	case "Organization":
 		outKeys, err = GenerateOrgKeys(rotateOptional)
 	}
@@ -866,9 +866,8 @@ func NewUserEntry() *Entry {
 		"Domain",
 		"Contact-Request-Verification-Key",
 		"Contact-Request-Encryption-Key",
-		"Public-Encryption-Key",
-		"Alternate-Encryption-Key",
-		"Public-Verification-Key",
+		"Encryption-Key",
+		"Verification-Key",
 		"Time-To-Live",
 		"Expires",
 		"Timestamp"}
@@ -876,8 +875,8 @@ func NewUserEntry() *Entry {
 	self.Keys = []KeyInfo{
 		{"Contact-Request-Verification-Key", "signing", false},
 		{"Contact-Request-Encryption-Key", "encryption", false},
-		{"Public-Encryption-Key", "encryption", true},
-		{"Alternate-Encryption-Key", "encryption", true}}
+		{"Encryption-Key", "encryption", false},
+		{"Verification-Key", "signing", false}}
 
 	// If changes are made to the number of these fields, the minimum line count in NewEntryFromData
 	// will need to be updated
@@ -887,8 +886,8 @@ func NewUserEntry() *Entry {
 		"Domain",
 		"Contact-Request-Verification-Key",
 		"Contact-Request-Encryption-Key",
-		"Public-Encryption-Key",
-		"Public-Verification-Key",
+		"Encryption-Key",
+		"Verification-Key",
 		"Time-To-Live",
 		"Expires",
 		"Timestamp"}
@@ -945,8 +944,8 @@ func (entry *Entry) validateUserEntry() (bool, error) {
 	keyFields := []string{
 		"Contact-Request-Verification-Key",
 		"Contact-Request-Encryption-Key",
-		"Public-Encryption-Key",
-		"Public-Verification-Key",
+		"Encryption-Key",
+		"Verification-Key",
 	}
 
 	for _, fieldName := range keyFields {
@@ -1040,18 +1039,6 @@ func (entry *Entry) validateUserEntry() (bool, error) {
 
 		if utf8.RuneCountInString(strValue) > 64 {
 			return false, errors.New("user id too long")
-		}
-	}
-
-	// Optional field: Alternate Encryption Key
-	if strValue, ok := entry.Fields["Alternate-Encryption-Key"]; ok {
-		var keystr cs.CryptoString
-		err = keystr.Set(strValue)
-		if err != nil {
-			return false, errors.New("bad alt encryption key")
-		}
-		if keystr.RawData() == nil {
-			return false, errors.New("bad alt encryption key")
 		}
 	}
 
@@ -1149,13 +1136,8 @@ func GenerateOrgKeys(rotateOptional bool) (map[string]cs.CryptoString, error) {
 
 // GenerateUserKeys generates a set of cryptographic keys for user entries, optionally including
 // non-required keys
-func GenerateUserKeys(rotateOptional bool) (map[string]cs.CryptoString, error) {
-	var outKeys map[string]cs.CryptoString
-	if rotateOptional {
-		outKeys = make(map[string]cs.CryptoString, 10)
-	} else {
-		outKeys = make(map[string]cs.CryptoString, 6)
-	}
+func GenerateUserKeys() (map[string]cs.CryptoString, error) {
+	outKeys := make(map[string]cs.CryptoString, 10)
 
 	var err error
 	var crePublicKey, crePrivateKey *[32]byte
@@ -1166,9 +1148,9 @@ func GenerateUserKeys(rotateOptional bool) (map[string]cs.CryptoString, error) {
 	if err != nil {
 		return outKeys, err
 	}
-	outKeys["Primary-Verification-Key.public"] = cs.New("ED25519:" +
+	outKeys["Verification-Key.public"] = cs.New("ED25519:" +
 		b85.Encode(sPublicKey[:]))
-	outKeys["Primary-Verification-Key.private"] = cs.New("ED25519:" +
+	outKeys["Verification-Key.private"] = cs.New("ED25519:" +
 		b85.Encode(sPrivateKey.Seed()))
 
 	crePublicKey, crePrivateKey, err = box.GenerateKey(rand.Reader)
@@ -1189,33 +1171,14 @@ func GenerateUserKeys(rotateOptional bool) (map[string]cs.CryptoString, error) {
 	outKeys["Contact-Request-Verification-Key.private"] = cs.New("ED25519:" +
 		b85.Encode(crsPrivateKey.Seed()))
 
-	if rotateOptional {
-		var ePublicKey, ePrivateKey, altePublicKey, altePrivateKey *[32]byte
+	var ePublicKey, ePrivateKey *[32]byte
 
-		ePublicKey, ePrivateKey, err = box.GenerateKey(rand.Reader)
-		if err != nil {
-			return outKeys, err
-		}
-		outKeys["Public-Encryption-Key.public"] = cs.New("CURVE25519:" +
-			b85.Encode(ePublicKey[:]))
-		outKeys["Public-Encryption-Key.private"] = cs.New("CURVE25519:" +
-			b85.Encode(ePrivateKey[:]))
-
-		altePublicKey, altePrivateKey, err = box.GenerateKey(rand.Reader)
-		if err != nil {
-			return outKeys, err
-		}
-		outKeys["Alternate-Encryption-Key.public"] = cs.New("CURVE25519:" +
-			b85.Encode(altePublicKey[:]))
-		outKeys["Alternate-Encryption-Key.private"] = cs.New("CURVE25519:" +
-			b85.Encode(altePrivateKey[:]))
-	} else {
-		var emptyKey cs.CryptoString
-		outKeys["Public-Encryption-Key.public"] = emptyKey
-		outKeys["Public-Encryption-Key.private"] = emptyKey
-		outKeys["Alternate-Encryption-Key.public"] = emptyKey
-		outKeys["Alternate-Encryption-Key.private"] = emptyKey
+	ePublicKey, ePrivateKey, err = box.GenerateKey(rand.Reader)
+	if err != nil {
+		return outKeys, err
 	}
+	outKeys["Encryption-Key.public"] = cs.New("CURVE25519:" + b85.Encode(ePublicKey[:]))
+	outKeys["Encryption-Key.private"] = cs.New("CURVE25519:" + b85.Encode(ePrivateKey[:]))
 
 	return outKeys, nil
 }

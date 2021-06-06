@@ -236,7 +236,8 @@ def test_unregister():
 		'Domain':'example.com',
 		'Contact-Request-Verification-Key':'ED25519:E?_z~5@+tkQz!iXK?oV<Zx(ec;=27C8Pjm((kRc|',
 		'Contact-Request-Encryption-Key':'CURVE25519:yBZ0{1fE9{2<b~#i^R+JT-yh-y5M(Wyw_)}_SZOn',
-		'Public-Encryption-Key':'CURVE25519:_`UC|vltn_%P5}~vwV^)oY){#uvQSSy(dOD_l(yE'
+		'Encryption-Key':'CURVE25519:_`UC|vltn_%P5}~vwV^)oY){#uvQSSy(dOD_l(yE',
+		'Verification-Key':'ED25519:k^GNIJbl3p@N=j8diO-wkNLuLcNF6#JF=@|a}wFE'
 	})
 
 	crspair = SigningPair(

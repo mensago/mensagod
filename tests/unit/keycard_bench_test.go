@@ -39,7 +39,8 @@ func TestEntrySize(t *testing.T) {
 		"Domain":                           "example.com",
 		"Contact-Request-Verification-Key": "ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D",
 		"Contact-Request-Encryption-Key":   "CURVE25519:j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph",
-		"Public-Encryption-Key":            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
+		"Encryption-Key":                   "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
+		"Verification-Key":                 "ED25519:k^GNIJbl3p@N=j8diO-wkNLuLcNF6#JF=@|a}wFE",
 		"Time-To-Live":                     "30",
 		"Expires":                          "20201002"})
 
@@ -100,7 +101,7 @@ func TestEntrySize(t *testing.T) {
 			t.Fatalf("BenchmarkEntrySize: hashing failure: %s\n", err)
 		}
 
-		newpsKeyString := newKeys["Primary-Verification-Key.private"]
+		newpsKeyString := newKeys["Verification-Key.private"]
 		err = newEntry.Sign(newpsKeyString, "User")
 		if err != nil {
 			t.Fatalf("BenchmarkEntrySize: user signing failure: %s\n", err)
@@ -133,7 +134,7 @@ func BenchmarkBLAKE2_256(t *testing.B) {
 		"Domain":                           "example.com",
 		"Contact-Request-Verification-Key": "ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D",
 		"Contact-Request-Encryption-Key":   "CURVE25519:j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph",
-		"Public-Encryption-Key":            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
+		"Encryption-Key":                   "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
 		"Time-To-Live":                     "30",
 		"Expires":                          "20201002"})
 
@@ -150,7 +151,7 @@ func BenchmarkBLAKE3_256(t *testing.B) {
 		"Domain":                           "example.com",
 		"Contact-Request-Verification-Key": "ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D",
 		"Contact-Request-Encryption-Key":   "CURVE25519:j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph",
-		"Public-Encryption-Key":            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
+		"Encryption-Key":                   "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
 		"Time-To-Live":                     "30",
 		"Expires":                          "20201002"})
 
@@ -168,7 +169,7 @@ func BenchmarkSHA_256(t *testing.B) {
 		"Domain":                           "example.com",
 		"Contact-Request-Verification-Key": "ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D",
 		"Contact-Request-Encryption-Key":   "CURVE25519:j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph",
-		"Public-Encryption-Key":            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
+		"Encryption-Key":                   "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
 		"Time-To-Live":                     "30",
 		"Expires":                          "20201002"})
 
@@ -186,7 +187,7 @@ func BenchmarkSHA3_256(t *testing.B) {
 		"Domain":                           "example.com",
 		"Contact-Request-Verification-Key": "ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D",
 		"Contact-Request-Encryption-Key":   "CURVE25519:j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph",
-		"Public-Encryption-Key":            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
+		"Encryption-Key":                   "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
 		"Time-To-Live":                     "30",
 		"Expires":                          "20201002"})
 

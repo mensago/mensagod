@@ -46,8 +46,11 @@ from pymensago.utils import MAddress
 # Initial Admin CR Verification Key: ED25519:E?_z~5@+tkQz!iXK?oV<Zx(ec;=27C8Pjm((kRc|
 # Initial Admin CR Signing Key: ED25519:u4#h6LEwM6Aa+f<++?lma4Iy63^}V$JOP~ejYkB;
 
-# Initial Admin General Encryption Key: CURVE25519:Umbw0Y<^cf1DN|>X38HCZO@Je(zSe6crC6X_C_0F
-# Initial Admin General Decryption Key: CURVE25519:Bw`F@ITv#sE)2NnngXWm7RQkxg{TYhZQbebcF5b$
+# Initial Admin Encryption Key: CURVE25519:Umbw0Y<^cf1DN|>X38HCZO@Je(zSe6crC6X_C_0F
+# Initial Admin Decryption Key: CURVE25519:Bw`F@ITv#sE)2NnngXWm7RQkxg{TYhZQbebcF5b$
+
+# Initial Admin Verification Key: 6|HBWrxMY6-?r&Sm)_^PLPerpqOj#b&x#N_#C3}p
+# Initial Admin Signing Key: p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+
 
 
 # Test User Information
@@ -222,7 +225,7 @@ def init_server(dbconn) -> dict:
 
 	# Chain a new entry to the root
 
-	status = card.chain(initial_oskey, True)
+	status = card.chain(initial_oskey, False)
 	assert not status.error(), f'keycard chain failed: {status}'
 
 	# Save the keys to a separate RetVal so we can keep using status for return codes
