@@ -109,6 +109,7 @@ func TestSign(t *testing.T) {
 		"Contact-Request-Verification-Key": "ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D",
 		"Contact-Request-Encryption-Key":   "CURVE25519:j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph",
 		"Public-Encryption-Key":            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
+		"Public-Verification-Key":          "ED25519:k^GNIJbl3p@N=j8diO-wkNLuLcNF6#JF=@|a}wFE",
 		"Time-To-Live":                     "30",
 		"Expires":                          "20201002",
 		"Timestamp":                        "20200901T13",
@@ -134,7 +135,7 @@ func TestSign(t *testing.T) {
 		t.Fatalf("TestSign: signing failure: %s\n", err)
 	}
 
-	expectedSig := "ED25519:H^&a0>LUcw@3~iaE1iJ0=C2UIPTC-f_W)kdhraHoXqF**vDPPK>X_n&h7PhSK{~7A-5Q?0hnQw)mL*mV"
+	expectedSig := "ED25519:nscDI&oW<82P{tTW72<U?hVkAPib(vl1g1!4GtHS>i4R$3ZN`uNr(+Zl`nEIC*?f@oMgRW^YL~ugIfy@"
 	if entry.Signatures["Organization"] != expectedSig {
 		t.Errorf("TestSign: expected signature:  %s\n", expectedSig)
 		t.Errorf("TestSign: actual signature:  %s\n", entry.Signatures["Organization"])
@@ -145,7 +146,7 @@ func TestSign(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TestSign: hashing failure: %s\n", err)
 	}
-	expectedHash := "BLAKE2B-256:^v@qXI~g>dNA4zxr4e13U_Dq6Z_87Aj(s@pL|pf-"
+	expectedHash := "BLAKE2B-256:c+Qc8_WOQ?GHw}uJ&vkPCq@7dmpKZ3L#{iUDPQ3v"
 
 	if entry.Hash != expectedHash {
 		t.Errorf("TestSign: expected hash:  %s\n", expectedHash)
@@ -159,7 +160,7 @@ func TestSign(t *testing.T) {
 		t.Fatalf("TestVerify: user signing failure: %s\n", err)
 	}
 
-	expectedSig = "ED25519:Lv5%nEe!ata-hYM`V*{c|2=2f-zcFHYP+KHOb9&*q%#OrnIWa?*|BmDl8Fq-8Ud-aG7b`<b3Pro9*N@*"
+	expectedSig = "ED25519:CFmX*Flg^Cr=Qqo{$u`ZyCmk|GWmLj#BM8CRjLyb9N;f~0atG<BX_rgT9w5k{D7t{V$?$oDhBk+iI_qJ"
 	if entry.Signatures["User"] != expectedSig {
 		t.Errorf("TestSign: expected signature:  %s\n", expectedSig)
 		t.Errorf("TestSign: actual signature:  %s\n", entry.Signatures["User"])
@@ -193,6 +194,7 @@ func TestVerify(t *testing.T) {
 		"Contact-Request-Verification-Key": "ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D",
 		"Contact-Request-Encryption-Key":   "CURVE25519:j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph",
 		"Public-Encryption-Key":            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
+		"Public-Verification-Key":          "ED25519:k^GNIJbl3p@N=j8diO-wkNLuLcNF6#JF=@|a}wFE",
 		"Time-To-Live":                     "30",
 		"Expires":                          "20201002",
 		"Timestamp":                        "20200901T13",
@@ -207,7 +209,7 @@ func TestVerify(t *testing.T) {
 		t.Fatalf("TestVerify: org signing failure: %s\n", err)
 	}
 
-	expectedSig := "ED25519:H^&a0>LUcw@3~iaE1iJ0=C2UIPTC-f_W)kdhraHoXqF**vDPPK>X_n&h7PhSK{~7A-5Q?0hnQw)mL*mV"
+	expectedSig := "ED25519:nscDI&oW<82P{tTW72<U?hVkAPib(vl1g1!4GtHS>i4R$3ZN`uNr(+Zl`nEIC*?f@oMgRW^YL~ugIfy@"
 	if entry.Signatures["Organization"] != expectedSig {
 		t.Errorf("TestVerify: expected signature:  %s\n", expectedSig)
 		t.Errorf("TestVerify: actual signature:  %s\n", entry.Signatures["Organization"])
@@ -219,7 +221,7 @@ func TestVerify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TestVerify: hashing failure: %s\n", err)
 	}
-	expectedHash := "BLAKE2B-256:^v@qXI~g>dNA4zxr4e13U_Dq6Z_87Aj(s@pL|pf-"
+	expectedHash := "BLAKE2B-256:c+Qc8_WOQ?GHw}uJ&vkPCq@7dmpKZ3L#{iUDPQ3v"
 
 	if entry.Hash != expectedHash {
 		t.Errorf("TestVerify: expected hash:  %s\n", expectedHash)
@@ -233,7 +235,7 @@ func TestVerify(t *testing.T) {
 		t.Fatalf("TestVerify: user signing failure: %s\n", err)
 	}
 
-	expectedSig = "ED25519:Lv5%nEe!ata-hYM`V*{c|2=2f-zcFHYP+KHOb9&*q%#OrnIWa?*|BmDl8Fq-8Ud-aG7b`<b3Pro9*N@*"
+	expectedSig = "ED25519:CFmX*Flg^Cr=Qqo{$u`ZyCmk|GWmLj#BM8CRjLyb9N;f~0atG<BX_rgT9w5k{D7t{V$?$oDhBk+iI_qJ"
 	if entry.Signatures["User"] != expectedSig {
 		t.Errorf("TestVerify: expected signature:  %s\n", expectedSig)
 		t.Errorf("TestVerify: actual signature:  %s\n", entry.Signatures["User"])
@@ -277,6 +279,7 @@ func TestIsCompliantUser(t *testing.T) {
 		"Contact-Request-Verification-Key": "ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D",
 		"Contact-Request-Encryption-Key":   "CURVE25519:j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph",
 		"Public-Encryption-Key":            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
+		"Public-Verification-Key":          "ED25519:k^GNIJbl3p@N=j8diO-wkNLuLcNF6#JF=@|a}wFE",
 		"Time-To-Live":                     "30",
 		"Expires":                          "20201002",
 		"Timestamp":                        "20200901T131313Z"})
@@ -291,7 +294,7 @@ func TestIsCompliantUser(t *testing.T) {
 		t.Fatalf("TestIsCompliantUser: org signing failure: %s\n", err)
 	}
 
-	expectedSig := "ED25519:SPGSYwSjq;BJfT#a@(jzi$tWK+gCnv-6KW!FQVdB9-ivub8V|36#Q^uOdbRhLl8l{B>1)6jd{Vq%2T5R"
+	expectedSig := "ED25519:J{W9352a255@FtF4$eZH*qogb3@V|#_l?o-F|zSRWRT(TVfknC@jZBl*Ul9LUYPv^;XLi6>%g`kae|To"
 	if entry.Signatures["Organization"] != expectedSig {
 		t.Errorf("TestIsCompliantUser: expected signature:  %s\n", expectedSig)
 		t.Errorf("TestIsCompliantUser: actual signature:  %s\n", entry.Signatures["Organization"])
@@ -303,7 +306,7 @@ func TestIsCompliantUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TestIsCompliantUser: hashing failure: %s\n", err)
 	}
-	expectedHash := "BLAKE2B-256:nU!WqPX<$u8C%Mb@>^s5Qv+liB{+n0z2wdpD}=k|"
+	expectedHash := "BLAKE2B-256:F}*kTK(jTsbu>Hcbx6r?+w1CR8W<Gy_8R(%vOx-M"
 
 	if entry.Hash != expectedHash {
 		t.Errorf("TestIsCompliantUser: expected hash:  %s\n", expectedHash)
@@ -317,7 +320,7 @@ func TestIsCompliantUser(t *testing.T) {
 		t.Fatalf("TestIsCompliantUser: user signing failure: %s\n", err)
 	}
 
-	expectedSig = "ED25519:Cqty$y8|_5vdyd>;(ksXKL*xla4il}I&`IoIj3qHd_0pV`X?hZ!q7?_FUgiB;w3Afd8qcNzaUPamq=Iy"
+	expectedSig = "ED25519:_@Cv{kdw?Bbd=fD3Gft$Q*$4JHb0?U2U?JB1lG{fE*CmU>^k)uG%vC*Lj}H@r0eU7czKO#F0jC%x)r_z"
 	if entry.Signatures["User"] != expectedSig {
 		t.Errorf("TestIsCompliantUser: expected signature:  %s\n", expectedSig)
 		t.Errorf("TestIsCompliantUser: actual signature:  %s\n", entry.Signatures["User"])
@@ -524,6 +527,7 @@ func TestUserChain(t *testing.T) {
 		"Contact-Request-Verification-Key": "ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D",
 		"Contact-Request-Encryption-Key":   "CURVE25519:j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph",
 		"Public-Encryption-Key":            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
+		"Public-Verification-Key":          "ED25519:k^GNIJbl3p@N=j8diO-wkNLuLcNF6#JF=@|a}wFE",
 		"Time-To-Live":                     "30",
 		"Expires":                          "20201002",
 		"Timestamp":                        "20200901T131313Z"})
@@ -538,7 +542,7 @@ func TestUserChain(t *testing.T) {
 		t.Fatalf("TestUserChain: org signing failure: %s\n", err)
 	}
 
-	expectedSig := "ED25519:SPGSYwSjq;BJfT#a@(jzi$tWK+gCnv-6KW!FQVdB9-ivub8V|36#Q^uOdbRhLl8l{B>1)6jd{Vq%2T5R"
+	expectedSig := "ED25519:J{W9352a255@FtF4$eZH*qogb3@V|#_l?o-F|zSRWRT(TVfknC@jZBl*Ul9LUYPv^;XLi6>%g`kae|To"
 	if entry.Signatures["Organization"] != expectedSig {
 		t.Errorf("TestUserChain: expected signature:  %s\n", expectedSig)
 		t.Errorf("TestUserChain: actual signature:  %s\n", entry.Signatures["Organization"])
@@ -550,7 +554,7 @@ func TestUserChain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TestUserChain: hashing failure: %s\n", err)
 	}
-	expectedHash := "BLAKE2B-256:nU!WqPX<$u8C%Mb@>^s5Qv+liB{+n0z2wdpD}=k|"
+	expectedHash := "BLAKE2B-256:F}*kTK(jTsbu>Hcbx6r?+w1CR8W<Gy_8R(%vOx-M"
 
 	if entry.Hash != expectedHash {
 		t.Errorf("TestUserChain: expected hash:  %s\n", expectedHash)
@@ -564,7 +568,7 @@ func TestUserChain(t *testing.T) {
 		t.Fatalf("TestUserChain: user signing failure: %s\n", err)
 	}
 
-	expectedSig = "ED25519:Cqty$y8|_5vdyd>;(ksXKL*xla4il}I&`IoIj3qHd_0pV`X?hZ!q7?_FUgiB;w3Afd8qcNzaUPamq=Iy"
+	expectedSig = "ED25519:_@Cv{kdw?Bbd=fD3Gft$Q*$4JHb0?U2U?JB1lG{fE*CmU>^k)uG%vC*Lj}H@r0eU7czKO#F0jC%x)r_z"
 	if entry.Signatures["User"] != expectedSig {
 		t.Errorf("TestUserChain: expected signature:  %s\n", expectedSig)
 		t.Errorf("TestUserChain: actual signature:  %s\n", entry.Signatures["User"])
@@ -763,6 +767,7 @@ func TestIsDataCompliantUser(t *testing.T) {
 		"Contact-Request-Verification-Key": "ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D",
 		"Contact-Request-Encryption-Key":   "CURVE25519:j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph",
 		"Public-Encryption-Key":            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
+		"Public-Verification-Key":          "ED25519:k^GNIJbl3p@N=j8diO-wkNLuLcNF6#JF=@|a}wFE",
 		"Time-To-Live":                     "30",
 		"Expires":                          "20201002",
 		"Timestamp":                        "20200901T121212Z"})
@@ -837,6 +842,17 @@ func TestIsDataCompliantUser(t *testing.T) {
 	}
 	entry.SetField("Public-Encryption-Key",
 		"CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN")
+
+	// Required field: Public Verification Key
+	entry.SetField("Public-Verification-Key", "k^GNIJbl3p@N=j8diO-wkNLuLcNF6#JF=@|a}wFE")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a bad pv key\n")
+	}
+	entry.SetField("Public-Verification-Key", "ED25519:123456789:123456789")
+	if entry.IsDataCompliant() {
+		t.Fatal("TestIsDataCompliantUser: IsDataCompliant passed an entry with a bad pv key\n")
+	}
+	entry.SetField("Public-Verification-Key", "ED25519:k^GNIJbl3p@N=j8diO-wkNLuLcNF6#JF=@|a}wFE")
 
 	// Required field: Time to Live
 	entry.SetField("Time-To-Live", "0")

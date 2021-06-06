@@ -868,6 +868,7 @@ func NewUserEntry() *Entry {
 		"Contact-Request-Encryption-Key",
 		"Public-Encryption-Key",
 		"Alternate-Encryption-Key",
+		"Public-Verification-Key",
 		"Time-To-Live",
 		"Expires",
 		"Timestamp"}
@@ -887,6 +888,7 @@ func NewUserEntry() *Entry {
 		"Contact-Request-Verification-Key",
 		"Contact-Request-Encryption-Key",
 		"Public-Encryption-Key",
+		"Public-Verification-Key",
 		"Time-To-Live",
 		"Expires",
 		"Timestamp"}
@@ -937,33 +939,22 @@ func (entry *Entry) validateUserEntry() (bool, error) {
 		return false, errors.New("bad domain")
 	}
 
-	// Required field: Contact Request Verification Key
+	// Required fields: Contact Request Verification Key, Contact Request Encryption Key,
+	// 					Public Encryption Key, Public Verification Key
 	// We can't actually verify the key data, but we can ensure that it at least decodes from Base85
-	var keystr cs.CryptoString
-	err := keystr.Set(entry.Fields["Contact-Request-Verification-Key"])
-	if err != nil {
-		return false, errors.New("bad contact request verification key")
-	}
-	if keystr.RawData() == nil {
-		return false, errors.New("bad contact request verification key")
+	keyFields := []string{
+		"Contact-Request-Verification-Key",
+		"Contact-Request-Encryption-Key",
+		"Public-Encryption-Key",
+		"Public-Verification-Key",
 	}
 
-	// Required field: Contact Request Encryption Key
-	err = keystr.Set(entry.Fields["Contact-Request-Encryption-Key"])
-	if err != nil {
-		return false, errors.New("bad contact request encryption key")
-	}
-	if keystr.RawData() == nil {
-		return false, errors.New("bad contact request encryption key")
-	}
-
-	// Required field: Public Encryption Key
-	err = keystr.Set(entry.Fields["Public-Encryption-Key"])
-	if err != nil {
-		return false, errors.New("bad public encryption key")
-	}
-	if keystr.RawData() == nil {
-		return false, errors.New("bad public encryption key")
+	for _, fieldName := range keyFields {
+		var keystr cs.CryptoString
+		err := keystr.Set(entry.Fields[fieldName])
+		if err != nil || keystr.RawData() == nil {
+			return false, fmt.Errorf("bad key field: %s", fieldName)
+		}
 	}
 
 	// Required field: Time To Live
@@ -987,7 +978,7 @@ func (entry *Entry) validateUserEntry() (bool, error) {
 	day, _ := strconv.Atoi(entry.Fields["Expires"][6:8])
 
 	var validDate bool
-	validDate, err = isValidDate(month, day, year)
+	validDate, err := isValidDate(month, day, year)
 	if !validDate {
 		return false, fmt.Errorf("bad expiration date %s", err.Error())
 	}
@@ -1054,6 +1045,7 @@ func (entry *Entry) validateUserEntry() (bool, error) {
 
 	// Optional field: Alternate Encryption Key
 	if strValue, ok := entry.Fields["Alternate-Encryption-Key"]; ok {
+		var keystr cs.CryptoString
 		err = keystr.Set(strValue)
 		if err != nil {
 			return false, errors.New("bad alt encryption key")
