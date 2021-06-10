@@ -469,7 +469,7 @@ func commandSetStatus(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.SetWorkspaceStatus(session.Message.Data["Workspace-ID"],
+	err = dbhandler.SetWorkspaceStatus(strings.ToLower(session.Message.Data["Workspace-ID"]),
 		session.Message.Data["Status"])
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
