@@ -46,7 +46,8 @@ func commandCopy(session *sessionState) {
 	}
 
 	fsh := fshandler.GetFSProvider()
-	exists, err := fsh.Exists(session.Message.Data["SourceFile"])
+	sourcePath := strings.ToLower(session.Message.Data["SourceFile"])
+	exists, err := fsh.Exists(sourcePath)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -56,7 +57,8 @@ func commandCopy(session *sessionState) {
 		return
 	}
 
-	exists, err = fsh.Exists(session.Message.Data["DestDir"])
+	destPath := strings.ToLower(session.Message.Data["DestDir"])
+	exists, err = fsh.Exists(destPath)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -67,7 +69,7 @@ func commandCopy(session *sessionState) {
 	}
 
 	// Arguments have been validated, do a quota check
-	parts := strings.Split(session.Message.Data["SourceFile"], " ")
+	parts := strings.Split(sourcePath, " ")
 
 	if !fshandler.ValidateFileName(parts[len(parts)-1]) {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad source path")
@@ -92,8 +94,7 @@ func commandCopy(session *sessionState) {
 		return
 	}
 
-	newName, err := fsh.CopyFile(session.Message.Data["SourceFile"],
-		session.Message.Data["DestDir"])
+	newName, err := fsh.CopyFile(sourcePath, destPath)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -101,7 +102,7 @@ func commandCopy(session *sessionState) {
 
 	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
 		Type: dbhandler.UpdateAdd,
-		Data: session.Message.Data["DestDir"] + " " + newName,
+		Data: destPath + " " + newName,
 		Time: time.Now().UTC().Unix(),
 	})
 
