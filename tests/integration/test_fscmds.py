@@ -204,6 +204,7 @@ def test_copy():
 	})
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_copy: #6 failed to succeed'
+	conn.disconnect()
 
 
 def test_download():
@@ -334,6 +335,7 @@ def test_download():
 	assert blake2hash((('0' * 500) +  rawdata).encode()) == \
 		'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp', \
 		'test_download: #8 resumed file hash failure'
+	conn.disconnect()
 
 
 def test_getquotainfo():
@@ -375,6 +377,7 @@ def test_getquotainfo():
 	assert response['Data']['DiskUsage'] == '1000', 'test_getquotainfo: disk usage was incorrect'
 	assert response['Data']['QuotaSize'] == '0', \
 		"test_getquotainfo: admin quota wasn't unlimited"
+	conn.disconnect()
 
 
 def test_list():
@@ -481,6 +484,7 @@ def test_list():
 	assert response['Code'] == 200, 'test_list: #5 failed to handle non-empty directory'
 	assert 'Files' in response['Data'] and len(response['Data']['Files']) == 3, \
 		'test_list: #5 failed to filter files'
+	conn.disconnect()
 
 
 def test_listdirs():
@@ -571,6 +575,7 @@ def test_listdirs():
 	assert response['Code'] == 200, 'test_listdirs: #4 failed to handle non-empty directory'
 	assert 'Directories' in response['Data'] and len(response['Data']['Directories']) == 5, \
 		'test_list: #4 failed to list all subdirectories'
+	conn.disconnect()
 
 
 def test_mkdir():
@@ -648,6 +653,7 @@ def test_mkdir():
 	})
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_mkdir: #2 failed to create legitimate directory'
+	conn.disconnect()
 
 
 def test_move():
@@ -751,6 +757,7 @@ def test_move():
 	})
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_copy: #6 failed to succeed'
+	conn.disconnect()
 
 
 def test_rmdir():
@@ -854,6 +861,7 @@ def test_rmdir():
 	})
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_rmdir: #5 failed to remove an empty directory'
+	conn.disconnect()
 
 
 def test_select():
@@ -928,6 +936,7 @@ def test_select():
 	})
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_select: #3 failed to work correctly'
+	conn.disconnect()
 
 
 def test_setquota():
@@ -1006,6 +1015,7 @@ def test_setquota():
 
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_setquota: failed to handle actual success'
+	conn.disconnect()
 
 
 def test_upload():
@@ -1248,11 +1258,13 @@ def test_upload():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_upload: #9 failed to resume with overlapping offset'
 
+	conn.disconnect()
+
 
 
 if __name__ == '__main__':
-	# test_copy()
-	test_download()
+	test_copy()
+	# test_download()
 	# test_getquotainfo()
 	# test_list()
 	# test_listdirs()
