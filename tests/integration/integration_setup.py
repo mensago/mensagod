@@ -340,6 +340,7 @@ def regcode_admin(config, conn):
 	'Action' : "REGCODE",
 		'Data' : {
 			'User-ID' : 'admin',
+			'Domain' : config['org_domain'],
 			'Reg-Code' : config['admin_regcode'],
 			'Password-Hash' : config['pwhash'],
 			'Device-ID' : config['devid'],
