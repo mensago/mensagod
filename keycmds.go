@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/darkwyrm/b85"
 	"github.com/darkwyrm/mensagod/cryptostring"
@@ -62,7 +63,8 @@ func commandAddEntry(session *sessionState) {
 		return
 	}
 
-	if entry.Fields["Workspace-ID"] != session.WID {
+	wid := strings.ToLower(entry.Fields["Workspace-ID"])
+	if wid != session.WID {
 		session.SendQuickResponse(411, "BAD KEYCARD DATA", "Workspace doesn't match login")
 		return
 	}
@@ -93,8 +95,10 @@ func commandAddEntry(session *sessionState) {
 		logging.Writef("commandAddEntry: error resolving address: %s", err.Error())
 		return
 	}
+
+	uid := strings.ToLower(entry.Fields["User-ID"])
 	if session.WID == adminWid {
-		if entry.Fields["User-ID"] != "admin" {
+		if uid != "admin" {
 			session.SendQuickResponse(411, "BAD KEYCARD DATA", "Admin can't change its user ID")
 			return
 		}
@@ -113,7 +117,7 @@ func commandAddEntry(session *sessionState) {
 		return
 	}
 
-	if entry.Fields["Workspace-ID"] != session.WID {
+	if wid != session.WID {
 		session.SendQuickResponse(412, "NONCOMPLIANT KEYCARD DATA", "Workspace ID mismatch")
 		return
 	}
@@ -123,7 +127,7 @@ func commandAddEntry(session *sessionState) {
 	currentIndex, _ := strconv.Atoi(entry.Fields["Index"])
 
 	// Passing a 0 as the start index means we'll get just the current entry
-	tempStrList, err := dbhandler.GetUserEntries(entry.Fields["Workspace-ID"], 0, 0)
+	tempStrList, err := dbhandler.GetUserEntries(wid, 0, 0)
 	if err == nil {
 		if len(tempStrList) == 0 {
 			if currentIndex != 1 {
@@ -136,7 +140,7 @@ func commandAddEntry(session *sessionState) {
 			if err != nil {
 				session.SendQuickResponse(300, "INTERNAL SERVER ERRROR", "")
 				logging.Writef("ERROR AddEntry: previous keycard entry invalid for workspace %s",
-					entry.Fields["Workspace-ID"])
+					wid)
 				return
 			}
 
@@ -437,7 +441,7 @@ func commandIsCurrent(session *sessionState) {
 
 	var currentIndex int
 	if session.Message.HasField("Workspace-ID") {
-		wid := session.Message.Data["Workspace-ID"]
+		wid := strings.ToLower(session.Message.Data["Workspace-ID"])
 		if !dbhandler.ValidateUUID(wid) {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad Workspace-ID")
 			return
