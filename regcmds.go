@@ -27,10 +27,10 @@ func commandGetWID(session *sessionState) {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad User-ID")
 		return
 	}
-
+	uid := strings.ToLower(session.Message.Data["User-ID"])
 	var domain string
 	if session.Message.HasField("Domain") {
-		domain = session.Message.Data["Domain"]
+		domain = strings.ToLower(session.Message.Data["Domain"])
 		pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
 		if !pattern.MatchString(domain) {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad Domain")
@@ -45,7 +45,7 @@ func commandGetWID(session *sessionState) {
 		return
 	}
 
-	address := strings.Join([]string{session.Message.Data["User-ID"], "/", domain}, "")
+	address := strings.Join([]string{uid, "/", domain}, "")
 	wid, err := dbhandler.ResolveAddress(address)
 	if err != nil {
 		if err.Error() == "workspace not found" {
@@ -80,13 +80,13 @@ func commandPreregister(session *sessionState) {
 	// Just do some basic syntax checks on the user ID
 	uid := ""
 	if session.Message.HasField("User-ID") {
-		uid = session.Message.Data["User-ID"]
+		uid = strings.ToLower(session.Message.Data["User-ID"])
 		if strings.ContainsAny(uid, "/\"") {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad User-ID")
 			return
 		}
 
-		success, _ := dbhandler.CheckUserID(session.Message.Data["User-ID"])
+		success, _ := dbhandler.CheckUserID(uid)
 		if success {
 			session.SendQuickResponse(408, "RESOURCE EXISTS", "User-ID exists")
 			return
@@ -100,7 +100,7 @@ func commandPreregister(session *sessionState) {
 		wid = uid
 		uid = ""
 	} else if session.Message.HasField("Workspace-ID") {
-		wid = session.Message.Data["Workspace-ID"]
+		wid = strings.ToLower(session.Message.Data["Workspace-ID"])
 		if !dbhandler.ValidateUUID(wid) {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad Workspace-ID")
 			return
@@ -109,7 +109,7 @@ func commandPreregister(session *sessionState) {
 
 	domain := ""
 	if session.Message.HasField("Domain") {
-		domain = session.Message.Data["Domain"]
+		domain = strings.ToLower(session.Message.Data["Domain"])
 		pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
 		if !pattern.MatchString(domain) {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad Domain")
@@ -190,7 +190,7 @@ func commandRegCode(session *sessionState) {
 		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Device-ID")
 		return
 	}
-
+	devid := strings.ToLower(session.Message.Data["Device-ID"])
 	if len(session.Message.Data["Reg-Code"]) > 128 {
 		session.SendQuickResponse(400, "BAD REQUEST", "Invalid reg code")
 		return
@@ -209,10 +209,6 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	if !dbhandler.ValidateUUID(session.Message.Data["Device-ID"]) {
-		session.SendQuickResponse(400, "BAD REQUEST", "Bad device ID")
-		return
-	}
 	// check to see if this is a workspace ID
 
 	if session.Message.HasField("User-ID") {
@@ -232,7 +228,7 @@ func commandRegCode(session *sessionState) {
 
 	domain := ""
 	if session.Message.HasField("Domain") {
-		domain = session.Message.Data["Domain"]
+		domain = strings.ToLower(session.Message.Data["Domain"])
 		pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
 		if !pattern.MatchString(domain) {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad Domain")
@@ -265,11 +261,11 @@ func commandRegCode(session *sessionState) {
 
 	var wid, uid string
 	if session.Message.HasField("Workspace-ID") {
-		wid, uid, _ = dbhandler.CheckRegCode(session.Message.Data["Workspace-ID"], domain, true,
-			session.Message.Data["Reg-Code"])
+		wid, uid, _ = dbhandler.CheckRegCode(strings.ToLower(session.Message.Data["Workspace-ID"]),
+			domain, true, session.Message.Data["Reg-Code"])
 	} else {
-		wid, uid, _ = dbhandler.CheckRegCode(session.Message.Data["User-ID"], domain, false,
-			session.Message.Data["Reg-Code"])
+		wid, uid, _ = dbhandler.CheckRegCode(strings.ToLower(session.Message.Data["User-ID"]),
+			domain, false, session.Message.Data["Reg-Code"])
 	}
 
 	if wid == "" {
@@ -294,7 +290,7 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.AddDevice(wid, session.Message.Data["Device-ID"], devkey, "active")
+	err = dbhandler.AddDevice(wid, devid, devkey, "active")
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
@@ -302,10 +298,10 @@ func commandRegCode(session *sessionState) {
 	}
 
 	if session.Message.HasField("Workspace-ID") {
-		err = dbhandler.DeleteRegCode(session.Message.Data["Workspace-ID"], domain, true,
+		err = dbhandler.DeleteRegCode(wid, domain, true,
 			session.Message.Data["Reg-Code"])
 	} else {
-		err = dbhandler.DeleteRegCode(session.Message.Data["User-ID"], domain, false,
+		err = dbhandler.DeleteRegCode(uid, domain, false,
 			session.Message.Data["Reg-Code"])
 	}
 	if err != nil {
@@ -327,7 +323,9 @@ func commandRegister(session *sessionState) {
 		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
-	if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
+
+	wid := strings.ToLower(session.Message.Data["Workspace-ID"])
+	if !dbhandler.ValidateUUID(wid) {
 		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
 		return
 	}
@@ -335,7 +333,7 @@ func commandRegister(session *sessionState) {
 	// Just do some basic syntax checks on the user ID
 	uid := ""
 	if session.Message.HasField("User-ID") {
-		uid = session.Message.Data["User-ID"]
+		uid = strings.ToLower(session.Message.Data["User-ID"])
 		if strings.ContainsAny(uid, "/\"") {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad User-ID")
 			return
@@ -363,7 +361,7 @@ func commandRegister(session *sessionState) {
 		return
 	}
 
-	success, _ := dbhandler.CheckWorkspace(session.Message.Data["Workspace-ID"])
+	success, _ := dbhandler.CheckWorkspace(wid)
 	if success {
 		response := NewServerResponse(408, "RESOURCE EXISTS")
 		response.Data["Field"] = "Workspace-ID"
@@ -372,7 +370,7 @@ func commandRegister(session *sessionState) {
 	}
 
 	if session.Message.HasField("User-ID") {
-		success, _ = dbhandler.CheckUserID(session.Message.Data["User-ID"])
+		success, _ = dbhandler.CheckUserID(uid)
 		if success {
 			response := NewServerResponse(408, "RESOURCE EXISTS")
 			response.Data["Field"] = "User-ID"
@@ -424,9 +422,8 @@ func commandRegister(session *sessionState) {
 		return
 	}
 
-	err := dbhandler.AddWorkspace(session.Message.Data["Workspace-ID"], uid,
-		viper.GetString("global.domain"), session.Message.Data["Password-Hash"], workspaceStatus,
-		wtype)
+	err := dbhandler.AddWorkspace(wid, uid, viper.GetString("global.domain"),
+		session.Message.Data["Password-Hash"], workspaceStatus, wtype)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
@@ -434,7 +431,7 @@ func commandRegister(session *sessionState) {
 	}
 
 	devid := uuid.New().String()
-	err = dbhandler.AddDevice(session.Message.Data["Workspace-ID"], devid, devkey, "active")
+	err = dbhandler.AddDevice(wid, devid, devkey, "active")
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
@@ -442,18 +439,17 @@ func commandRegister(session *sessionState) {
 	}
 
 	fsp := fshandler.GetFSProvider()
-	exists, err := fsp.Exists("/ " + session.Message.Data["Workspace-ID"])
+	exists, err := fsp.Exists("/ " + wid)
 	if err != nil {
-		logging.Writef("commandPreregister: Failed to check workspace %s existence: %s",
-			session.Message.Data["Workspace-ID"], err)
+		logging.Writef("commandPreregister: Failed to check workspace %s existence: %s", wid, err)
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 	if !exists {
-		fsp.MakeDirectory("/ " + session.Message.Data["Workspace-ID"])
+		fsp.MakeDirectory("/ " + wid)
 		if err != nil {
 			logging.Writef("commandPreregister: Failed to create workspace %s top directory: %s",
-				session.Message.Data["Workspace-ID"], err)
+				wid, err)
 			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 			return
 		}
@@ -515,19 +511,20 @@ func commandUnregister(session *sessionState) {
 	// allowed to do this
 	wid := session.WID
 	if session.Message.HasField("Workspace-ID") {
-		if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
+		tempWid := strings.ToLower(session.Message.Data["Workspace-ID"])
+		if !dbhandler.ValidateUUID(tempWid) {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad Workspace-ID")
 			return
 		}
 
-		if session.WID != session.Message.Data["Workspace-ID"] {
+		if session.WID != tempWid {
 
 			if session.WID != adminWid {
 				session.SendQuickResponse(401, "UNAUTHORIZED",
 					"Only admin can unregister other workspaces")
 				return
 			}
-			wid = session.Message.Data["Workspace-ID"]
+			wid = tempWid
 
 		}
 	}
