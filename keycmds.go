@@ -69,6 +69,8 @@ func commandAddEntry(session *sessionState) {
 		return
 	}
 
+	uid := strings.ToLower(entry.Fields["User-ID"])
+
 	// admin, support, and abuse can't change their user IDs
 	adminAddresses := []string{"admin", "support", "abuse"}
 	for _, address := range adminAddresses {
@@ -80,7 +82,7 @@ func commandAddEntry(session *sessionState) {
 			return
 		}
 		if session.WID == currentWid {
-			if entry.Fields["User-ID"] != address {
+			if uid != address {
 				session.SendQuickResponse(411, "BAD KEYCARD DATA",
 					"Admin, Support, and Abuse can't change their user IDs")
 				return
@@ -96,7 +98,6 @@ func commandAddEntry(session *sessionState) {
 		return
 	}
 
-	uid := strings.ToLower(entry.Fields["User-ID"])
 	if session.WID == adminWid {
 		if uid != "admin" {
 			session.SendQuickResponse(411, "BAD KEYCARD DATA", "Admin can't change its user ID")
