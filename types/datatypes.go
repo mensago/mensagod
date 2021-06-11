@@ -96,6 +96,12 @@ func (a *MAddress) Set(addr string) error {
 	return nil
 }
 
+func ToMAddress(addr string) MAddress {
+	var out MAddress
+	out.Set(addr)
+	return out
+}
+
 func (a WAddress) IsValid() bool {
 	if len(a.ID) != 36 && len(a.ID) != 32 {
 		return false
@@ -133,6 +139,12 @@ func (a *WAddress) Set(addr string) error {
 	return nil
 }
 
+func ToWAddress(addr string) WAddress {
+	var out WAddress
+	out.Set(addr)
+	return out
+}
+
 func (uid UserID) IsValid() bool {
 	if uidPattern1.MatchString(string(uid)) || uidPattern2.MatchString(string(uid)) {
 		return false
@@ -159,6 +171,12 @@ func (uid *UserID) Set(data string) error {
 	return misc.ErrBadArgument
 }
 
+func ToUserID(addr string) UserID {
+	var out UserID
+	out.Set(addr)
+	return out
+}
+
 func (wid WorkspaceID) IsValid() bool {
 	return widPattern.MatchString(string(wid))
 }
@@ -178,8 +196,18 @@ func (wid *WorkspaceID) Set(data string) error {
 	return misc.ErrBadArgument
 }
 
+func ToWorkspaceID(addr string) WorkspaceID {
+	var out WorkspaceID
+	out.Set(addr)
+	return out
+}
+
 func (dom DomainT) IsValid() bool {
 	return domainPattern.MatchString(string(dom))
+}
+
+func (dom DomainT) AsString() string {
+	return string(dom)
 }
 
 func (dom *DomainT) Set(data string) error {
@@ -191,6 +219,12 @@ func (dom *DomainT) Set(data string) error {
 	}
 
 	return misc.ErrBadArgument
+}
+
+func ToDomain(addr string) DomainT {
+	var out DomainT
+	out.Set(addr)
+	return out
 }
 
 func ValidateDomain(domain string) bool {
