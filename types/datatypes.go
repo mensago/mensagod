@@ -64,7 +64,7 @@ func (a MAddress) AsString() string {
 }
 
 func (a *MAddress) Set(addr string) error {
-	parts := strings.SplitN(addr, "/", 1)
+	parts := strings.SplitN(strings.ToLower(addr), "/", 1)
 	if len(parts) != 2 {
 		return misc.ErrBadArgument
 	}
@@ -99,7 +99,7 @@ func (a WAddress) AsString() string {
 }
 
 func (a *WAddress) Set(addr string) error {
-	parts := strings.SplitN(addr, "/", 1)
+	parts := strings.SplitN(strings.ToLower(addr), "/", 1)
 	if len(parts) != 2 {
 		return misc.ErrBadArgument
 	}
