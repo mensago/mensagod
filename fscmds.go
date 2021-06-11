@@ -124,8 +124,9 @@ func commandDelete(session *sessionState) {
 		return
 	}
 
+	deletePath := strings.ToLower(session.Message.Data["Path"])
 	fsh := fshandler.GetFSProvider()
-	err := fsh.DeleteFile(session.Message.Data["Path"])
+	err := fsh.DeleteFile(deletePath)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -133,7 +134,7 @@ func commandDelete(session *sessionState) {
 
 	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
 		Type: dbhandler.UpdateDelete,
-		Data: session.Message.Data["Path"],
+		Data: deletePath,
 		Time: time.Now().UTC().Unix(),
 	})
 	session.SendQuickResponse(200, "OK", "")
@@ -153,8 +154,9 @@ func commandDownload(session *sessionState) {
 		return
 	}
 
+	downloadPath := session.Message.Data["Path"]
 	fsp := fshandler.GetFSProvider()
-	exists, err := fsp.Exists(session.Message.Data["Path"])
+	exists, err := fsp.Exists(downloadPath)
 	if err != nil {
 		if err == misc.ErrBadPath {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad file path")
@@ -176,7 +178,7 @@ func commandDownload(session *sessionState) {
 			return
 		}
 
-		fileSize, err := fsp.GetFileSize(session.Message.Data["Path"])
+		fileSize, err := fsp.GetFileSize(downloadPath)
 		if err != nil {
 			handleFSError(session, err)
 			return
@@ -191,12 +193,12 @@ func commandDownload(session *sessionState) {
 	// Check permissions. Users can download from an individual workspace only if it is their own
 	// or from multiuser workspaces if they have the appropriate permissions. Until multiuser
 	// workspaces are implemented, we can make this check pretty simple.
-	if !strings.HasPrefix(session.Message.Data["Path"], "/ wsp "+session.WID) {
+	if !strings.HasPrefix(downloadPath, "/ wsp "+session.WID) {
 		session.SendQuickResponse(403, "FORBIDDEN", "Can only download from your own workspace")
 		return
 	}
 
-	pathParts := strings.Split(session.Message.Data["Path"], " ")
+	pathParts := strings.Split(downloadPath, " ")
 	filename := pathParts[len(pathParts)-1]
 	if !fshandler.ValidateFileName(filename) {
 		session.SendQuickResponse(400, "BAD REQUEST", "Path is not a file")
@@ -228,7 +230,7 @@ func commandDownload(session *sessionState) {
 		return
 	}
 
-	_, err = session.SendFileData(session.Message.Data["Path"], resumeOffset)
+	_, err = session.SendFileData(downloadPath, resumeOffset)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -249,8 +251,9 @@ func commandExists(session *sessionState) {
 		return
 	}
 
+	existsPath := strings.ToLower(session.Message.Data["Path"])
 	fsh := fshandler.GetFSProvider()
-	exists, err := fsh.Exists(session.Message.Data["Path"])
+	exists, err := fsh.Exists(existsPath)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -288,7 +291,7 @@ func commandGetQuotaInfo(session *sessionState) {
 			return
 		}
 
-		widList := strings.Split(session.Message.Data["Workspaces"], ",")
+		widList := strings.Split(strings.ToLower(session.Message.Data["Workspaces"]), ",")
 		if len(widList) > 100 {
 			session.SendQuickResponse(414, "LIMIT REACHED", "No more than 100 workspaces at once")
 		}
@@ -344,7 +347,7 @@ func commandList(session *sessionState) {
 
 	listPath := session.CurrentPath.MensagoPath()
 	if session.Message.HasField("Path") {
-		listPath = session.Message.Data["Path"]
+		listPath = strings.ToLower(session.Message.Data["Path"])
 
 		switch {
 		case listPath == "/ wsp":
@@ -396,7 +399,7 @@ func commandListDirs(session *sessionState) {
 
 	listPath := session.CurrentPath.MensagoPath()
 	if session.Message.HasField("Path") {
-		listPath = session.Message.Data["Path"]
+		listPath = strings.ToLower(session.Message.Data["Path"])
 
 		switch {
 		case listPath == "/ wsp":
@@ -440,8 +443,9 @@ func commandMkDir(session *sessionState) {
 		return
 	}
 
+	dirPath := strings.ToLower(session.Message.Data["Path"])
 	fsh := fshandler.GetFSProvider()
-	err := fsh.MakeDirectory(session.Message.Data["Path"])
+	err := fsh.MakeDirectory(dirPath)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -449,7 +453,7 @@ func commandMkDir(session *sessionState) {
 
 	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
 		Type: dbhandler.UpdateAdd,
-		Data: session.Message.Data["Path"],
+		Data: dirPath,
 		Time: time.Now().UTC().Unix(),
 	})
 	session.SendQuickResponse(200, "OK", "")
@@ -469,8 +473,9 @@ func commandMove(session *sessionState) {
 		return
 	}
 
+	sourcePath := strings.ToLower(session.Message.Data["SourceFile"])
 	fsh := fshandler.GetFSProvider()
-	exists, err := fsh.Exists(session.Message.Data["SourceFile"])
+	exists, err := fsh.Exists(sourcePath)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -480,7 +485,8 @@ func commandMove(session *sessionState) {
 		return
 	}
 
-	exists, err = fsh.Exists(session.Message.Data["DestDir"])
+	destPath := strings.ToLower(session.Message.Data["DestDir"])
+	exists, err = fsh.Exists(destPath)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -490,7 +496,7 @@ func commandMove(session *sessionState) {
 		return
 	}
 
-	err = fsh.MoveFile(session.Message.Data["SourceFile"], session.Message.Data["DestDir"])
+	err = fsh.MoveFile(sourcePath, destPath)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -498,7 +504,7 @@ func commandMove(session *sessionState) {
 
 	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
 		Type: dbhandler.UpdateMove,
-		Data: session.Message.Data["SourceFile"] + " " + session.Message.Data["DestDir"],
+		Data: sourcePath + " " + destPath,
 		Time: time.Now().UTC().Unix(),
 	})
 	session.SendQuickResponse(200, "OK", "")
@@ -517,8 +523,9 @@ func commandRmDir(session *sessionState) {
 		return
 	}
 
+	dirPath := strings.ToLower(session.Message.Data["Path"])
 	fsh := fshandler.GetFSProvider()
-	exists, err := fsh.Exists(session.Message.Data["Path"])
+	exists, err := fsh.Exists(dirPath)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -534,13 +541,13 @@ func commandRmDir(session *sessionState) {
 		recursive = true
 	}
 
-	usage, err := fsh.GetDiskUsage(session.Message.Data["Path"])
+	usage, err := fsh.GetDiskUsage(dirPath)
 	if err != nil {
 		handleFSError(session, err)
 		return
 	}
 
-	err = fsh.RemoveDirectory(session.Message.Data["Path"], recursive)
+	err = fsh.RemoveDirectory(dirPath, recursive)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -549,7 +556,7 @@ func commandRmDir(session *sessionState) {
 
 	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
 		Type: dbhandler.UpdateDelete,
-		Data: session.Message.Data["Path"],
+		Data: dirPath,
 		Time: time.Now().UTC().Unix(),
 	})
 	session.SendQuickResponse(200, "OK", "")
@@ -569,8 +576,9 @@ func commandSelect(session *sessionState) {
 		return
 	}
 
+	selectPath := session.Message.Data["Path"]
 	fsh := fshandler.GetFSProvider()
-	path, err := fsh.Select(session.Message.Data["Path"])
+	path, err := fsh.Select(selectPath)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -615,7 +623,7 @@ func commandSetQuota(session *sessionState) {
 
 	// If an error occurs processing one workspace, no further processing is made for reasons of
 	// both security and simplicity
-	workspaces := strings.Split(session.Message.Data["Workspaces"], ",")
+	workspaces := strings.Split(strings.ToLower(session.Message.Data["Workspaces"]), ",")
 	for _, rawWID := range workspaces {
 		w := strings.TrimSpace(rawWID)
 		if !dbhandler.ValidateUUID(w) {
@@ -668,8 +676,9 @@ func commandUpload(session *sessionState) {
 		return
 	}
 
+	filePath := strings.ToLower(session.Message.Data["Path"])
 	fsp := fshandler.GetFSProvider()
-	exists, err := fsp.Exists(session.Message.Data["Path"])
+	exists, err := fsp.Exists(filePath)
 	if err != nil {
 		if err == misc.ErrBadPath {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad file path")
@@ -773,7 +782,7 @@ func commandUpload(session *sessionState) {
 		return
 	}
 
-	realName, err := fsp.InstallTempFile(session.WID, tempName, session.Message.Data["Path"])
+	realName, err := fsp.InstallTempFile(session.WID, tempName, filePath)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
@@ -782,7 +791,7 @@ func commandUpload(session *sessionState) {
 	dbhandler.ModifyQuotaUsage(session.WID, fileSize)
 	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
 		Type: dbhandler.UpdateAdd,
-		Data: session.Message.Data["Path"],
+		Data: filePath,
 		Time: time.Now().UTC().Unix(),
 	})
 
