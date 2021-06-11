@@ -88,7 +88,7 @@ func (c *keycardCache) Queue(card *keycard.Keycard) error {
 	return nil
 }
 
-func GetKeycard(address types.Address, cardType string) (*keycard.Keycard, error) {
+func GetKeycard(address types.MAddress, cardType string) (*keycard.Keycard, error) {
 
 	var out keycard.Keycard
 
@@ -141,8 +141,8 @@ func GetKeycard(address types.Address, cardType string) (*keycard.Keycard, error
 
 // ResolveAddress takes a Mensago address and returns the workspace address. Unlike the function
 // in dbhandler, this version handles external addresses.
-func ResolveAddress(address types.Address) (types.Address, error) {
-	var out types.Address
+func ResolveAddress(address types.MAddress) (types.MAddress, error) {
+	var out types.MAddress
 
 	// Quickly resolve local addresses
 	tempString, err := dbhandler.ResolveAddress(address.AsString())

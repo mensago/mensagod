@@ -194,7 +194,7 @@ func Bounce(errorCode int, info *messageInfo, extraData *map[string]string) {
 		return
 	}
 
-	var addr types.Address
+	var addr types.MAddress
 	err = addr.Set(info.Sender)
 	if err != nil {
 		logging.Writef("Bounce: invalid sender addres %s", info.Sender)
