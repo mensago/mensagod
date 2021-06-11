@@ -103,20 +103,20 @@ func GetKeycard(address types.MAddress, cardType string) (*keycard.Keycard, erro
 
 	// In this case, if we got some other error besides ErrNotFound, we definitely want to return
 	// here. At the same time, if we have success
-	out, err = cardCache.GetCard(waddr.AsString())
+	out, err = cardCache.GetCard(waddr.GetAddress())
 	if err != misc.ErrNotFound {
 		return &out, err
 	}
 
 	// Card not in the cache, so begin the actual lookup
-	isLocal, err := dbhandler.IsDomainLocal(address.AsString())
+	isLocal, err := dbhandler.IsDomainLocal(address.GetAddress())
 	if err != nil {
 		return nil, err
 	}
 
 	if isLocal {
 		if cardType == "User" {
-			out, err = dbhandler.GetUserKeycard(waddr.AsString())
+			out, err = dbhandler.GetUserKeycard(waddr.GetAddress())
 		} else {
 			out, err = dbhandler.GetOrgKeycard()
 		}
@@ -145,7 +145,7 @@ func ResolveAddress(address types.MAddress) (types.MAddress, error) {
 	var out types.MAddress
 
 	// Quickly resolve local addresses
-	tempString, err := dbhandler.ResolveAddress(address.AsString())
+	tempString, err := dbhandler.ResolveAddress(address.GetAddress())
 	if err == nil {
 		out.Set(tempString)
 		return out, nil

@@ -13,14 +13,18 @@ import (
 type MAddress struct {
 	IDType uint8
 	ID     string
-	Domain string
+	Domain DomainT
 }
 
 // For when you *must* have a workspace address
 type WAddress struct {
-	ID     string
-	Domain string
+	ID     WorkspaceID
+	Domain DomainT
 }
+
+type UserID string
+type WorkspaceID string
+type DomainT string
 
 var widPattern = regexp.MustCompile(`[\da-fA-F]{8}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{12}`)
 var uidPattern1 = regexp.MustCompile("[[:space:]]+")
@@ -40,14 +44,14 @@ func (a MAddress) IsValid() bool {
 		if len(a.ID) != 36 && len(a.ID) != 32 {
 			return false
 		}
-		return widPattern.MatchString(a.ID) && domainPattern.MatchString(a.Domain)
+		return widPattern.MatchString(a.ID) && domainPattern.MatchString(string(a.Domain))
 	// Mensago address
 	case 2:
 		if uidPattern1.MatchString(a.ID) || uidPattern2.MatchString(a.ID) {
 			return false
 		}
 
-		if utf8.RuneCountInString(a.ID) <= 64 && domainPattern.MatchString(a.Domain) {
+		if utf8.RuneCountInString(a.ID) <= 64 && domainPattern.MatchString(string(a.Domain)) {
 			return true
 		}
 	// uninitialized or bad type
@@ -56,20 +60,28 @@ func (a MAddress) IsValid() bool {
 	return false
 }
 
-func (a MAddress) AsString() string {
+func (a MAddress) GetID() string {
+	return string(a.ID)
+}
+
+func (a MAddress) GetDomain() string {
+	return string(a.Domain)
+}
+
+func (a MAddress) GetAddress() string {
 	if a.ID == "" || a.Domain == "" {
 		return ""
 	}
-	return a.ID + "/" + a.Domain
+	return a.ID + "/" + string(a.Domain)
 }
 
 func (a *MAddress) Set(addr string) error {
-	parts := strings.SplitN(strings.ToLower(addr), "/", 1)
+	parts := strings.SplitN(addr, "/", 1)
 	if len(parts) != 2 {
 		return misc.ErrBadArgument
 	}
 	a.ID = parts[0]
-	a.Domain = parts[1]
+	a.Domain.Set(parts[1])
 
 	if !a.IsValid() {
 		a.IDType = 0
@@ -88,14 +100,22 @@ func (a WAddress) IsValid() bool {
 	if len(a.ID) != 36 && len(a.ID) != 32 {
 		return false
 	}
-	return widPattern.MatchString(a.ID) && domainPattern.MatchString(a.Domain)
+	return widPattern.MatchString(string(a.ID)) && domainPattern.MatchString(string(a.Domain))
 }
 
-func (a WAddress) AsString() string {
+func (a WAddress) GetID() string {
+	return string(a.ID)
+}
+
+func (a WAddress) GetDomain() string {
+	return string(a.Domain)
+}
+
+func (a WAddress) GetAddress() string {
 	if a.ID == "" || a.Domain == "" {
 		return ""
 	}
-	return a.ID + "/" + a.Domain
+	return string(a.ID) + "/" + string(a.Domain)
 }
 
 func (a *WAddress) Set(addr string) error {
@@ -108,9 +128,69 @@ func (a *WAddress) Set(addr string) error {
 		a.ID = ""
 		return misc.ErrBadArgument
 	}
-	a.ID = parts[0]
-	a.Domain = parts[1]
+	a.ID.Set(parts[0])
+	a.Domain.Set(parts[1])
 	return nil
+}
+
+func (uid UserID) IsValid() bool {
+	if uidPattern1.MatchString(string(uid)) || uidPattern2.MatchString(string(uid)) {
+		return false
+	}
+
+	if utf8.RuneCountInString(string(uid)) <= 64 && domainPattern.MatchString(string(uid)) {
+		return true
+	}
+	return false
+}
+
+func (uid UserID) AsString() string {
+	return string(uid)
+}
+
+func (uid *UserID) Set(data string) error {
+	*uid = UserID(strings.ToLower(data))
+
+	if uid.IsValid() {
+		*uid = ""
+		return nil
+	}
+
+	return misc.ErrBadArgument
+}
+
+func (wid WorkspaceID) IsValid() bool {
+	return widPattern.MatchString(string(wid))
+}
+
+func (wid WorkspaceID) AsString() string {
+	return string(wid)
+}
+
+func (wid *WorkspaceID) Set(data string) error {
+	*wid = WorkspaceID(strings.ToLower(data))
+
+	if wid.IsValid() {
+		*wid = ""
+		return nil
+	}
+
+	return misc.ErrBadArgument
+}
+
+func (dom DomainT) IsValid() bool {
+	return domainPattern.MatchString(string(dom))
+}
+
+func (dom *DomainT) Set(data string) error {
+	*dom = DomainT(strings.ToLower(data))
+
+	if dom.IsValid() {
+		*dom = ""
+		return nil
+	}
+
+	return misc.ErrBadArgument
 }
 
 func ValidateDomain(domain string) bool {
