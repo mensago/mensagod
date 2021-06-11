@@ -318,7 +318,8 @@ func commandSend(session *sessionState) {
 	}
 
 	domainPattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
-	if !domainPattern.MatchString(session.Message.Data["Domain"]) {
+	domain := strings.ToLower(session.Message.Data["Domain"])
+	if !domainPattern.MatchString(domain) {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad domain")
 	}
 
@@ -421,7 +422,7 @@ func commandSend(session *sessionState) {
 	}
 
 	fsp.InstallTempFile(session.WID, tempName, "/ out")
-	messaging.PushMessage(address, session.Message.Data["Domain"], "/ out "+tempName)
+	messaging.PushMessage(address, domain, "/ out "+tempName)
 	session.SendQuickResponse(200, "OK", "")
 }
 
