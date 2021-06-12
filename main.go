@@ -434,7 +434,7 @@ func commandSetStatus(session *sessionState) {
 		return
 	}
 
-	wid := types.ToWorkspaceID(session.Message.Data["Workspace-ID"])
+	wid := types.ToUUID(session.Message.Data["Workspace-ID"])
 	if !wid.IsValid() {
 		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
 		return
