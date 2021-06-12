@@ -29,7 +29,7 @@ type DomainT string
 var widPattern = regexp.MustCompile(`[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}`)
 var uidPattern1 = regexp.MustCompile("[[:space:]]+")
 var uidPattern2 = regexp.MustCompile("[\\\\/\"]")
-var domainPattern = regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
+var domainPattern = regexp.MustCompile("^([a-zA-Z0-9\\-]+\x2E)+[a-zA-Z0-9\\-]+$")
 
 // IsWorkspace returns true if the ID is a workspace ID, not a user ID
 func (a MAddress) IsWorkspace() bool {
@@ -169,7 +169,7 @@ func (uid UserID) AsString() string {
 }
 
 func (uid *UserID) Set(data string) error {
-	*uid = UserID(strings.ToLower(data))
+	*uid = UserID(strings.TrimSpace(strings.ToLower(data)))
 
 	if uid.IsValid() {
 		*uid = ""
@@ -194,7 +194,7 @@ func (wid UUID) AsString() string {
 }
 
 func (wid *UUID) Set(data string) error {
-	*wid = UUID(strings.ToLower(data))
+	*wid = UUID(strings.TrimSpace(strings.ToLower(data)))
 
 	if wid.IsValid() {
 		return nil
@@ -219,13 +219,13 @@ func (dom DomainT) AsString() string {
 }
 
 func (dom *DomainT) Set(data string) error {
-	*dom = DomainT(strings.ToLower(data))
+	*dom = DomainT(strings.TrimSpace(strings.ToLower(data)))
 
 	if dom.IsValid() {
-		*dom = ""
 		return nil
 	}
 
+	*dom = ""
 	return misc.ErrBadArgument
 }
 
