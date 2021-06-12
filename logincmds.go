@@ -13,6 +13,7 @@ import (
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/messaging"
 	"github.com/darkwyrm/mensagod/misc"
+	"github.com/darkwyrm/mensagod/types"
 	"github.com/everlastingbeta/diceware"
 	"github.com/spf13/viper"
 )
@@ -26,9 +27,10 @@ func commandDevice(session *sessionState) {
 		return
 	}
 
-	if !dbhandler.ValidateUUID(session.Message.Data["Device-ID"]) ||
+	devid := types.ToUUID(session.Message.Data["Device-ID"])
+	if !devid.IsValid() ||
 		session.LoginState != loginAwaitingSessionID {
-		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad device ID")
 		return
 	}
 
@@ -62,7 +64,7 @@ func commandDevice(session *sessionState) {
 
 		// This code exists to at least enable the server to work until device checking can
 		// be implemented.
-		dbhandler.AddDevice(session.WID, session.Message.Data["Device-ID"], devkey, "active")
+		dbhandler.AddDevice(session.WID, devid.AsString(), devkey, "active")
 	}
 
 	// The device is part of the workspace, so now we issue undergo a challenge-response
@@ -99,7 +101,7 @@ func commandDevice(session *sessionState) {
 	session.LoginState = loginClientSession
 
 	messaging.RegisterWorkspace(session.WID)
-	lastLogin, err := dbhandler.GetLastLogin(session.WID, session.Message.Data["Device-ID"])
+	lastLogin, err := dbhandler.GetLastLogin(session.WID, devid.AsString())
 	if err != nil {
 		logging.Writef("commandDevice: error getting last login for %s:%s: %s", session.WID,
 			session.Message.Data["Device-ID"], err.Error())
@@ -107,7 +109,7 @@ func commandDevice(session *sessionState) {
 	}
 	session.LastUpdateSent = lastLogin
 	session.SendQuickResponse(200, "OK", "")
-	err = dbhandler.UpdateLastLogin(session.WID, session.Message.Data["Device-ID"])
+	err = dbhandler.UpdateLastLogin(session.WID, devid.AsString())
 	if err != nil {
 		logging.Writef("commandDevice: error setting last login for %s:%s: %s", session.WID,
 			session.Message.Data["Device-ID"], err.Error())
@@ -134,8 +136,12 @@ func commandDevKey(session *sessionState) {
 		return
 	}
 
-	_, err := dbhandler.CheckDevice(session.WID, session.Message.Data["Device-ID"],
-		oldkey.AsString())
+	devid := types.ToUUID(session.Message.Data["Device-ID"])
+	if !devid.IsValid() {
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad device ID")
+		return
+	}
+	_, err := dbhandler.CheckDevice(session.WID, devid.AsString(), oldkey.AsString())
 
 	if err != nil {
 		if err.Error() == "cancel" {
@@ -144,7 +150,7 @@ func commandDevKey(session *sessionState) {
 			return
 		}
 
-		session.SendQuickResponse(400, "BAD REQUEST", "Bad Device-ID or Device-Key")
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad device ID or device key")
 		return
 	}
 
@@ -160,7 +166,7 @@ func commandDevKey(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.UpdateDevice(session.WID, session.Message.Data["Device-ID"], oldkey.AsString(),
+	err = dbhandler.UpdateDevice(session.WID, devid.AsString(), oldkey.AsString(),
 		newkey.AsString())
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
@@ -186,8 +192,9 @@ func commandLogin(session *sessionState) {
 		return
 	}
 
-	if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
-		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
+	wid := types.ToUUID(session.Message.Data["Workspace-ID"])
+	if !wid.IsValid() {
+		session.SendQuickResponse(400, "BAD REQUEST", "Invalid workspace ID")
 		return
 	}
 
@@ -196,16 +203,15 @@ func commandLogin(session *sessionState) {
 		return
 	}
 
-	wid := session.Message.Data["Workspace-ID"]
 	var exists bool
-	exists, session.WorkspaceStatus = dbhandler.CheckWorkspace(wid)
+	exists, session.WorkspaceStatus = dbhandler.CheckWorkspace(wid.AsString())
 	if exists {
-		lockout, err := isLocked(session, "workspace", wid)
+		lockout, err := isLocked(session, "workspace", wid.AsString())
 		if err != nil || lockout {
 			return
 		}
 
-		lockout, err = isLocked(session, "password", wid)
+		lockout, err = isLocked(session, "password", wid.AsString())
 		if err != nil || lockout {
 			return
 		}
@@ -247,7 +253,7 @@ func commandLogin(session *sessionState) {
 	}
 
 	session.LoginState = loginAwaitingPassword
-	session.WID = wid
+	session.WID = wid.AsString()
 	response := NewServerResponse(100, "CONTINUE")
 	response.Data["Response"] = string(decryptedChallenge)
 	session.SendResponse(*response)
@@ -276,7 +282,8 @@ func commandPasscode(session *sessionState) {
 		return
 	}
 
-	if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
+	wid := types.ToUUID(session.Message.Data["Workspace-ID"])
+	if !wid.IsValid() {
 		session.SendQuickResponse(400, "BAD REQUEST", "bad workspace ID")
 		return
 	}
@@ -287,13 +294,11 @@ func commandPasscode(session *sessionState) {
 		return
 	}
 
-	verified, err := dbhandler.CheckPasscode(session.Message.Data["Workspace-ID"],
-		session.Message.Data["Reset-Code"])
+	verified, err := dbhandler.CheckPasscode(wid.AsString(), session.Message.Data["Reset-Code"])
 	if err != nil {
 		if err.Error() == "expired" {
 			session.SendQuickResponse(415, "EXPIRED", "")
-			dbhandler.DeletePasscode(session.Message.Data["Workspace-ID"],
-				session.Message.Data["Reset-Code"])
+			dbhandler.DeletePasscode(wid.AsString(), session.Message.Data["Reset-Code"])
 			return
 		}
 
@@ -303,7 +308,7 @@ func commandPasscode(session *sessionState) {
 	}
 
 	if !verified {
-		terminate, err := logFailure(session, "passcode", session.Message.Data["Workspace-ID"])
+		terminate, err := logFailure(session, "passcode", wid.AsString())
 		if terminate || err != nil {
 			return
 		}
@@ -393,8 +398,9 @@ func commandResetPassword(session *sessionState) {
 		return
 	}
 
-	if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
-		session.SendQuickResponse(400, "BAD REQUEST", "Bad Workspace-ID")
+	wid := types.ToUUID(session.Message.Data["Workspace-ID"])
+	if !wid.IsValid() {
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad workspace id")
 		return
 	}
 
@@ -432,7 +438,7 @@ func commandResetPassword(session *sessionState) {
 			Format("20060102T150405Z")
 	}
 
-	err = dbhandler.ResetPassword(session.Message.Data["Workspace-ID"], passcode, expires)
+	err = dbhandler.ResetPassword(wid.AsString(), passcode, expires)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandResetPassword: failed to add password reset code: %s", err.Error())
