@@ -6,6 +6,36 @@ import (
 	"github.com/darkwyrm/mensagod/types"
 )
 
+func TestMAddressSet(t *testing.T) {
+	var addr types.MAddress
+
+	addresses := []string{
+		"admin/example.com",
+		"alsogoooood/example.net",
+		"🐧/example.org",
+		"ಅಎಇ/example.com",
+		"11111111-1111-1111-1111-111111111111/example.net",
+		" aaaaaaaa-BBBB-1111-1111-111111111111/example.org",
+	}
+
+	for _, teststr := range addresses {
+		if addr.Set(teststr) != nil {
+			t.Fatalf("MAddress.Set failed a valid Mensago address: %s", teststr)
+		}
+	}
+
+	addresses = []string{
+		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/foo.com",
+		"John Q. Public/example.com",
+	}
+
+	for _, teststr := range addresses {
+		if addr.Set(teststr) == nil {
+			t.Fatalf("MAddress.Set passed an invalid Mensago address: %s", teststr)
+		}
+	}
+}
+
 func TestUUIDIsValid(t *testing.T) {
 	wid := types.UUID("11111111-1111-1111-1111-111111111111")
 	if !wid.IsValid() {

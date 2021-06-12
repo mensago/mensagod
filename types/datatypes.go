@@ -2,6 +2,7 @@
 package types
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -76,24 +77,31 @@ func (a MAddress) GetAddress() string {
 }
 
 func (a *MAddress) Set(addr string) error {
-	parts := strings.SplitN(addr, "/", 1)
+	parts := strings.SplitN(addr, "/", 2)
 	if len(parts) != 2 {
 		return misc.ErrBadArgument
 	}
-	a.ID = parts[0]
-	a.Domain.Set(parts[1])
 
-	if !a.IsValid() {
-		a.IDType = 0
-		return misc.ErrBadArgument
-	}
-
-	if widPattern.MatchString(a.ID) {
+	tempWID := ToUUID(parts[0])
+	if tempWID.IsValid() {
+		a.ID = parts[0]
+		a.Domain.Set(parts[1])
 		a.IDType = 1
-	} else {
-		a.IDType = 2
+		return nil
 	}
-	return nil
+
+	tempUID := ToUserID(parts[0])
+	if tempUID.IsValid() {
+		a.ID = parts[0]
+		a.Domain.Set(parts[1])
+		a.IDType = 2
+		return nil
+	}
+
+	a.ID = ""
+	a.Domain.Set("")
+	a.IDType = 0
+	return misc.ErrBadArgument
 }
 
 func ToMAddress(addr string) MAddress {
@@ -154,14 +162,15 @@ func ToWAddress(addr string) WAddress {
 }
 
 func (uid UserID) IsValid() bool {
-	if uidPattern1.MatchString(string(uid)) || uidPattern2.MatchString(string(uid)) {
+
+	if uidPattern1.MatchString(string(uid)) || uidPattern2.MatchString(string(uid)) ||
+		len(uid) == 0 {
+		// if uidPattern1.MatchString(string(uid)) || uidPattern2.MatchString(string(uid)) {
 		return false
 	}
 
-	if utf8.RuneCountInString(string(uid)) <= 64 {
-		return true
-	}
-	return false
+	fmt.Printf("String: %s, Rune Count: %d\n", string(uid), utf8.RuneCountInString(string(uid)))
+	return utf8.RuneCountInString(string(uid)) <= 64
 }
 
 func (uid UserID) AsString() string {
@@ -172,10 +181,10 @@ func (uid *UserID) Set(data string) error {
 	*uid = UserID(strings.TrimSpace(strings.ToLower(data)))
 
 	if uid.IsValid() {
-		*uid = ""
 		return nil
 	}
 
+	*uid = ""
 	return misc.ErrBadArgument
 }
 
