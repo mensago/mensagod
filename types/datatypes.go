@@ -26,7 +26,7 @@ type UserID string
 type UUID string
 type DomainT string
 
-var widPattern = regexp.MustCompile(`[\da-fA-F]{8}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{4}-?[\da-fA-F]{12}`)
+var widPattern = regexp.MustCompile(`[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}`)
 var uidPattern1 = regexp.MustCompile("[[:space:]]+")
 var uidPattern2 = regexp.MustCompile("[\\\\/\"]")
 var domainPattern = regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
@@ -197,10 +197,10 @@ func (wid *UUID) Set(data string) error {
 	*wid = UUID(strings.ToLower(data))
 
 	if wid.IsValid() {
-		*wid = ""
 		return nil
 	}
 
+	*wid = ""
 	return misc.ErrBadArgument
 }
 
