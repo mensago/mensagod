@@ -2,7 +2,6 @@
 package types
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -169,7 +168,6 @@ func (uid UserID) IsValid() bool {
 		return false
 	}
 
-	fmt.Printf("String: %s, Rune Count: %d\n", string(uid), utf8.RuneCountInString(string(uid)))
 	return utf8.RuneCountInString(string(uid)) <= 64
 }
 
