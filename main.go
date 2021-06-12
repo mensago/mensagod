@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +17,7 @@ import (
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/messaging"
 	"github.com/darkwyrm/mensagod/misc"
+	"github.com/darkwyrm/mensagod/types"
 	"github.com/darkwyrm/mensagod/workerpool"
 	"github.com/everlastingbeta/diceware"
 	"github.com/spf13/viper"
@@ -317,9 +317,8 @@ func commandSend(session *sessionState) {
 		return
 	}
 
-	domainPattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
-	domain := strings.ToLower(session.Message.Data["Domain"])
-	if !domainPattern.MatchString(domain) {
+	domain := types.ToDomain(session.Message.Data["Domain"])
+	if !domain.IsValid() {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad domain")
 	}
 
@@ -422,7 +421,7 @@ func commandSend(session *sessionState) {
 	}
 
 	fsp.InstallTempFile(session.WID, tempName, "/ out")
-	messaging.PushMessage(address, domain, "/ out "+tempName)
+	messaging.PushMessage(address, domain.AsString(), "/ out "+tempName)
 	session.SendQuickResponse(200, "OK", "")
 }
 
@@ -435,7 +434,8 @@ func commandSetStatus(session *sessionState) {
 		return
 	}
 
-	if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
+	wid := types.ToWorkspaceID(session.Message.Data["Workspace-ID"])
+	if !wid.IsValid() {
 		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
 		return
 	}
@@ -453,8 +453,8 @@ func commandSetStatus(session *sessionState) {
 		return
 	}
 
-	adminAddress := "admin/" + viper.GetString("global.domain")
-	adminWid, err := dbhandler.ResolveAddress(adminAddress)
+	adminAddress := types.ToMAddress("admin/" + viper.GetString("global.domain"))
+	adminWid, err := dbhandler.ResolveAddress(adminAddress.GetAddress())
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandPreregister: Error resolving address: %s", err)
@@ -465,13 +465,12 @@ func commandSetStatus(session *sessionState) {
 		return
 	}
 
-	if session.Message.Data["Workspace-ID"] == session.WID {
+	if wid.AsString() == session.WID {
 		session.SendQuickResponse(403, "FORBIDDEN", "admin status can't be changed")
 		return
 	}
 
-	err = dbhandler.SetWorkspaceStatus(strings.ToLower(session.Message.Data["Workspace-ID"]),
-		session.Message.Data["Status"])
+	err = dbhandler.SetWorkspaceStatus(wid.AsString(), session.Message.Data["Status"])
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandSetStatus: error setting workspace status: %s", err.Error())
