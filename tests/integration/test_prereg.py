@@ -60,7 +60,7 @@ def test_prereg():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200 and response['Status'] == 'OK', \
 		'test_prereg: subtest #1 returned an error'
-	assert response['Data']['User-ID'] == uid, \
+	assert response['Data']['User-ID'] == uid.casefold(), \
 		'test_prereg: wrong user ID in subtest #1'
 	assert response['Data']['Domain'] == domain, \
 		'test_prereg: wrong domain in subtest #1'
@@ -182,7 +182,7 @@ def test_prereg():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200 and response['Status'] == 'OK', \
 		'test_prereg: subtest #6 returned an error'
-	assert response['Data']['User-ID'] == uid , 'Server returned the wrong user ID'
+	assert response['Data']['User-ID'] == uid.casefold() , 'Server returned the wrong user ID'
 	assert validate_uuid(response['Data']['Workspace-ID']), 'Server returned a bad WID'
 	assert len(response['Data']['Workspace-ID']) <= 128, \
 		'Server returned a regcode longer than allowed'
