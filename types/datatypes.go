@@ -41,7 +41,7 @@ func (a MAddress) IsValid() bool {
 	switch a.IDType {
 	// Workspace address
 	case 1:
-		if len(a.ID) != 36 && len(a.ID) != 32 {
+		if len(a.ID) != 36 {
 			return false
 		}
 		return widPattern.MatchString(a.ID) && domainPattern.MatchString(string(a.Domain))
@@ -103,7 +103,7 @@ func ToMAddress(addr string) MAddress {
 }
 
 func (a WAddress) IsValid() bool {
-	if len(a.ID) != 36 && len(a.ID) != 32 {
+	if len(a.ID) != 36 {
 		return false
 	}
 	return widPattern.MatchString(string(a.ID)) && domainPattern.MatchString(string(a.Domain))
