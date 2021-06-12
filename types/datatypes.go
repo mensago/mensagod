@@ -158,7 +158,7 @@ func (uid UserID) IsValid() bool {
 		return false
 	}
 
-	if utf8.RuneCountInString(string(uid)) <= 64 && domainPattern.MatchString(string(uid)) {
+	if utf8.RuneCountInString(string(uid)) <= 64 {
 		return true
 	}
 	return false

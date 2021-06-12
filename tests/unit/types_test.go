@@ -49,3 +49,36 @@ func TestDomainSet(t *testing.T) {
 		t.Fatal("DomainT.Set failed to squash case and trim spaces")
 	}
 }
+
+func TestUserIDIsValid(t *testing.T) {
+	uid := types.UserID("cavs4life")
+	if !uid.IsValid() {
+		t.Fatalf("UserID.IsValid failed a valid user ID")
+	}
+
+	uid = types.UserID("a bad ID")
+	if uid.IsValid() {
+		t.Fatal("UserID.IsValid passed a bad domain")
+	}
+}
+
+func TestUserIDSet(t *testing.T) {
+	var uid types.UserID
+
+	for _, teststr := range []string{"GoodID", "alsogoooood", "🐧", "ಅಎಇ"} {
+		if uid.Set(teststr) != nil {
+			t.Fatalf("UserID.Set failed a valid user ID: %s", teststr)
+		}
+	}
+
+	for _, teststr := range []string{"a bad id", "also/bad"} {
+		if uid.Set(teststr) == nil {
+			t.Fatalf("UserID.Set passed an invalid user ID: %s", teststr)
+		}
+	}
+
+	uid.Set(" FOO.BAR.com ")
+	if string(uid) != "foo.bar.com" {
+		t.Fatal("UserID.Set failed to squash case and trim spaces")
+	}
+}
