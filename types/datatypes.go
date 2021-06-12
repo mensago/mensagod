@@ -124,6 +124,14 @@ func (a WAddress) GetAddress() string {
 	return string(a.ID) + "/" + string(a.Domain)
 }
 
+func (a WAddress) AsMAddress() MAddress {
+	var out MAddress
+	out.ID = a.ID.AsString()
+	out.Domain = a.Domain
+	out.IDType = 1
+	return out
+}
+
 func (a *WAddress) Set(addr string) error {
 	parts := strings.SplitN(strings.ToLower(addr), "/", 1)
 	if len(parts) != 2 {
