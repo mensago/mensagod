@@ -83,7 +83,7 @@ func commandCopy(session *sessionState) {
 		return
 	}
 
-	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID)
+	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID.AsString())
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
@@ -100,7 +100,7 @@ func commandCopy(session *sessionState) {
 		return
 	}
 
-	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
+	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		Type: dbhandler.UpdateAdd,
 		Data: destPath + " " + newName,
 		Time: time.Now().UTC().Unix(),
@@ -132,7 +132,7 @@ func commandDelete(session *sessionState) {
 		return
 	}
 
-	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
+	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		Type: dbhandler.UpdateDelete,
 		Data: deletePath,
 		Time: time.Now().UTC().Unix(),
@@ -193,7 +193,7 @@ func commandDownload(session *sessionState) {
 	// Check permissions. Users can download from an individual workspace only if it is their own
 	// or from multiuser workspaces if they have the appropriate permissions. Until multiuser
 	// workspaces are implemented, we can make this check pretty simple.
-	if !strings.HasPrefix(downloadPath, "/ wsp "+session.WID) {
+	if !strings.HasPrefix(downloadPath, "/ wsp "+session.WID.AsString()) {
 		session.SendQuickResponse(403, "FORBIDDEN", "Can only download from your own workspace")
 		return
 	}
@@ -283,7 +283,7 @@ func commandGetQuotaInfo(session *sessionState) {
 		return
 	}
 
-	isAdmin := adminWid == session.WID
+	isAdmin := adminWid == session.WID.AsString()
 
 	if session.Message.HasField("Workspaces") {
 		if !isAdmin {
@@ -323,11 +323,11 @@ func commandGetQuotaInfo(session *sessionState) {
 		return
 	}
 
-	u, q, err := dbhandler.GetQuotaInfo(session.WID)
+	u, q, err := dbhandler.GetQuotaInfo(session.WID.AsString())
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandGetQuotaInfo: Error getting quota info for workspace %s: %s",
-			session.WID, err)
+			session.WID.AsString(), err)
 		return
 	}
 
@@ -451,7 +451,7 @@ func commandMkDir(session *sessionState) {
 		return
 	}
 
-	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
+	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		Type: dbhandler.UpdateAdd,
 		Data: dirPath,
 		Time: time.Now().UTC().Unix(),
@@ -502,7 +502,7 @@ func commandMove(session *sessionState) {
 		return
 	}
 
-	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
+	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		Type: dbhandler.UpdateMove,
 		Data: sourcePath + " " + destPath,
 		Time: time.Now().UTC().Unix(),
@@ -552,9 +552,9 @@ func commandRmDir(session *sessionState) {
 		handleFSError(session, err)
 		return
 	}
-	dbhandler.ModifyQuotaUsage(session.WID, int64(usage)*-1)
+	dbhandler.ModifyQuotaUsage(session.WID.AsString(), int64(usage)*-1)
 
-	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
+	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		Type: dbhandler.UpdateDelete,
 		Data: dirPath,
 		Time: time.Now().UTC().Unix(),
@@ -616,7 +616,7 @@ func commandSetQuota(session *sessionState) {
 		return
 	}
 
-	if session.LoginState != loginClientSession || session.WID != adminWid {
+	if session.LoginState != loginClientSession || session.WID.AsString() != adminWid {
 		session.SendQuickResponse(403, "FORBIDDEN", "Only admin can use this")
 		return
 	}
@@ -720,7 +720,7 @@ func commandUpload(session *sessionState) {
 
 	// Arguments have been validated, do a quota check
 
-	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID)
+	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID.AsString())
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
@@ -735,7 +735,7 @@ func commandUpload(session *sessionState) {
 	var tempName string
 	if resumeOffset > 0 {
 		tempName = session.Message.Data["TempName"]
-		tempHandle, err = fsp.OpenTempFile(session.WID, tempName, resumeOffset)
+		tempHandle, err = fsp.OpenTempFile(session.WID.AsString(), tempName, resumeOffset)
 
 		if err != nil {
 			session.SendQuickResponse(400, "BAD REQUEST", err.Error())
@@ -743,7 +743,7 @@ func commandUpload(session *sessionState) {
 		}
 
 	} else {
-		tempHandle, tempName, err = fsp.MakeTempFile(session.WID)
+		tempHandle, tempName, err = fsp.MakeTempFile(session.WID.AsString())
 		if err != nil {
 			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 			return
@@ -766,7 +766,7 @@ func commandUpload(session *sessionState) {
 		return
 	}
 
-	hashMatch, err := fshandler.HashFile(strings.Join([]string{"/ tmp", session.WID, tempName}, " "),
+	hashMatch, err := fshandler.HashFile(strings.Join([]string{"/ tmp", session.WID.AsString(), tempName}, " "),
 		fileHash)
 	if err != nil {
 		if err == cs.ErrUnsupportedAlgorithm {
@@ -777,19 +777,19 @@ func commandUpload(session *sessionState) {
 		return
 	}
 	if !hashMatch {
-		fsp.DeleteTempFile(session.WID, tempName)
+		fsp.DeleteTempFile(session.WID.AsString(), tempName)
 		session.SendQuickResponse(410, "HASH MISMATCH", "")
 		return
 	}
 
-	realName, err := fsp.InstallTempFile(session.WID, tempName, filePath)
+	realName, err := fsp.InstallTempFile(session.WID.AsString(), tempName, filePath)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 
-	dbhandler.ModifyQuotaUsage(session.WID, fileSize)
-	dbhandler.AddSyncRecord(session.WID, dbhandler.UpdateRecord{
+	dbhandler.ModifyQuotaUsage(session.WID.AsString(), fileSize)
+	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		Type: dbhandler.UpdateAdd,
 		Data: filePath,
 		Time: time.Now().UTC().Unix(),

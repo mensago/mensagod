@@ -64,7 +64,7 @@ func commandAddEntry(session *sessionState) {
 	}
 
 	wid := strings.ToLower(entry.Fields["Workspace-ID"])
-	if wid != session.WID {
+	if wid != session.WID.AsString() {
 		session.SendQuickResponse(411, "BAD KEYCARD DATA", "Workspace doesn't match login")
 		return
 	}
@@ -81,7 +81,7 @@ func commandAddEntry(session *sessionState) {
 			logging.Writef("commandAddEntry: error resolving address: %s", err.Error())
 			return
 		}
-		if session.WID == currentWid {
+		if session.WID.AsString() == currentWid {
 			if uid != address {
 				session.SendQuickResponse(411, "BAD KEYCARD DATA",
 					"Admin, Support, and Abuse can't change their user IDs")
@@ -98,7 +98,7 @@ func commandAddEntry(session *sessionState) {
 		return
 	}
 
-	if session.WID == adminWid {
+	if session.WID.AsString() == adminWid {
 		if uid != "admin" {
 			session.SendQuickResponse(411, "BAD KEYCARD DATA", "Admin can't change its user ID")
 			return
@@ -118,7 +118,7 @@ func commandAddEntry(session *sessionState) {
 		return
 	}
 
-	if wid != session.WID {
+	if wid != session.WID.AsString() {
 		session.SendQuickResponse(412, "NONCOMPLIANT KEYCARD DATA", "Workspace ID mismatch")
 		return
 	}

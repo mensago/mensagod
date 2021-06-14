@@ -239,13 +239,13 @@ func commandGetUpdates(session *sessionState) {
 		return
 	}
 
-	recordCount, err := dbhandler.CountSyncRecords(session.WID, unixtime)
+	recordCount, err := dbhandler.CountSyncRecords(session.WID.AsString(), unixtime)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 
-	records, err := dbhandler.GetSyncRecords(session.WID, unixtime)
+	records, err := dbhandler.GetSyncRecords(session.WID.AsString(), unixtime)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
@@ -268,7 +268,7 @@ func commandIdle(session *sessionState) {
 			return
 		}
 
-		recordCount, err := dbhandler.CountSyncRecords(session.WID, unixtime)
+		recordCount, err := dbhandler.CountSyncRecords(session.WID.AsString(), unixtime)
 		if err != nil {
 			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 			return
@@ -350,7 +350,7 @@ func commandSend(session *sessionState) {
 
 	// Arguments have been validated, do a quota check
 
-	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID)
+	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID.AsString())
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
@@ -366,7 +366,7 @@ func commandSend(session *sessionState) {
 	var tempName string
 	if resumeOffset > 0 {
 		tempName = session.Message.Data["TempName"]
-		tempHandle, err = fsp.OpenTempFile(session.WID, tempName, resumeOffset)
+		tempHandle, err = fsp.OpenTempFile(session.WID.AsString(), tempName, resumeOffset)
 
 		if err != nil {
 			session.SendQuickResponse(400, "BAD REQUEST", err.Error())
@@ -374,7 +374,7 @@ func commandSend(session *sessionState) {
 		}
 
 	} else {
-		tempHandle, tempName, err = fsp.MakeTempFile(session.WID)
+		tempHandle, tempName, err = fsp.MakeTempFile(session.WID.AsString())
 		if err != nil {
 			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 			return
@@ -397,7 +397,7 @@ func commandSend(session *sessionState) {
 		return
 	}
 
-	hashMatch, err := fshandler.HashFile(strings.Join([]string{"/ tmp", session.WID, tempName}, " "),
+	hashMatch, err := fshandler.HashFile(strings.Join([]string{"/ tmp", session.WID.AsString(), tempName}, " "),
 		fileHash)
 	if err != nil {
 		if err == cs.ErrUnsupportedAlgorithm {
@@ -408,19 +408,19 @@ func commandSend(session *sessionState) {
 		return
 	}
 	if !hashMatch {
-		fsp.DeleteTempFile(session.WID, tempName)
+		fsp.DeleteTempFile(session.WID.AsString(), tempName)
 		session.SendQuickResponse(410, "HASH MISMATCH", "")
 		return
 	}
 
-	address, err := dbhandler.ResolveWID(session.WID)
+	address, err := dbhandler.ResolveWID(session.WID.AsString())
 	if err != nil {
 		logging.Writef("commandSend: Unable to resolve WID %s", err)
-		fsp.DeleteTempFile(session.WID, tempName)
+		fsp.DeleteTempFile(session.WID.AsString(), tempName)
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 	}
 
-	fsp.InstallTempFile(session.WID, tempName, "/ out")
+	fsp.InstallTempFile(session.WID.AsString(), tempName, "/ out")
 	messaging.PushMessage(address, domain.AsString(), "/ out "+tempName)
 	session.SendQuickResponse(200, "OK", "")
 }
@@ -460,12 +460,12 @@ func commandSetStatus(session *sessionState) {
 		logging.Writef("commandPreregister: Error resolving address: %s", err)
 		return
 	}
-	if session.WID != adminWid {
+	if session.WID.AsString() != adminWid {
 		session.SendQuickResponse(403, "FORBIDDEN", "Only admin can use this")
 		return
 	}
 
-	if wid.AsString() == session.WID {
+	if wid.AsString() == session.WID.AsString() {
 		session.SendQuickResponse(403, "FORBIDDEN", "admin status can't be changed")
 		return
 	}

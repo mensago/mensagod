@@ -13,6 +13,7 @@ import (
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/messaging"
 	"github.com/darkwyrm/mensagod/misc"
+	"github.com/darkwyrm/mensagod/types"
 )
 
 type loginStatus int
@@ -34,7 +35,7 @@ type sessionState struct {
 	Message          ClientRequest
 	LoginState       loginStatus
 	IsTerminating    bool
-	WID              string
+	WID              types.UUID
 	DevID            string
 	WorkspaceStatus  string
 	CurrentPath      fshandler.LocalAnPath
@@ -145,7 +146,7 @@ func (s *sessionState) AppendUpdateField(msg *ServerResponse) {
 		return
 	}
 
-	lastUpdate := messaging.LastWorkspaceUpdate(s.WID)
+	lastUpdate := messaging.LastWorkspaceUpdate(s.WID.AsString())
 
 	// lastUpdate == -1 if the workspace has not received any updates yet. This doesn't happen
 	// often, but it does happen to new workspaces.
@@ -153,7 +154,7 @@ func (s *sessionState) AppendUpdateField(msg *ServerResponse) {
 		return
 	}
 
-	updateCount, err := dbhandler.CountSyncRecords(s.WID, s.LastUpdateSent)
+	updateCount, err := dbhandler.CountSyncRecords(s.WID.AsString(), s.LastUpdateSent)
 	if err != nil {
 		logging.Writef("Error counting updates for wid %s: %s", s.WID, err.Error())
 		return

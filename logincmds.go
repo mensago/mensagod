@@ -40,7 +40,7 @@ func commandDevice(session *sessionState) {
 		return
 	}
 
-	success, err := dbhandler.CheckDevice(session.WID, session.Message.Data["Device-ID"],
+	success, err := dbhandler.CheckDevice(session.WID.AsString(), session.Message.Data["Device-ID"],
 		devkey.AsString())
 	if err != nil {
 		if err.Error() == "cancel" {
@@ -64,7 +64,7 @@ func commandDevice(session *sessionState) {
 
 		// This code exists to at least enable the server to work until device checking can
 		// be implemented.
-		dbhandler.AddDevice(session.WID, devid.AsString(), devkey, "active")
+		dbhandler.AddDevice(session.WID.AsString(), devid.AsString(), devkey, "active")
 	}
 
 	// The device is part of the workspace, so now we issue undergo a challenge-response
@@ -72,7 +72,7 @@ func commandDevice(session *sessionState) {
 
 	success, _ = challengeDevice(session, "CURVE25519", session.Message.Data["Device-Key"])
 	if !success {
-		lockout, err := logFailure(session, "device", session.WID)
+		lockout, err := logFailure(session, "device", session.WID.AsString())
 		if err != nil {
 			// No need to log here -- logFailure does that.
 			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
@@ -88,30 +88,30 @@ func commandDevice(session *sessionState) {
 	}
 
 	fsp := fshandler.GetFSProvider()
-	exists, err := fsp.Exists("/ wsp " + session.WID)
+	exists, err := fsp.Exists("/ wsp " + session.WID.AsString())
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 	if !exists {
-		fsp.MakeDirectory("/ wsp " + session.WID)
+		fsp.MakeDirectory("/ wsp " + session.WID.AsString())
 	}
-	session.CurrentPath.Set("/ wsp " + session.WID)
+	session.CurrentPath.Set("/ wsp " + session.WID.AsString())
 
 	session.LoginState = loginClientSession
 
-	messaging.RegisterWorkspace(session.WID)
-	lastLogin, err := dbhandler.GetLastLogin(session.WID, devid.AsString())
+	messaging.RegisterWorkspace(session.WID.AsString())
+	lastLogin, err := dbhandler.GetLastLogin(session.WID.AsString(), devid.AsString())
 	if err != nil {
-		logging.Writef("commandDevice: error getting last login for %s:%s: %s", session.WID,
+		logging.Writef("commandDevice: error getting last login for %s:%s: %s", session.WID.AsString(),
 			session.Message.Data["Device-ID"], err.Error())
 		lastLogin = -1
 	}
 	session.LastUpdateSent = lastLogin
 	session.SendQuickResponse(200, "OK", "")
-	err = dbhandler.UpdateLastLogin(session.WID, devid.AsString())
+	err = dbhandler.UpdateLastLogin(session.WID.AsString(), devid.AsString())
 	if err != nil {
-		logging.Writef("commandDevice: error setting last login for %s:%s: %s", session.WID,
+		logging.Writef("commandDevice: error setting last login for %s:%s: %s", session.WID.AsString(),
 			session.Message.Data["Device-ID"], err.Error())
 	}
 }
@@ -141,7 +141,7 @@ func commandDevKey(session *sessionState) {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad device ID")
 		return
 	}
-	_, err := dbhandler.CheckDevice(session.WID, devid.AsString(), oldkey.AsString())
+	_, err := dbhandler.CheckDevice(session.WID.AsString(), devid.AsString(), oldkey.AsString())
 
 	if err != nil {
 		if err.Error() == "cancel" {
@@ -166,7 +166,7 @@ func commandDevKey(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.UpdateDevice(session.WID, devid.AsString(), oldkey.AsString(),
+	err = dbhandler.UpdateDevice(session.WID.AsString(), devid.AsString(), oldkey.AsString(),
 		newkey.AsString())
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
@@ -253,7 +253,7 @@ func commandLogin(session *sessionState) {
 	}
 
 	session.LoginState = loginAwaitingPassword
-	session.WID = wid.AsString()
+	session.WID = wid
 	response := NewServerResponse(100, "CONTINUE")
 	response.Data["Response"] = string(decryptedChallenge)
 	session.SendResponse(*response)
@@ -264,7 +264,7 @@ func commandLogout(session *sessionState) {
 	// LOGOUT
 	session.SendQuickResponse(200, "OK", "")
 	session.LoginState = loginNoSession
-	session.WID = ""
+	session.WID.Set("")
 	session.WorkspaceStatus = ""
 }
 
@@ -316,7 +316,7 @@ func commandPasscode(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.SetPassword(session.WID, session.Message.Data["Password-Hash"])
+	err = dbhandler.SetPassword(session.WID.AsString(), session.Message.Data["Password-Hash"])
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandPasscode: failed to update password: %s", err.Error())
@@ -348,14 +348,14 @@ func commandPassword(session *sessionState) {
 		return
 	}
 
-	match, err := dbhandler.CheckPassword(session.WID, session.Message.Data["Password-Hash"])
+	match, err := dbhandler.CheckPassword(session.WID.AsString(), session.Message.Data["Password-Hash"])
 	if err != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Password check error")
 		return
 	}
 
 	if !match {
-		terminate, err := logFailure(session, "password", session.WID)
+		terminate, err := logFailure(session, "password", session.WID.AsString())
 		if terminate || err != nil {
 			return
 		}
@@ -389,7 +389,7 @@ func commandResetPassword(session *sessionState) {
 		return
 	}
 
-	if session.LoginState != loginClientSession || session.WID != adminWid {
+	if session.LoginState != loginClientSession || session.WID.AsString() != adminWid {
 		session.SendQuickResponse(403, "FORBIDDEN", "Only admin can use this")
 	}
 
@@ -477,7 +477,7 @@ func commandSetPassword(session *sessionState) {
 		return
 	}
 
-	match, err := dbhandler.CheckPassword(session.WID, session.Message.Data["Password-Hash"])
+	match, err := dbhandler.CheckPassword(session.WID.AsString(), session.Message.Data["Password-Hash"])
 	if err != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Password check error")
 		return
@@ -488,7 +488,7 @@ func commandSetPassword(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.SetPassword(session.WID, session.Message.Data["NewPassword-Hash"])
+	err = dbhandler.SetPassword(session.WID.AsString(), session.Message.Data["NewPassword-Hash"])
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandSetPassword: failed to update password: %s", err.Error())

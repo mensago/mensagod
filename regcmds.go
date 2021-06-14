@@ -72,7 +72,7 @@ func commandPreregister(session *sessionState) {
 		return
 	}
 
-	if session.LoginState != loginClientSession || session.WID != adminWid {
+	if session.LoginState != loginClientSession || session.WID.AsString() != adminWid {
 		session.SendQuickResponse(403, "FORBIDDEN", "Only admin can use this")
 		return
 	}
@@ -481,7 +481,7 @@ func commandUnregister(session *sessionState) {
 		session.SendQuickResponse(401, "UNAUTHORIZED", "Must be logged in for this command")
 	}
 
-	match, err := dbhandler.CheckPassword(session.WID, session.Message.Data["Password-Hash"])
+	match, err := dbhandler.CheckPassword(session.WID.AsString(), session.Message.Data["Password-Hash"])
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Unregister: error checking password: %s", err.Error())
@@ -509,7 +509,7 @@ func commandUnregister(session *sessionState) {
 
 	// This command can be used to unregister other workspaces, but only the admin account is
 	// allowed to do this
-	wid := session.WID
+	wid := session.WID.AsString()
 	if session.Message.HasField("Workspace-ID") {
 		tempWid := strings.ToLower(session.Message.Data["Workspace-ID"])
 		if !dbhandler.ValidateUUID(tempWid) {
@@ -517,9 +517,9 @@ func commandUnregister(session *sessionState) {
 			return
 		}
 
-		if session.WID != tempWid {
+		if session.WID.AsString() != tempWid {
 
-			if session.WID != adminWid {
+			if session.WID.AsString() != adminWid {
 				session.SendQuickResponse(401, "UNAUTHORIZED",
 					"Only admin can unregister other workspaces")
 				return
