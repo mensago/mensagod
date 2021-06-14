@@ -11,6 +11,7 @@ import (
 	"github.com/darkwyrm/mensagod/ezcrypt"
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/logging"
+	"github.com/darkwyrm/mensagod/types"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
@@ -78,15 +79,14 @@ func commandPreregister(session *sessionState) {
 	}
 
 	// Just do some basic syntax checks on the user ID
-	uid := ""
+	var uid types.UserID
 	if session.Message.HasField("User-ID") {
-		uid = strings.ToLower(session.Message.Data["User-ID"])
-		if strings.ContainsAny(uid, "/\"") {
+		if uid.Set(session.Message.Data["User-ID"]) != nil {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad User-ID")
 			return
 		}
 
-		success, _ := dbhandler.CheckUserID(uid)
+		success, _ := dbhandler.CheckUserID(uid.AsString())
 		if success {
 			session.SendQuickResponse(408, "RESOURCE EXISTS", "User-ID exists")
 			return
@@ -95,15 +95,20 @@ func commandPreregister(session *sessionState) {
 
 	// If the client submits a workspace ID as the user ID, it is considered a request for that
 	// specific workspace ID and the user ID is considered blank.
-	wid := ""
-	if dbhandler.ValidateUUID(uid) {
-		wid = uid
-		uid = ""
-	} else if session.Message.HasField("Workspace-ID") {
-		wid = strings.ToLower(session.Message.Data["Workspace-ID"])
-		if !dbhandler.ValidateUUID(wid) {
-			session.SendQuickResponse(400, "BAD REQUEST", "Bad Workspace-ID")
-			return
+	var wid types.UUID
+	if wid.Set(uid.AsString()) != nil {
+		uid.Set("")
+	} else {
+		if session.Message.HasField("Workspace-ID") {
+			if wid.Set(session.Message.Data["Workspace-ID"]) != nil {
+				session.SendQuickResponse(400, "BAD REQUEST", "Bad Workspace-ID")
+				return
+			}
+		} else {
+			if wid.Set(session.Message.Data["Workspace-ID"]) != nil {
+				session.SendQuickResponse(400, "BAD REQUEST", "Missing Workspace-ID")
+				return
+			}
 		}
 	}
 
@@ -122,7 +127,7 @@ func commandPreregister(session *sessionState) {
 
 	var haswid bool
 	if wid != "" {
-		haswid, _ = dbhandler.CheckWorkspace(wid)
+		haswid, _ = dbhandler.CheckWorkspace(wid.AsString())
 		if haswid {
 			session.SendQuickResponse(408, "RESOURCE EXISTS", "")
 			return
@@ -130,13 +135,13 @@ func commandPreregister(session *sessionState) {
 	} else {
 		haswid = true
 		for haswid {
-			wid = uuid.New().String()
-			haswid, _ = dbhandler.CheckWorkspace(wid)
+			wid.Set(uuid.NewString())
+			haswid, _ = dbhandler.CheckWorkspace(wid.AsString())
 		}
 	}
 
-	regcode, err := dbhandler.PreregWorkspace(wid, uid, domain, &gDiceWordList,
-		viper.GetInt("security.diceware_wordcount"))
+	regcode, err := dbhandler.PreregWorkspace(wid.AsString(), uid.AsString(), domain,
+		&gDiceWordList, viper.GetInt("security.diceware_wordcount"))
 	if err != nil {
 		if err.Error() == "uid exists" {
 			session.SendQuickResponse(408, "RESOURCE EXISTS", "")
@@ -149,7 +154,7 @@ func commandPreregister(session *sessionState) {
 	}
 
 	fsp := fshandler.GetFSProvider()
-	exists, err := fsp.Exists("/ " + wid)
+	exists, err := fsp.Exists("/ " + wid.AsString())
 	if err != nil {
 		logging.Writef("commandPreregister: Failed to check workspace %s existence: %s",
 			wid, err)
@@ -157,7 +162,7 @@ func commandPreregister(session *sessionState) {
 		return
 	}
 	if !exists {
-		fsp.MakeDirectory("/ " + wid)
+		fsp.MakeDirectory("/ " + wid.AsString())
 		if err != nil {
 			logging.Writef("commandPreregister: Failed to create workspace %s top directory: %s",
 				wid, err)
@@ -168,9 +173,9 @@ func commandPreregister(session *sessionState) {
 
 	response := NewServerResponse(200, "OK")
 	if uid != "" {
-		response.Data["User-ID"] = uid
+		response.Data["User-ID"] = uid.AsString()
 	}
-	response.Data["Workspace-ID"] = wid
+	response.Data["Workspace-ID"] = wid.AsString()
 	response.Data["Domain"] = domain
 	response.Data["Reg-Code"] = regcode
 	session.SendResponse(*response)
