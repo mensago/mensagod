@@ -281,7 +281,7 @@ func commandRegCode(session *sessionState) {
 	}
 
 	err = dbhandler.AddWorkspace(wid, uid, domain, session.Message.Data["Password-Hash"], "active",
-		"individual")
+		"identity")
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
@@ -345,10 +345,10 @@ func commandRegister(session *sessionState) {
 		}
 	}
 
-	wtype := "individual"
+	wtype := "identity"
 	if session.Message.HasField("Type") {
 		wtype = session.Message.Data["Type"]
-		if wtype != "shared" && wtype != "individual" {
+		if wtype != "shared" && wtype != "identity" {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad Type")
 			return
 		}
