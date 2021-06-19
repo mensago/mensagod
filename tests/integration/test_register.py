@@ -3,6 +3,7 @@ from pycryptostring import CryptoString
 import pymensago.keycard as keycard
 import pymensago.iscmds as iscmds
 import pymensago.serverconn as serverconn
+import pymensago.utils as utils
 from integration_setup import load_server_config_file, setup_test, init_server, regcode_admin, \
 	login_admin
 
@@ -169,18 +170,18 @@ def test_unregister():
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
 				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
-	devid = '22222222-2222-2222-2222-222222222222'
+	devid = utils.UUID('22222222-2222-2222-2222-222222222222')
 	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
 		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
 	
 	dbdata['pwhash'] = pwhash
-	dbdata['devid'] = devid
+	dbdata['devid'] = devid.as_string()
 	dbdata['devpair'] = devpair
 	
 	regcode_admin(dbdata, conn)
 	login_admin(dbdata, conn)
 
-	userwid = '11111111-1111-1111-1111-111111111111'
+	userwid = utils.UUID('11111111-1111-1111-1111-111111111111')
 	# password is 'SandstoneAgendaTricycle'
 	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
 				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
@@ -189,9 +190,9 @@ def test_unregister():
 	conn.send_message({
 		'Action' : "REGISTER",
 		'Data' : {
-			'Workspace-ID' : userwid,
+			'Workspace-ID' : userwid.as_string(),
 			'Password-Hash' : pwhash,
-			'Device-ID' : devid,
+			'Device-ID' : devid.as_string(),
 			'Device-Key' : devkey
 		}
 	})
@@ -219,7 +220,7 @@ def test_unregister():
 	status = iscmds.login(conn, userwid, CryptoString(dbdata['oekey']))
 	assert not status.error(), f"test_unregister(): user login phase failed: {status.info()}"
 
-	status = iscmds.password(conn, userwid, pwhash)
+	status = iscmds.password(conn, pwhash)
 	assert not status.error(), f"test_unregister(): password phase failed: {status.info()}"
 
 	status = iscmds.device(conn, devid, devpair)
@@ -231,7 +232,7 @@ def test_unregister():
 	usercard = keycard.UserEntry()
 	usercard.set_fields({
 		'Name':'Corbin Simons',
-		'Workspace-ID':userwid,
+		'Workspace-ID':userwid.as_string(),
 		'User-ID':'csimons',
 		'Domain':'example.com',
 		'Contact-Request-Verification-Key':'ED25519:E?_z~5@+tkQz!iXK?oV<Zx(ec;=27C8Pjm((kRc|',
@@ -256,7 +257,7 @@ def test_unregister():
 	conn.send_message({
 		'Action' : "UNREGISTER",
 		'Data' : {
-			'Workspace-ID' : userwid,
+			'Workspace-ID' : userwid.as_string(),
 			'Password-Hash' : pwhash
 		}
 	})
@@ -267,7 +268,7 @@ def test_unregister():
 	
 	# Check to make sure the database end was handled correctly
 	cur = dbconn.cursor()
-	cur.execute('SELECT password,status FROM workspaces WHERE wid = %s ', (userwid,))
+	cur.execute('SELECT password,status FROM workspaces WHERE wid = %s ', (userwid.as_string(),))
 	row = cur.fetchone()
 	assert row, "test_unregister(): cleanup check query found no rows"
 	assert row[0] == '-' and row[1] == 'deleted', \

@@ -71,7 +71,7 @@ def test_prereg():
 	# REGCODE subtest setup
 	regdata = response
 	pwd = Password()
-	status = pwd.Set('ShrivelCommuteGottenAgonizingElbowQuiver')
+	status = pwd.set('ShrivelCommuteGottenAgonizingElbowQuiver')
 	assert not status.error(), 'test_prereg: Failed to set password'
 	devid = '0e6406e3-1831-4352-9fbe-0de8faebf0f0'
 	devkey = EncryptionPair()

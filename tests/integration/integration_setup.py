@@ -16,7 +16,7 @@ from pymensago.encryption import EncryptionPair, Password, PublicKey, SigningPai
 import pymensago.keycard as keycard
 import pymensago.iscmds as iscmds
 import pymensago.serverconn as serverconn
-from pymensago.utils import MAddress
+import pymensago.utils as utils
 
 # Keys used in the various tests. 
 # THESE KEYS ARE STORED ON GITHUB! DO NOT USE THESE FOR ANYTHING EXCEPT UNIT TESTS!!
@@ -476,21 +476,23 @@ def keycard_admin(config, conn) -> dict:
 def init_user(config: dict, conn: serverconn.ServerConnection):
 	'''Creates a test user for command testing'''
 	
-	userwid = '33333333-3333-3333-3333-333333333333'
-	status = iscmds.preregister(conn, userwid, 'csimons', 'example.net')
+	userwid = utils.UUID('33333333-3333-3333-3333-333333333333')
+	status = iscmds.preregister(conn, userwid, utils.UserID('csimons'), utils.Domain('example.com'))
 	assert not status.error(), "init_user(): uid preregistration failed"
-	assert status['domain'] == 'example.net' and 'wid' in status and 'regcode' in status and \
-		status['uid'] == 'csimons', "init_user(): failed to return expected data"
+	assert status['domain'].as_string() == 'example.com' and \
+		'wid' in status and \
+		'regcode' in status and	\
+		status['uid'].as_string() == 'csimons', "init_user(): failed to return expected data"
 
 	regdata = status
 	password = Password('MyS3cretPassw*rd')
 	devpair = EncryptionPair()
 	devid = '11111111-1111-1111-1111-111111111111'
-	status = iscmds.regcode(conn, MAddress('csimons/example.net'), regdata['regcode'],
+	status = iscmds.regcode(conn, utils.MAddress('csimons/example.com'), regdata['regcode'],
 							password.hashstring, devpair)
 	assert not status.error(), "init_user(): uid regcode failed"
 
-	config['user_wid'] = userwid
+	config['user_wid'] = userwid.as_string()
 	config['user_uid'] = regdata['uid']
 	config['user_domain'] = regdata['domain']
 	config['user_devid'] = devid
@@ -498,28 +500,30 @@ def init_user(config: dict, conn: serverconn.ServerConnection):
 	config['user_password'] = password
 
 	try:
-		os.mkdir(os.path.join(config['configfile']['global']['workspace_dir'],userwid))
+		os.mkdir(os.path.join(config['configfile']['global']['workspace_dir'],userwid.as_string()))
 	except OSError:
 		pass
 
 def init_user2(config: dict, conn: serverconn.ServerConnection):
 	'''Creates a second test user for command testing'''
 	
-	userwid = '44444444-4444-4444-4444-444444444444'
-	status = iscmds.preregister(conn, userwid, 'fkingsley', 'example.net')
+	userwid = utils.UUID('44444444-4444-4444-4444-444444444444')
+	status = iscmds.preregister(conn, userwid, utils.UserID('fkingsley'), utils.Domain('example.net'))
 	assert not status.error(), "init_user2(): uid preregistration failed"
-	assert status['domain'] == 'example.net' and 'wid' in status and 'regcode' in status and \
-		status['uid'] == 'fkingsley', "init_user2(): failed to return expected data"
+	assert status['domain'].as_string() == 'example.net' and \
+		'wid' in status and \
+		'regcode' in status and	\
+		status['uid'].as_string() == 'fkingsley', "init_user2(): failed to return expected data"
 
 	regdata = status
 	password = Password('MyS3cretPassw*rd')
 	devpair = EncryptionPair()
 	devid = '11111111-1111-1111-1111-111111111111'
-	status = iscmds.regcode(conn, MAddress('fkingsley/example.net'), regdata['regcode'], 
+	status = iscmds.regcode(conn, utils.MAddress('fkingsley/example.net'), regdata['regcode'], 
 							password.hashstring, devpair)
 	assert not status.error(), "init_user2(): uid regcode failed"
 
-	config['user2_wid'] = userwid
+	config['user2_wid'] = userwid.as_string()
 	config['user2_uid'] = regdata['uid']
 	config['user2_domain'] = regdata['domain']
 	config['user2_devid'] = devid
@@ -527,6 +531,6 @@ def init_user2(config: dict, conn: serverconn.ServerConnection):
 	config['user2_password'] = password
 
 	try:
-		os.mkdir(os.path.join(config['configfile']['global']['workspace_dir'],userwid))
+		os.mkdir(os.path.join(config['configfile']['global']['workspace_dir'],userwid.as_string()))
 	except OSError:
 		pass
