@@ -544,7 +544,7 @@ func PreregWorkspace(wid string, uid string, domain string, wordList *diceware.W
 		}
 	}
 
-	regcode, _ := diceware.RollWords(wordcount, "-", *wordList)
+	regcode, _ := diceware.RollWords(wordcount, " ", *wordList)
 
 	_, err := dbConn.Exec(`INSERT INTO prereg(wid, uid, domain, regcode) VALUES($1, $2, $3, $4)`,
 		wid, uid, domain, regcode)
