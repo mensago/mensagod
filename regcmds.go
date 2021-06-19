@@ -11,6 +11,7 @@ import (
 	"github.com/darkwyrm/mensagod/ezcrypt"
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/logging"
+	"github.com/darkwyrm/mensagod/misc"
 	"github.com/darkwyrm/mensagod/types"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
@@ -266,16 +267,22 @@ func commandRegCode(session *sessionState) {
 
 	var wid, uid string
 	if session.Message.HasField("Workspace-ID") {
-		wid, uid, _ = dbhandler.CheckRegCode(strings.ToLower(session.Message.Data["Workspace-ID"]),
+		wid, uid, err = dbhandler.CheckRegCode(strings.ToLower(session.Message.Data["Workspace-ID"]),
 			domain, true, session.Message.Data["Reg-Code"])
 	} else {
-		wid, uid, _ = dbhandler.CheckRegCode(strings.ToLower(session.Message.Data["User-ID"]),
+		wid, uid, err = dbhandler.CheckRegCode(strings.ToLower(session.Message.Data["User-ID"]),
 			domain, false, session.Message.Data["Reg-Code"])
 	}
 
 	if wid == "" {
 		// Regardless of whether or not an error has been returned from log, we exit here. In this
 		// case, state doesn't matter.
+		if err == misc.ErrNotFound {
+			session.SendQuickResponse(404, "NOT FOUND", "")
+		} else {
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+			logging.Writef("Internal server error. commandRegister.CheckRegCode. Error: %s\n", err)
+		}
 		logFailure(session, "prereg", "")
 		return
 	}
