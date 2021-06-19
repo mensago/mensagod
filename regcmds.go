@@ -97,7 +97,7 @@ func commandPreregister(session *sessionState) {
 	// If the client submits a workspace ID as the user ID, it is considered a request for that
 	// specific workspace ID and the user ID is considered blank.
 	var wid types.UUID
-	if wid.Set(uid.AsString()) != nil {
+	if wid.Set(uid.AsString()) == nil {
 		uid.Set("")
 	} else {
 		if session.Message.HasField("Workspace-ID") {
@@ -106,24 +106,23 @@ func commandPreregister(session *sessionState) {
 				return
 			}
 		} else {
-			if wid.Set(session.Message.Data["Workspace-ID"]) != nil {
-				session.SendQuickResponse(400, "BAD REQUEST", "Missing Workspace-ID")
+			id, _ := uuid.NewRandom()
+			if wid.Set(id.String()) != nil {
+				session.SendQuickResponse(300, "INTERNAL SERVER ERROR",
+					"commandPreregister.NewRandom")
 				return
 			}
 		}
 	}
 
-	domain := ""
+	var domain types.DomainT
 	if session.Message.HasField("Domain") {
-		domain = strings.ToLower(session.Message.Data["Domain"])
-		pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
-		if !pattern.MatchString(domain) {
+		if domain.Set(session.Message.Data["Domain"]) != nil {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad Domain")
 			return
 		}
-	}
-	if domain == "" {
-		domain = viper.GetString("global.domain")
+	} else {
+		domain.Set(viper.GetString("global.domain"))
 	}
 
 	var haswid bool
@@ -141,7 +140,7 @@ func commandPreregister(session *sessionState) {
 		}
 	}
 
-	regcode, err := dbhandler.PreregWorkspace(wid.AsString(), uid.AsString(), domain,
+	regcode, err := dbhandler.PreregWorkspace(wid.AsString(), uid.AsString(), domain.AsString(),
 		&gDiceWordList, viper.GetInt("security.diceware_wordcount"))
 	if err != nil {
 		if err.Error() == "uid exists" {
@@ -177,7 +176,7 @@ func commandPreregister(session *sessionState) {
 		response.Data["User-ID"] = uid.AsString()
 	}
 	response.Data["Workspace-ID"] = wid.AsString()
-	response.Data["Domain"] = domain
+	response.Data["Domain"] = domain.AsString()
 	response.Data["Reg-Code"] = regcode
 	session.SendResponse(*response)
 }
