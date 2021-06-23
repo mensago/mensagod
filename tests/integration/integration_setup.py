@@ -487,9 +487,11 @@ def init_user(config: dict, conn: serverconn.ServerConnection):
 	regdata = status
 	password = Password('MyS3cretPassw*rd')
 	devpair = EncryptionPair()
-	devid = '11111111-1111-1111-1111-111111111111'
+	devid = utils.UUID()
+	devid.generate()
+	devid = utils.UUID('11111111-1111-1111-1111-111111111111')
 	status = iscmds.regcode(conn, utils.MAddress('csimons/example.com'), regdata['regcode'],
-							password.hashstring, devpair)
+							password.hashstring, devid, devpair)
 	assert not status.error(), "init_user(): uid regcode failed"
 
 	config['user_wid'] = userwid.as_string()
@@ -518,9 +520,9 @@ def init_user2(config: dict, conn: serverconn.ServerConnection):
 	regdata = status
 	password = Password('MyS3cretPassw*rd')
 	devpair = EncryptionPair()
-	devid = '11111111-1111-1111-1111-111111111111'
+	devid = utils.UUID('11111111-1111-1111-1111-111111111111')
 	status = iscmds.regcode(conn, utils.MAddress('fkingsley/example.net'), regdata['regcode'], 
-							password.hashstring, devpair)
+							password.hashstring, devid, devpair)
 	assert not status.error(), "init_user2(): uid regcode failed"
 
 	config['user2_wid'] = userwid.as_string()
