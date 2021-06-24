@@ -577,7 +577,7 @@ if status.error():
 
 cur.execute("INSERT INTO keycards(owner, creationtime, index, entry, fingerprint) "
 			"VALUES(%s, %s, %s, %s, %s);",
-			(config['org_domain'], rootentry.fields['Timestamp'], rootentry.fields['Index'],
+			('organization', rootentry.fields['Timestamp'], rootentry.fields['Index'],
 				str(rootentry), rootentry.hash)
 			)
 
