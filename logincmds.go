@@ -323,7 +323,21 @@ func commandPasscode(session *sessionState) {
 		return
 	}
 
-	session.SendQuickResponse(200, "OK", "")
+	response := NewServerResponse(200, "OK")
+	response.Data["Is-Admin"] = "False"
+
+	adminAddress := "admin/" + viper.GetString("global.domain")
+	adminWid, err := dbhandler.ResolveAddress(adminAddress)
+	if err != nil {
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandPreregister: Error resolving address: %s", err)
+		return
+	}
+	if session.WID.AsString() == adminWid {
+		response.Data["Is-Admin"] = "True"
+	}
+
+	session.SendResponse(*response)
 }
 
 func commandPassword(session *sessionState) {
