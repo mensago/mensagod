@@ -121,6 +121,8 @@ func commandDevice(session *sessionState) {
 	}
 	if session.WID.AsString() == adminWid {
 		response.Data["Is-Admin"] = "True"
+	} else {
+		response.Data["Is-Admin"] = "False"
 	}
 	session.SendResponse(*response)
 
