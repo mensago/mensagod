@@ -280,7 +280,7 @@ func commandRegCode(session *sessionState) {
 			session.SendQuickResponse(404, "NOT FOUND", "")
 		} else {
 			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-			logging.Writef("Internal server error. commandRegister.CheckRegCode. Error: %s\n", err)
+			logging.Writef("Internal server error. commandRegCode.CheckRegCode. Error: %s\n", err)
 		}
 		logFailure(session, "prereg", "")
 		return
@@ -290,21 +290,21 @@ func commandRegCode(session *sessionState) {
 		"identity")
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		logging.Writef("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
+		logging.Writef("Internal server error. commandRegCode.AddWorkspace. Error: %s\n", err)
 		return
 	}
 
 	err = dbhandler.SetWorkspaceStatus(wid, "active")
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		logging.Writef("Internal server error. commandRegister.SetWorkspaceStatus. Error: %s\n", err)
+		logging.Writef("Internal server error. commandRegCode.SetWorkspaceStatus. Error: %s\n", err)
 		return
 	}
 
 	err = dbhandler.AddDevice(wid, devid, devkey, "active")
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		logging.Writef("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
+		logging.Writef("Internal server error. commandRegCode.AddDevice. Error: %s\n", err)
 		return
 	}
 
@@ -316,7 +316,7 @@ func commandRegCode(session *sessionState) {
 			session.Message.Data["Reg-Code"])
 	}
 	if err != nil {
-		logging.Writef("Internal server error. commandRegister.DeleteRegCode. Error: %s\n", err)
+		logging.Writef("Internal server error. commandRegCode.DeleteRegCode. Error: %s\n", err)
 		return
 	}
 
