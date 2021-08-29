@@ -322,6 +322,8 @@ func commandRegCode(session *sessionState) {
 
 	response := NewServerResponse(201, "REGISTERED")
 	response.Data["Workspace-ID"] = wid
+	response.Data["User-ID"] = uid
+	response.Data["Domain"] = domain
 	session.SendResponse(*response)
 }
 
