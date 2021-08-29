@@ -116,7 +116,7 @@ func commandDevice(session *sessionState) {
 	adminWid, err := dbhandler.ResolveAddress(adminAddress)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		logging.Writef("commandPreregister: Error resolving address: %s", err)
+		logging.Writef("commandDevice: Error resolving address: %s", err)
 		return
 	}
 	if session.WID.AsString() == adminWid {
