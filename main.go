@@ -200,6 +200,8 @@ func processCommand(session *sessionState) {
 		commandSelect(session)
 	case "SEND":
 		commandSend(session)
+	case "SENDFAST":
+		commandSendFast(session)
 	case "SETPASSWORD":
 		commandSetPassword(session)
 	case "SETQUOTA":
@@ -412,6 +414,63 @@ func commandSend(session *sessionState) {
 		session.SendQuickResponse(410, "HASH MISMATCH", "")
 		return
 	}
+
+	address, err := dbhandler.ResolveWID(session.WID.AsString())
+	if err != nil {
+		logging.Writef("commandSend: Unable to resolve WID %s", err)
+		fsp.DeleteTempFile(session.WID.AsString(), tempName)
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+	}
+
+	fsp.InstallTempFile(session.WID.AsString(), tempName, "/ out")
+	messaging.PushMessage(address, domain.AsString(), "/ out "+tempName)
+	session.SendQuickResponse(200, "OK", "")
+}
+
+func commandSendFast(session *sessionState) {
+	// Command syntax:
+	// SENDFAST(Size, Hash, Domain)
+
+	if session.LoginState != loginClientSession {
+		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+		return
+	}
+
+	if session.Message.Validate([]string{"Domain"}) != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	domain := types.ToDomain(session.Message.Data["Domain"])
+	if !domain.IsValid() {
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad domain")
+	}
+
+	// Arguments have been validated, do a quota check
+
+	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID.AsString())
+	if err != nil {
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+
+	if diskQuota != 0 && MaxCommandLength+diskUsage > diskQuota {
+		session.SendQuickResponse(409, "QUOTA INSUFFICIENT", "")
+		return
+	}
+
+	fsp := fshandler.GetFSProvider()
+	var tempHandle *os.File
+	var tempName string
+	tempHandle, tempName, err = fsp.MakeTempFile(session.WID.AsString())
+	if err != nil {
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+
+	// TODO: Save message to disk
+
+	tempHandle.Close()
 
 	address, err := dbhandler.ResolveWID(session.WID.AsString())
 	if err != nil {
