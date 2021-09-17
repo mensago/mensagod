@@ -1,5 +1,6 @@
 from base64 import b85encode
 from glob import glob
+import inspect
 import os.path
 import platform
 import re
@@ -12,7 +13,7 @@ import psycopg2
 import toml
 
 from pycryptostring import CryptoString
-from pymensago.encryption import EncryptionPair, Password, PublicKey, SigningPair
+from pymensago.encryption import Password, EncryptionPair, SigningPair, SecretKey
 import pymensago.keycard as keycard
 import pymensago.iscmds as iscmds
 import pymensago.serverconn as serverconn
@@ -70,6 +71,83 @@ import pymensago.utils as utils
 
 # Initial User Verification Key: ED25519:k^GNIJbl3p@N=j8diO-wkNLuLcNF6#JF=@|a}wFE
 # Initial User Signing Key: ED25519:;NEoR>t9n3v%RbLJC#*%n4g%oxqzs)&~k+fH4uqi
+
+# Test Admin Information
+
+admin_profile_data = {
+	'name': 'Administrator',
+	'uid': utils.UserID('admin'),
+
+	# These fields are set by init_server()
+	'wid': utils.UUID(),
+	'domain': utils.Domain(),
+	'address': utils.MAddress(),
+	'waddress': utils.WAddress(),
+
+	'password': Password('Linguini2Pegboard*Album'),
+	'crencryption': EncryptionPair(
+		CryptoString(r'CURVE25519:mO?WWA-k2B2O|Z%fA`~s3^$iiN{5R->#jxO@cy6{'),
+		CryptoString(r'CURVE25519:2bLf2vMA?GA2?L~tv<PA9XOw6e}V~ObNi7C&qek>'	)),
+	
+	'crsigning': SigningPair(
+		CryptoString(r'ED25519:E?_z~5@+tkQz!iXK?oV<Zx(ec;=27C8Pjm((kRc|'),
+		CryptoString(r'ED25519:u4#h6LEwM6Aa+f<++?lma4Iy63^}V$JOP~ejYkB;')),
+	
+	'encryption': EncryptionPair(
+		CryptoString(r'CURVE25519:Umbw0Y<^cf1DN|>X38HCZO@Je(zSe6crC6X_C_0F'),
+		CryptoString(r'CURVE25519:Bw`F@ITv#sE)2NnngXWm7RQkxg{TYhZQbebcF5b$')),
+	
+	'signing': SigningPair(
+		CryptoString(r'ED25519:6|HBWrxMY6-?r&Sm)_^PLPerpqOj#b&x#N_#C3}p'),
+		CryptoString(r'ED25519:p;XXU0XF#UO^}vKbC-wS(#5W6=OEIFmR2z`rS1j+')),
+	
+	'storage': SecretKey(CryptoString(r'XSALSA20:M^z-E(u3QFiM<QikL|7|vC|aUdrWI6VhN+jt>GH}')),
+	'folder': SecretKey(CryptoString(r'XSALSA20:H)3FOR}+C8(4Jm#$d+fcOXzK=Z7W+ZVX11jI7qh*')),
+
+	'device': EncryptionPair(
+		CryptoString(r'CURVE25519:mO?WWA-k2B2O|Z%fA`~s3^$iiN{5R->#jxO@cy6{'),
+		CryptoString(r'CURVE25519:2bLf2vMA?GA2?L~tv<PA9XOw6e}V~ObNi7C&qek>'	)),
+}
+
+# Test User Information
+
+user1_profile_data = {
+	'name': 'Corbin Simons',
+	'uid': utils.UserID('csimons'),
+
+	'wid': utils.UUID('4418bf6c-000b-4bb3-8111-316e72030468'),
+	'domain': utils.Domain('example.com'),
+	'address': utils.MAddress('csimons/example.com'),
+	'waddress': utils.WAddress('4418bf6c-000b-4bb3-8111-316e72030468/example.com'),
+
+	'password': Password('MyS3cretPassw*rd'),
+	'crencryption': EncryptionPair(
+		CryptoString(r'CURVE25519:j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph'),
+		CryptoString(r'CURVE25519:55t6A0y%S?{7c47p(R@C*X#at9Y`q5(Rc#YBS;r}')),
+	
+	'crsigning': SigningPair(
+		CryptoString(r'ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D'),
+		CryptoString(r'ED25519:ip52{ps^jH)t$k-9bc_RzkegpIW?}FFe~BX&<V}9')),
+	
+	'encryption': EncryptionPair(
+		CryptoString(r'CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN'),
+		CryptoString(r'CURVE25519:4A!nTPZSVD#tm78d=-?1OIQ43{ipSpE;@il{lYkg')),
+	
+	'signing': SigningPair(
+		CryptoString(r'ED25519:k^GNIJbl3p@N=j8diO-wkNLuLcNF6#JF=@|a}wFE'),
+		CryptoString(r'ED25519:;NEoR>t9n3v%RbLJC#*%n4g%oxqzs)&~k+fH4uqi')),
+	
+	'storage': SecretKey(CryptoString(r'XSALSA20:(bk%y@WBo3&}(UeXeHeHQ|1B}!rqYF20DiDG+9^Q')),
+	'folder': SecretKey(CryptoString(r'XSALSA20:-DfH*_9^tVtb(z9j3Lu@_(=ow7q~8pq^<;;f%2_B')),
+
+	'device': EncryptionPair(
+		CryptoString(r'CURVE25519:94|@e{Kpsu_Qe{L@_U;QnOHz!eJ5zz?V@>+K)6F}'),
+		CryptoString(r'CURVE25519:!x2~_pSSCx1M$n7{QBQ5e*%~ytBzKL_C(bCviqYh')),
+}
+
+def funcname() -> str: 
+	frames = inspect.getouterframes(inspect.currentframe())
+	return frames[1].function
 
 
 def load_server_config_file() -> dict:
@@ -296,6 +374,7 @@ def init_server(dbconn) -> dict:
 	}
 
 
+# TODO: Replace calls to validate_uuid() to pymensago-based code
 def validate_uuid(indata):
 	'''Validates a UUID's basic format. Does not check version information.'''
 
