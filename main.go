@@ -468,7 +468,13 @@ func commandSendFast(session *sessionState) {
 		return
 	}
 
-	// TODO: Save message to disk
+	flatData, err := json.Marshal(session.Message)
+	if err != nil {
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "Unable to reflatten message")
+		return
+	}
+
+	tempHandle.Write([]byte(flatData))
 
 	tempHandle.Close()
 
