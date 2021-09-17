@@ -5,6 +5,7 @@ from pymensago.serverconn import ServerConnection
 from integration_setup import login_admin, regcode_admin, setup_test, init_server, init_user, \
 	init_user2, reset_top_dir
 
+
 server_response = {
 	'title' : 'Mensago Server Response',
 	'type' : 'object',
@@ -115,5 +116,76 @@ def test_send():
 	# TODO: Finish tests once PyMensago messaging code is implemented
 
 
+def test_sendfast():
+	'''Tests the SEND command'''
+	
+	dbconn = setup_test()
+	dbdata = init_server(dbconn)
+
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+
+	reset_top_dir(dbdata)
+
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
+	
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
+
+	init_user(dbdata, conn)
+	init_user2(dbdata, conn)
+	
+	# Subtest #1: Missing parameters
+	
+	conn.send_message({
+		'Action': 'SENDFAST',
+		'Data': {
+			# Domain parameter is missing
+		}
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, 'test_send: #1 failed to handle missing parameter'
+
+	# Subtest #2: Non-existent domain
+
+	# TODO: POSTDEMO: Implement SEND subtest for non-existent domain
+
+	# Subtest #3: real successful message delivery
+
+	# Construct the contact request
+	
+	# TODO: Finish implementing sendfast() test
+	conreq = {
+		'Version': '1.0',
+		'ID': 'FIXME',
+		'Type': 'sysmessage',
+		'Subtype': 'contactreq.1',
+		'ContactInfo': {
+			'Header': { 'Version':'1.0', 'EntityType':'Individual' },
+			'GivenName': 'Example.com',
+			'FamilyName': 'Admin',
+			'FormattedName': 'Example.com Admin',
+			'Mensago': [
+				{	'Label': 'Primary',
+					'UserID': admin_profile_data['uid'].as_string(),
+					'Domain': admin_profile_data['domain'].as_string(),
+					'WorkspaceID': admin_profile_data['wid'].as_string()
+				}
+			]
+		}		
+	}
+
+
 if __name__ == '__main__':
 	test_send()
+	test_sendfast()
