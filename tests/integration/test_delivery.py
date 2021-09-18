@@ -2,9 +2,9 @@ from pycryptostring import CryptoString
 from pymensago.encryption import EncryptionPair
 from pymensago.serverconn import ServerConnection
 
-from integration_setup import login_admin, regcode_admin, setup_test, init_server, init_user, \
-	init_user2, reset_top_dir
-
+# There were so many individual imports from integration_setup that it actually makes sense to
+# wildcard this import. *shrug*
+from integration_setup import *
 
 server_response = {
 	'title' : 'Mensago Server Response',
@@ -156,20 +156,26 @@ def test_sendfast():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 400, 'test_send: #1 failed to handle missing parameter'
 
-	# Subtest #2: Non-existent domain
-
-	# TODO: POSTDEMO: Implement SEND subtest for non-existent domain
-
-	# Subtest #3: real successful message delivery
+	# Subtest #2: real successful message delivery
 
 	# Construct the contact request
-	
-	# TODO: Finish implementing sendfast() test
 	conreq = {
 		'Version': '1.0',
-		'ID': 'FIXME',
+		'ID': '539ed177-d0f3-446e-8d23-dcdcf55dd839',
+		'Date': "20190905T155323Z",
+		# Sender added below
+		# Receiver added below
+		# KeyHash added below
+		# PayloadKey added below
+	}
+	payload = {
+		'Version': '1.0',
 		'Type': 'sysmessage',
 		'Subtype': 'contactreq.1',
+		'From': admin_profile_data['waddress'].as_string(),
+		'To': user1_profile_data['waddress'].as_string(),
+		'Date': "20190905T155323Z",
+		'Message': "Here's my info in case you need help with anything",
 		'ContactInfo': {
 			'Header': { 'Version':'1.0', 'EntityType':'Individual' },
 			'GivenName': 'Example.com',
@@ -182,8 +188,43 @@ def test_sendfast():
 					'WorkspaceID': admin_profile_data['wid'].as_string()
 				}
 			]
-		}		
+		}
 	}
+
+	# Encrypt and attach sender and recipient headers
+	'''
+	"Sender": {
+		"From": "11111111-1111-1111-1111-111111111111/example.com",
+		"RecipientDomain": "example.com"
+	},
+	'''
+	rawdata = '{"To":"%s","SenderDomain":"%s"}' % (user1_profile_data['waddress'].as_string(),
+													admin_profile_data['domain'].as_string())
+	status = dbdata['oepair'].encrypt(rawdata.encode())
+	assert not status.error(), f"{funcname()}: Failed to encrypt recipient header"
+
+	# encrypt() returns the prefix and data separately because the data has the potential to be
+	# huge and could be stored separate from the prefix. The sender and receiver headers, though,
+	# can't be very large and will be just fine as standard CryptoStrings.
+	conreq['Receiver'] = status['prefix'] + ':' + status['data']
+
+	
+	rawdata = '{"From":"%s","RecipientDomain":"%s"}' % (admin_profile_data['waddress'].as_string(),
+													user1_profile_data['domain'].as_string())
+	status = dbdata['oepair'].encrypt(rawdata.encode())
+	assert not status.error(), f"{funcname()}: Failed to encrypt sender header"
+	conreq['Sender'] = status['prefix'] + ':' + status['data']
+
+	
+
+	# TODO: Finish implementing sendfast() test
+
+	# Subtest #3: Non-existent domain
+
+	# TODO: POSTDEMO: Implement SEND subtest for non-existent domain
+
+
+
 
 
 if __name__ == '__main__':
