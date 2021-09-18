@@ -152,7 +152,7 @@ def test_sendfast():
 	conn.send_message({
 		'Action': 'SENDFAST',
 		'Data': {
-			# Domain parameter is missing
+			# Domain and Message parameters are missing
 		}
 	})
 
