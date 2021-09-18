@@ -1,5 +1,8 @@
+import json
+
 from pycryptostring import CryptoString
-from pymensago.encryption import EncryptionPair
+from pymensago.encryption import EncryptionPair, SecretKey
+from pymensago.hash import blake2hash
 from pymensago.serverconn import ServerConnection
 
 # There were so many individual imports from integration_setup that it actually makes sense to
@@ -156,9 +159,12 @@ def test_sendfast():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 400, 'test_send: #1 failed to handle missing parameter'
 
+
 	# Subtest #2: real successful message delivery
 
+	
 	# Construct the contact request
+	
 	conreq = {
 		'Version': '1.0',
 		'ID': '539ed177-d0f3-446e-8d23-dcdcf55dd839',
@@ -192,12 +198,7 @@ def test_sendfast():
 	}
 
 	# Encrypt and attach sender and recipient headers
-	'''
-	"Sender": {
-		"From": "11111111-1111-1111-1111-111111111111/example.com",
-		"RecipientDomain": "example.com"
-	},
-	'''
+
 	rawdata = '{"To":"%s","SenderDomain":"%s"}' % (user1_profile_data['waddress'].as_string(),
 													admin_profile_data['domain'].as_string())
 	status = dbdata['oepair'].encrypt(rawdata.encode())
@@ -215,14 +216,38 @@ def test_sendfast():
 	assert not status.error(), f"{funcname()}: Failed to encrypt sender header"
 	conreq['Sender'] = status['prefix'] + ':' + status['data']
 
+	# Encrypt the payload and construct the full message text
 	
+	msgkey = SecretKey()
+	conreq['KeyHash'] = blake2hash(msgkey.as_string())
+	status = user1_profile_data['crencryption'].encrypt(msgkey.as_string().encode())
+	assert not status.error(), f"{funcname()}: Failed to encrypt message key: {status.info()}"
+	conreq['PayloadKey'] = status['prefix'] + ':' + status['data']
+	
+	msgdata = [
+		'-----',
+		'MENSAGO',
+		json.dumps(conreq),
+		'----------',
+		'XSALSA20',
+		msgkey.encrypt(json.dumps(payload).encode()),
+		'-----'
+	]
 
-	# TODO: Finish implementing sendfast() test
+	conn.send_message({
+		'Action': 'SENDFAST',
+		'Data': {
+			'Domain': user1_profile_data['domain'].as_string(),
+			'Message': '\r\n'.join(msgdata)
+		}
+	})
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, 'test_sendfast: failed to send valid message'
 
 	# Subtest #3: Non-existent domain
 
 	# TODO: POSTDEMO: Implement SEND subtest for non-existent domain
-
 
 
 
