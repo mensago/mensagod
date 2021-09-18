@@ -219,7 +219,7 @@ def test_sendfast():
 	# Encrypt the payload and construct the full message text
 	
 	msgkey = SecretKey()
-	conreq['KeyHash'] = blake2hash(msgkey.as_string())
+	conreq['KeyHash'] = blake2hash(msgkey.as_string().encode())
 	status = user1_profile_data['crencryption'].encrypt(msgkey.as_string().encode())
 	assert not status.error(), f"{funcname()}: Failed to encrypt message key: {status.info()}"
 	conreq['PayloadKey'] = status['prefix'] + ':' + status['data']
@@ -253,5 +253,5 @@ def test_sendfast():
 
 
 if __name__ == '__main__':
-	test_send()
+	# test_send()
 	test_sendfast()
