@@ -1,9 +1,10 @@
 package messaging
 
 import (
+	"bufio"
 	"container/list"
 	"encoding/json"
-	"io/ioutil"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -99,7 +100,13 @@ func deliveryWorker() {
 		}
 
 		if isLocal {
-			recipient, err := DecryptRecipientHeader(msgInfo.Path)
+			sEnv, err := ReadMessageHeader(localPath)
+			if err != nil {
+				Bounce(300, msgInfo, &map[string]string{"INTERNALCODE": "messaging.deliveryWorker.3"})
+				continue
+			}
+
+			recipient, err := DecryptRecipientHeader(sEnv.Receiver)
 			if err != nil {
 				Bounce(504, msgInfo, nil)
 				continue
@@ -149,33 +156,69 @@ func deliveryWorker() {
 	}
 }
 
+// ReadMessageHeader loads from a file the message data up to, but not including, the payload
+// and returns a SealedEnvelope instance so that it may be processed for delivery
+func ReadMessageHeader(localPath string) (SealedEnvelope, error) {
+	var out SealedEnvelope
+
+	fHandle, err := os.Open(localPath)
+	if err != nil {
+		return out, err
+	}
+	defer fHandle.Close()
+
+	reader := bufio.NewReader(fHandle)
+
+	// Skip over the first couple lines
+	for {
+		rawLine, err := reader.ReadString('\n')
+		if err != nil {
+			return out, errors.New("invalid message file format")
+		}
+		if strings.TrimSpace(rawLine) == "MENSAGO" {
+			break
+		}
+	}
+
+	// Read in all of the header, line by line
+	headerLines := make([]string, 0)
+	for {
+		rawLine, err := reader.ReadString('\n')
+		if err != nil {
+			return out, errors.New("invalid message file format")
+		}
+		trimLine := strings.TrimSpace(rawLine)
+		if trimLine == "----------" {
+			break
+		}
+		headerLines = append(headerLines, trimLine)
+	}
+
+	err = json.Unmarshal([]byte(strings.Join(headerLines, "")), &out)
+	if err != nil {
+		return out, err
+	}
+
+	return out, nil
+}
+
 // DecryptRecipient assumes that the file passed to it has a recipient section which can be
 // decrypted by the servers Primary Encryption Key. This implies that the server is the
 // destination for the message, so it returns the workspace ID of the recipient.
-func DecryptRecipientHeader(localPath string) (string, error) {
-	rawData, err := ioutil.ReadFile(localPath)
-	if err != nil {
-		return "", err
-	}
-
-	var env SealedEnvelope
-	err = json.Unmarshal(rawData, &env)
-	if err != nil {
-		return "", misc.ErrJSONUnmarshal
-	}
+func DecryptRecipientHeader(header string) (string, error) {
 
 	encPair, err := dbhandler.GetEncryptionPair()
 	if err != nil {
 		return "", err
 	}
 
-	decrypted, err := encPair.Decrypt(env.Receiver)
+	decrypted, err := encPair.Decrypt(header)
 	if err != nil {
 		return "", err
 	}
 
 	var out RecipientInfo
-	err = json.Unmarshal(decrypted, &env)
+	err = json.Unmarshal(decrypted, &out)
 	if err != nil {
 		return "", misc.ErrJSONUnmarshal
 	}
