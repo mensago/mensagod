@@ -436,7 +436,7 @@ func commandSendFast(session *sessionState) {
 		return
 	}
 
-	if session.Message.Validate([]string{"Domain"}) != nil {
+	if session.Message.Validate([]string{"Domain", "Message"}) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
@@ -468,13 +468,7 @@ func commandSendFast(session *sessionState) {
 		return
 	}
 
-	flatData, err := json.Marshal(session.Message)
-	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "Unable to reflatten message")
-		return
-	}
-
-	tempHandle.Write([]byte(flatData))
+	tempHandle.Write([]byte(session.Message.Data["Message"]))
 
 	tempHandle.Close()
 
@@ -485,7 +479,7 @@ func commandSendFast(session *sessionState) {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 	}
 
-	fsp.InstallTempFile(session.WID.AsString(), tempName, "/ out")
+	tempName, _ = fsp.InstallTempFile(session.WID.AsString(), tempName, "/ out")
 	messaging.PushMessage(address, domain.AsString(), "/ out "+tempName)
 	session.SendQuickResponse(200, "OK", "")
 }
