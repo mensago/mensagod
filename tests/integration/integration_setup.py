@@ -13,7 +13,7 @@ import psycopg2
 import toml
 
 from pycryptostring import CryptoString
-from pymensago.encryption import Password, EncryptionPair, SigningPair, SecretKey
+from pymensago.encryption import Password, EncryptionPair, SigningPair, SecretKey, PublicKey
 import pymensago.keycard as keycard
 import pymensago.iscmds as iscmds
 import pymensago.serverconn as serverconn
