@@ -360,6 +360,8 @@ def init_server(dbconn) -> dict:
 
 	return {
 		'configfile' : load_server_config_file(),
+		'oepair': keys['encrypt'],
+		'ospair': keys['sign'],
 		'ovkey' : keys['sign.public'],
 		'oskey' : keys['sign.private'],
 		'oekey' : keys['encrypt.public'],
