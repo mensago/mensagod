@@ -112,13 +112,13 @@ func deliveryWorker() {
 				continue
 			}
 
-			parts := strings.SplitN(recipient, "/", 1)
+			parts := strings.Split(recipient, "/")
 			if !dbhandler.ValidateUUID(parts[0]) {
 				Bounce(503, msgInfo, &map[string]string{"RECIPIENTADDRESS": parts[0]})
 				continue
 			}
 
-			destNew := fshandler.ConvertToLocal("/ " + parts[0] + " new")
+			destNew := fshandler.ConvertToLocal("/ wsp " + parts[0] + " new")
 			_, err = os.Stat(destNew)
 			if err != nil {
 				err = os.MkdirAll(destNew, 0770)
@@ -145,6 +145,9 @@ func deliveryWorker() {
 			if IsWorkspaceRegistered(parts[0]) {
 				UpdateWorkspace(parts[0], timestamp)
 			}
+
+			// Finish processing a local delivery
+			continue
 		}
 
 		// TODO: POSTDEMO: implement External Delivery
