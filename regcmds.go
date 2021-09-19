@@ -162,7 +162,7 @@ func commandPreregister(session *sessionState) {
 		return
 	}
 	if !exists {
-		fsp.MakeDirectory("/ " + wid.AsString())
+		fsp.MakeDirectory("/ wsp " + wid.AsString())
 		if err != nil {
 			logging.Writef("commandPreregister: Failed to create workspace %s top directory: %s",
 				wid, err)
