@@ -310,7 +310,22 @@ func (kpair EncryptionPair) Decrypt(data string) ([]byte, error) {
 	ptrAdapter = privKeyPtr[0:32]
 	copy(ptrAdapter, privKeyDecoded)
 
-	decodedData, err := b85.Decode(data)
+	var decodedData []byte
+	var err error
+
+	// Handle CryptoStrings if they are passed to us
+	parts := strings.Split(data, ":")
+	switch len(parts) {
+	case 1:
+		decodedData, err = b85.Decode(data)
+	case 2:
+		if parts[0] != "CURVE25519" {
+			return nil, cs.ErrUnsupportedAlgorithm
+		}
+		decodedData, err = b85.Decode(parts[1])
+	default:
+		return nil, errors.New("invalid encoded data")
+	}
 	if err != nil {
 		return nil, err
 	}
