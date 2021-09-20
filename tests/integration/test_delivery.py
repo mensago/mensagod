@@ -245,9 +245,13 @@ def test_sendfast():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_sendfast: failed to send valid message'
 
+	# TODO: Confirm update record in recipient account
+	
+	# TODO: Confirm file exists in recipient workspace data
+
 	# Subtest #3: Non-existent domain
 
-	# TODO: POSTDEMO: Implement SEND subtest for non-existent domain
+	# TODO: POSTDEMO: Implement SENDFAST subtest for non-existent domain
 
 
 
