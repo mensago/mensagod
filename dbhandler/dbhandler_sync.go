@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/misc"
 	"github.com/lib/pq"
@@ -30,16 +31,12 @@ type UpdateRecord struct {
 	Time int64
 }
 
+// TODO: Update dbhandler_sync.movePattern to match how FSHandler validates paths
 var movePattern = regexp.MustCompile(
 	`^/( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*` +
 		`( [0-9]+\.[0-9]+\.` +
 		`[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*\s+` +
 		`/( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*$`)
-
-var filePathPattern = regexp.MustCompile(
-	`^/( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*` +
-		`( [0-9]+\.[0-9]+\.` +
-		`[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})+$`)
 
 // AddSyncRecord adds a record to the update table
 func AddSyncRecord(wid string, rec UpdateRecord) error {
@@ -49,7 +46,7 @@ func AddSyncRecord(wid string, rec UpdateRecord) error {
 
 	switch rec.Type {
 	case UpdateAdd, UpdateDelete:
-		if !filePathPattern.MatchString(rec.Data) {
+		if !fshandler.ValidateMensagoPath(rec.Data) {
 			return errors.New("bad record data")
 		}
 	case UpdateMove:
