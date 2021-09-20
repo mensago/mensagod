@@ -31,12 +31,12 @@ type UpdateRecord struct {
 	Time int64
 }
 
-// TODO: Update dbhandler_sync.movePattern to match how FSHandler validates paths
 var movePattern = regexp.MustCompile(
-	`^/( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*` +
-		`( [0-9]+\.[0-9]+\.` +
+	`^/( wsp| out| tmp)?( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*` +
+		`( new)?( [0-9]+\.[0-9]+\.` +
 		`[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*\s+` +
-		`/( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*$`)
+		`/( wsp| out| tmp)?( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*` +
+		`( new)?$`)
 
 // AddSyncRecord adds a record to the update table
 func AddSyncRecord(wid string, rec UpdateRecord) error {
