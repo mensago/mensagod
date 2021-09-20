@@ -138,7 +138,7 @@ func deliveryWorker() {
 			timestamp := time.Now().UTC().Unix()
 			dbhandler.AddSyncRecord(parts[0], dbhandler.UpdateRecord{
 				Type: dbhandler.UpdateAdd,
-				Data: strings.Join([]string{"/", parts[0], "new", basename}, " "),
+				Data: strings.Join([]string{"/", "wsp", parts[0], "new", basename}, " "),
 				Time: timestamp,
 			})
 
@@ -393,7 +393,7 @@ func Bounce(errorCode int, info *messageInfo, extraData *map[string]string) {
 	timestamp := time.Now().UTC().Unix()
 	dbhandler.AddSyncRecord(parts[0], dbhandler.UpdateRecord{
 		Type: dbhandler.UpdateAdd,
-		Data: strings.Join([]string{"/", parts[0], "new", msgFileName}, " "),
+		Data: strings.Join([]string{"/", "wsp", parts[0], "new", msgFileName}, " "),
 		Time: timestamp,
 	})
 
