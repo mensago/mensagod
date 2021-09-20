@@ -102,7 +102,7 @@ func ValidateMensagoPath(path string) bool {
 
 	pattern := regexp.MustCompile(
 		"^/( wsp| out| tmp)?( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*" +
-			"( [0-9]+\\.[0-9]+\\." +
+			"( new)?( [0-9]+\\.[0-9]+\\." +
 			"[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*$")
 
 	return pattern.MatchString(path)
