@@ -154,7 +154,7 @@ func commandPreregister(session *sessionState) {
 	}
 
 	fsp := fshandler.GetFSProvider()
-	exists, err := fsp.Exists("/ " + wid.AsString())
+	exists, err := fsp.Exists("/ wsp " + wid.AsString())
 	if err != nil {
 		logging.Writef("commandPreregister: Failed to check workspace %s existence: %s",
 			wid, err)
