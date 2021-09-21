@@ -1,5 +1,6 @@
 import json
 
+import psycopg2
 from pycryptostring import CryptoString
 from pymensago.encryption import EncryptionPair, SecretKey
 from pymensago.hash import blake2hash
@@ -245,7 +246,19 @@ def test_sendfast():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_sendfast: failed to send valid message'
 
-	# TODO: Confirm update record in recipient account
+	# Confirm update record in recipient account
+
+	cur = dbconn.cursor()
+
+	# There appears to be a race condition somewhere in the backend. Waiting just 100ms seems to
+	# be just enough of a wait for this to pass. Without it, the fetchmany() call gets no results.
+	time.sleep(.1)
+
+	cur.execute("SELECT update_data FROM updates WHERE wid=%s LIMIT 1",
+				(user1_profile_data['wid'].as_string(),))
+	row = cur.fetchone()
+	assert row is not None and len(row) == 1, f"{funcname()}: update record missing from database"
+	cur.close()
 	
 	# TODO: Confirm file exists in recipient workspace data
 
