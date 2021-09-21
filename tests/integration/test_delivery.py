@@ -260,7 +260,16 @@ def test_sendfast():
 	assert row is not None and len(row) == 1, f"{funcname()}: update record missing from database"
 	cur.close()
 	
-	# TODO: Confirm file exists in recipient workspace data
+	# Convert the Mensago path to a regular one
+	parts = row[0].split(' ')
+	
+	# Using [1:] strips out the initial /, which we want
+	temppath = os.sep.join(parts[1:])
+	filepath = dbdata['configfile']['global']['workspace_dir']
+
+	assert os.path.exists(filepath), f"{funcname()}: client file for message missing"
+
+	# TODO: Test GETUPDATES command
 
 	# Subtest #3: Non-existent domain
 
