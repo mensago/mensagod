@@ -269,8 +269,6 @@ def test_sendfast():
 
 	assert os.path.exists(filepath), f"{funcname()}: client file for message missing"
 
-	# TODO: Test GETUPDATES command
-
 	# Subtest #3: Non-existent domain
 
 	# TODO: POSTDEMO: Implement SENDFAST subtest for non-existent domain
