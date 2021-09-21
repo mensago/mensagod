@@ -577,7 +577,7 @@ func commandUnregister(session *sessionState) {
 		return
 	}
 
-	err = fshandler.GetFSProvider().RemoveDirectory("/ "+wid, true)
+	err = fshandler.GetFSProvider().RemoveDirectory("/ wsp "+wid, true)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Unregister: error removing workspace from filesystem: %s", err.Error())
