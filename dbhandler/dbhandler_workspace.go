@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/darkwyrm/mensagod/ezcrypt"
+	ezn "github.com/darkwyrm/goeznacl"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/lib/pq"
 )
@@ -17,7 +17,7 @@ import (
 // 'pending', or 'disabled'.
 func AddWorkspace(wid string, uid string, domain string, password string, status string,
 	wtype string) error {
-	passString := ezcrypt.HashPassword(password)
+	passString := ezn.HashPassword(password, false)
 
 	// wid, uid, domain, wtype, status, password
 	var err error

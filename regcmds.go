@@ -8,7 +8,6 @@ import (
 
 	ezn "github.com/darkwyrm/goeznacl"
 	"github.com/darkwyrm/mensagod/dbhandler"
-	"github.com/darkwyrm/mensagod/ezcrypt"
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/misc"
@@ -202,7 +201,7 @@ func commandRegCode(session *sessionState) {
 	}
 
 	// The password field is expected to contain an Argon2id password hash
-	isArgon, err := ezcrypt.IsArgonHash(session.Message.Data["Password-Hash"])
+	isArgon, err := ezn.IsArgonHash(session.Message.Data["Password-Hash"])
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandRegCode: error check password hash: %s", err)

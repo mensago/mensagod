@@ -7,7 +7,6 @@ import (
 	"github.com/darkwyrm/b85"
 	ezn "github.com/darkwyrm/goeznacl"
 	"github.com/darkwyrm/mensagod/dbhandler"
-	"github.com/darkwyrm/mensagod/ezcrypt"
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/keycard"
 	"github.com/darkwyrm/mensagod/logging"
@@ -305,7 +304,7 @@ func commandPasscode(session *sessionState) {
 		return
 	}
 
-	goodPass, err := ezcrypt.IsArgonHash(session.Message.Data["Password-Hash"])
+	goodPass, err := ezn.IsArgonHash(session.Message.Data["Password-Hash"])
 	if !goodPass || err != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "bad password hash")
 		return
@@ -354,7 +353,7 @@ func commandPassword(session *sessionState) {
 		return
 	}
 
-	goodPass, err := ezcrypt.IsArgonHash(session.Message.Data["Password-Hash"])
+	goodPass, err := ezn.IsArgonHash(session.Message.Data["Password-Hash"])
 	if !goodPass || err != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "bad password hash")
 		return
@@ -482,13 +481,13 @@ func commandSetPassword(session *sessionState) {
 		return
 	}
 
-	goodPass, err := ezcrypt.IsArgonHash(session.Message.Data["Password-Hash"])
+	goodPass, err := ezn.IsArgonHash(session.Message.Data["Password-Hash"])
 	if !goodPass || err != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "bad old password hash")
 		return
 	}
 
-	goodPass, err = ezcrypt.IsArgonHash(session.Message.Data["NewPassword-Hash"])
+	goodPass, err = ezn.IsArgonHash(session.Message.Data["NewPassword-Hash"])
 	if !goodPass || err != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "bad new password hash")
 		return
@@ -537,7 +536,7 @@ func challengeDevice(session *sessionState, keytype string, devkeystr string) (b
 		return false, ezn.ErrUnsupportedAlgorithm
 	}
 
-	devkey := ezcrypt.NewEncryptionKey(ezn.NewCS(devkeystr))
+	devkey := ezn.NewEncryptionKey(ezn.NewCS(devkeystr))
 	encryptedChallenge, err := devkey.Encrypt([]byte(challenge))
 
 	if err != nil {
@@ -599,7 +598,7 @@ func dualChallengeDevice(session *sessionState, oldkey ezn.CryptoString,
 	}
 	challenge := b85.Encode(randBytes)
 
-	encryptor := ezcrypt.NewEncryptionKey(oldkey)
+	encryptor := ezn.NewEncryptionKey(oldkey)
 	encryptedChallenge, err := encryptor.Encrypt([]byte(challenge))
 
 	if err != nil {
@@ -618,7 +617,7 @@ func dualChallengeDevice(session *sessionState, oldkey ezn.CryptoString,
 	}
 	newChallenge := b85.Encode(randBytes)
 
-	encryptor = ezcrypt.NewEncryptionKey(newkey)
+	encryptor = ezn.NewEncryptionKey(newkey)
 	encryptedNewChallenge, err := encryptor.Encrypt([]byte(newChallenge))
 
 	if err != nil {

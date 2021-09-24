@@ -13,7 +13,6 @@ import (
 
 	ezn "github.com/darkwyrm/goeznacl"
 	"github.com/darkwyrm/mensagod/dbhandler"
-	"github.com/darkwyrm/mensagod/ezcrypt"
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/kcresolver"
 	"github.com/darkwyrm/mensagod/logging"
@@ -261,7 +260,7 @@ func Bounce(errorCode int, info *messageInfo, extraData *map[string]string) {
 			err.Error())
 		return
 	}
-	userKey := ezcrypt.NewEncryptionKey(userKeyString)
+	userKey := ezn.NewEncryptionKey(userKeyString)
 
 	var msg SealedEnvelope
 	msg.Type = "deliveryreport"
@@ -300,7 +299,7 @@ func Bounce(errorCode int, info *messageInfo, extraData *map[string]string) {
 	msg.Date = now.Format("20060102T030405Z")
 
 	// PayloadKey
-	msgKey := ezcrypt.GenerateSymmetricKey()
+	msgKey := ezn.GenerateSecretKey()
 	encPayloadKey, err := userKey.Encrypt(msgKey.Key.RawData())
 	if err != nil {
 		logging.Writef("Bounce: unable to encrypt payload key for sender %s: %s", info.Sender,

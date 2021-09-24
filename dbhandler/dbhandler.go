@@ -12,7 +12,6 @@ import (
 
 	ezn "github.com/darkwyrm/goeznacl"
 	"github.com/darkwyrm/gostringlist"
-	"github.com/darkwyrm/mensagod/ezcrypt"
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/keycard"
 	"github.com/darkwyrm/mensagod/logging"
@@ -366,7 +365,7 @@ func SetPassword(wid string, password string) error {
 	if len(password) > 128 {
 		return misc.ErrOutOfRange
 	}
-	passHash := ezcrypt.HashPassword(password)
+	passHash := ezn.HashPassword(password, false)
 	_, err := dbConn.Exec(`UPDATE workspaces SET password=$1 WHERE wid=$2`, passHash, wid)
 	return err
 }
@@ -383,7 +382,7 @@ func CheckPassword(wid string, password string) (bool, error) {
 		return false, err
 	}
 
-	return ezcrypt.VerifyPasswordHash(password, dbhash)
+	return ezn.VerifyPasswordHash(password, dbhash)
 }
 
 // AddDevice is used for adding a device to a workspace. The initial last login is set to when
@@ -795,28 +794,28 @@ func loadKeycardEntries(card *keycard.Keycard, owner string) error {
 }
 
 // GetPrimarySigningPair obtains the organization's primary signing and verification keys
-func GetPrimarySigningPair() (*ezcrypt.SigningPair, error) {
+func GetPrimarySigningPair() (*ezn.SigningPair, error) {
 	row := dbConn.QueryRow(`SELECT pubkey,privkey FROM orgkeys WHERE purpose = 'sign' ` +
 		`ORDER BY rowid DESC LIMIT 1`)
 
 	var verkey, signkey string
 	err := row.Scan(&verkey, &signkey)
 	if err == nil {
-		keypair := ezcrypt.NewSigningPair(ezn.NewCS(verkey), ezn.NewCS(signkey))
+		keypair := ezn.NewSigningPair(ezn.NewCS(verkey), ezn.NewCS(signkey))
 		return keypair, nil
 	}
 	return nil, err
 }
 
 // GetEncryptionPair returns the organization's encryption keypair as an EncryptionPair
-func GetEncryptionPair() (*ezcrypt.EncryptionPair, error) {
+func GetEncryptionPair() (*ezn.EncryptionPair, error) {
 	row := dbConn.QueryRow(`SELECT pubkey,privkey FROM orgkeys WHERE purpose = 'encrypt' ` +
 		`ORDER BY rowid DESC LIMIT 1`)
 
 	var pubkey, privkey string
 	err := row.Scan(&pubkey, &privkey)
 	if err == nil {
-		keypair := ezcrypt.NewEncryptionPair(ezn.NewCS(pubkey), ezn.NewCS(privkey))
+		keypair := ezn.NewEncryptionPair(ezn.NewCS(pubkey), ezn.NewCS(privkey))
 		return keypair, nil
 	}
 	return nil, err
