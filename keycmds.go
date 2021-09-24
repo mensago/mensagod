@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/darkwyrm/b85"
-	"github.com/darkwyrm/mensagod/cryptostring"
+	ezn "github.com/darkwyrm/goeznacl"
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/keycard"
 	"github.com/darkwyrm/mensagod/logging"
@@ -240,7 +240,7 @@ func commandAddEntry(session *sessionState) {
 		return
 	}
 
-	var crkey cryptostring.CryptoString
+	var crkey ezn.CryptoString
 	err = crkey.Set(entry.Fields["Contact-Request-Verification-Key"])
 	if err != nil {
 		session.SendQuickResponse(413, "INVALID SIGNATURE", "Bad Contact-Request-Verification-Key")

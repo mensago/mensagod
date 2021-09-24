@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
+	ezn "github.com/darkwyrm/goeznacl"
 	"github.com/darkwyrm/mensagod/config"
-	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/kcresolver"
@@ -306,7 +306,7 @@ func commandSend(session *sessionState) {
 	}
 
 	var fileSize int64
-	var fileHash cs.CryptoString
+	var fileHash ezn.CryptoString
 	err := fileHash.Set(session.Message.Data["Hash"])
 	if err != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", err.Error())
@@ -402,7 +402,7 @@ func commandSend(session *sessionState) {
 	hashMatch, err := fshandler.HashFile(strings.Join([]string{"/ tmp", session.WID.AsString(), tempName}, " "),
 		fileHash)
 	if err != nil {
-		if err == cs.ErrUnsupportedAlgorithm {
+		if err == ezn.ErrUnsupportedAlgorithm {
 			session.SendQuickResponse(309, "UNSUPPORTED ALGORITHM", "")
 		} else {
 			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")

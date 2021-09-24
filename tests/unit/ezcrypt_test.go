@@ -3,13 +3,13 @@ package mensagod
 import (
 	"testing"
 
-	"github.com/darkwyrm/mensagod/cryptostring"
+	ezn "github.com/darkwyrm/goeznacl"
 	"github.com/darkwyrm/mensagod/ezcrypt"
 )
 
 func TestEZCryptEncryptDecrypt(t *testing.T) {
-	pubkey := cryptostring.New("CURVE25519:(B2XX5|<+lOSR>_0mQ=KX4o<aOvXe6M`Z5ldINd`")
-	privkey := cryptostring.New("CURVE25519:(Rj5)mmd1|YqlLCUP0vE;YZ#o;tJxtlAIzmPD7b&")
+	pubkey := ezn.NewCS("CURVE25519:(B2XX5|<+lOSR>_0mQ=KX4o<aOvXe6M`Z5ldINd`")
+	privkey := ezn.NewCS("CURVE25519:(Rj5)mmd1|YqlLCUP0vE;YZ#o;tJxtlAIzmPD7b&")
 	keypair := ezcrypt.NewEncryptionPair(pubkey, privkey)
 
 	testData := "This is some encryption test data"
@@ -30,8 +30,8 @@ func TestEZCryptEncryptDecrypt(t *testing.T) {
 }
 
 func TestEZCryptSignVerify(t *testing.T) {
-	verkey := cryptostring.New("ED25519:PnY~pK2|;AYO#1Z;B%T$2}E$^kIpL=>>VzfMKsDx")
-	signkey := cryptostring.New("ED25519:{^A@`5N*T%5ybCU%be892x6%*Rb2rnYd=SGeO4jF")
+	verkey := ezn.NewCS("ED25519:PnY~pK2|;AYO#1Z;B%T$2}E$^kIpL=>>VzfMKsDx")
+	signkey := ezn.NewCS("ED25519:{^A@`5N*T%5ybCU%be892x6%*Rb2rnYd=SGeO4jF")
 	keypair := ezcrypt.NewSigningPair(verkey, signkey)
 
 	testData := "This is some signing test data"
@@ -48,7 +48,7 @@ func TestEZCryptSignVerify(t *testing.T) {
 }
 
 func TestEZCryptSymEncryptDecrypt(t *testing.T) {
-	keystring := cryptostring.New("XSALSA20:hlibDY}Ls{F!yG83!a#E$|Nd3?MQ@9G=Q{7PB(@O")
+	keystring := ezn.NewCS("XSALSA20:hlibDY}Ls{F!yG83!a#E$|Nd3?MQ@9G=Q{7PB(@O")
 	secretkey := ezcrypt.NewSymmetricKey(keystring)
 
 	testData := "This is some encryption test data"

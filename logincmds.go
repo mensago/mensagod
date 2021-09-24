@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/darkwyrm/b85"
-	cs "github.com/darkwyrm/mensagod/cryptostring"
+	ezn "github.com/darkwyrm/goeznacl"
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/ezcrypt"
 	"github.com/darkwyrm/mensagod/fshandler"
@@ -34,7 +34,7 @@ func commandDevice(session *sessionState) {
 		return
 	}
 
-	var devkey cs.CryptoString
+	var devkey ezn.CryptoString
 	if devkey.Set(session.Message.Data["Device-Key"]) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad Device-Key")
 		return
@@ -147,7 +147,7 @@ func commandDevKey(session *sessionState) {
 		return
 	}
 
-	var oldkey cs.CryptoString
+	var oldkey ezn.CryptoString
 	if oldkey.Set(session.Message.Data["Old-Key"]) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad Old-Key")
 		return
@@ -171,7 +171,7 @@ func commandDevKey(session *sessionState) {
 		return
 	}
 
-	var newkey cs.CryptoString
+	var newkey ezn.CryptoString
 	if newkey.Set(session.Message.Data["New-Key"]) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad New-Key")
 		return
@@ -534,10 +534,10 @@ func challengeDevice(session *sessionState, keytype string, devkeystr string) (b
 	// should just be a matter of doing a string comparison to determine success
 	challenge := b85.Encode(randBytes)
 	if keytype != "CURVE25519" {
-		return false, cs.ErrUnsupportedAlgorithm
+		return false, ezn.ErrUnsupportedAlgorithm
 	}
 
-	devkey := ezcrypt.NewEncryptionKey(cs.New(devkeystr))
+	devkey := ezcrypt.NewEncryptionKey(ezn.NewCS(devkeystr))
 	encryptedChallenge, err := devkey.Encrypt([]byte(challenge))
 
 	if err != nil {
@@ -582,12 +582,12 @@ func challengeDevice(session *sessionState, keytype string, devkeystr string) (b
 	return true, nil
 }
 
-func dualChallengeDevice(session *sessionState, oldkey cs.CryptoString,
-	newkey cs.CryptoString) (bool, error) {
+func dualChallengeDevice(session *sessionState, oldkey ezn.CryptoString,
+	newkey ezn.CryptoString) (bool, error) {
 	// This is just like challengeDevice, but using two keys, an old one and a new one
 
 	if oldkey.Prefix != "CURVE25519" || newkey.Prefix != "CURVE25519" {
-		return false, cs.ErrUnsupportedAlgorithm
+		return false, ezn.ErrUnsupportedAlgorithm
 	}
 
 	randBytes := make([]byte, 32)

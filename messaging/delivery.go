@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	cs "github.com/darkwyrm/mensagod/cryptostring"
+	ezn "github.com/darkwyrm/goeznacl"
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/ezcrypt"
 	"github.com/darkwyrm/mensagod/fshandler"
@@ -254,7 +254,7 @@ func Bounce(errorCode int, info *messageInfo, extraData *map[string]string) {
 	}
 
 	rawUserKeyString := userCard.Entries[len(userCard.Entries)-1].Fields["Encryption-Key"]
-	var userKeyString cs.CryptoString
+	var userKeyString ezn.CryptoString
 	err = userKeyString.Set(rawUserKeyString)
 	if err != nil {
 		logging.Writef("Bounce: error setting encryption key for sender %s: %s", info.Sender,

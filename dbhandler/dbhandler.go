@@ -10,8 +10,8 @@ import (
 
 	"database/sql"
 
+	ezn "github.com/darkwyrm/goeznacl"
 	"github.com/darkwyrm/gostringlist"
-	"github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/ezcrypt"
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/keycard"
@@ -389,7 +389,7 @@ func CheckPassword(wid string, password string) (bool, error) {
 // AddDevice is used for adding a device to a workspace. The initial last login is set to when
 // this method is called because a new device is only at certain times, such as at registration
 // or when a user logs into a workspace on a new device.
-func AddDevice(wid string, devid string, devkey cryptostring.CryptoString, status string) error {
+func AddDevice(wid string, devid string, devkey ezn.CryptoString, status string) error {
 	timestamp := fmt.Sprintf("%d", time.Now().UTC().Unix())
 	var err error
 	sqlStatement := `INSERT INTO iwkspc_devices(wid, devid, devkey, lastlogin, status) ` +
@@ -802,8 +802,7 @@ func GetPrimarySigningPair() (*ezcrypt.SigningPair, error) {
 	var verkey, signkey string
 	err := row.Scan(&verkey, &signkey)
 	if err == nil {
-		keypair := ezcrypt.NewSigningPair(cryptostring.New(verkey),
-			cryptostring.New(signkey))
+		keypair := ezcrypt.NewSigningPair(ezn.NewCS(verkey), ezn.NewCS(signkey))
 		return keypair, nil
 	}
 	return nil, err
@@ -817,8 +816,7 @@ func GetEncryptionPair() (*ezcrypt.EncryptionPair, error) {
 	var pubkey, privkey string
 	err := row.Scan(&pubkey, &privkey)
 	if err == nil {
-		keypair := ezcrypt.NewEncryptionPair(cryptostring.New(pubkey),
-			cryptostring.New(privkey))
+		keypair := ezcrypt.NewEncryptionPair(ezn.NewCS(pubkey), ezn.NewCS(privkey))
 		return keypair, nil
 	}
 	return nil, err

@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	ezn "github.com/darkwyrm/goeznacl"
 	"github.com/darkwyrm/mensagod/config"
-	cs "github.com/darkwyrm/mensagod/cryptostring"
 	"github.com/darkwyrm/mensagod/misc"
 	"github.com/spf13/viper"
 )
@@ -969,7 +969,7 @@ func TestHashFile(t *testing.T) {
 	// BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp
 	// BLAKE3-256:nP#5xBwJ+O3hxgIJDg4DHBe%>4>Z$Dc1J-hDV}PQ
 
-	var hash cs.CryptoString
+	var hash ezn.CryptoString
 	hash.Set("SHA-256:!yC#)X>JQgWkPZ(rTwm&KaI*6bm_U0DaQ=>nW+wF")
 	match, err := HashFile(testPath+" "+tempName, hash)
 	if err != nil {

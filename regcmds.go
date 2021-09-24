@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/darkwyrm/mensagod/cryptostring"
+	ezn "github.com/darkwyrm/goeznacl"
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/ezcrypt"
 	"github.com/darkwyrm/mensagod/fshandler"
@@ -253,7 +253,7 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	var devkey cryptostring.CryptoString
+	var devkey ezn.CryptoString
 	if devkey.Set(session.Message.Data["Device-Key"]) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad Device-Key")
 		return
@@ -424,7 +424,7 @@ func commandRegister(session *sessionState) {
 		workspaceStatus = "active"
 	}
 
-	var devkey cryptostring.CryptoString
+	var devkey ezn.CryptoString
 	if devkey.Set(session.Message.Data["Device-Key"]) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad Device-Key")
 		return

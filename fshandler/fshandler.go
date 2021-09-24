@@ -15,7 +15,7 @@ import (
 	"sync"
 
 	"github.com/darkwyrm/b85"
-	cs "github.com/darkwyrm/mensagod/cryptostring"
+	ezn "github.com/darkwyrm/goeznacl"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/misc"
 	"github.com/spf13/viper"
@@ -618,7 +618,7 @@ func (lfs *LocalFSHandler) Select(path string) (LocalAnPath, error) {
 // Temp files are initially stored in / tmp <wid>, so using a LocalAnPath object will fail because
 // LocalAnPath expects to operate within a workspace. At the same time, using the Mensago formatting
 // for a file path *is* expected.
-func HashFile(path string, hash cs.CryptoString) (bool, error) {
+func HashFile(path string, hash ezn.CryptoString) (bool, error) {
 
 	hasher := sha256.New()
 	switch hash.Prefix {
@@ -631,7 +631,7 @@ func HashFile(path string, hash cs.CryptoString) (bool, error) {
 	case "SHA3-256":
 		hasher = sha3.New256()
 	default:
-		return false, cs.ErrUnsupportedAlgorithm
+		return false, ezn.ErrUnsupportedAlgorithm
 	}
 
 	workspaceRoot := viper.GetString("global.top_dir")

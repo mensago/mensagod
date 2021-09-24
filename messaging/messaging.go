@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	cs "github.com/darkwyrm/mensagod/cryptostring"
+	ezn "github.com/darkwyrm/goeznacl"
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/misc"
 	"github.com/spf13/viper"
@@ -132,43 +132,43 @@ func UpdateWorkspace(wid string, timestamp int64) error {
 }
 
 // GetOrgEncryptionKey obtains an organization's encryption key and returns it as a CryptoString
-func GetOrgEncryptionKey(domain string) (cs.CryptoString, error) {
+func GetOrgEncryptionKey(domain string) (ezn.CryptoString, error) {
 
 	pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
 	if !pattern.MatchString(domain) {
-		return cs.CryptoString{}, misc.ErrInvalidDomain
+		return ezn.CryptoString{}, misc.ErrInvalidDomain
 	}
 
 	if strings.EqualFold(domain, viper.GetString("global.domain")) {
 		encpair, err := dbhandler.GetEncryptionPair()
 		if err != nil {
-			return cs.CryptoString{}, err
+			return ezn.CryptoString{}, err
 		}
 		return encpair.PublicKey, nil
 	}
 
 	// TODO: POSTDEMO: Implement getting keys for external servers
 
-	return cs.CryptoString{}, misc.ErrUnimplemented
+	return ezn.CryptoString{}, misc.ErrUnimplemented
 }
 
 // GetOrgEncryptionKey obtains an organization's verification key and returns it as a CryptoString
-func GetOrgVerificationKey(domain string) (cs.CryptoString, error) {
+func GetOrgVerificationKey(domain string) (ezn.CryptoString, error) {
 
 	pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
 	if !pattern.MatchString(domain) {
-		return cs.CryptoString{}, misc.ErrInvalidDomain
+		return ezn.CryptoString{}, misc.ErrInvalidDomain
 	}
 
 	if strings.EqualFold(domain, viper.GetString("global.domain")) {
 		signpair, err := dbhandler.GetPrimarySigningPair()
 		if err != nil {
-			return cs.CryptoString{}, err
+			return ezn.CryptoString{}, err
 		}
 		return signpair.PublicKey, nil
 	}
 
 	// TODO: POSTDEMO: Implement getting keys for external servers
 
-	return cs.CryptoString{}, misc.ErrUnimplemented
+	return ezn.CryptoString{}, misc.ErrUnimplemented
 }
