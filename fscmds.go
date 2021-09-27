@@ -12,6 +12,7 @@ import (
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/misc"
+	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
 
@@ -101,6 +102,7 @@ func commandCopy(session *sessionState) {
 	}
 
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
+		ID:   uuid.NewString(),
 		Type: dbhandler.UpdateAdd,
 		Data: destPath + " " + newName,
 		Time: time.Now().UTC().Unix(),
@@ -133,6 +135,7 @@ func commandDelete(session *sessionState) {
 	}
 
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
+		ID:   uuid.NewString(),
 		Type: dbhandler.UpdateDelete,
 		Data: deletePath,
 		Time: time.Now().UTC().Unix(),
@@ -452,6 +455,7 @@ func commandMkDir(session *sessionState) {
 	}
 
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
+		ID:   uuid.NewString(),
 		Type: dbhandler.UpdateAdd,
 		Data: dirPath,
 		Time: time.Now().UTC().Unix(),
@@ -503,6 +507,7 @@ func commandMove(session *sessionState) {
 	}
 
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
+		ID:   uuid.NewString(),
 		Type: dbhandler.UpdateMove,
 		Data: sourcePath + " " + destPath,
 		Time: time.Now().UTC().Unix(),
@@ -555,6 +560,7 @@ func commandRmDir(session *sessionState) {
 	dbhandler.ModifyQuotaUsage(session.WID.AsString(), int64(usage)*-1)
 
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
+		ID:   uuid.NewString(),
 		Type: dbhandler.UpdateDelete,
 		Data: dirPath,
 		Time: time.Now().UTC().Unix(),
@@ -790,6 +796,7 @@ func commandUpload(session *sessionState) {
 
 	dbhandler.ModifyQuotaUsage(session.WID.AsString(), fileSize)
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
+		ID:   uuid.NewString(),
 		Type: dbhandler.UpdateAdd,
 		Data: filePath,
 		Time: time.Now().UTC().Unix(),

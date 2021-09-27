@@ -9,6 +9,7 @@ import (
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/misc"
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/spf13/viper"
 )
@@ -25,12 +26,6 @@ const (
 	UpdateRotate
 )
 
-type UpdateRecord struct {
-	Type UpdateType
-	Data string
-	Time int64
-}
-
 var movePattern = regexp.MustCompile(
 	`^/( wsp| out| tmp)?( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*` +
 		`( new)?( [0-9]+\.[0-9]+\.` +
@@ -38,9 +33,22 @@ var movePattern = regexp.MustCompile(
 		`/( wsp| out| tmp)?( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*` +
 		`( new)?$`)
 
+type UpdateRecord struct {
+	ID   string
+	Type UpdateType
+	Data string
+	Time int64
+}
+
+func NewUpdateRecord() UpdateRecord {
+	var out UpdateRecord
+	out.ID = uuid.NewString()
+	return out
+}
+
 // AddSyncRecord adds a record to the update table
 func AddSyncRecord(wid string, rec UpdateRecord) error {
-	if !ValidateUUID(wid) {
+	if !ValidateUUID(wid) || !ValidateUUID(rec.ID) {
 		return misc.ErrInvalidID
 	}
 
@@ -59,9 +67,9 @@ func AddSyncRecord(wid string, rec UpdateRecord) error {
 
 	now := time.Now().UTC().Unix()
 
-	_, err := dbConn.Exec(`INSERT INTO updates(wid, update_type, update_data, unixtime) `+
-		`VALUES($1, $2, $3, $4)`,
-		wid, rec.Type, rec.Data, now)
+	_, err := dbConn.Exec(`INSERT INTO updates(rid, wid, update_type, update_data, unixtime) `+
+		`VALUES($1, $2, $3, $4, $5)`,
+		rec.ID, wid, rec.Type, rec.Data, now)
 	if err != nil {
 		logging.Write("dbhandler.AddSyncRecord: failed to add update record")
 	}
@@ -111,7 +119,7 @@ func GetSyncRecords(wid string, unixtime int64) ([]UpdateRecord, error) {
 	// A maximum of 75 records is returned because with the shortest possible updates, a maximum
 	// of about 160 records can be returned in 8k. For more average update sizes (34 byte overhead,
 	// 104 byte record), we can only fit about 78.
-	rows, err := dbConn.Query(`SELECT update_type,update_data,unixtime FROM updates `+
+	rows, err := dbConn.Query(`SELECT rid,update_type,update_data,unixtime FROM updates `+
 		`WHERE wid = $1 AND unixtime > $2 ORDER BY unixtime LIMIT 75`, wid, unixtime)
 	if err != nil {
 		return nil, err
@@ -121,7 +129,7 @@ func GetSyncRecords(wid string, unixtime int64) ([]UpdateRecord, error) {
 	out := make([]UpdateRecord, 0)
 	for rows.Next() {
 		var rec UpdateRecord
-		err = rows.Scan(&rec.Type, &rec.Data, &rec.Time)
+		err = rows.Scan(&rec.ID, &rec.Type, &rec.Data, &rec.Time)
 		if err != nil {
 			return out, err
 		}
