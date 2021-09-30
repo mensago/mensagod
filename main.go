@@ -559,8 +559,8 @@ func createUpdateResponse(records *[]dbhandler.UpdateRecord, totalRecords int64)
 	responseSize := 55 + len(updateCountStr)
 	for i, record := range *records {
 
-		recordString := fmt.Sprintf(`{"Type":"%s","Path":"%s","Time":"%d"}`,
-			lookupTable[record.Type], record.Data, record.Time)
+		recordString := fmt.Sprintf(`{"ID":"%s","Type":"%s","Data":"%s","Time":"%d"}`,
+			record.ID, lookupTable[record.Type], record.Data, record.Time)
 
 		if responseSize+len(recordString)+1 > MaxCommandLength {
 			break
