@@ -546,7 +546,7 @@ func commandSetStatus(session *sessionState) {
 func createUpdateResponse(records *[]dbhandler.UpdateRecord, totalRecords int64) string {
 
 	lookupTable := map[dbhandler.UpdateType]string{
-		dbhandler.UpdateAdd:    "CREATE",
+		dbhandler.UpdateCreate: "CREATE",
 		dbhandler.UpdateDelete: "DELETE",
 		dbhandler.UpdateMove:   "MOVE",
 		dbhandler.UpdateRotate: "ROTATE",

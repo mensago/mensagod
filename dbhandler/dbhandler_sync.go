@@ -20,10 +20,12 @@ type UpdateType int
 
 const (
 	// We start at 1 so that we know if the UpdateRecord struct is initialized or not
-	UpdateAdd = iota + 1
+	UpdateCreate = iota + 1
 	UpdateDelete
 	UpdateMove
 	UpdateRotate
+	UpdateMkDir
+	UpdateRmDir
 )
 
 var movePattern = regexp.MustCompile(
@@ -53,7 +55,7 @@ func AddSyncRecord(wid string, rec UpdateRecord) error {
 	}
 
 	switch rec.Type {
-	case UpdateAdd, UpdateDelete:
+	case UpdateCreate, UpdateDelete, UpdateMkDir, UpdateRmDir:
 		if !fshandler.ValidateMensagoPath(rec.Data) {
 			return errors.New("bad record data")
 		}

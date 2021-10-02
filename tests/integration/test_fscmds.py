@@ -1263,8 +1263,8 @@ def test_upload():
 
 
 if __name__ == '__main__':
-	test_copy()
-	# test_download()
+	# test_copy()
+	test_download()
 	# test_getquotainfo()
 	# test_list()
 	# test_listdirs()

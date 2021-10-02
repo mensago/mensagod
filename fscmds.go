@@ -103,7 +103,7 @@ func commandCopy(session *sessionState) {
 
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		ID:   uuid.NewString(),
-		Type: dbhandler.UpdateAdd,
+		Type: dbhandler.UpdateCreate,
 		Data: destPath + " " + newName,
 		Time: time.Now().UTC().Unix(),
 	})
@@ -456,7 +456,7 @@ func commandMkDir(session *sessionState) {
 
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		ID:   uuid.NewString(),
-		Type: dbhandler.UpdateAdd,
+		Type: dbhandler.UpdateCreate,
 		Data: dirPath,
 		Time: time.Now().UTC().Unix(),
 	})
@@ -797,7 +797,7 @@ func commandUpload(session *sessionState) {
 	dbhandler.ModifyQuotaUsage(session.WID.AsString(), fileSize)
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		ID:   uuid.NewString(),
-		Type: dbhandler.UpdateAdd,
+		Type: dbhandler.UpdateCreate,
 		Data: filePath,
 		Time: time.Now().UTC().Unix(),
 	})
