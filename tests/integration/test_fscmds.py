@@ -810,7 +810,7 @@ def test_rmdir():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 404, 'test_rmdir: #2 failed to handle nonexistent directory'
 
-	# Subtest #3: Non-recursive call fails because of non-empty directory
+	# Subtest #3: Call fails because of non-empty directory
 
 	multipath = ' '.join(['/ wsp', dbdata['admin_wid'],
 		'22222222-2222-2222-2222-222222222222',
@@ -821,8 +821,7 @@ def test_rmdir():
 	conn.send_message({
 		'Action': 'MKDIR',
 		'Data': {
-			'Path': multipath,
-			'Recursive': 'False'
+			'Path': multipath
 		}
 	})
 	response = conn.read_response(server_response)
@@ -843,25 +842,11 @@ def test_rmdir():
 	conn.send_message({
 		'Action': 'RMDIR',
 		'Data': {
-			'Path': multipath,
-			'Recursive': 'False'
+			'Path': multipath
 		}
 	})
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_rmdir: #4 failed to remove an empty directory'
-
-	# Subtest #5: Actual success - recursively remove files and subdirectories
-
-	conn.send_message({
-		'Action': 'RMDIR',
-		'Data': {
-			'Path': '/ wsp ' + dbdata['admin_wid'] + ' 22222222-2222-2222-2222-222222222222',
-			'Recursive': 'True'
-		}
-	})
-	response = conn.read_response(server_response)
-	assert response['Code'] == 200, 'test_rmdir: #5 failed to remove an empty directory'
-	conn.disconnect()
 
 
 def test_select():

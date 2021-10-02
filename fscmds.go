@@ -456,7 +456,7 @@ func commandMkDir(session *sessionState) {
 
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		ID:   uuid.NewString(),
-		Type: dbhandler.UpdateCreate,
+		Type: dbhandler.UpdateMkDir,
 		Data: dirPath,
 		Time: time.Now().UTC().Unix(),
 	})
@@ -517,13 +517,13 @@ func commandMove(session *sessionState) {
 
 func commandRmDir(session *sessionState) {
 	// Command syntax:
-	// RMDIR(Path, Recursive)
+	// RMDIR(Path)
 	if session.LoginState != loginClientSession {
 		session.SendQuickResponse(401, "UNAUTHORIZED", "")
 		return
 	}
 
-	if session.Message.Validate([]string{"Path", "Recursive"}) != nil {
+	if session.Message.Validate([]string{"Path"}) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
@@ -540,19 +540,13 @@ func commandRmDir(session *sessionState) {
 		return
 	}
 
-	recurseStr := strings.ToLower(session.Message.Data["Recursive"])
-	var recursive bool
-	if recurseStr == "true" || recurseStr == "yes" {
-		recursive = true
-	}
-
 	usage, err := fsh.GetDiskUsage(dirPath)
 	if err != nil {
 		handleFSError(session, err)
 		return
 	}
 
-	err = fsh.RemoveDirectory(dirPath, recursive)
+	err = fsh.RemoveDirectory(dirPath, false)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -561,7 +555,7 @@ func commandRmDir(session *sessionState) {
 
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		ID:   uuid.NewString(),
-		Type: dbhandler.UpdateDelete,
+		Type: dbhandler.UpdateRmDir,
 		Data: dirPath,
 		Time: time.Now().UTC().Unix(),
 	})
