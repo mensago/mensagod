@@ -53,20 +53,20 @@ func TestValidateFileName(t *testing.T) {
 	}
 }
 
-func TestAnPath_SetFromString(t *testing.T) {
+func TestMPath_SetFromString(t *testing.T) {
 
 	workspacePath := viper.GetString("global.workspace_dir")
 
 	testPath1 := "/ 3e782960-a762-4def-8038-a1d0a3cd951d e5c2f479-b9db-4475-8152-e76605e731fc"
-	var anpath LocalAnPath
+	var anpath LocalMPath
 
 	if anpath.Set(testPath1) != nil {
-		t.Fatal("LocalAnPath.Set failed to assign a valid path")
+		t.Fatal("LocalMPath.Set failed to assign a valid path")
 	}
 
 	resultPath := filepath.Join(workspacePath, "3e782960-a762-4def-8038-a1d0a3cd951d")
 	resultPath = filepath.Join(resultPath, "e5c2f479-b9db-4475-8152-e76605e731fc")
 	if anpath.LocalPath != resultPath {
-		t.Fatal("LocalAnPath.Set failed to set the correct path")
+		t.Fatal("LocalMPath.Set failed to set the correct path")
 	}
 }

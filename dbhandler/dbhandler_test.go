@@ -47,7 +47,7 @@ func resetDatabase() error {
 // test. Because the workspace directory may have special permissions set on it, we can't just
 // delete the directory and recreate it--we have to actually empty the directory.
 func resetWorkspaceDir() error {
-	var anpath fshandler.LocalAnPath
+	var anpath fshandler.LocalMPath
 	err := anpath.Set("/")
 	if err != nil {
 		return err
@@ -79,7 +79,7 @@ func generateRandomFile(dir string, size int) (string, error) {
 		return "", misc.ErrOutOfRange
 	}
 
-	var anpath fshandler.LocalAnPath
+	var anpath fshandler.LocalMPath
 	err := anpath.Set(dir)
 	if err != nil {
 		return "", err
@@ -110,7 +110,7 @@ func makeTestFiles(dir string, count int) error {
 		return misc.ErrOutOfRange
 	}
 
-	var anpath fshandler.LocalAnPath
+	var anpath fshandler.LocalMPath
 	err := anpath.Set(dir)
 	if err != nil {
 		return err
@@ -135,7 +135,7 @@ func makeTestFiles(dir string, count int) error {
 // ensureTestDirectory makes sure a specific test directory exists. The path is expected to be
 // an Mensago-format path, resulting in a path relative to the workspace root.
 func ensureTestDirectory(path string) error {
-	var anpath fshandler.LocalAnPath
+	var anpath fshandler.LocalMPath
 	err := anpath.Set(path)
 	if err != nil {
 		return err

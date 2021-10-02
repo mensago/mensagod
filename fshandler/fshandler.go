@@ -74,7 +74,7 @@ func GetFSProvider() *LocalFSHandler {
 // and returns the name of the new file
 func (lfs *LocalFSHandler) CopyFile(source string, dest string) (string, error) {
 	// Path validation handled in FromPath()
-	var srcAnpath LocalAnPath
+	var srcAnpath LocalMPath
 	err := srcAnpath.Set(source)
 	if err != nil {
 		return "", err
@@ -92,7 +92,7 @@ func (lfs *LocalFSHandler) CopyFile(source string, dest string) (string, error) 
 	}
 
 	// Path validation handled in FromPath()
-	var destAnpath LocalAnPath
+	var destAnpath LocalMPath
 	err = destAnpath.Set(dest)
 	if err != nil {
 		return "", err
@@ -146,7 +146,7 @@ func (lfs *LocalFSHandler) CloseFile(handle string) error {
 // DeleteFile deletes the specified workspace file.
 func (lfs *LocalFSHandler) DeleteFile(path string) error {
 	// Path validation handled in Set()
-	var anpath LocalAnPath
+	var anpath LocalMPath
 	err := anpath.Set(path)
 	if err != nil {
 		return err
@@ -176,7 +176,7 @@ func (lfs *LocalFSHandler) DeleteTempFile(wid string, name string) error {
 func (lfs *LocalFSHandler) Exists(path string) (bool, error) {
 
 	// Path validation handled in Set()
-	var anpath LocalAnPath
+	var anpath LocalMPath
 	err := anpath.Set(path)
 	if err != nil {
 		return false, err
@@ -196,7 +196,7 @@ func (lfs *LocalFSHandler) Exists(path string) (bool, error) {
 // GetDiskUsage calculates the disk usage of a workspace path
 func (lfs *LocalFSHandler) GetDiskUsage(path string) (uint64, error) {
 	// Path validation handled in Set()
-	var anpath LocalAnPath
+	var anpath LocalMPath
 	err := anpath.Set(path)
 	if err != nil {
 		return 0, err
@@ -222,7 +222,7 @@ func (lfs *LocalFSHandler) GetDiskUsage(path string) (uint64, error) {
 
 func (lfs *LocalFSHandler) GetFileSize(path string) (int64, error) {
 	// Path validation handled in Set()
-	var anpath LocalAnPath
+	var anpath LocalMPath
 	err := anpath.Set(path)
 	if err != nil {
 		return -1, err
@@ -251,7 +251,7 @@ func (lfs *LocalFSHandler) InstallTempFile(wid string, name string, dest string)
 
 	srcpath := filepath.Join(viper.GetString("global.top_dir"), "tmp", wid, name)
 
-	var destAnpath LocalAnPath
+	var destAnpath LocalMPath
 	err := destAnpath.Set(dest)
 	if err != nil {
 		return "", err
@@ -288,7 +288,7 @@ func (lfs *LocalFSHandler) InstallTempFile(wid string, name string, dest string)
 // ListDirectories returns the names of all subdirectories of the specified path
 func (lfs *LocalFSHandler) ListDirectories(path string) ([]string, error) {
 	// Path validation handled in FromPath()
-	var anpath LocalAnPath
+	var anpath LocalMPath
 	err := anpath.Set(path)
 	if err != nil {
 		return nil, err
@@ -332,7 +332,7 @@ func (lfs *LocalFSHandler) ListDirectories(path string) ([]string, error) {
 // is in UNIX time, i.e. seconds since the epoch. To return all files, pass a 0.
 func (lfs *LocalFSHandler) ListFiles(path string, afterTime int64) ([]string, error) {
 	// Path validation handled in FromPath()
-	var anpath LocalAnPath
+	var anpath LocalMPath
 	err := anpath.Set(path)
 	if err != nil {
 		return nil, err
@@ -377,7 +377,7 @@ func (lfs *LocalFSHandler) ListFiles(path string, afterTime int64) ([]string, er
 func (lfs *LocalFSHandler) MakeDirectory(path string) error {
 
 	// Path validation handled in FromPath()
-	var anpath LocalAnPath
+	var anpath LocalMPath
 	err := anpath.Set(path)
 	if err != nil {
 		return err
@@ -444,7 +444,7 @@ func (lfs *LocalFSHandler) MakeTempFile(wid string) (*os.File, string, error) {
 // a directory.
 func (lfs *LocalFSHandler) MoveFile(source string, dest string) error {
 	// Path validation handled in FromPath()
-	var srcAnpath LocalAnPath
+	var srcAnpath LocalMPath
 	err := srcAnpath.Set(source)
 	if err != nil {
 		return err
@@ -459,7 +459,7 @@ func (lfs *LocalFSHandler) MoveFile(source string, dest string) error {
 	}
 
 	// Path validation handled in FromPath()
-	var destAnpath LocalAnPath
+	var destAnpath LocalMPath
 	err = destAnpath.Set(dest)
 	if err != nil {
 		return err
@@ -488,7 +488,7 @@ func (lfs *LocalFSHandler) MoveFile(source string, dest string) error {
 // particular format
 func (lfs *LocalFSHandler) OpenFile(path string) (string, error) {
 	// Path validation handled in Set()
-	var anpath LocalAnPath
+	var anpath LocalMPath
 	err := anpath.Set(path)
 	if err != nil {
 		return "", err
@@ -559,7 +559,7 @@ func (lfs *LocalFSHandler) ReadFile(handle string, buffer []byte) (int, error) {
 func (lfs *LocalFSHandler) RemoveDirectory(path string, recursive bool) error {
 
 	// Path validation handled in FromPath()
-	var anpath LocalAnPath
+	var anpath LocalMPath
 	err := anpath.Set(path)
 	if err != nil {
 		return err
@@ -593,10 +593,10 @@ func (lfs *LocalFSHandler) SeekFile(handle string, offset int64) error {
 }
 
 // Select confirms that the given path is a valid working directory for the user
-func (lfs *LocalFSHandler) Select(path string) (LocalAnPath, error) {
+func (lfs *LocalFSHandler) Select(path string) (LocalMPath, error) {
 
 	// Path validation handled in FromPath()
-	var anpath LocalAnPath
+	var anpath LocalMPath
 	err := anpath.Set(path)
 	if err != nil {
 		return anpath, err
@@ -615,8 +615,8 @@ func (lfs *LocalFSHandler) Select(path string) (LocalAnPath, error) {
 
 // HashFile performs a hash check on a file and determines if it matches or not. Note that this
 // file only works on the local filesystem because it is expected to mostly operate on temp files.
-// Temp files are initially stored in / tmp <wid>, so using a LocalAnPath object will fail because
-// LocalAnPath expects to operate within a workspace. At the same time, using the Mensago formatting
+// Temp files are initially stored in / tmp <wid>, so using a LocalMPath object will fail because
+// LocalMPath expects to operate within a workspace. At the same time, using the Mensago formatting
 // for a file path *is* expected.
 func HashFile(path string, hash ezn.CryptoString) (bool, error) {
 

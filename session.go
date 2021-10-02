@@ -38,7 +38,7 @@ type sessionState struct {
 	WID              types.UUID
 	DevID            string
 	WorkspaceStatus  string
-	CurrentPath      fshandler.LocalAnPath
+	CurrentPath      fshandler.LocalMPath
 	LastUpdateSent   int64
 }
 
