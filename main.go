@@ -28,7 +28,7 @@ var gDiceWordList diceware.Wordlist
 
 // MaxCommandLength is the maximum number of bytes an Mensago command is permitted to be. Note that
 // bulk transfers are not subject to this restriction -- just the initial command.
-const MaxCommandLength = 8192
+const MaxCommandLength = 16384
 
 var clientPool *workerpool.Pool
 
