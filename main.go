@@ -87,14 +87,14 @@ func main() {
 
 			continue
 		}
-		clientPool.Add(1)
-		go connectionWorker(conn)
+		id, _ := clientPool.Add()
+		go connectionWorker(conn, id)
 	}
 }
 
-func connectionWorker(conn net.Conn) {
+func connectionWorker(conn net.Conn, workerID uint64) {
 	defer conn.Close()
-	defer clientPool.Done()
+	defer clientPool.Done(workerID)
 
 	conn.SetReadDeadline(time.Now().Add(time.Minute * 30))
 	conn.SetWriteDeadline(time.Now().Add(time.Minute * 10))

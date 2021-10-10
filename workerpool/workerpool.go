@@ -13,6 +13,8 @@ type Pool struct {
 	workerLock  sync.RWMutex
 	quitFlag    bool
 	quitLock    sync.RWMutex
+	workers     map[uint64]bool
+	currentID   uint64
 }
 
 // New creates a new worker pool with the specified capacity
@@ -28,18 +30,26 @@ func (p *Pool) SetCapacity(capacity uint) {
 	p.capacity = capacity
 }
 
-func (p *Pool) Add(count uint) uint {
+func (p *Pool) Add() (uint64, bool) {
 	p.workerLock.Lock()
 	defer p.workerLock.Unlock()
 
-	if p.workerCount+count <= p.capacity {
-		p.workerCount += count
-		p.workerGroup.Add(int(count))
-	} else {
-		return 0
+	var id uint64
+	if p.workerCount >= p.capacity {
+		return 0, false
 	}
 
-	return count
+	p.workerCount++
+	p.workerGroup.Add(1)
+
+	ok := true
+	for ok {
+		p.currentID++
+		_, ok = p.workers[p.currentID]
+	}
+	id = p.currentID
+
+	return id, true
 }
 
 // Wait simply waits for all workers to exit
@@ -52,12 +62,14 @@ func (p *Pool) Wait() {
 }
 
 // Done is called by worker goroutines to signify they are quitting
-func (p *Pool) Done() {
+func (p *Pool) Done(id uint64) {
 	p.workerLock.Lock()
 	defer p.workerLock.Unlock()
 
 	p.workerCount--
 	p.workerGroup.Done()
+
+	delete(p.workers, id)
 }
 
 func (p *Pool) Quit() {
@@ -91,4 +103,13 @@ func (p *Pool) IsFull() bool {
 
 	out := p.workerCount >= p.capacity
 	return out
+}
+
+// IsRunning returns true if the ID is in the list of running workers
+func (p *Pool) IsRunning(id uint64) bool {
+	p.workerLock.RLock()
+	defer p.workerLock.RUnlock()
+
+	_, ok := p.workers[id]
+	return ok
 }

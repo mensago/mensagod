@@ -50,8 +50,8 @@ func PushMessage(sender string, recipientDomain string, path string) {
 	messageQueue.PushBack(info)
 	queueLock.Unlock()
 
-	if deliveryPool.Add(1) > 0 {
-		go deliveryWorker()
+	if id, ok := deliveryPool.Add(); ok {
+		go deliveryWorker(id)
 	}
 }
 
@@ -71,8 +71,8 @@ func popMessage() *messageInfo {
 	return &out
 }
 
-func deliveryWorker() {
-	defer deliveryPool.Done()
+func deliveryWorker(workerID uint64) {
+	defer deliveryPool.Done(workerID)
 
 	for {
 		if deliveryPool.IsQuitting() {
