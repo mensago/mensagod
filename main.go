@@ -253,8 +253,8 @@ func commandGetUpdates(session *sessionState) {
 		return
 	}
 
-	// The code is set to return a maximum of 75 records. It's still very easily possible that
-	// the response could be larger than 8K, so we need to put this thing together very carefully
+	// The code is set to return a maximum of 150 records. It's still very easily possible that
+	// the response could be larger than 16K, so we need to put this thing together very carefully
 	responseString := createUpdateResponse(&records, recordCount)
 	session.WriteClient(responseString)
 }
