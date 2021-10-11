@@ -9,7 +9,6 @@ import (
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/misc"
-	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/spf13/viper"
 )
@@ -40,12 +39,6 @@ type UpdateRecord struct {
 	Type UpdateType
 	Data string
 	Time int64
-}
-
-func NewUpdateRecord() UpdateRecord {
-	var out UpdateRecord
-	out.ID = uuid.NewString()
-	return out
 }
 
 // AddSyncRecord adds a record to the update table
