@@ -546,10 +546,13 @@ func commandSetStatus(session *sessionState) {
 func createUpdateResponse(records *[]dbhandler.UpdateRecord, totalRecords int64) string {
 
 	lookupTable := map[dbhandler.UpdateType]string{
-		dbhandler.UpdateCreate: "CREATE",
-		dbhandler.UpdateDelete: "DELETE",
-		dbhandler.UpdateMove:   "MOVE",
-		dbhandler.UpdateRotate: "ROTATE",
+		dbhandler.UpdateCreate:  "CREATE",
+		dbhandler.UpdateDelete:  "DELETE",
+		dbhandler.UpdateMove:    "MOVE",
+		dbhandler.UpdateRotate:  "ROTATE",
+		dbhandler.UpdateMkDir:   "MKDIR",
+		dbhandler.UpdateRmDir:   "RMDIR",
+		dbhandler.UpdateReplace: "REPLACE",
 	}
 
 	out := []string{`{"Code":200,"Status":"OK","Info":"","Data":{`}
