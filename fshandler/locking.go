@@ -6,12 +6,7 @@ import (
 	"github.com/darkwyrm/mensagod/misc"
 )
 
-type FileLock struct {
-	Lock     sync.Locker
-	Filename string
-}
-
-var LockList sync.Map
+var lockList sync.Map
 
 func RLockFile(filename string) error {
 
@@ -20,7 +15,7 @@ func RLockFile(filename string) error {
 	}
 
 	var newLock sync.RWMutex
-	fLock, loaded := LockList.LoadOrStore(filename, &newLock)
+	fLock, loaded := lockList.LoadOrStore(filename, &newLock)
 	if loaded {
 		fLock.(*sync.RWMutex).RLock()
 	} else {
@@ -30,18 +25,32 @@ func RLockFile(filename string) error {
 	return nil
 }
 
-func RWLockFile(filename string) error {
+func LockFile(filename string) error {
 
 	if filename == "" {
 		return misc.ErrBadArgument
 	}
 
 	var newLock sync.RWMutex
-	fLock, loaded := LockList.LoadOrStore(filename, &newLock)
+	fLock, loaded := lockList.LoadOrStore(filename, &newLock)
 	if loaded {
 		fLock.(*sync.RWMutex).Lock()
 	} else {
 		newLock.Lock()
+	}
+
+	return nil
+}
+
+func RUnlockFile(filename string) error {
+
+	if filename == "" {
+		return misc.ErrBadArgument
+	}
+
+	fLock, loaded := lockList.Load(filename)
+	if loaded {
+		fLock.(*sync.RWMutex).Unlock()
 	}
 
 	return nil
@@ -53,9 +62,9 @@ func UnlockFile(filename string) error {
 		return misc.ErrBadArgument
 	}
 
-	fLock, loaded := LockList.Load(filename)
+	fLock, loaded := lockList.Load(filename)
 	if loaded {
-		fLock.(*sync.RWMutex).Lock()
+		fLock.(*sync.RWMutex).RUnlock()
 	}
 
 	return nil
@@ -67,7 +76,7 @@ func IsFileLocked(filename string) (bool, error) {
 		return false, misc.ErrBadArgument
 	}
 
-	_, loaded := LockList.Load(filename)
+	_, loaded := lockList.Load(filename)
 
 	return loaded, nil
 }
