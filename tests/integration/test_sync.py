@@ -94,7 +94,7 @@ def setup_updates(dbconn, dbdata: dict) -> dict:
 	
 	files = {}
 	files['new'] = []
-	for i in range(100):
+	for i in range(200):
 		status = make_test_file(dirs['new'])
 		assert not status.error(), f"setup_updates: failed to create test file: {status.info}"
 		files['new'].append(status['name'])
@@ -102,7 +102,7 @@ def setup_updates(dbconn, dbdata: dict) -> dict:
 		path = f"/ {dbdata['admin_wid']} new {status['name']}"
 
 		# we make the timestamp for each of the new files about a day apart
-		filetime = now - ((100-i) * 86400)
+		filetime = now - ((200-i) * 86400)
 
 		cur.execute("INSERT INTO updates(rid,wid,update_type,update_data,unixtime) VALUES("
 			f"'{str(uuid.uuid4())}','{dbdata['admin_wid']}',1,'{path}','{filetime}')")
@@ -164,8 +164,8 @@ def test_get_updates():
 
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_get_updates: #3 failed to get updates'
-	assert len(response['Data']['Updates']) < 75, "test_get_updates: #3 returned all possible updates"
-	assert response['Data']['UpdateCount'] == "100", \
+	assert len(response['Data']['Updates']) < 150, "test_get_updates: #3 returned all possible updates"
+	assert response['Data']['UpdateCount'] == "200", \
 		"test_get_updates: #3 got wrong number of updates in count"
 
 	# Subtest #4: test out handling more updates than will fit into 1 response
