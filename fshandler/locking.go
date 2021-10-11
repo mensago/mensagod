@@ -1,27 +1,73 @@
 package fshandler
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/darkwyrm/mensagod/misc"
+)
 
 type FileLock struct {
-	WorkerID  uint64
-	Timestamp string
-	Filename  string
+	Lock     sync.Locker
+	Filename string
 }
 
-type LockList struct {
-	ListLock  sync.RWMutex
-	LockItems map[uint64]bool
+var LockList sync.Map
+
+func RLockFile(filename string) error {
+
+	if filename == "" {
+		return misc.ErrBadArgument
+	}
+
+	var newLock sync.RWMutex
+	fLock, loaded := LockList.LoadOrStore(filename, &newLock)
+	if loaded {
+		fLock.(*sync.RWMutex).RLock()
+	} else {
+		newLock.RLock()
+	}
+
+	return nil
 }
 
-// NewLockList creates a new file locking list
-func NewLockList() *LockList {
-	var out LockList
-	out.LockItems = make(map[uint64]bool)
-	return &out
+func RWLockFile(filename string) error {
+
+	if filename == "" {
+		return misc.ErrBadArgument
+	}
+
+	var newLock sync.RWMutex
+	fLock, loaded := LockList.LoadOrStore(filename, &newLock)
+	if loaded {
+		fLock.(*sync.RWMutex).Lock()
+	} else {
+		newLock.Lock()
+	}
+
+	return nil
 }
 
-func (ll *LockList) LockFile(filename string, owner uint64) bool {
+func UnlockFile(filename string) error {
 
-	// TODO: Finish implementing LockList.LockFile
-	return false
+	if filename == "" {
+		return misc.ErrBadArgument
+	}
+
+	fLock, loaded := LockList.Load(filename)
+	if loaded {
+		fLock.(*sync.RWMutex).Lock()
+	}
+
+	return nil
+}
+
+func IsFileLocked(filename string) (bool, error) {
+
+	if filename == "" {
+		return false, misc.ErrBadArgument
+	}
+
+	_, loaded := LockList.Load(filename)
+
+	return loaded, nil
 }
