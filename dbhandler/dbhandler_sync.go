@@ -22,6 +22,7 @@ const (
 	UpdateCreate = iota + 1
 	UpdateDelete
 	UpdateMove
+	UpdateReplace
 	UpdateRotate
 	UpdateMkDir
 	UpdateRmDir
@@ -111,11 +112,11 @@ func GetSyncRecords(wid string, unixtime int64) ([]UpdateRecord, error) {
 		return nil, misc.ErrBadArgument
 	}
 
-	// A maximum of 75 records is returned because with the shortest possible updates, a maximum
-	// of about 160 records can be returned in 8k. For more average update sizes (34 byte overhead,
-	// 104 byte record), we can only fit about 78.
+	// A maximum of 150 records is returned because with the shortest possible updates, a maximum
+	// of about 160 records can be returned in 16k. For more average update sizes (34 byte overhead,
+	// 104 byte record), we can only fit about 156.
 	rows, err := dbConn.Query(`SELECT rid,update_type,update_data,unixtime FROM updates `+
-		`WHERE wid = $1 AND unixtime > $2 ORDER BY unixtime LIMIT 75`, wid, unixtime)
+		`WHERE wid = $1 AND unixtime > $2 ORDER BY unixtime LIMIT 150`, wid, unixtime)
 	if err != nil {
 		return nil, err
 	}
