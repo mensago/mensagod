@@ -50,7 +50,7 @@ func RUnlockFile(filename string) error {
 
 	fLock, loaded := lockList.Load(filename)
 	if loaded {
-		fLock.(*sync.RWMutex).Unlock()
+		fLock.(*sync.RWMutex).RUnlock()
 	}
 
 	return nil
@@ -64,7 +64,7 @@ func UnlockFile(filename string) error {
 
 	fLock, loaded := lockList.Load(filename)
 	if loaded {
-		fLock.(*sync.RWMutex).RUnlock()
+		fLock.(*sync.RWMutex).Unlock()
 	}
 
 	return nil

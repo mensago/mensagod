@@ -71,13 +71,14 @@ func commandCopy(session *sessionState) {
 
 	// Arguments have been validated, do a quota check
 	parts := strings.Split(sourcePath, " ")
+	filename := parts[len(parts)-1]
 
-	if !fshandler.ValidateFileName(parts[len(parts)-1]) {
+	if !fshandler.ValidateFileName(filename) {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad source path")
 		return
 	}
 
-	nameparts := strings.Split(parts[len(parts)-1], ".")
+	nameparts := strings.Split(filename, ".")
 	fileSize, err := strconv.ParseInt(nameparts[1], 10, 64)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
@@ -95,7 +96,9 @@ func commandCopy(session *sessionState) {
 		return
 	}
 
+	fshandler.RLockFile(filename)
 	newName, err := fsh.CopyFile(sourcePath, destPath)
+	fshandler.RUnlockFile(filename)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -127,8 +130,13 @@ func commandDelete(session *sessionState) {
 	}
 
 	deletePath := strings.ToLower(session.Message.Data["Path"])
+	parts := strings.Split(deletePath, " ")
+	filename := parts[len(parts)-1]
+
 	fsh := fshandler.GetFSProvider()
+	fshandler.LockFile(filename)
 	err := fsh.DeleteFile(deletePath)
+	fshandler.UnlockFile(filename)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -233,7 +241,9 @@ func commandDownload(session *sessionState) {
 		return
 	}
 
+	fshandler.RLockFile(filename)
 	_, err = session.SendFileData(downloadPath, resumeOffset)
+	fshandler.RUnlockFile(filename)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -255,8 +265,13 @@ func commandExists(session *sessionState) {
 	}
 
 	existsPath := strings.ToLower(session.Message.Data["Path"])
+	pathParts := strings.Split(existsPath, " ")
+	filename := pathParts[len(pathParts)-1]
+
 	fsh := fshandler.GetFSProvider()
+	fshandler.RLockFile(filename)
 	exists, err := fsh.Exists(existsPath)
+	fshandler.RUnlockFile(filename)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -500,7 +515,12 @@ func commandMove(session *sessionState) {
 		return
 	}
 
+	pathParts := strings.Split(sourcePath, " ")
+	filename := pathParts[len(pathParts)-1]
+
+	fshandler.LockFile(filename)
 	err = fsh.MoveFile(sourcePath, destPath)
+	fshandler.UnlockFile(filename)
 	if err != nil {
 		handleFSError(session, err)
 		return
@@ -546,7 +566,10 @@ func commandRmDir(session *sessionState) {
 		return
 	}
 
+	// Although called LockFile, it just uses string identifiers, so we can lock folders, too. :)
+	fshandler.LockFile(dirPath)
 	err = fsh.RemoveDirectory(dirPath, false)
+	fshandler.UnlockFile(dirPath)
 	if err != nil {
 		handleFSError(session, err)
 		return
