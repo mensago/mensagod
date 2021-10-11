@@ -540,7 +540,7 @@ func commandSetStatus(session *sessionState) {
 }
 
 // createUpdateResponse takes a list of UpdateRecords and returns a ServerResponse which is smaller
-// than the maximum response size of 8K. Great care must be taken here because the size of a
+// than the maximum response size of 16K. Great care must be taken here because the size of a
 // Mensago path can vary greatly in size -- a workspace-level path is 38 bytes without any file
 // name appended to it. These things add up quickly.
 func createUpdateResponse(records *[]dbhandler.UpdateRecord, totalRecords int64) string {
