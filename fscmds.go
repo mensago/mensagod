@@ -537,7 +537,7 @@ func commandMove(session *sessionState) {
 
 func commandReplace(session *sessionState) {
 	// Command syntax:
-	// UPLOAD(OldPath, NewPath, Size,Hash,Name="",Offset=0)
+	// REPLACE(OldPath, NewPath, Size,Hash,Name="",Offset=0)
 
 	if session.LoginState != loginClientSession {
 		session.SendQuickResponse(401, "UNAUTHORIZED", "")
