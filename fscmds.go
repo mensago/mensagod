@@ -693,29 +693,29 @@ func commandReplace(session *sessionState) {
 		return
 	}
 
-	realName, err := fsp.InstallTempFile(session.WID.AsString(), tempName, filePath)
+	realName, err := fsp.InstallTempFile(session.WID.AsString(), tempName, newFilePath)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 
-	// TODO: Finish old file removal and add Replace record
+	parts := strings.Split(filePath, " ")
+	filename := parts[len(parts)-1]
 
-	// fsh := fshandler.GetFSProvider()
-	// fshandler.LockFile(filename)
-	// err = fsh.DeleteFile(deletePath)
-	// fshandler.UnlockFile(filename)
-	// if err != nil {
-	// 	handleFSError(session, err)
-	// 	return
-	// }
+	fshandler.LockFile(filename)
+	err = fsp.DeleteFile(filePath)
+	fshandler.UnlockFile(filename)
+	if err != nil {
+		handleFSError(session, err)
+		return
+	}
 
-	// dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-	// 	ID:   uuid.NewString(),
-	// 	Type: dbhandler.UpdateDelete,
-	// 	Data: deletePath,
-	// 	Time: time.Now().UTC().Unix(),
-	// })
+	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
+		ID:   uuid.NewString(),
+		Type: dbhandler.UpdateReplace,
+		Data: strings.ToLower(filePath + " " + newFilePath),
+		Time: time.Now().UTC().Unix(),
+	})
 
 	response = NewServerResponse(200, "OK")
 	response.Data["FileName"] = realName
