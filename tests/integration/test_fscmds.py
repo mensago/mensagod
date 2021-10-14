@@ -210,7 +210,7 @@ def test_copy():
 
 def test_delete():
 	'''Test the DELETE command'''
-	
+
 	dbconn = setup_test()
 	dbdata = init_server(dbconn)
 
@@ -829,6 +829,93 @@ def test_replace():
 	'''Test the REPLACE command'''
 	# TODO: implement test_replace()
 
+	dbconn = setup_test()
+	dbdata = init_server(dbconn)
+
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+
+	reset_top_dir(dbdata)
+
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
+	
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
+
+	# Subtest #1: Bad old file path
+
+	conn.send_message({
+		'Action': 'REPLACE',
+		'Data': {
+			'OldPath': f"/ wsp {dbdata['admin_wid']} some_dir_name",
+			'NewPath': f"/ wsp {dbdata['admin_wid']} 1234.1234.11111111-1111-1111-1111-111111111111",
+			'Size': "1234",
+			'Hash': 'BLAKE2B-256:tSl@QzD1w-vNq@CC-5`($KuxO0#aOl^-cy(l7XXT'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, f"{funcname()}: #1 failed to handle bad old file path"
+
+	# Subtest #2: Bad old file path
+
+	conn.send_message({
+		'Action': 'REPLACE',
+		'Data': {
+			'OldPath': f"/ wsp {dbdata['admin_wid']} 1234.1234.11111111-1111-1111-1111-111111111111",
+			'NewPath': f"/ wsp {dbdata['admin_wid']} some_dir_name",
+			'Size': "1234",
+			'Hash': 'BLAKE2B-256:tSl@QzD1w-vNq@CC-5`($KuxO0#aOl^-cy(l7XXT'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, f"{funcname()}: #2 failed to handle bad new file path"
+
+	# Subtest #4: Destination directory doesn't exist
+
+	conn.send_message({
+		'Action': 'REPLACE',
+		'Data': {
+			'OldPath': f"/ wsp {dbdata['admin_wid']} 1234.1234.11111111-1111-1111-1111-111111111111",
+			'NewPath': "/ wsp 11111111-1111-1111-1111-111111111111 "
+						"4321.4321.22222222-2222-2222-2222-222222222222",
+			'Size': "4321",
+			'Hash': 'BLAKE2B-256:tSl@QzD1w-vNq@CC-5`($KuxO0#aOl^-cy(l7XXT'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 404, f"{funcname()}: #4 failed to handle nonexistent destination dir"
+
+	# Subtest #5: Actual success
+
+	# admin_dir = os.path.join(dbdata['configfile']['global']['workspace_dir'],
+	# 	dbdata['admin_wid'])
+	# status = make_test_file(admin_dir)
+	# assert not status.error(), f"{funcname()}: #3 failed to create test file"
+	# filename = status["name"]
+
+	# conn.send_message({
+	# 	'Action': 'REPLACE',
+	# 	'Data': {
+	# 		'OldPath': f"/ wsp {dbdata['admin_wid']} 1234.1234.11111111-1111-1111-1111-111111111111",
+	# 		'NewPath': "/ wsp 11111111-1111-1111-1111-111111111111 "
+	# 					"4321.4321.22222222-2222-2222-2222-222222222222",
+	# 		'Size': "4321",
+	# 		'Hash': 'BLAKE2B-256:tSl@QzD1w-vNq@CC-5`($KuxO0#aOl^-cy(l7XXT'
+	# 	}
+	# })
+	# response = conn.read_response(server_response)
+	# assert response['Code'] == 200, f"{funcname()}: #3 failed to delete file"
+
+
 def test_rmdir():
 	'''Tests the RMDIR command'''
 
@@ -1318,14 +1405,14 @@ def test_upload():
 
 if __name__ == '__main__':
 	# test_copy()
-	test_delete()
+	# test_delete()
 	# test_download()
 	# test_getquotainfo()
 	# test_list()
 	# test_listdirs()
 	# test_mkdir()
 	# test_move()
-	# test_replace()
+	test_replace()
 	# test_rmdir()
 	# test_setquota()
 	# test_select()
