@@ -14,6 +14,7 @@ from pymensago.serverconn import ServerConnection
 
 from integration_setup import login_admin, regcode_admin, setup_test, init_server, init_user, \
 	init_user2, reset_top_dir
+from tests.integration.integration_setup import funcname
 
 
 server_response = {
@@ -205,6 +206,70 @@ def test_copy():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, 'test_copy: #6 failed to succeed'
 	conn.disconnect()
+
+
+def test_delete():
+	'''Test the DELETE command'''
+	
+	dbconn = setup_test()
+	dbdata = init_server(dbconn)
+
+	conn = ServerConnection()
+	assert conn.connect('localhost', 2001), "Connection to server at localhost:2001 failed"
+
+	reset_top_dir(dbdata)
+
+	# password is 'SandstoneAgendaTricycle'
+	pwhash = '$argon2id$v=19$m=65536,t=2,p=1$ew5lqHA5z38za+257DmnTA$0LWVrI2r7XCq' \
+				'dcCYkJLok65qussSyhN5TTZP+OTgzEI'
+	devid = '22222222-2222-2222-2222-222222222222'
+	devpair = EncryptionPair(CryptoString(r'CURVE25519:@X~msiMmBq0nsNnn0%~x{M|NU_{?<Wj)cYybdh&Z'),
+		CryptoString(r'CURVE25519:W30{oJ?w~NBbj{F8Ag4~<bcWy6_uQ{i{X?NDq4^l'))
+	
+	dbdata['pwhash'] = pwhash
+	dbdata['devid'] = devid
+	dbdata['devpair'] = devpair
+	
+	regcode_admin(dbdata, conn)
+	login_admin(dbdata, conn)
+
+	# Subtest #1: Bad path
+
+	conn.send_message({
+		'Action': 'DELETE',
+		'Data': {
+			'Path': f"/ wsp {dbdata['admin_wid']} some_dir_name"
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 400, f"{funcname()}: failed to handle bad path"
+
+	# Subtest #2: Directory doesn't exist
+
+	conn.send_message({
+		'Action': 'DELETE',
+		'Data': {
+			'Path': f"/ wsp {dbdata['admin_wid']} 1234.1234.11111111-1111-1111-1111-111111111111"
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 404, f"{funcname()}: #2 failed to handle nonexistent file"
+
+	# Subtest #3: Actual success
+	admin_dir = os.path.join(dbdata['configfile']['global']['workspace_dir'],
+		dbdata['admin_wid'])
+	status = make_test_file(admin_dir)
+	assert not status.error(), f"{funcname()}: #3 failed to create test file"
+	filename = status["name"]
+
+	conn.send_message({
+		'Action': 'DELETE',
+		'Data': {
+			'Path': f"/ wsp {dbdata['admin_wid']} {filename}"
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, f"{funcname()}: #3 failed to delete file"
 
 
 def test_download():
@@ -760,6 +825,10 @@ def test_move():
 	conn.disconnect()
 
 
+def test_replace():
+	'''Test the REPLACE command'''
+	# TODO: implement test_replace()
+
 def test_rmdir():
 	'''Tests the RMDIR command'''
 
@@ -1249,12 +1318,14 @@ def test_upload():
 
 if __name__ == '__main__':
 	# test_copy()
-	test_download()
+	test_delete()
+	# test_download()
 	# test_getquotainfo()
 	# test_list()
 	# test_listdirs()
 	# test_mkdir()
 	# test_move()
+	# test_replace()
 	# test_rmdir()
 	# test_setquota()
 	# test_select()
