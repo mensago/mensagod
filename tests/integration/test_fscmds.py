@@ -40,7 +40,12 @@ server_response = {
 def make_test_file(path: str, file_size=-1, file_name='') -> RetVal:
 	'''Generate a test file containing nothing but zeroes. If the file size is negative, a random 
 	size between 1 and 10 Kb will be chosen. If the file name is empty, a random one will be 
-	generated.'''
+	generated.
+
+	Returns:
+		name: (str) name of the test file generated
+		size: (int) size of the test file generated
+	'''
 	
 	if file_size < 0:
 		file_size = random.randint(1,10) * 1024
@@ -896,24 +901,30 @@ def test_replace():
 
 	# Subtest #5: Actual success
 
-	# admin_dir = os.path.join(dbdata['configfile']['global']['workspace_dir'],
-	# 	dbdata['admin_wid'])
-	# status = make_test_file(admin_dir)
-	# assert not status.error(), f"{funcname()}: #3 failed to create test file"
-	# filename = status["name"]
+	admin_dir = os.path.join(dbdata['configfile']['global']['workspace_dir'],
+		dbdata['admin_wid'])
+	status = make_test_file(admin_dir)
+	assert not status.error(), f"{funcname()}: #3 failed to create test file"
+	filename = status["name"]
 
-	# conn.send_message({
-	# 	'Action': 'REPLACE',
-	# 	'Data': {
-	# 		'OldPath': f"/ wsp {dbdata['admin_wid']} 1234.1234.11111111-1111-1111-1111-111111111111",
-	# 		'NewPath': "/ wsp 11111111-1111-1111-1111-111111111111 "
-	# 					"4321.4321.22222222-2222-2222-2222-222222222222",
-	# 		'Size': "4321",
-	# 		'Hash': 'BLAKE2B-256:tSl@QzD1w-vNq@CC-5`($KuxO0#aOl^-cy(l7XXT'
-	# 	}
-	# })
-	# response = conn.read_response(server_response)
-	# assert response['Code'] == 200, f"{funcname()}: #3 failed to delete file"
+	conn.send_message({
+		'Action': 'REPLACE',
+		'Data': {
+			'OldPath': f"/ wsp {dbdata['admin_wid']} 1234.1234.11111111-1111-1111-1111-111111111111",
+			'NewPath': "/ wsp 11111111-1111-1111-1111-111111111111 "
+						"4321.4321.22222222-2222-2222-2222-222222222222",
+			'Size': "1000",
+			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp'
+		}
+	})
+	response = conn.read_response(server_response)
+	assert response['Code'] == 100, f'{funcname()}: #6 failed to proceed to file upload'
+
+	conn.write('0' * 1000)
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, f'{funcname()}: #6 failed to handle file hash mismatch'
+
 
 
 def test_rmdir():
