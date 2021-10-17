@@ -832,7 +832,6 @@ def test_move():
 
 def test_replace():
 	'''Test the REPLACE command'''
-	# TODO: implement test_replace()
 
 	dbconn = setup_test()
 	dbdata = init_server(dbconn)
