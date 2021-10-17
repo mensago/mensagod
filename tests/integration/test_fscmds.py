@@ -870,12 +870,17 @@ def test_replace():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 400, f"{funcname()}: #1 failed to handle bad old file path"
 
-	# Subtest #2: Bad old file path
+	admin_dir = os.path.join(dbdata['configfile']['global']['workspace_dir'],
+		dbdata['admin_wid'])
+	status = make_test_file(admin_dir)
+	filename = status['name']
+
+	# Subtest #2: Bad new file path
 
 	conn.send_message({
 		'Action': 'REPLACE',
 		'Data': {
-			'OldPath': f"/ wsp {dbdata['admin_wid']} 1234.1234.11111111-1111-1111-1111-111111111111",
+			'OldPath': f"/ wsp {dbdata['admin_wid']} {filename}",
 			'NewPath': f"/ wsp {dbdata['admin_wid']} some_dir_name",
 			'Size': "1234",
 			'Hash': 'BLAKE2B-256:tSl@QzD1w-vNq@CC-5`($KuxO0#aOl^-cy(l7XXT'
@@ -890,8 +895,7 @@ def test_replace():
 		'Action': 'REPLACE',
 		'Data': {
 			'OldPath': f"/ wsp {dbdata['admin_wid']} 1234.1234.11111111-1111-1111-1111-111111111111",
-			'NewPath': "/ wsp 11111111-1111-1111-1111-111111111111 "
-						"4321.4321.22222222-2222-2222-2222-222222222222",
+			'NewPath': "/ wsp 11111111-1111-1111-1111-111111111111",
 			'Size': "4321",
 			'Hash': 'BLAKE2B-256:tSl@QzD1w-vNq@CC-5`($KuxO0#aOl^-cy(l7XXT'
 		}
@@ -901,8 +905,6 @@ def test_replace():
 
 	# Subtest #5: Actual success
 
-	admin_dir = os.path.join(dbdata['configfile']['global']['workspace_dir'],
-		dbdata['admin_wid'])
 	status = make_test_file(admin_dir)
 	assert not status.error(), f"{funcname()}: #3 failed to create test file"
 	filename = status["name"]
@@ -910,9 +912,8 @@ def test_replace():
 	conn.send_message({
 		'Action': 'REPLACE',
 		'Data': {
-			'OldPath': f"/ wsp {dbdata['admin_wid']} 1234.1234.11111111-1111-1111-1111-111111111111",
-			'NewPath': "/ wsp 11111111-1111-1111-1111-111111111111 "
-						"4321.4321.22222222-2222-2222-2222-222222222222",
+			'OldPath': f"/ wsp {dbdata['admin_wid']} {filename}",
+			'NewPath': f"/ wsp {dbdata['admin_wid']}",
 			'Size': "1000",
 			'Hash': r'BLAKE2B-256:4(8V*JuSdLH#SL%edxldiA<&TayrTtdIV9yiK~Tp'
 		}
@@ -923,8 +924,9 @@ def test_replace():
 	conn.write('0' * 1000)
 
 	response = conn.read_response(server_response)
-	assert response['Code'] == 200, f'{funcname()}: #6 failed to handle file hash mismatch'
+	assert response['Code'] == 200, f'{funcname()}: #6 failed to replace file'
 
+	conn.disconnect()
 
 
 def test_rmdir():

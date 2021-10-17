@@ -582,7 +582,7 @@ func commandReplace(session *sessionState) {
 		return
 	}
 	if !exists {
-		session.SendQuickResponse(404, "NOT FOUND", "")
+		session.SendQuickResponse(404, "NOT FOUND", "OldPath doesn't exist.")
 		return
 	}
 
@@ -596,12 +596,10 @@ func commandReplace(session *sessionState) {
 		}
 		return
 	}
-	if exists {
-		session.SendQuickResponse(408, "RESOURCE EXISTS", "")
+	if !exists {
+		session.SendQuickResponse(404, "NOT FOUND", "NewPath doesn't exist.")
 		return
 	}
-
-	// TODO: Check that parent path exists
 
 	var resumeOffset int64
 	if session.Message.HasField("TempName") {
