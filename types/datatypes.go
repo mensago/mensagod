@@ -109,6 +109,14 @@ func ToMAddress(addr string) MAddress {
 	return out
 }
 
+func ToMAddressFromParts(uid UserID, dom DomainT) MAddress {
+	var out MAddress
+	out.IDType = 2
+	out.ID = uid.AsString()
+	out.Domain = dom
+	return out
+}
+
 func (a WAddress) IsValid() bool {
 	if len(a.ID) != 36 {
 		return false

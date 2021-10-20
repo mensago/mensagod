@@ -24,21 +24,22 @@ func commandGetWID(session *sessionState) {
 		return
 	}
 
-	if strings.ContainsAny(session.Message.Data["User-ID"], "/\"") {
-		session.SendQuickResponse(400, "BAD REQUEST", "Bad User-ID")
+	var uid types.UserID
+	err := uid.Set(session.Message.Data["User-ID"])
+	if err != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad User ID")
 		return
 	}
-	uid := strings.ToLower(session.Message.Data["User-ID"])
-	var domain string
+
+	var domain types.DomainT
 	if session.Message.HasField("Domain") {
-		domain = strings.ToLower(session.Message.Data["Domain"])
-		pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
-		if !pattern.MatchString(domain) {
+		err = domain.Set(session.Message.Data["Domain"])
+		if err != nil {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad Domain")
 			return
 		}
 	} else {
-		domain = viper.GetString("global.domain")
+		domain.Set(viper.GetString("global.domain"))
 	}
 
 	lockout, err := isLocked(session, "widlookup", "")
@@ -46,8 +47,8 @@ func commandGetWID(session *sessionState) {
 		return
 	}
 
-	address := strings.Join([]string{uid, "/", domain}, "")
-	wid, err := dbhandler.ResolveAddress(address)
+	address := types.ToMAddressFromParts(uid, domain)
+	wid, err := dbhandler.ResolveAddress(address.Domain.AsString())
 	if err != nil {
 		if err.Error() == "workspace not found" {
 			terminate, err := logFailure(session, "widlookup", "")
