@@ -203,7 +203,7 @@ func commandRegCode(session *sessionState) {
 	// The password field is expected to contain an Argon2id password hash
 	isArgon, err := ezn.IsArgonHash(session.Message.Data["Password-Hash"])
 	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.1")
 		logging.Writef("commandRegCode: error check password hash: %s", err)
 		return
 	}
@@ -276,7 +276,7 @@ func commandRegCode(session *sessionState) {
 		if err == misc.ErrNotFound {
 			session.SendQuickResponse(404, "NOT FOUND", "")
 		} else {
-			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.2")
 			logging.Writef("Internal server error. commandRegCode.CheckRegCode. Error: %s\n", err)
 		}
 		logFailure(session, "prereg", "")
@@ -286,21 +286,21 @@ func commandRegCode(session *sessionState) {
 	err = dbhandler.AddWorkspace(wid, uid, domain.AsString(), session.Message.Data["Password-Hash"],
 		"active", "identity")
 	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.3")
 		logging.Writef("Internal server error. commandRegCode.AddWorkspace. Error: %s\n", err)
 		return
 	}
 
 	err = dbhandler.SetWorkspaceStatus(wid, "active")
 	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.4")
 		logging.Writef("Internal server error. commandRegCode.SetWorkspaceStatus. Error: %s\n", err)
 		return
 	}
 
 	err = dbhandler.AddDevice(wid, devid.AsString(), devkey, "active")
 	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.5")
 		logging.Writef("Internal server error. commandRegCode.AddDevice. Error: %s\n", err)
 		return
 	}
