@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net"
-	"regexp"
 	"strings"
 
 	ezn "github.com/darkwyrm/goeznacl"
@@ -24,17 +23,15 @@ func commandGetWID(session *sessionState) {
 		return
 	}
 
-	var uid types.UserID
-	err := uid.Set(session.Message.Data["User-ID"])
-	if err != nil {
+	uid := types.ToUserID(session.Message.Data["User-ID"])
+	if !uid.IsValid() {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad User ID")
 		return
 	}
 
 	var domain types.DomainT
 	if session.Message.HasField("Domain") {
-		err = domain.Set(session.Message.Data["Domain"])
-		if err != nil {
+		if err := domain.Set(session.Message.Data["Domain"]); err != nil {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad Domain")
 			return
 		}
@@ -191,11 +188,13 @@ func commandRegCode(session *sessionState) {
 		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
-	if !dbhandler.ValidateUUID(session.Message.Data["Device-ID"]) {
+
+	devid := types.ToUUID(session.Message.Data["Device-ID"])
+	if !devid.IsValid() {
 		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Device-ID")
 		return
 	}
-	devid := strings.ToLower(session.Message.Data["Device-ID"])
+
 	if len(session.Message.Data["Reg-Code"]) > 128 {
 		session.SendQuickResponse(400, "BAD REQUEST", "Invalid reg code")
 		return
@@ -231,17 +230,15 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	domain := ""
+	var domain types.DomainT
 	if session.Message.HasField("Domain") {
-		domain = strings.ToLower(session.Message.Data["Domain"])
-		pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
-		if !pattern.MatchString(domain) {
+		if err := domain.Set(session.Message.Data["Domain"]); err != nil {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad Domain")
 			return
 		}
 	}
-	if domain == "" {
-		domain = viper.GetString("global.domain")
+	if !domain.IsValid() {
+		domain.Set(viper.GetString("global.domain"))
 	}
 
 	// If lockTime is non-empty, it means that the client has exceeded the configured threshold.
@@ -267,10 +264,10 @@ func commandRegCode(session *sessionState) {
 	var wid, uid string
 	if session.Message.HasField("Workspace-ID") {
 		wid, uid, err = dbhandler.CheckRegCode(strings.ToLower(session.Message.Data["Workspace-ID"]),
-			domain, true, session.Message.Data["Reg-Code"])
+			domain.AsString(), true, session.Message.Data["Reg-Code"])
 	} else {
 		wid, uid, err = dbhandler.CheckRegCode(strings.ToLower(session.Message.Data["User-ID"]),
-			domain, false, session.Message.Data["Reg-Code"])
+			domain.AsString(), false, session.Message.Data["Reg-Code"])
 	}
 
 	if wid == "" {
@@ -286,8 +283,8 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.AddWorkspace(wid, uid, domain, session.Message.Data["Password-Hash"], "active",
-		"identity")
+	err = dbhandler.AddWorkspace(wid, uid, domain.AsString(), session.Message.Data["Password-Hash"],
+		"active", "identity")
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Internal server error. commandRegCode.AddWorkspace. Error: %s\n", err)
@@ -301,7 +298,7 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.AddDevice(wid, devid, devkey, "active")
+	err = dbhandler.AddDevice(wid, devid.AsString(), devkey, "active")
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Internal server error. commandRegCode.AddDevice. Error: %s\n", err)
@@ -309,10 +306,10 @@ func commandRegCode(session *sessionState) {
 	}
 
 	if session.Message.HasField("Workspace-ID") {
-		err = dbhandler.DeleteRegCode(wid, domain, true,
+		err = dbhandler.DeleteRegCode(wid, domain.AsString(), true,
 			session.Message.Data["Reg-Code"])
 	} else {
-		err = dbhandler.DeleteRegCode(uid, domain, false,
+		err = dbhandler.DeleteRegCode(uid, domain.AsString(), false,
 			session.Message.Data["Reg-Code"])
 	}
 	if err != nil {
@@ -323,7 +320,7 @@ func commandRegCode(session *sessionState) {
 	response := NewServerResponse(201, "REGISTERED")
 	response.Data["Workspace-ID"] = wid
 	response.Data["User-ID"] = uid
-	response.Data["Domain"] = domain
+	response.Data["Domain"] = domain.AsString()
 	session.SendResponse(*response)
 }
 
