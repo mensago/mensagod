@@ -45,7 +45,7 @@ func commandGetWID(session *sessionState) {
 	}
 
 	address := types.ToMAddressFromParts(uid, domain)
-	wid, err := dbhandler.ResolveAddress(address.Domain.AsString())
+	wid, err := dbhandler.ResolveAddress(address.AsString())
 	if err != nil {
 		if err.Error() == "workspace not found" {
 			terminate, err := logFailure(session, "widlookup", "")
