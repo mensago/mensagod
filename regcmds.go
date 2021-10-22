@@ -323,21 +323,29 @@ func commandRegister(session *sessionState) {
 		return
 	}
 
-	wid := strings.ToLower(session.Message.Data["Workspace-ID"])
-	if !dbhandler.ValidateUUID(wid) {
+	wid := types.ToUUID(session.Message.Data["Workspace-ID"])
+	if !wid.IsValid() {
 		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
 		return
 	}
 
+	devid := types.ToUUID(session.Message.Data["Device-ID"])
+	if !devid.IsValid() {
+		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Device-ID")
+		return
+	}
+
 	// Just do some basic syntax checks on the user ID
-	uid := ""
+	var uid types.UserID
 	if session.Message.HasField("User-ID") {
-		uid = strings.ToLower(session.Message.Data["User-ID"])
-		if strings.ContainsAny(uid, "/\"") {
+
+		if uid.Set(session.Message.Data["User-ID"]) != nil {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad User-ID")
 			return
 		}
 	}
+
+	// TODO: Validate Password-Hash
 
 	wtype := "identity"
 	if session.Message.HasField("Type") {
@@ -360,7 +368,7 @@ func commandRegister(session *sessionState) {
 		return
 	}
 
-	success, _ := dbhandler.CheckWorkspace(wid)
+	success, _ := dbhandler.CheckWorkspace(wid.AsString())
 	if success {
 		response := NewServerResponse(408, "RESOURCE EXISTS")
 		response.Data["Field"] = "Workspace-ID"
@@ -369,7 +377,7 @@ func commandRegister(session *sessionState) {
 	}
 
 	if session.Message.HasField("User-ID") {
-		success, _ = dbhandler.CheckUserID(uid)
+		success, _ = dbhandler.CheckUserID(uid.AsString())
 		if success {
 			response := NewServerResponse(408, "RESOURCE EXISTS")
 			response.Data["Field"] = "User-ID"
@@ -421,7 +429,7 @@ func commandRegister(session *sessionState) {
 		return
 	}
 
-	err := dbhandler.AddWorkspace(wid, uid, viper.GetString("global.domain"),
+	err := dbhandler.AddWorkspace(wid.AsString(), uid.AsString(), viper.GetString("global.domain"),
 		session.Message.Data["Password-Hash"], workspaceStatus, wtype)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
@@ -429,8 +437,7 @@ func commandRegister(session *sessionState) {
 		return
 	}
 
-	devid := uuid.New().String()
-	err = dbhandler.AddDevice(wid, devid, devkey, "active")
+	err = dbhandler.AddDevice(wid.AsString(), devid.AsString(), devkey, "active")
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Internal server error. commandRegister.AddDevice. Error: %s\n", err)
@@ -438,14 +445,14 @@ func commandRegister(session *sessionState) {
 	}
 
 	fsp := fshandler.GetFSProvider()
-	exists, err := fsp.Exists("/ " + wid)
+	exists, err := fsp.Exists("/ " + wid.AsString())
 	if err != nil {
 		logging.Writef("commandPreregister: Failed to check workspace %s existence: %s", wid, err)
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 	if !exists {
-		fsp.MakeDirectory("/ " + wid)
+		fsp.MakeDirectory("/ " + wid.AsString())
 		if err != nil {
 			logging.Writef("commandPreregister: Failed to create workspace %s top directory: %s",
 				wid, err)
