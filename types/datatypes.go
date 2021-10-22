@@ -183,6 +183,11 @@ func (uid UserID) IsValid() bool {
 	return utf8.RuneCountInString(string(uid)) <= 64
 }
 
+// Workspace ID's are also valid user IDs
+func (uid UserID) IsWID() bool {
+	return widPattern.MatchString(string(uid))
+}
+
 func (uid UserID) AsString() string {
 	return string(uid)
 }
