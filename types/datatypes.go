@@ -75,6 +75,10 @@ func (a MAddress) GetAddress() string {
 	return a.ID + "/" + string(a.Domain)
 }
 
+func (a MAddress) AsString() string {
+	return a.GetAddress()
+}
+
 func (a *MAddress) Set(addr string) error {
 	parts := strings.SplitN(addr, "/", 2)
 	if len(parts) != 2 {
