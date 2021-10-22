@@ -213,15 +213,15 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	// check to see if this is a workspace ID
-
+	// A workspace ID is a valid UserID, so we can pretty much just handle both cases the same way
+	var msgid types.UserID
 	if session.Message.HasField("User-ID") {
-		if strings.ContainsAny(session.Message.Data["User-ID"], "/\"") {
+		if msgid.Set(session.Message.Data["User-ID"]) != nil {
 			session.SendQuickResponse(400, "BAD REQUEST", "Invalid User-ID")
 			return
 		}
 	} else if session.Message.HasField("Workspace-ID") {
-		if !dbhandler.ValidateUUID(session.Message.Data["Workspace-ID"]) {
+		if msgid.Set(session.Message.Data["Workspace-ID"]) != nil && msgid.IsWID() {
 			session.SendQuickResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
 			return
 		}
@@ -261,14 +261,8 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	var wid, uid string
-	if session.Message.HasField("Workspace-ID") {
-		wid, uid, err = dbhandler.CheckRegCode(strings.ToLower(session.Message.Data["Workspace-ID"]),
-			domain.AsString(), true, session.Message.Data["Reg-Code"])
-	} else {
-		wid, uid, err = dbhandler.CheckRegCode(strings.ToLower(session.Message.Data["User-ID"]),
-			domain.AsString(), false, session.Message.Data["Reg-Code"])
-	}
+	wid, uid, err := dbhandler.CheckRegCode(msgid.AsString(), domain.AsString(), msgid.IsWID(),
+		session.Message.Data["Reg-Code"])
 
 	if wid == "" {
 		// Regardless of whether or not an error has been returned from log, we exit here. In this
@@ -305,13 +299,8 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	if session.Message.HasField("Workspace-ID") {
-		err = dbhandler.DeleteRegCode(wid, domain.AsString(), true,
-			session.Message.Data["Reg-Code"])
-	} else {
-		err = dbhandler.DeleteRegCode(uid, domain.AsString(), false,
-			session.Message.Data["Reg-Code"])
-	}
+	err = dbhandler.DeleteRegCode(msgid.AsString(), domain.AsString(), false,
+		session.Message.Data["Reg-Code"])
 	if err != nil {
 		logging.Writef("Internal server error. commandRegCode.DeleteRegCode. Error: %s\n", err)
 		return
