@@ -68,15 +68,11 @@ func (a MAddress) GetDomain() string {
 	return string(a.Domain)
 }
 
-func (a MAddress) GetAddress() string {
+func (a MAddress) AsString() string {
 	if a.ID == "" || a.Domain == "" {
 		return ""
 	}
 	return a.ID + "/" + string(a.Domain)
-}
-
-func (a MAddress) AsString() string {
-	return a.GetAddress()
 }
 
 func (a *MAddress) Set(addr string) error {
@@ -140,7 +136,7 @@ func (a WAddress) GetDomain() string {
 	return string(a.Domain)
 }
 
-func (a WAddress) GetAddress() string {
+func (a WAddress) AsString() string {
 	if a.ID == "" || a.Domain == "" {
 		return ""
 	}
