@@ -167,6 +167,16 @@ func (s *sessionState) AppendUpdateField(msg *ServerResponse) {
 	}
 }
 
+// RequireLogin is just syntactic sugar that make checking for a logged-in session a little cleaner
+func (s *sessionState) RequireLogin() bool {
+
+	if s.LoginState != loginClientSession {
+		s.SendQuickResponse(401, "UNAUTHORIZED", "")
+		return false
+	}
+	return true
+}
+
 // RequireAdmin checks to see if the session belongs to the administrator. If it doesn't, it sends a
 // quick response to the client and returns the appropriate value
 func (s *sessionState) RequireAdmin() (bool, error) {
@@ -187,6 +197,7 @@ func (s *sessionState) RequireAdmin() (bool, error) {
 	return true, nil
 }
 
+// IsAdmin just checks if the session is the administrator
 func (s *sessionState) IsAdmin() (bool, error) {
 
 	adminAddress := "admin/" + viper.GetString("global.domain")
