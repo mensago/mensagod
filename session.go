@@ -181,15 +181,14 @@ func (s *sessionState) RequireLogin() bool {
 // quick response to the client and returns the appropriate value
 func (s *sessionState) RequireAdmin() (bool, error) {
 
-	adminAddress := "admin/" + viper.GetString("global.domain")
-	adminWid, err := dbhandler.ResolveAddress(adminAddress)
+	adminAddress, err := GetAdmin()
 	if err != nil {
 		s.SendQuickResponse(300, "INTERNAL SERVER ERROR", "IsAdmin")
 		logging.Writef("RequireAdmin: Error resolving admin address: %s", err)
 		return false, err
 	}
 
-	if s.LoginState != loginClientSession || s.WID.AsString() != adminWid {
+	if s.LoginState != loginClientSession || !s.WID.Equals(adminAddress.ID) {
 		s.SendQuickResponse(403, "FORBIDDEN", "Only admin can use this")
 		return false, nil
 	}
@@ -200,15 +199,14 @@ func (s *sessionState) RequireAdmin() (bool, error) {
 // IsAdmin just checks if the session is the administrator
 func (s *sessionState) IsAdmin() (bool, error) {
 
-	adminAddress := "admin/" + viper.GetString("global.domain")
-	adminWid, err := dbhandler.ResolveAddress(adminAddress)
+	adminAddress, err := GetAdmin()
 	if err != nil {
 		s.SendQuickResponse(300, "INTERNAL SERVER ERROR", "IsAdmin")
 		logging.Writef("IsAdmin: Error resolving admin address: %s", err)
 		return false, err
 	}
 
-	if s.LoginState != loginClientSession || s.WID.AsString() != adminWid {
+	if s.LoginState != loginClientSession || !s.WID.Equals(adminAddress.ID) {
 		return false, nil
 	}
 
@@ -319,4 +317,22 @@ func (s *sessionState) SendFileData(path string, offset int64) (int64, error) {
 	}
 
 	return totalWritten, nil
+}
+
+func GetAdmin() (types.WAddress, error) {
+
+	var out types.WAddress
+
+	var addr types.MAddress
+	addr.IDType = 2
+	addr.ID = "admin"
+	addr.Domain = types.DomainT(viper.GetString("global.domain"))
+
+	adminWid, err := dbhandler.ResolveAddress(addr.AsString())
+	if err != nil {
+		return out, err
+	}
+
+	out.ID.Set(adminWid)
+	return out, nil
 }
