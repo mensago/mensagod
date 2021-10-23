@@ -36,8 +36,7 @@ func commandCopy(session *sessionState) {
 	// Command syntax:
 	// COPY(SourceFile, DestDir)
 
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if !session.RequireLogin() {
 		return
 	}
 
@@ -119,8 +118,7 @@ func commandCopy(session *sessionState) {
 func commandDelete(session *sessionState) {
 	// Command syntax:
 	// DELETE(FilePath)
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if !session.RequireLogin() {
 		return
 	}
 
@@ -155,8 +153,7 @@ func commandDownload(session *sessionState) {
 	// Command syntax:
 	// DOWNLOAD(Path,Offset=0)
 
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if !session.RequireLogin() {
 		return
 	}
 
@@ -254,8 +251,7 @@ func commandExists(session *sessionState) {
 	// Command syntax:
 	// EXISTS(Path)
 
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if !session.RequireLogin() {
 		return
 	}
 
@@ -288,20 +284,14 @@ func commandGetQuotaInfo(session *sessionState) {
 	// Command syntax:
 	// GETQUOTAINFO(Workspace='')
 
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if !session.RequireLogin() {
 		return
 	}
 
-	adminAddress := "admin/" + viper.GetString("global.domain")
-	adminWid, err := dbhandler.ResolveAddress(adminAddress)
+	isAdmin, err := session.IsAdmin()
 	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		logging.Writef("commandGetQuotaInfo: Error resolving admin address: %s", err)
 		return
 	}
-
-	isAdmin := adminWid == session.WID.AsString()
 
 	if session.Message.HasField("Workspaces") {
 		if !isAdmin {
@@ -358,8 +348,7 @@ func commandGetQuotaInfo(session *sessionState) {
 func commandList(session *sessionState) {
 	// Command syntax:
 	// LIST(Time=0)
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if !session.RequireLogin() {
 		return
 	}
 
@@ -410,8 +399,7 @@ func commandListDirs(session *sessionState) {
 	// Command syntax:
 	// LISTDIRS(path)
 
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if !session.RequireLogin() {
 		return
 	}
 
@@ -451,8 +439,7 @@ func commandListDirs(session *sessionState) {
 func commandMkDir(session *sessionState) {
 	// Command syntax:
 	// MKDIR(Path)
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if !session.RequireLogin() {
 		return
 	}
 
@@ -482,8 +469,7 @@ func commandMove(session *sessionState) {
 	// Command syntax:
 	// MOVE(SourceFile, DestDir)
 
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if !session.RequireLogin() {
 		return
 	}
 
@@ -539,8 +525,7 @@ func commandReplace(session *sessionState) {
 	// Command syntax:
 	// REPLACE(OldPath, NewPath, Size,Hash,Name="",Offset=0)
 
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if !session.RequireLogin() {
 		return
 	}
 
@@ -723,8 +708,7 @@ func commandReplace(session *sessionState) {
 func commandRmDir(session *sessionState) {
 	// Command syntax:
 	// RMDIR(Path)
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if !session.RequireLogin() {
 		return
 	}
 
@@ -774,8 +758,7 @@ func commandSelect(session *sessionState) {
 	// Command syntax:
 	// SELECT(Path)
 
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if !session.RequireLogin() {
 		return
 	}
 
@@ -800,8 +783,7 @@ func commandSetQuota(session *sessionState) {
 	// Command syntax:
 	// SETQUOTA(Workspaces, Size)
 
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if !session.RequireLogin() {
 		return
 	}
 
@@ -816,16 +798,8 @@ func commandSetQuota(session *sessionState) {
 		return
 	}
 
-	adminAddress := "admin/" + viper.GetString("global.domain")
-	adminWid, err := dbhandler.ResolveAddress(adminAddress)
-	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		logging.Writef("commandSetQuota: Error resolving admin address: %s", err)
-		return
-	}
-
-	if session.LoginState != loginClientSession || session.WID.AsString() != adminWid {
-		session.SendQuickResponse(403, "FORBIDDEN", "Only admin can use this")
+	if isAdmin, err := session.IsAdmin(); err != nil || !isAdmin {
+		// IsAdmin() handles notifying the client, too. :)
 		return
 	}
 
@@ -853,8 +827,7 @@ func commandUpload(session *sessionState) {
 	// Command syntax:
 	// UPLOAD(Size,Hash,Path,Name="",Offset=0)
 
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if !session.RequireLogin() {
 		return
 	}
 
