@@ -71,7 +71,7 @@ func commandDevice(session *sessionState) {
 
 	success, _ = challengeDevice(session, "CURVE25519", session.Message.Data["Device-Key"])
 	if !success {
-		lockout, err := logFailure(session, "device", session.WID.AsString())
+		lockout, err := logFailure(session, "device", session.WID)
 		if err != nil {
 			// No need to log here -- logFailure does that.
 			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
@@ -217,12 +217,12 @@ func commandLogin(session *sessionState) {
 	var exists bool
 	exists, session.WorkspaceStatus = dbhandler.CheckWorkspace(wid.AsString())
 	if exists {
-		lockout, err := isLocked(session, "workspace", wid.AsString())
+		lockout, err := isLocked(session, "workspace", wid)
 		if err != nil || lockout {
 			return
 		}
 
-		lockout, err = isLocked(session, "password", wid.AsString())
+		lockout, err = isLocked(session, "password", wid)
 		if err != nil || lockout {
 			return
 		}
@@ -305,11 +305,11 @@ func commandPasscode(session *sessionState) {
 		return
 	}
 
-	verified, err := dbhandler.CheckPasscode(wid.AsString(), session.Message.Data["Reset-Code"])
+	verified, err := dbhandler.CheckPasscode(wid, session.Message.Data["Reset-Code"])
 	if err != nil {
 		if err.Error() == "expired" {
 			session.SendQuickResponse(415, "EXPIRED", "")
-			dbhandler.DeletePasscode(wid.AsString(), session.Message.Data["Reset-Code"])
+			dbhandler.DeletePasscode(wid, session.Message.Data["Reset-Code"])
 			return
 		}
 
@@ -319,7 +319,7 @@ func commandPasscode(session *sessionState) {
 	}
 
 	if !verified {
-		terminate, err := logFailure(session, "passcode", wid.AsString())
+		terminate, err := logFailure(session, "passcode", wid)
 		if terminate || err != nil {
 			return
 		}
@@ -327,7 +327,7 @@ func commandPasscode(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.SetPassword(session.WID.AsString(), session.Message.Data["Password-Hash"])
+	err = dbhandler.SetPassword(session.WID, session.Message.Data["Password-Hash"])
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandPasscode: failed to update password: %s", err.Error())
@@ -366,7 +366,7 @@ func commandPassword(session *sessionState) {
 	}
 
 	if !match {
-		terminate, err := logFailure(session, "password", session.WID.AsString())
+		terminate, err := logFailure(session, "password", session.WID)
 		if terminate || err != nil {
 			return
 		}
@@ -443,7 +443,7 @@ func commandResetPassword(session *sessionState) {
 			Format("20060102T150405Z")
 	}
 
-	err = dbhandler.ResetPassword(wid.AsString(), passcode, expires)
+	err = dbhandler.ResetPassword(wid, passcode, expires)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandResetPassword: failed to add password reset code: %s", err.Error())
@@ -492,7 +492,7 @@ func commandSetPassword(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.SetPassword(session.WID.AsString(), session.Message.Data["NewPassword-Hash"])
+	err = dbhandler.SetPassword(session.WID, session.Message.Data["NewPassword-Hash"])
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandSetPassword: failed to update password: %s", err.Error())

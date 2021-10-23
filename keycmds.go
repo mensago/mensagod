@@ -63,8 +63,8 @@ func commandAddEntry(session *sessionState) {
 		return
 	}
 
-	wid := strings.ToLower(entry.Fields["Workspace-ID"])
-	if wid != session.WID.AsString() {
+	wid := types.UUID(entry.Fields["Workspace-ID"])
+	if !wid.Equals(session.WID) {
 		session.SendQuickResponse(411, "BAD KEYCARD DATA", "Workspace doesn't match login")
 		return
 	}
@@ -113,7 +113,7 @@ func commandAddEntry(session *sessionState) {
 		return
 	}
 
-	if wid != session.WID.AsString() {
+	if !wid.Equals(session.WID) {
 		session.SendQuickResponse(412, "NONCOMPLIANT KEYCARD DATA", "Workspace ID mismatch")
 		return
 	}
@@ -123,7 +123,7 @@ func commandAddEntry(session *sessionState) {
 	currentIndex, _ := strconv.Atoi(entry.Fields["Index"])
 
 	// Passing a 0 as the start index means we'll get just the current entry
-	tempStrList, err := dbhandler.GetUserEntries(wid, 0, 0)
+	tempStrList, err := dbhandler.GetUserEntries(wid.AsString(), 0, 0)
 	if err == nil {
 		if len(tempStrList) == 0 {
 			if currentIndex != 1 {
@@ -339,11 +339,6 @@ func commandUserCard(session *sessionState) {
 
 	if session.Message.Validate([]string{"Owner", "Start-Index"}) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Missing Start-Index")
-		return
-	}
-
-	if dbhandler.GetMensagoAddressType(session.Message.Data["Owner"]) == 0 {
-		session.SendQuickResponse(400, "BAD REQUEST", "Missing Owner")
 		return
 	}
 

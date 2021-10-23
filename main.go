@@ -424,7 +424,7 @@ func commandSend(session *sessionState) {
 		return
 	}
 
-	address, err := dbhandler.ResolveWID(session.WID.AsString())
+	address, err := dbhandler.ResolveWID(session.WID)
 	if err != nil {
 		logging.Writef("commandSend: Unable to resolve WID %s", err)
 		fsp.DeleteTempFile(session.WID.AsString(), tempName)
@@ -432,7 +432,7 @@ func commandSend(session *sessionState) {
 	}
 
 	fsp.InstallTempFile(session.WID.AsString(), tempName, "/ out")
-	messaging.PushMessage(address, domain.AsString(), "/ out "+tempName)
+	messaging.PushMessage(address.AsString(), domain.AsString(), "/ out "+tempName)
 	session.SendQuickResponse(200, "OK", "")
 }
 
@@ -480,7 +480,7 @@ func commandSendFast(session *sessionState) {
 
 	tempHandle.Close()
 
-	address, err := dbhandler.ResolveWID(session.WID.AsString())
+	address, err := dbhandler.ResolveWID(session.WID)
 	if err != nil {
 		logging.Writef("commandSend: Unable to resolve WID %s", err)
 		fsp.DeleteTempFile(session.WID.AsString(), tempName)
@@ -488,7 +488,7 @@ func commandSendFast(session *sessionState) {
 	}
 
 	tempName, _ = fsp.InstallTempFile(session.WID.AsString(), tempName, "/ out")
-	messaging.PushMessage(address, domain.AsString(), "/ out "+tempName)
+	messaging.PushMessage(address.AsString(), domain.AsString(), "/ out "+tempName)
 	session.SendQuickResponse(200, "OK", "")
 }
 
@@ -597,7 +597,7 @@ func createUpdateResponse(records *[]dbhandler.UpdateRecord, totalRecords int64)
 // true, indicating that the current command handler needs to exit. The wid parameter may be empty,
 // but should be supplied when possible. By doing so, it limits lockouts for an IP address to that
 // specific workspace ID.
-func logFailure(session *sessionState, failType string, wid string) (bool, error) {
+func logFailure(session *sessionState, failType string, wid types.UUID) (bool, error) {
 	remoteip := strings.Split(session.Connection.RemoteAddr().String(), ":")[0]
 	err := dbhandler.LogFailure(failType, wid, remoteip)
 	if err != nil {
@@ -624,7 +624,7 @@ func logFailure(session *sessionState, failType string, wid string) (bool, error
 
 // isLocked checks to see if the client should be locked out of the session. It handles sending
 // the appropriate message and returns true if the command handler should just exit.
-func isLocked(session *sessionState, failType string, wid string) (bool, error) {
+func isLocked(session *sessionState, failType string, wid types.UUID) (bool, error) {
 	lockTime, err := getLockout(session, failType, wid)
 	if err != nil {
 		return true, err
@@ -640,9 +640,10 @@ func isLocked(session *sessionState, failType string, wid string) (bool, error) 
 	return false, nil
 }
 
-func getLockout(session *sessionState, failType string, wid string) (string, error) {
+func getLockout(session *sessionState, failType string, wid types.UUID) (string, error) {
 
-	lockTime, err := dbhandler.CheckLockout(failType, wid, session.Connection.RemoteAddr().String())
+	lockTime, err := dbhandler.CheckLockout(failType, wid.AsString(),
+		session.Connection.RemoteAddr().String())
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("getLockout: error checking lockout: %s", err.Error())

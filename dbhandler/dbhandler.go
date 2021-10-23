@@ -5,7 +5,6 @@ import (
 	"net"
 	"os"
 	"regexp"
-	"strings"
 	"time"
 
 	"database/sql"
@@ -77,7 +76,7 @@ func IsConnected() bool {
 // This function will check the server configuration and if the failure has
 // exceeded the threshold for that type of failure, then a lockout timestamp will
 // be set.
-func LogFailure(failType string, wid string, sourceip string) error {
+func LogFailure(failType string, wid types.UUID, sourceip string) error {
 	if failType == "" {
 		logging.Write("LogFailure(): empty fail type")
 		return misc.ErrMissingArgument
@@ -105,7 +104,8 @@ func LogFailure(failType string, wid string, sourceip string) error {
 		if err == sql.ErrNoRows {
 			sqlStatement := `INSERT INTO failure_log(type, source, id, count, last_failure)
 			VALUES($1, $2, $3, $4, $5)`
-			_, err = dbConn.Exec(sqlStatement, failType, sourceip, wid, failCount, timeString)
+			_, err = dbConn.Exec(sqlStatement, failType, sourceip, wid.AsString(), failCount,
+				timeString)
 			if err != nil {
 				logging.Write("dbhandler.LogFailure: failed to update failure log")
 			}
@@ -126,7 +126,7 @@ func LogFailure(failType string, wid string, sourceip string) error {
 			SET count=$1, last_failure=$2, lockout_until=$3
 			WHERE type=$4 AND source=$5 AND id=$6`
 		_, err = dbConn.Exec(sqlStatement, failCount, timeString, lockout.Format(time.RFC3339),
-			failType, sourceip, wid)
+			failType, sourceip, wid.AsString())
 		if err != nil {
 			logging.Write("dbhandler.LogFailure: failed to update failure log")
 			return err
@@ -137,7 +137,7 @@ func LogFailure(failType string, wid string, sourceip string) error {
 			UPDATE failure_log 
 			SET count=$1, last_failure=$2 
 			WHERE type=$3 AND source=$4 and wid=$5`
-		_, err = dbConn.Exec(sqlStatement, failCount, timeString, failType, sourceip, wid)
+		_, err = dbConn.Exec(sqlStatement, failCount, timeString, failType, sourceip, wid.AsString())
 		if err != nil {
 			logging.Write("dbhandler.LogFailure: failed to update failure log")
 			return err
@@ -145,33 +145,6 @@ func LogFailure(failType string, wid string, sourceip string) error {
 	}
 
 	return nil
-}
-
-// GetMensagoAddressType returns the type of address given to it. It returns 0 when there is an
-// error, 1 when given a valid workspace address, and 2 when given a valid Mensago address
-func GetMensagoAddressType(addr string) int {
-
-	parts := strings.Split(addr, "/")
-	if len(parts) != 2 {
-		return 0
-	}
-
-	// Validate the domain portion of the address
-	pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
-	if !pattern.MatchString(parts[1]) {
-		return 0
-	}
-
-	// Is this a workspace address?
-	if ValidateUUID(parts[0]) {
-		return 1
-	}
-
-	pattern = regexp.MustCompile("[\\\"]|[[:space:]]")
-	if pattern.MatchString(parts[0]) {
-		return 0
-	}
-	return 2
 }
 
 // ResolveAddress returns the WID corresponding to an Mensago address.
@@ -224,18 +197,19 @@ func ResolveAddress(addr types.MAddress) (types.UUID, error) {
 	return types.ToUUID(wid), nil
 }
 
-func ResolveWID(wid string) (string, error) {
+func ResolveWID(wid types.UUID) (types.WAddress, error) {
 	var domain string
 	row := dbConn.QueryRow(`SELECT domain FROM workspaces WHERE wid = $1`, wid)
 	err := row.Scan(&domain)
 	if err != nil {
+		var out types.WAddress
 		if err == sql.ErrNoRows {
 			// No entry in the table
-			return "", nil
+			return out, nil
 		}
-		return "", err
+		return out, err
 	}
-	return strings.Join([]string{wid, domain}, "/"), nil
+	return types.WAddress{ID: wid, Domain: types.DomainT(domain)}, nil
 }
 
 // CheckLockout corresponds to LogFailure() in that it checks to see if said
@@ -288,10 +262,10 @@ func CheckLockout(failType string, id string, source string) (string, error) {
 
 // CheckPasscode checks the validity of a workspace/passcode combination. This function will return
 // an error of "expired" if the combination is valid but expired.
-func CheckPasscode(wid string, passcode string) (bool, error) {
+func CheckPasscode(wid types.UUID, passcode string) (bool, error) {
 	var expires string
 	row := dbConn.QueryRow(`SELECT expires FROM passcodes WHERE wid = $1 AND passcode = $2 `,
-		wid, passcode)
+		wid.AsString(), passcode)
 	err := row.Scan(&expires)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -317,9 +291,9 @@ func CheckPasscode(wid string, passcode string) (bool, error) {
 }
 
 // DeletePasscode deletes a workspace/passcode combination
-func DeletePasscode(wid string, passcode string) error {
+func DeletePasscode(wid types.UUID, passcode string) error {
 	_, err := dbConn.Exec(`DELETE FROM passcodes WHERE wid = $1 AND passcode = $2`,
-		wid, passcode)
+		wid.AsString(), passcode)
 
 	return err
 }
@@ -333,14 +307,14 @@ func RemoveExpiredPasscodes() error {
 
 // ResetPassword adds a reset code combination to the database for later authentication by the
 // user. All parameters are expected to be populated.
-func ResetPassword(wid string, passcode string, expires string) error {
-	_, err := dbConn.Exec(`DELETE FROM passcodes WHERE wid = $1`, wid)
+func ResetPassword(wid types.UUID, passcode string, expires string) error {
+	_, err := dbConn.Exec(`DELETE FROM passcodes WHERE wid = $1`, wid.AsString())
 	if err != nil {
 		return err
 	}
 
 	_, err = dbConn.Exec(`INSERT INTO passcodes(wid, passcode, expires) VALUES($1, $2, $3)`,
-		wid, passcode, expires)
+		wid.AsString(), passcode, expires)
 
 	return err
 }
@@ -348,12 +322,12 @@ func ResetPassword(wid string, passcode string, expires string) error {
 // SetPassword does just that: sets the password for a workspace. It returns a boolean state,
 // indicating a match (or lack thereof) and an error state. It will take any input string of up to
 // 64 characters and store it in the database.
-func SetPassword(wid string, password string) error {
+func SetPassword(wid types.UUID, password string) error {
 	if len(password) > 128 {
 		return misc.ErrOutOfRange
 	}
 	passHash := ezn.HashPassword(password, false)
-	_, err := dbConn.Exec(`UPDATE workspaces SET password=$1 WHERE wid=$2`, passHash, wid)
+	_, err := dbConn.Exec(`UPDATE workspaces SET password=$1 WHERE wid=$2`, passHash, wid.AsString())
 	return err
 }
 
