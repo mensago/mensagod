@@ -109,16 +109,12 @@ func commandDevice(session *sessionState) {
 	session.LastUpdateSent = lastLogin
 
 	response := NewServerResponse(200, "OK")
-	response.Data["Is-Admin"] = "False"
 
-	adminAddress := "admin/" + viper.GetString("global.domain")
-	adminWid, err := dbhandler.ResolveAddress(adminAddress)
+	isAdmin, err := session.IsAdmin()
 	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		logging.Writef("commandDevice: Error resolving address: %s", err)
 		return
 	}
-	if session.WID.AsString() == adminWid {
+	if isAdmin {
 		response.Data["Is-Admin"] = "True"
 	} else {
 		response.Data["Is-Admin"] = "False"
