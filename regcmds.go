@@ -63,16 +63,7 @@ func commandPreregister(session *sessionState) {
 	// command syntax:
 	// PREREG(User-ID="",Workspace-ID="",Domain="")
 
-	adminAddress := "admin/" + viper.GetString("global.domain")
-	adminWid, err := dbhandler.ResolveAddress(adminAddress)
-	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		logging.Writef("commandPreregister: Error resolving address: %s", err)
-		return
-	}
-
-	if session.LoginState != loginClientSession || session.WID.AsString() != adminWid {
-		session.SendQuickResponse(403, "FORBIDDEN", "Only admin can use this")
+	if isAdmin, err := session.RequireAdmin(); err != nil || !isAdmin {
 		return
 	}
 
@@ -481,13 +472,14 @@ func commandUnrecognized(session *sessionState) {
 func commandUnregister(session *sessionState) {
 	// command syntax:
 	// UNREGISTER(Password-Hash)
-	if !session.Message.HasField("Password-Hash") {
-		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
+
+	if !session.RequireLogin() {
 		return
 	}
 
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "Must be logged in for this command")
+	if !session.Message.HasField("Password-Hash") {
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
+		return
 	}
 
 	if _, err := ezn.IsArgonHash(session.Message.Data["Password-Hash"]); err != nil {
