@@ -167,15 +167,20 @@ func (s *sessionState) AppendUpdateField(msg *ServerResponse) {
 	}
 }
 
+// IsAdmin checks to see if the session belongs to the administrator. If it doesn't, it sends a
+// quick response to the client and returns the appropriate value
 func (s *sessionState) IsAdmin() (bool, error) {
 
 	adminAddress := "admin/" + viper.GetString("global.domain")
 	adminWid, err := dbhandler.ResolveAddress(adminAddress)
 	if err != nil {
+		s.SendQuickResponse(300, "INTERNAL SERVER ERROR", "IsAdmin")
+		logging.Writef("IsAdmin: Error resolving admin address: %s", err)
 		return false, err
 	}
 
 	if s.LoginState != loginClientSession || s.WID.AsString() != adminWid {
+		s.SendQuickResponse(403, "FORBIDDEN", "Only admin can use this")
 		return false, nil
 	}
 
