@@ -32,8 +32,7 @@ func commandAddEntry(session *sessionState) {
 	// 7) Once uploaded, the server validates the `Hash` and `User-Signature` fields, and,
 	//    assuming that all is well, adds it to the keycard database and returns `200 OK`.
 
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "Login required")
+	if !session.RequireLogin() {
 		return
 	}
 

@@ -136,13 +136,12 @@ func commandDevKey(session *sessionState) {
 	// Command syntax:
 	// DEVKEY(Device-ID, Old-Key, New-Key)
 
-	if session.Message.Validate([]string{"Device-ID", "Old-Key", "New-Key"}) != nil {
-		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
+	if !session.RequireLogin() {
 		return
 	}
 
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if session.Message.Validate([]string{"Device-ID", "Old-Key", "New-Key"}) != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
@@ -397,16 +396,8 @@ func commandResetPassword(session *sessionState) {
 	// Command syntax:
 	// RESETPASSWORD(Workspace-ID, Reset-Code="", Expires="")
 
-	adminAddress := "admin/" + viper.GetString("global.domain")
-	adminWid, err := dbhandler.ResolveAddress(adminAddress)
-	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		logging.Writef("commandResetPassword: Error resolving address: %s", err)
+	if isAdmin, err := session.RequireAdmin(); err != nil || !isAdmin {
 		return
-	}
-
-	if session.LoginState != loginClientSession || session.WID.AsString() != adminWid {
-		session.SendQuickResponse(403, "FORBIDDEN", "Only admin can use this")
 	}
 
 	if !session.Message.HasField("Workspace-ID") {
@@ -429,6 +420,8 @@ func commandResetPassword(session *sessionState) {
 		}
 		passcode = session.Message.Data["Reset-Code"]
 	}
+
+	var err error
 	if passcode == "" {
 		passcode, err = diceware.RollWords(viper.GetInt("security.diceware_wordcount"), "-",
 			gDiceWordList)
@@ -471,13 +464,12 @@ func commandSetPassword(session *sessionState) {
 	// Command syntax:
 	// SETPASSWORD(Password-Hash, NewPassword-Hash)
 
-	if session.Message.Validate([]string{"Password-Hash", "NewPassword-Hash"}) != nil {
-		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
+	if !session.RequireLogin() {
 		return
 	}
 
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if session.Message.Validate([]string{"Password-Hash", "NewPassword-Hash"}) != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
