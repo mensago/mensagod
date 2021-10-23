@@ -107,6 +107,10 @@ func (a *MAddress) Set(addr string) error {
 	return misc.ErrBadArgument
 }
 
+func (a MAddress) Equals(other MAddress) bool {
+	return a.IDType == other.IDType && a.ID == other.ID && a.Domain.Equals(other.Domain)
+}
+
 func ToMAddress(addr string) MAddress {
 	var out MAddress
 	out.Set(addr)
@@ -166,6 +170,10 @@ func (a *WAddress) Set(addr string) error {
 	return nil
 }
 
+func (a WAddress) Equals(other WAddress) bool {
+	return a.ID.Equals(other.ID) && a.Domain.Equals(other.Domain)
+}
+
 func ToWAddress(addr string) WAddress {
 	var out WAddress
 	out.Set(addr)
@@ -203,6 +211,10 @@ func (uid *UserID) Set(data string) error {
 	return misc.ErrBadArgument
 }
 
+func (uid UserID) Equals(other UserID) bool {
+	return string(uid) == string(other)
+}
+
 func ToUserID(addr string) UserID {
 	var out UserID
 	out.Set(addr)
@@ -228,6 +240,10 @@ func (wid *UUID) Set(data string) error {
 	return misc.ErrBadArgument
 }
 
+func (wid UUID) Equals(other UUID) bool {
+	return string(wid) == string(other)
+}
+
 func ToUUID(addr string) UUID {
 	var out UUID
 	out.Set(addr)
@@ -251,6 +267,10 @@ func (dom *DomainT) Set(data string) error {
 
 	*dom = ""
 	return misc.ErrBadArgument
+}
+
+func (dom DomainT) Equals(other DomainT) bool {
+	return string(dom) == string(other)
 }
 
 func ToDomain(addr string) DomainT {
