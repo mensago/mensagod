@@ -345,7 +345,10 @@ func commandRegister(session *sessionState) {
 		}
 	}
 
-	// TODO: Validate Password-Hash
+	if _, err := ezn.IsArgonHash(session.Message.Data["Password-Hash"]); err != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Password Hash")
+		return
+	}
 
 	wtype := "identity"
 	if session.Message.HasField("Type") {
