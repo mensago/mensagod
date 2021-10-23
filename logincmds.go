@@ -39,7 +39,7 @@ func commandDevice(session *sessionState) {
 		return
 	}
 
-	success, err := dbhandler.CheckDevice(session.WID, devid, devkey.AsString())
+	success, err := dbhandler.CheckDevice(session.WID, devid, devkey)
 	if err != nil {
 		if err.Error() == "cancel" {
 			session.LoginState = loginNoSession
@@ -151,7 +151,7 @@ func commandDevKey(session *sessionState) {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad device ID")
 		return
 	}
-	_, err := dbhandler.CheckDevice(session.WID, devid, oldkey.AsString())
+	_, err := dbhandler.CheckDevice(session.WID, devid, oldkey)
 
 	if err != nil {
 		if err.Error() == "cancel" {
@@ -176,8 +176,7 @@ func commandDevKey(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.UpdateDevice(session.WID, devid, oldkey.AsString(),
-		newkey.AsString())
+	err = dbhandler.UpdateDevice(session.WID, devid, oldkey, newkey)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandDevKey: error updating device: %s", err.Error())
@@ -358,7 +357,7 @@ func commandPassword(session *sessionState) {
 		return
 	}
 
-	match, err := dbhandler.CheckPassword(session.WID.AsString(), session.Message.Data["Password-Hash"])
+	match, err := dbhandler.CheckPassword(session.WID, session.Message.Data["Password-Hash"])
 	if err != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Password check error")
 		return
@@ -480,7 +479,7 @@ func commandSetPassword(session *sessionState) {
 		return
 	}
 
-	match, err := dbhandler.CheckPassword(session.WID.AsString(), session.Message.Data["Password-Hash"])
+	match, err := dbhandler.CheckPassword(session.WID, session.Message.Data["Password-Hash"])
 	if err != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Password check error")
 		return

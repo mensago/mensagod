@@ -334,8 +334,8 @@ func SetPassword(wid types.UUID, password string) error {
 // CheckPassword checks a password hash against the one stored in the database. It returns true
 // if the two hashes match. It does not perform any validity checking of the input--this should be
 // done when the input is received from the user.
-func CheckPassword(wid string, password string) (bool, error) {
-	row := dbConn.QueryRow(`SELECT password FROM workspaces WHERE wid=$1`, wid)
+func CheckPassword(wid types.UUID, password string) (bool, error) {
+	row := dbConn.QueryRow(`SELECT password FROM workspaces WHERE wid=$1`, wid.AsString())
 
 	var dbhash string
 	err := row.Scan(&dbhash)
@@ -376,9 +376,9 @@ func RemoveDevice(wid types.UUID, devid types.UUID) (bool, error) {
 }
 
 // CheckDevice checks if a device has been added to a workspace.
-func CheckDevice(wid types.UUID, devid types.UUID, devkey string) (bool, error) {
+func CheckDevice(wid types.UUID, devid types.UUID, devkey ezn.CryptoString) (bool, error) {
 	row := dbConn.QueryRow(`SELECT status FROM iwkspc_devices WHERE wid=$1 AND 
-		devid=$2 AND devkey=$3`, wid.AsString(), devid.AsString(), devkey)
+		devid=$2 AND devkey=$3`, wid.AsString(), devid.AsString(), devkey.AsString())
 
 	var widStatus string
 	err := row.Scan(&widStatus)
@@ -394,7 +394,8 @@ func CheckDevice(wid types.UUID, devid types.UUID, devkey string) (bool, error) 
 }
 
 // UpdateDevice replaces a device's old key with a new one
-func UpdateDevice(wid types.UUID, devid types.UUID, oldkey string, newkey string) error {
+func UpdateDevice(wid types.UUID, devid types.UUID, oldkey ezn.CryptoString,
+	newkey ezn.CryptoString) error {
 	_, err := dbConn.Exec(`UPDATE iwkspc_devices SET devkey=$1 WHERE wid=$2 AND 
 		devid=$3 AND devkey=$4`, newkey, wid.AsString(), devid.AsString(), oldkey)
 

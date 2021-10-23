@@ -486,7 +486,7 @@ func commandUnregister(session *sessionState) {
 		return
 	}
 
-	match, err := dbhandler.CheckPassword(session.WID.AsString(), session.Message.Data["Password-Hash"])
+	match, err := dbhandler.CheckPassword(session.WID, session.Message.Data["Password-Hash"])
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Unregister: error checking password: %s", err.Error())
