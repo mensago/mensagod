@@ -16,6 +16,7 @@ import (
 	"github.com/darkwyrm/mensagod/keycard"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/misc"
+	"github.com/darkwyrm/mensagod/types"
 	"github.com/everlastingbeta/diceware"
 	"github.com/lib/pq"
 	"github.com/spf13/viper"
@@ -174,30 +175,16 @@ func GetMensagoAddressType(addr string) int {
 }
 
 // ResolveAddress returns the WID corresponding to an Mensago address.
-func ResolveAddress(addr string) (string, error) {
-	parts := strings.Split(addr, "/")
-	if len(parts) != 2 {
+func ResolveAddress(addr types.MAddress) (types.UUID, error) {
+
+	if !addr.IsValid() {
 		return "", misc.ErrInvalidAddress
 	}
 
-	// Validate the domain portion of the address
-	pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
-	if !pattern.MatchString(parts[1]) {
-		return "", misc.ErrInvalidDomain
-	}
-
-	// Is this a workspace address?
-	isWid := ValidateUUID(parts[0])
-
-	pattern = regexp.MustCompile("[\\\"]|[[:space:]]")
-	if pattern.MatchString(parts[0]) {
-		return "", misc.ErrInvalidID
-	}
-
-	if isWid {
+	if addr.IsWorkspace() {
 		// If the address is a workspace address, then all we have to do is confirm that the
 		// workspace exists -- workspace IDs are unique across an organization, not just a domain
-		row := dbConn.QueryRow(`SELECT wtype FROM workspaces WHERE wid=$1`, parts[0])
+		row := dbConn.QueryRow(`SELECT wtype FROM workspaces WHERE wid=$1`, addr.ID)
 		var wtype string
 		err := row.Scan(&wtype)
 
@@ -210,19 +197,19 @@ func ResolveAddress(addr string) (string, error) {
 		}
 
 		if wtype == "alias" {
-			row := dbConn.QueryRow(`SELECT wid FROM aliases WHERE wid=$1`, parts[0])
+			row := dbConn.QueryRow(`SELECT wid FROM aliases WHERE wid=$1`, addr.ID)
 			var targetAddr string
 			err := row.Scan(&targetAddr)
 			if err != nil {
 				return "", err
 			}
 
-			return targetAddr, nil
+			return types.ToUUID(targetAddr), nil
 		}
-		return addr, nil
+		return types.ToUUID(addr.ID), nil
 	}
 
-	row := dbConn.QueryRow(`SELECT wid,domain FROM workspaces WHERE uid=$1`, parts[0])
+	row := dbConn.QueryRow(`SELECT wid,domain FROM workspaces WHERE uid=$1`, addr.ID)
 	var wid, domain string
 
 	err := row.Scan(&wid, &domain)
@@ -234,7 +221,7 @@ func ResolveAddress(addr string) (string, error) {
 		return "", err
 	}
 
-	return wid, nil
+	return types.ToUUID(wid), nil
 }
 
 func ResolveWID(wid string) (string, error) {

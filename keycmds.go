@@ -11,6 +11,7 @@ import (
 	"github.com/darkwyrm/mensagod/dbhandler"
 	"github.com/darkwyrm/mensagod/keycard"
 	"github.com/darkwyrm/mensagod/logging"
+	"github.com/darkwyrm/mensagod/types"
 	"github.com/spf13/viper"
 )
 
@@ -73,14 +74,15 @@ func commandAddEntry(session *sessionState) {
 	// admin, support, and abuse can't change their user IDs
 	adminAddresses := []string{"admin", "support", "abuse"}
 	for _, address := range adminAddresses {
-		currentAddress := address + "/" + viper.GetString("global.domain")
+		currentAddress := types.MAddress{IDType: 2, ID: address,
+			Domain: types.DomainT(viper.GetString("global.domain"))}
 		currentWid, err := dbhandler.ResolveAddress(currentAddress)
 		if err != nil {
 			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 			logging.Writef("commandAddEntry: error resolving address: %s", err.Error())
 			return
 		}
-		if session.WID.AsString() == currentWid {
+		if session.WID.Equals(currentWid) {
 			if uid != address {
 				session.SendQuickResponse(411, "BAD KEYCARD DATA",
 					"Admin, Support, and Abuse can't change their user IDs")
@@ -89,19 +91,13 @@ func commandAddEntry(session *sessionState) {
 		}
 	}
 
-	adminAddress := "admin/" + viper.GetString("global.domain")
-	adminWid, err := dbhandler.ResolveAddress(adminAddress)
+	isAdmin, err := session.IsAdmin()
 	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		logging.Writef("commandAddEntry: error resolving address: %s", err.Error())
 		return
 	}
-
-	if session.WID.AsString() == adminWid {
-		if uid != "admin" {
-			session.SendQuickResponse(411, "BAD KEYCARD DATA", "Admin can't change its user ID")
-			return
-		}
+	if isAdmin && uid != "admin" {
+		session.SendQuickResponse(411, "BAD KEYCARD DATA", "Admin can't change its user ID")
+		return
 	}
 
 	// IsDataCompliant performs all of the checks we need to ensure that the data given to us by the
@@ -351,7 +347,13 @@ func commandUserCard(session *sessionState) {
 		return
 	}
 
-	wid, _ := dbhandler.ResolveAddress(session.Message.Data["Owner"])
+	ownerAddr := types.ToMAddress(session.Message.Data["Owner"])
+	if !ownerAddr.IsValid() {
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad owner address")
+		return
+	}
+
+	wid, _ := dbhandler.ResolveAddress(ownerAddr)
 	if wid == "" {
 		session.SendQuickResponse(404, "NOT FOUND", "")
 		return
@@ -372,7 +374,7 @@ func commandUserCard(session *sessionState) {
 		}
 	}
 
-	entries, err := dbhandler.GetUserEntries(wid, startIndex, endIndex)
+	entries, err := dbhandler.GetUserEntries(wid.AsString(), startIndex, endIndex)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandUserCard: error retrieving user entries: %s", err.Error())

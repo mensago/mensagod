@@ -525,13 +525,13 @@ func commandSetStatus(session *sessionState) {
 	}
 
 	adminAddress := types.ToMAddress("admin/" + viper.GetString("global.domain"))
-	adminWid, err := dbhandler.ResolveAddress(adminAddress.GetAddress())
+	adminWid, err := dbhandler.ResolveAddress(adminAddress)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandPreregister: Error resolving address: %s", err)
 		return
 	}
-	if session.WID.AsString() != adminWid {
+	if !session.WID.Equals(adminWid) {
 		session.SendQuickResponse(403, "FORBIDDEN", "Only admin can use this")
 		return
 	}

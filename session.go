@@ -328,11 +328,11 @@ func GetAdmin() (types.WAddress, error) {
 	addr.ID = "admin"
 	addr.Domain = types.DomainT(viper.GetString("global.domain"))
 
-	adminWid, err := dbhandler.ResolveAddress(addr.AsString())
+	adminWid, err := dbhandler.ResolveAddress(addr)
 	if err != nil {
 		return out, err
 	}
 
-	out.ID.Set(adminWid)
+	out.ID = adminWid
 	return out, nil
 }

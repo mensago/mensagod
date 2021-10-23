@@ -45,7 +45,7 @@ func commandGetWID(session *sessionState) {
 	}
 
 	address := types.ToMAddressFromParts(uid, domain)
-	wid, err := dbhandler.ResolveAddress(address.AsString())
+	wid, err := dbhandler.ResolveAddress(address)
 	if err != nil {
 		if err.Error() == "workspace not found" {
 			terminate, err := logFailure(session, "widlookup", "")
@@ -55,7 +55,7 @@ func commandGetWID(session *sessionState) {
 		}
 	}
 	response := NewServerResponse(200, "OK")
-	response.Data["Workspace-ID"] = wid
+	response.Data["Workspace-ID"] = wid.AsString()
 	session.SendResponse(*response)
 }
 
@@ -506,26 +506,24 @@ func commandUnregister(session *sessionState) {
 		return
 	}
 
-	adminWid, err := dbhandler.ResolveAddress("admin/" + viper.GetString("global.domain"))
+	adminAddress, err := GetAdmin()
 	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		logging.Write("Unregister: failed to resolve admin account")
 		return
 	}
 
 	// This command can be used to unregister other workspaces, but only the admin account is
 	// allowed to do this
-	wid := session.WID.AsString()
+	wid := session.WID
 	if session.Message.HasField("Workspace-ID") {
-		tempWid := strings.ToLower(session.Message.Data["Workspace-ID"])
-		if !dbhandler.ValidateUUID(tempWid) {
+		tempWid := types.ToUUID(session.Message.Data["Workspace-ID"])
+		if !tempWid.IsValid() {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad Workspace-ID")
 			return
 		}
 
-		if session.WID.AsString() != tempWid {
+		if !session.WID.Equals(tempWid) {
 
-			if session.WID.AsString() != adminWid {
+			if !session.WID.Equals(adminAddress.ID) {
 				session.SendQuickResponse(401, "UNAUTHORIZED",
 					"Only admin can unregister other workspaces")
 				return
@@ -536,20 +534,22 @@ func commandUnregister(session *sessionState) {
 	}
 
 	// You can't unregister the admin account
-	if wid == adminWid {
+	if wid.Equals(adminAddress.ID) {
 		session.SendQuickResponse(403, "FORBIDDEN", "Can't unregister the admin account")
 		return
 	}
 
 	// Can't delete support or abuse accounts
 	for _, builtin := range []string{"support", "abuse"} {
-		address, err := dbhandler.ResolveAddress(builtin + "/" + viper.GetString("global.domain"))
+		currentAddress := types.MAddress{IDType: 2, ID: builtin,
+			Domain: types.DomainT(viper.GetString("global.domain"))}
+		resolved, err := dbhandler.ResolveAddress(currentAddress)
 		if err != nil {
 			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 			logging.Write("Unregister: failed to resolve account " + builtin)
 			return
 		}
-		if wid == address {
+		if wid.Equals(resolved) {
 			session.SendQuickResponse(403, "FORBIDDEN",
 				fmt.Sprintf("Can't unregister the built-in %s account", builtin))
 			return
@@ -557,20 +557,20 @@ func commandUnregister(session *sessionState) {
 	}
 
 	// You also don't delete aliases with this command
-	isAlias, _ := dbhandler.IsAlias(wid)
+	isAlias, _ := dbhandler.IsAlias(wid.AsString())
 	if isAlias {
 		session.SendQuickResponse(403, "FORBIDDEN", "Aliases aren't removed with this command")
 		return
 	}
 
-	err = dbhandler.RemoveWorkspace(wid)
+	err = dbhandler.RemoveWorkspace(wid.AsString())
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Unregister: error removing workspace from db: %s", err.Error())
 		return
 	}
 
-	err = fshandler.GetFSProvider().RemoveDirectory("/ wsp "+wid, true)
+	err = fshandler.GetFSProvider().RemoveDirectory("/ wsp "+wid.AsString(), true)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Unregister: error removing workspace from filesystem: %s", err.Error())

@@ -145,9 +145,9 @@ func ResolveAddress(address types.MAddress) (types.MAddress, error) {
 	var out types.MAddress
 
 	// Quickly resolve local addresses
-	tempString, err := dbhandler.ResolveAddress(address.GetAddress())
+	localAddr, err := dbhandler.ResolveAddress(address)
 	if err == nil {
-		out.Set(tempString)
+		out.ID = localAddr.AsString()
 		return out, nil
 	}
 
