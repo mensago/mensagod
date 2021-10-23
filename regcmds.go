@@ -490,6 +490,11 @@ func commandUnregister(session *sessionState) {
 		session.SendQuickResponse(401, "UNAUTHORIZED", "Must be logged in for this command")
 	}
 
+	if _, err := ezn.IsArgonHash(session.Message.Data["Password-Hash"]); err != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Password Hash")
+		return
+	}
+
 	match, err := dbhandler.CheckPassword(session.WID.AsString(), session.Message.Data["Password-Hash"])
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
