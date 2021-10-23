@@ -232,6 +232,10 @@ func commandGetUpdates(session *sessionState) {
 	// Command syntax:
 	// GETUPDATES(Time)
 
+	if !session.RequireLogin() {
+		return
+	}
+
 	if !session.Message.HasField("Time") {
 		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
@@ -265,6 +269,10 @@ func commandIdle(session *sessionState) {
 	// Command syntax:
 	// IDLE(CountUpdates=-1)
 
+	if !session.RequireLogin() {
+		return
+	}
+
 	if session.Message.HasField("CountUpdates") {
 		unixtime, err := strconv.ParseInt(session.Message.Data["CountUpdates"], 10, 64)
 		if err != nil {
@@ -290,8 +298,7 @@ func commandSend(session *sessionState) {
 	// Command syntax:
 	// SEND(Size, Hash, Domain, TempName="", Offset=0)
 
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if !session.RequireLogin() {
 		return
 	}
 
@@ -433,8 +440,7 @@ func commandSendFast(session *sessionState) {
 	// Command syntax:
 	// SENDFAST(Size, Hash, Domain)
 
-	if session.LoginState != loginClientSession {
-		session.SendQuickResponse(401, "UNAUTHORIZED", "")
+	if !session.RequireLogin() {
 		return
 	}
 
@@ -489,6 +495,10 @@ func commandSendFast(session *sessionState) {
 func commandSetStatus(session *sessionState) {
 	// Command syntax:
 	// SETSTATUS(wid, status)
+
+	if isAdmin, err := session.RequireAdmin(); err != nil || !isAdmin {
+		return
+	}
 
 	if session.Message.Validate([]string{"Workspace-ID", "Status"}) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
