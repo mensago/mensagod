@@ -115,7 +115,12 @@ func ToMAddress(addr string) MAddress {
 
 func ToMAddressFromParts(uid UserID, dom DomainT) MAddress {
 	var out MAddress
-	out.IDType = 2
+
+	if uid.IsWID() {
+		out.IDType = 1
+	} else {
+		out.IDType = 2
+	}
 	out.ID = uid.AsString()
 	out.Domain = dom
 	return out
