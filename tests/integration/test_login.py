@@ -240,8 +240,8 @@ def test_setpassword():
 
 
 if __name__ == '__main__':
-	# test_login()
-	# test_setpassword()
-	# test_devkey()
+	test_login()
+	test_setpassword()
+	test_devkey()
 	test_resetpassword()
 
