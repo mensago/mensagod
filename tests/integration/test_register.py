@@ -320,7 +320,7 @@ def test_overflow():
 
 
 if __name__ == '__main__':
-	# test_register()
-	# test_register_failures()
+	test_register()
+	test_register_failures()
 	test_overflow()
-	# test_unregister()
+	test_unregister()
