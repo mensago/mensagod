@@ -12,6 +12,7 @@ import (
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/misc"
+	"github.com/darkwyrm/mensagod/types"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
@@ -84,7 +85,7 @@ func commandCopy(session *sessionState) {
 		return
 	}
 
-	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID.AsString())
+	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
@@ -307,9 +308,9 @@ func commandGetQuotaInfo(session *sessionState) {
 		quotaList := make([]string, len(widList))
 		usageList := make([]string, len(widList))
 		for i, rawwid := range widList {
-			wid := strings.TrimSpace(rawwid)
-			if !dbhandler.ValidateUUID(wid) {
-				session.SendQuickResponse(400, "BAD REQUEST", "Bad workspace ID "+wid)
+			wid := types.ToUUID(rawwid)
+			if !wid.IsValid() {
+				session.SendQuickResponse(400, "BAD REQUEST", "Bad workspace ID "+wid.AsString())
 				return
 			}
 
@@ -331,7 +332,7 @@ func commandGetQuotaInfo(session *sessionState) {
 		return
 	}
 
-	u, q, err := dbhandler.GetQuotaInfo(session.WID.AsString())
+	u, q, err := dbhandler.GetQuotaInfo(session.WID)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandGetQuotaInfo: Error getting quota info for workspace %s: %s",
@@ -614,7 +615,7 @@ func commandReplace(session *sessionState) {
 
 	// Arguments have been validated, do a quota check
 
-	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID.AsString())
+	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
@@ -743,7 +744,7 @@ func commandRmDir(session *sessionState) {
 		handleFSError(session, err)
 		return
 	}
-	dbhandler.ModifyQuotaUsage(session.WID.AsString(), int64(usage)*-1)
+	dbhandler.ModifyQuotaUsage(session.WID, int64(usage)*-1)
 
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		ID:   uuid.NewString(),
@@ -807,9 +808,10 @@ func commandSetQuota(session *sessionState) {
 	// both security and simplicity
 	workspaces := strings.Split(strings.ToLower(session.Message.Data["Workspaces"]), ",")
 	for _, rawWID := range workspaces {
-		w := strings.TrimSpace(rawWID)
-		if !dbhandler.ValidateUUID(w) {
-			session.SendQuickResponse(400, "BAD REQUEST", fmt.Sprintf("Bad workspace ID %s", w))
+		w := types.ToUUID(rawWID)
+		if !w.IsValid() {
+			session.SendQuickResponse(400, "BAD REQUEST", fmt.Sprintf("Bad workspace ID "+
+				w.AsString()))
 			return
 		}
 
@@ -901,7 +903,7 @@ func commandUpload(session *sessionState) {
 
 	// Arguments have been validated, do a quota check
 
-	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID.AsString())
+	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
@@ -969,7 +971,7 @@ func commandUpload(session *sessionState) {
 		return
 	}
 
-	dbhandler.ModifyQuotaUsage(session.WID.AsString(), fileSize)
+	dbhandler.ModifyQuotaUsage(session.WID, fileSize)
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		ID:   uuid.NewString(),
 		Type: dbhandler.UpdateCreate,

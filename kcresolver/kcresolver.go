@@ -109,14 +109,14 @@ func GetKeycard(address types.MAddress, cardType string) (*keycard.Keycard, erro
 	}
 
 	// Card not in the cache, so begin the actual lookup
-	isLocal, err := dbhandler.IsDomainLocal(address.AsString())
+	isLocal, err := dbhandler.IsDomainLocal(address.Domain)
 	if err != nil {
 		return nil, err
 	}
 
 	if isLocal {
 		if cardType == "User" {
-			out, err = dbhandler.GetUserKeycard(waddr.AsString())
+			out, err = dbhandler.GetUserKeycard(types.UUID(waddr.ID))
 		} else {
 			out, err = dbhandler.GetOrgKeycard()
 		}
@@ -141,13 +141,13 @@ func GetKeycard(address types.MAddress, cardType string) (*keycard.Keycard, erro
 
 // ResolveAddress takes a Mensago address and returns the workspace address. Unlike the function
 // in dbhandler, this version handles external addresses.
-func ResolveAddress(address types.MAddress) (types.MAddress, error) {
-	var out types.MAddress
+func ResolveAddress(address types.MAddress) (types.WAddress, error) {
+	var out types.WAddress
 
 	// Quickly resolve local addresses
 	localAddr, err := dbhandler.ResolveAddress(address)
 	if err == nil {
-		out.ID = localAddr.AsString()
+		out.ID = localAddr
 		return out, nil
 	}
 

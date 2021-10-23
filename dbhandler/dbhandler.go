@@ -349,12 +349,13 @@ func CheckPassword(wid string, password string) (bool, error) {
 // AddDevice is used for adding a device to a workspace. The initial last login is set to when
 // this method is called because a new device is only at certain times, such as at registration
 // or when a user logs into a workspace on a new device.
-func AddDevice(wid string, devid string, devkey ezn.CryptoString, status string) error {
+func AddDevice(wid types.UUID, devid types.UUID, devkey ezn.CryptoString, status string) error {
 	timestamp := fmt.Sprintf("%d", time.Now().UTC().Unix())
 	var err error
 	sqlStatement := `INSERT INTO iwkspc_devices(wid, devid, devkey, lastlogin, status) ` +
 		`VALUES($1, $2, $3, $4, $5)`
-	_, err = dbConn.Exec(sqlStatement, wid, devid, devkey.AsString(), timestamp, status)
+	_, err = dbConn.Exec(sqlStatement, wid.AsString(), devid.AsString(), devkey.AsString(),
+		timestamp, status)
 	if err != nil {
 		return err
 	}
@@ -362,11 +363,12 @@ func AddDevice(wid string, devid string, devkey ezn.CryptoString, status string)
 }
 
 // RemoveDevice removes a device from a workspace. It returns true if successful and false if not.
-func RemoveDevice(wid string, devid string) (bool, error) {
+func RemoveDevice(wid types.UUID, devid types.UUID) (bool, error) {
 	if len(devid) != 40 {
 		return false, misc.ErrBadArgument
 	}
-	_, err := dbConn.Exec(`DELETE FROM iwkspc_devices WHERE wid=$1 AND devid=$2`, wid, devid)
+	_, err := dbConn.Exec(`DELETE FROM iwkspc_devices WHERE wid=$1 AND devid=$2`, wid.AsString(),
+		devid.AsString())
 	if err != nil {
 		return false, nil
 	}
@@ -374,9 +376,9 @@ func RemoveDevice(wid string, devid string) (bool, error) {
 }
 
 // CheckDevice checks if a device has been added to a workspace.
-func CheckDevice(wid string, devid string, devkey string) (bool, error) {
+func CheckDevice(wid types.UUID, devid types.UUID, devkey string) (bool, error) {
 	row := dbConn.QueryRow(`SELECT status FROM iwkspc_devices WHERE wid=$1 AND 
-		devid=$2 AND devkey=$3`, wid, devid, devkey)
+		devid=$2 AND devkey=$3`, wid.AsString(), devid.AsString(), devkey)
 
 	var widStatus string
 	err := row.Scan(&widStatus)
@@ -392,24 +394,25 @@ func CheckDevice(wid string, devid string, devkey string) (bool, error) {
 }
 
 // UpdateDevice replaces a device's old key with a new one
-func UpdateDevice(wid string, devid string, oldkey string, newkey string) error {
+func UpdateDevice(wid types.UUID, devid types.UUID, oldkey string, newkey string) error {
 	_, err := dbConn.Exec(`UPDATE iwkspc_devices SET devkey=$1 WHERE wid=$2 AND 
-		devid=$3 AND devkey=$4`, newkey, wid, devid, oldkey)
+		devid=$3 AND devkey=$4`, newkey, wid.AsString(), devid.AsString(), oldkey)
 
 	return err
 }
 
 // UpdateLastLogin sets the last login timestamp for a device
-func UpdateLastLogin(wid string, devid string) error {
+func UpdateLastLogin(wid types.UUID, devid types.UUID) error {
 	_, err := dbConn.Exec(`UPDATE iwkspc_devices SET lastlogin=$1 WHERE wid=$2 AND 
-		devid=$3`, time.Now().UTC().Unix(), wid, devid)
+		devid=$3`, time.Now().UTC().Unix(), wid.AsString(), devid.AsString())
 
 	return err
 }
 
 // GetLastLogin gets the last time a device logged in UTC time, UNIX format
-func GetLastLogin(wid string, devid string) (int64, error) {
-	row := dbConn.QueryRow(`SELECT lastlogin FROM iwkspc_devices WHERE wid=$1`, wid)
+func GetLastLogin(wid types.UUID, devid types.UUID) (int64, error) {
+	// TODO: Fix this query -- needs to use devid, too
+	row := dbConn.QueryRow(`SELECT lastlogin FROM iwkspc_devices WHERE wid=$1`, wid.AsString())
 
 	var lastlogin int64
 	err := row.Scan(&lastlogin)
@@ -430,8 +433,8 @@ func GetLastLogin(wid string, devid string) (int64, error) {
 }
 
 // CheckUserID works the same as CheckWorkspace except that it checks for user IDs
-func CheckUserID(uid string) (bool, string) {
-	row := dbConn.QueryRow(`SELECT status FROM workspaces WHERE uid=$1`, uid)
+func CheckUserID(uid types.UserID) (bool, string) {
+	row := dbConn.QueryRow(`SELECT status FROM workspaces WHERE uid=$1`, uid.AsString())
 
 	var widStatus string
 	err := row.Scan(&widStatus)
@@ -451,7 +454,7 @@ func CheckUserID(uid string) (bool, string) {
 		return false, ""
 	}
 
-	row = dbConn.QueryRow(`SELECT uid FROM prereg WHERE uid=$1`, uid)
+	row = dbConn.QueryRow(`SELECT uid FROM prereg WHERE uid=$1`, uid.AsString())
 	err = row.Scan(&widStatus)
 
 	switch err {
@@ -474,15 +477,15 @@ func CheckUserID(uid string) (bool, string) {
 // a randomly-generated registration code needed to authenticate the first login. Registration
 // codes are stored in the clear, but that's merely because if an attacker already has access to
 // the server to see the codes, the attacker can easily create new workspaces.
-func PreregWorkspace(wid string, uid string, domain string, wordList *diceware.Wordlist,
-	wordcount int) (string, error) {
+func PreregWorkspace(wid types.UUID, uid types.UserID, domain types.DomainT,
+	wordList *diceware.Wordlist, wordcount int) (string, error) {
 
 	if len(wid) > 36 || len(uid) > 128 {
 		return "", misc.ErrBadArgument
 	}
 
-	if len(uid) > 0 {
-		row := dbConn.QueryRow(`SELECT uid FROM prereg WHERE uid=$1`, uid)
+	if uid.IsValid() {
+		row := dbConn.QueryRow(`SELECT uid FROM prereg WHERE uid=$1`, uid.AsString())
 		var hasuid string
 		err := row.Scan(&hasuid)
 
@@ -507,7 +510,7 @@ func PreregWorkspace(wid string, uid string, domain string, wordList *diceware.W
 	regcode, _ := diceware.RollWords(wordcount, " ", *wordList)
 
 	_, err := dbConn.Exec(`INSERT INTO prereg(wid, uid, domain, regcode) VALUES($1, $2, $3, $4)`,
-		wid, uid, domain, regcode)
+		wid.AsString(), uid.AsString(), domain.AsString(), regcode)
 
 	return regcode, err
 }
@@ -517,11 +520,11 @@ func PreregWorkspace(wid string, uid string, domain string, wordList *diceware.W
 // (success) or an empty string (failure). An error is returned only if authentication was not
 // successful. The caller is still responsible for performing the necessary steps to add the
 // workspace to the database.
-func CheckRegCode(id string, domain string, iswid bool, regcode string) (string, string, error) {
+func CheckRegCode(addr types.MAddress, regcode string) (string, string, error) {
 	var wid, uid string
-	if iswid {
+	if addr.IsWorkspace() {
 		row := dbConn.QueryRow(`SELECT wid,uid FROM prereg WHERE regcode = $1 AND domain = $2`,
-			regcode, domain)
+			regcode, addr.Domain.AsString())
 		err := row.Scan(&wid, &uid)
 		if err != nil {
 			if err == sql.ErrNoRows {
@@ -531,14 +534,14 @@ func CheckRegCode(id string, domain string, iswid bool, regcode string) (string,
 			return "", "", err
 		}
 
-		if wid == id {
+		if wid == addr.ID {
 			return wid, uid, nil
 		}
 		return "", "", misc.ErrMismatch
 	}
 
 	row := dbConn.QueryRow(`SELECT wid,uid FROM prereg WHERE regcode = $1 AND uid = $2 `+
-		`AND domain = $3`, regcode, id, domain)
+		`AND domain = $3`, regcode, addr.ID, addr.Domain.AsString())
 	err := row.Scan(&wid, &uid)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -552,15 +555,15 @@ func CheckRegCode(id string, domain string, iswid bool, regcode string) (string,
 }
 
 // DeleteRegCode removes preregistration data from the database.
-func DeleteRegCode(id string, domain string, iswid bool, regcode string) error {
+func DeleteRegCode(addr types.MAddress, regcode string) error {
 
 	var err error
-	if iswid {
+	if addr.IsWorkspace() {
 		_, err = dbConn.Exec(`DELETE FROM prereg WHERE wid = $1 AND regcode = $2 AND domain = $3`,
-			id, regcode, domain)
+			addr.ID, regcode, addr.Domain.AsString())
 	} else {
 		_, err = dbConn.Exec(`DELETE FROM prereg WHERE uid = $1 AND regcode = $2 AND domain = $3`,
-			id, regcode, domain)
+			addr.ID, regcode, addr.Domain.AsString())
 	}
 
 	return err
@@ -628,7 +631,7 @@ func GetOrgEntries(startIndex int, endIndex int) ([]string, error) {
 
 // GetUserEntries pulls one or more entries from the database. If an end index is not desired, set
 // it to 0. Passing a starting index of 0 will return the current entry for the workspace specified.
-func GetUserEntries(wid string, startIndex int, endIndex int) ([]string, error) {
+func GetUserEntries(wid types.UUID, startIndex int, endIndex int) ([]string, error) {
 	out := make([]string, 0, 10)
 
 	if startIndex < 1 {
@@ -649,7 +652,7 @@ func GetUserEntries(wid string, startIndex int, endIndex int) ([]string, error) 
 			return out, nil
 		}
 		rows, err := dbConn.Query(`SELECT entry FROM keycards WHERE owner = $1 `+
-			`AND index >= $2 AND index <= $3 ORDER BY index`, wid, startIndex, endIndex)
+			`AND index >= $2 AND index <= $3 ORDER BY index`, wid.AsString(), startIndex, endIndex)
 		if err != nil {
 			return out, err
 		}
@@ -667,7 +670,7 @@ func GetUserEntries(wid string, startIndex int, endIndex int) ([]string, error) 
 	} else {
 		// Given just a start index
 		rows, err := dbConn.Query(`SELECT entry FROM keycards WHERE owner = $1 `+
-			`AND index >= $2 ORDER BY index`, wid, startIndex)
+			`AND index >= $2 ORDER BY index`, wid.AsString(), startIndex)
 		if err != nil {
 			return out, err
 		}
@@ -704,16 +707,16 @@ func AddEntry(entry *keycard.Entry) error {
 }
 
 // GetUserKeycard obtains a user's entire keycard as a Keycard object
-func GetUserKeycard(wid string) (keycard.Keycard, error) {
+func GetUserKeycard(wid types.UUID) (keycard.Keycard, error) {
 	var out keycard.Keycard
 	out.Type = "User"
 	out.Entries = make([]keycard.Entry, 0)
 
-	err := loadKeycardEntries(&out, wid)
+	err := loadKeycardEntries(&out, wid.AsString())
 	return out, err
 }
 
-// GetUserKeycard obtains a organization's entire keycard as a Keycard object
+// GetOrgKeycard obtains a organization's entire keycard as a Keycard object
 func GetOrgKeycard() (keycard.Keycard, error) {
 	var out keycard.Keycard
 	out.Type = "Organization"
@@ -783,9 +786,9 @@ func GetEncryptionPair() (*ezn.EncryptionPair, error) {
 }
 
 // GetAliases returns a StringList containing the aliases pointing to the specified WID
-func GetAliases(wid string) (gostringlist.StringList, error) {
+func GetAliases(wid types.UUID) (gostringlist.StringList, error) {
 	var out gostringlist.StringList
-	rows, err := dbConn.Query(`SELECT alias FROM alias WHERE wid=$1`, wid)
+	rows, err := dbConn.Query(`SELECT alias FROM alias WHERE wid=$1`, wid.AsString())
 	if err != nil {
 		return out, err
 	}
@@ -803,8 +806,8 @@ func GetAliases(wid string) (gostringlist.StringList, error) {
 }
 
 // GetQuotaInfo returns the disk usage and quota size of a workspace in bytes
-func GetQuotaInfo(wid string) (uint64, uint64, error) {
-	row := dbConn.QueryRow(`SELECT usage,quota FROM quotas WHERE wid=$1`, wid)
+func GetQuotaInfo(wid types.UUID) (uint64, uint64, error) {
+	row := dbConn.QueryRow(`SELECT usage,quota FROM quotas WHERE wid=$1`, wid.AsString())
 
 	var dbUsage, dbQuota int64
 	var outUsage, outQuota uint64
@@ -812,7 +815,7 @@ func GetQuotaInfo(wid string) (uint64, uint64, error) {
 
 	switch err {
 	case sql.ErrNoRows:
-		outUsage, err = fshandler.GetFSProvider().GetDiskUsage("/ wsp " + wid)
+		outUsage, err = fshandler.GetFSProvider().GetDiskUsage("/ wsp " + wid.AsString())
 		if err != nil {
 			return 0, 0, err
 		}
@@ -829,7 +832,7 @@ func GetQuotaInfo(wid string) (uint64, uint64, error) {
 		return 0, 0, err
 	}
 
-	outUsage, err = fshandler.GetFSProvider().GetDiskUsage("/ wsp " + wid)
+	outUsage, err = fshandler.GetFSProvider().GetDiskUsage("/ wsp " + wid.AsString())
 	if err != nil {
 		return 0, 0, err
 	}
@@ -846,13 +849,12 @@ func GetQuotaInfo(wid string) (uint64, uint64, error) {
 }
 
 // IsDomainLocal checks to see if the domain passed to it is managed by this server
-func IsDomainLocal(domain string) (bool, error) {
-	pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
-	if !pattern.MatchString(domain) {
+func IsDomainLocal(domain types.DomainT) (bool, error) {
+	if !domain.IsValid() {
 		return false, misc.ErrBadArgument
 	}
 
-	row := dbConn.QueryRow(`SELECT domain FROM workspaces WHERE domain=$1`, domain)
+	row := dbConn.QueryRow(`SELECT domain FROM workspaces WHERE domain=$1`, domain.AsString())
 	var tempString string
 	err := row.Scan(&tempString)
 
@@ -868,7 +870,7 @@ func IsDomainLocal(domain string) (bool, error) {
 }
 
 // ModifyQuotaUsage modifies the disk usage by a relative amount, specified in bytes. Note that if
-func ModifyQuotaUsage(wid string, amount int64) (uint64, error) {
+func ModifyQuotaUsage(wid types.UUID, amount int64) (uint64, error) {
 	row := dbConn.QueryRow(`SELECT usage FROM quotas WHERE wid=$1`, wid)
 
 	var dbUsage int64
@@ -877,13 +879,13 @@ func ModifyQuotaUsage(wid string, amount int64) (uint64, error) {
 
 	switch err {
 	case sql.ErrNoRows:
-		out, err = fshandler.GetFSProvider().GetDiskUsage("/ wsp " + wid)
+		out, err = fshandler.GetFSProvider().GetDiskUsage("/ wsp " + wid.AsString())
 		if err != nil {
 			return 0, err
 		}
 
 		sqlStatement := `INSERT INTO quotas(wid, usage, quota)	VALUES($1, $2, $3)`
-		_, err = dbConn.Exec(sqlStatement, wid, out,
+		_, err = dbConn.Exec(sqlStatement, wid.AsString(), out,
 			viper.GetInt64("global.default_quota")*1_048_576)
 		if err != nil {
 			logging.Writef("dbhandler.ModifyQuotaUsage: failed to add quota entry to table: %s",
@@ -904,7 +906,7 @@ func ModifyQuotaUsage(wid string, amount int64) (uint64, error) {
 	// database will be negative
 	if dbUsage < 0 {
 		fsh := fshandler.GetFSProvider()
-		out, err = fsh.GetDiskUsage("/ wsp " + wid)
+		out, err = fsh.GetDiskUsage("/ wsp " + wid.AsString())
 		if err != nil {
 			return 0, err
 		}
@@ -930,22 +932,23 @@ func ResetQuotaUsage() error {
 }
 
 // SetQuota sets the disk quota for a workspace to the specified number of bytes
-func SetQuota(wid string, quota uint64) error {
+func SetQuota(wid types.UUID, quota uint64) error {
 	sqlStatement := `UPDATE quotas SET quota=$1 WHERE wid=$2`
-	result, err := dbConn.Exec(sqlStatement, quota, wid)
+	result, err := dbConn.Exec(sqlStatement, quota, wid.AsString())
 	if err != nil {
-		logging.Writef("dbhandler.SetQuota: failed to update quota for %s: %s", wid, err.Error())
+		logging.Writef("dbhandler.SetQuota: failed to update quota for %s: %s", wid.AsString(),
+			err.Error())
 		return err
 	}
 
 	rowcount, _ := result.RowsAffected()
 	if rowcount == 0 {
-		usage, err := fshandler.GetFSProvider().GetDiskUsage("/ wsp " + wid)
+		usage, err := fshandler.GetFSProvider().GetDiskUsage("/ wsp " + wid.AsString())
 		if err != nil {
 			return err
 		}
 		sqlStatement := `INSERT INTO quotas(wid, usage, quota)	VALUES($1, $2, $3)`
-		_, err = dbConn.Exec(sqlStatement, wid, usage, quota)
+		_, err = dbConn.Exec(sqlStatement, wid.AsString(), usage, quota)
 		if err != nil {
 			logging.Writef("dbhandler.SetQuota: failed to add quota entry to table: %s",
 				err.Error())
@@ -958,9 +961,9 @@ func SetQuota(wid string, quota uint64) error {
 // SetQuotaUsage sets the disk quota usage for a workspace to a specified number of bytes. If the
 // usage has not been updated since boot, the total is ignored and the actual value from disk
 // is used.
-func SetQuotaUsage(wid string, total uint64) error {
+func SetQuotaUsage(wid types.UUID, total uint64) error {
 	sqlStatement := `UPDATE quotas SET usage=$1 WHERE wid=$2`
-	result, err := dbConn.Exec(sqlStatement, total, wid)
+	result, err := dbConn.Exec(sqlStatement, total, wid.AsString())
 	if err != nil {
 		logging.Writef("dbhandler.SetQuotaUsage: failed to update quota for %s: %s", wid,
 			err.Error())
@@ -969,13 +972,13 @@ func SetQuotaUsage(wid string, total uint64) error {
 
 	rowcount, _ := result.RowsAffected()
 	if rowcount == 0 {
-		usage, err := fshandler.GetFSProvider().GetDiskUsage("/ wsp " + wid)
+		usage, err := fshandler.GetFSProvider().GetDiskUsage("/ wsp " + wid.AsString())
 		if err != nil {
 			return err
 		}
 
 		sqlStatement := `INSERT INTO quotas(wid, usage, quota)	VALUES($1, $2, $3)`
-		_, err = dbConn.Exec(sqlStatement, wid, usage,
+		_, err = dbConn.Exec(sqlStatement, wid.AsString(), usage,
 			viper.GetInt64("global.default_quota")*1_048_576)
 		if err != nil {
 			logging.Writef("dbhandler.SetQuotaUsage: failed to add quota entry to table: %s",

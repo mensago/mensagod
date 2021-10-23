@@ -39,8 +39,7 @@ func commandDevice(session *sessionState) {
 		return
 	}
 
-	success, err := dbhandler.CheckDevice(session.WID.AsString(), session.Message.Data["Device-ID"],
-		devkey.AsString())
+	success, err := dbhandler.CheckDevice(session.WID, devid, devkey.AsString())
 	if err != nil {
 		if err.Error() == "cancel" {
 			session.LoginState = loginNoSession
@@ -63,13 +62,13 @@ func commandDevice(session *sessionState) {
 
 		// This code exists to at least enable the server to work until device checking can
 		// be implemented.
-		dbhandler.AddDevice(session.WID.AsString(), devid.AsString(), devkey, "active")
+		dbhandler.AddDevice(session.WID, devid, devkey, "active")
 	}
 
 	// The device is part of the workspace, so now we issue undergo a challenge-response
 	// to ensure that the device really is authorized and the key wasn't stolen by an impostor
 
-	success, _ = challengeDevice(session, "CURVE25519", session.Message.Data["Device-Key"])
+	success, _ = challengeDevice(session, "CURVE25519", devkey.AsString())
 	if !success {
 		lockout, err := logFailure(session, "device", session.WID)
 		if err != nil {
@@ -100,7 +99,7 @@ func commandDevice(session *sessionState) {
 	session.LoginState = loginClientSession
 
 	messaging.RegisterWorkspace(session.WID.AsString())
-	lastLogin, err := dbhandler.GetLastLogin(session.WID.AsString(), devid.AsString())
+	lastLogin, err := dbhandler.GetLastLogin(session.WID, devid)
 	if err != nil {
 		logging.Writef("commandDevice: error getting last login for %s:%s: %s", session.WID.AsString(),
 			session.Message.Data["Device-ID"], err.Error())
@@ -121,7 +120,7 @@ func commandDevice(session *sessionState) {
 	}
 	session.SendResponse(*response)
 
-	err = dbhandler.UpdateLastLogin(session.WID.AsString(), devid.AsString())
+	err = dbhandler.UpdateLastLogin(session.WID, devid)
 	if err != nil {
 		logging.Writef("commandDevice: error setting last login for %s:%s: %s", session.WID.AsString(),
 			session.Message.Data["Device-ID"], err.Error())
@@ -152,7 +151,7 @@ func commandDevKey(session *sessionState) {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad device ID")
 		return
 	}
-	_, err := dbhandler.CheckDevice(session.WID.AsString(), devid.AsString(), oldkey.AsString())
+	_, err := dbhandler.CheckDevice(session.WID, devid, oldkey.AsString())
 
 	if err != nil {
 		if err.Error() == "cancel" {
@@ -177,7 +176,7 @@ func commandDevKey(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.UpdateDevice(session.WID.AsString(), devid.AsString(), oldkey.AsString(),
+	err = dbhandler.UpdateDevice(session.WID, devid, oldkey.AsString(),
 		newkey.AsString())
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")

@@ -12,6 +12,7 @@ import (
 	"github.com/darkwyrm/mensagod/config"
 	"github.com/darkwyrm/mensagod/fshandler"
 	"github.com/darkwyrm/mensagod/misc"
+	"github.com/darkwyrm/mensagod/types"
 )
 
 // setupTest initializes the global config and resets the database
@@ -158,8 +159,8 @@ func TestDBHandler_GetQuotaInfo(t *testing.T) {
 
 	resetWorkspaceDir()
 
-	wid := "11111111-1111-1111-1111-111111111111"
-	testPath := "/ " + wid
+	wid := types.ToUUID("11111111-1111-1111-1111-111111111111")
+	testPath := "/ " + wid.AsString()
 	ensureTestDirectory(testPath)
 	generateRandomFile(testPath, 2000)
 
@@ -220,9 +221,9 @@ func TestDBHandler_ModifyQuotaUsage(t *testing.T) {
 
 	resetWorkspaceDir()
 
-	wid := "11111111-1111-1111-1111-111111111111"
-	ensureTestDirectory("/ " + wid)
-	generateRandomFile("/ "+wid, 2000)
+	wid := types.ToUUID("11111111-1111-1111-1111-111111111111")
+	ensureTestDirectory("/ " + wid.AsString())
+	generateRandomFile("/ "+wid.AsString(), 2000)
 
 	row := dbConn.QueryRow(`SELECT usage FROM quotas WHERE wid=$1`, wid)
 
@@ -291,9 +292,9 @@ func TestDBHandler_ResetQuotaUsage(t *testing.T) {
 
 	resetWorkspaceDir()
 
-	wid := "11111111-1111-1111-1111-111111111111"
-	ensureTestDirectory("/ " + wid)
-	makeTestFiles("/ "+wid, 5)
+	wid := types.ToUUID("11111111-1111-1111-1111-111111111111")
+	ensureTestDirectory("/ " + wid.AsString())
+	makeTestFiles("/ "+wid.AsString(), 5)
 
 	row := dbConn.QueryRow(`SELECT usage FROM quotas WHERE wid=$1`, wid)
 
@@ -341,9 +342,9 @@ func TestDBHandler_SetQuota(t *testing.T) {
 
 	resetWorkspaceDir()
 
-	wid := "11111111-1111-1111-1111-111111111111"
-	ensureTestDirectory("/ " + wid)
-	makeTestFiles("/ "+wid, 5)
+	wid := types.ToUUID("11111111-1111-1111-1111-111111111111")
+	ensureTestDirectory("/ " + wid.AsString())
+	makeTestFiles("/ "+wid.AsString(), 5)
 
 	row := dbConn.QueryRow(`SELECT quota FROM quotas WHERE wid=$1`, wid)
 
@@ -394,8 +395,8 @@ func TestDBHandler_SetQuotaUsage(t *testing.T) {
 
 	resetWorkspaceDir()
 
-	wid := "11111111-1111-1111-1111-111111111111"
-	testPath := "/ " + wid
+	wid := types.ToUUID("11111111-1111-1111-1111-111111111111")
+	testPath := "/ " + wid.AsString()
 	ensureTestDirectory(testPath)
 	generateRandomFile(testPath, 2000)
 

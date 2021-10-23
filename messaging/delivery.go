@@ -92,7 +92,7 @@ func deliveryWorker(workerID uint64) {
 		}
 
 		// The Receiver field will contain a domain, not a full address
-		isLocal, err := dbhandler.IsDomainLocal(msgInfo.Receiver)
+		isLocal, err := dbhandler.IsDomainLocal(types.ToDomain(msgInfo.Receiver))
 		if err != nil {
 			Bounce(300, msgInfo, &map[string]string{"INTERNALCODE": "messaging.deliveryWorker.2"})
 			continue

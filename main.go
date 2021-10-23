@@ -361,7 +361,7 @@ func commandSend(session *sessionState) {
 
 	// Arguments have been validated, do a quota check
 
-	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID.AsString())
+	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
@@ -456,7 +456,7 @@ func commandSendFast(session *sessionState) {
 
 	// Arguments have been validated, do a quota check
 
-	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID.AsString())
+	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return

@@ -75,7 +75,7 @@ func commandPreregister(session *sessionState) {
 			return
 		}
 
-		success, _ := dbhandler.CheckUserID(uid.AsString())
+		success, _ := dbhandler.CheckUserID(uid)
 		if success {
 			session.SendQuickResponse(408, "RESOURCE EXISTS", "User-ID exists")
 			return
@@ -128,8 +128,8 @@ func commandPreregister(session *sessionState) {
 		}
 	}
 
-	regcode, err := dbhandler.PreregWorkspace(wid.AsString(), uid.AsString(), domain.AsString(),
-		&gDiceWordList, viper.GetInt("security.diceware_wordcount"))
+	regcode, err := dbhandler.PreregWorkspace(wid, uid, domain, &gDiceWordList,
+		viper.GetInt("security.diceware_wordcount"))
 	if err != nil {
 		if err.Error() == "uid exists" {
 			session.SendQuickResponse(408, "RESOURCE EXISTS", "")
@@ -252,8 +252,8 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	wid, uid, err := dbhandler.CheckRegCode(msgid.AsString(), domain.AsString(), msgid.IsWID(),
-		session.Message.Data["Reg-Code"])
+	msgAddr := types.ToMAddressFromParts(msgid, domain)
+	wid, uid, err := dbhandler.CheckRegCode(msgAddr, session.Message.Data["Reg-Code"])
 
 	if wid == "" {
 		// Regardless of whether or not an error has been returned from log, we exit here. In this
@@ -283,15 +283,14 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.AddDevice(wid, devid.AsString(), devkey, "active")
+	err = dbhandler.AddDevice(types.ToUUID(wid), devid, devkey, "active")
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.5")
 		logging.Writef("Internal server error. commandRegCode.AddDevice. Error: %s\n", err)
 		return
 	}
 
-	err = dbhandler.DeleteRegCode(msgid.AsString(), domain.AsString(), false,
-		session.Message.Data["Reg-Code"])
+	err = dbhandler.DeleteRegCode(msgAddr, session.Message.Data["Reg-Code"])
 	if err != nil {
 		logging.Writef("Internal server error. commandRegCode.DeleteRegCode. Error: %s\n", err)
 		return
@@ -371,7 +370,7 @@ func commandRegister(session *sessionState) {
 	}
 
 	if session.Message.HasField("User-ID") {
-		success, _ = dbhandler.CheckUserID(uid.AsString())
+		success, _ = dbhandler.CheckUserID(uid)
 		if success {
 			response := NewServerResponse(408, "RESOURCE EXISTS")
 			response.Data["Field"] = "User-ID"
@@ -431,7 +430,7 @@ func commandRegister(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.AddDevice(wid.AsString(), devid.AsString(), devkey, "active")
+	err = dbhandler.AddDevice(wid, devid, devkey, "active")
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Internal server error. commandRegister.AddDevice. Error: %s\n", err)

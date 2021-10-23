@@ -123,7 +123,7 @@ func commandAddEntry(session *sessionState) {
 	currentIndex, _ := strconv.Atoi(entry.Fields["Index"])
 
 	// Passing a 0 as the start index means we'll get just the current entry
-	tempStrList, err := dbhandler.GetUserEntries(wid.AsString(), 0, 0)
+	tempStrList, err := dbhandler.GetUserEntries(wid, 0, 0)
 	if err == nil {
 		if len(tempStrList) == 0 {
 			if currentIndex != 1 {
@@ -369,7 +369,7 @@ func commandUserCard(session *sessionState) {
 		}
 	}
 
-	entries, err := dbhandler.GetUserEntries(wid.AsString(), startIndex, endIndex)
+	entries, err := dbhandler.GetUserEntries(wid, startIndex, endIndex)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandUserCard: error retrieving user entries: %s", err.Error())
@@ -438,8 +438,8 @@ func commandIsCurrent(session *sessionState) {
 
 	var currentIndex int
 	if session.Message.HasField("Workspace-ID") {
-		wid := strings.ToLower(session.Message.Data["Workspace-ID"])
-		if !dbhandler.ValidateUUID(wid) {
+		wid := types.ToUUID(session.Message.Data["Workspace-ID"])
+		if !wid.IsValid() {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad Workspace-ID")
 			return
 		}
