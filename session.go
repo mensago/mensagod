@@ -14,6 +14,7 @@ import (
 	"github.com/darkwyrm/mensagod/messaging"
 	"github.com/darkwyrm/mensagod/misc"
 	"github.com/darkwyrm/mensagod/types"
+	"github.com/spf13/viper"
 )
 
 type loginStatus int
@@ -164,6 +165,21 @@ func (s *sessionState) AppendUpdateField(msg *ServerResponse) {
 		msg.Data["UpdateCount"] = fmt.Sprintf("%d", updateCount)
 		s.LastUpdateSent = time.Now().UTC().Unix()
 	}
+}
+
+func (s *sessionState) IsAdmin() (bool, error) {
+
+	adminAddress := "admin/" + viper.GetString("global.domain")
+	adminWid, err := dbhandler.ResolveAddress(adminAddress)
+	if err != nil {
+		return false, err
+	}
+
+	if s.LoginState != loginClientSession || s.WID.AsString() != adminWid {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 func (s *sessionState) ReadClient() (string, error) {
