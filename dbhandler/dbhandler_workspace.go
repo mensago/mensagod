@@ -2,11 +2,14 @@ package dbhandler
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
 	ezn "github.com/darkwyrm/goeznacl"
 	"github.com/darkwyrm/mensagod/logging"
+	"github.com/darkwyrm/mensagod/misc"
+	"github.com/darkwyrm/mensagod/types"
 	"github.com/lib/pq"
 )
 
@@ -130,5 +133,52 @@ func SetWorkspaceStatus(wid string, status string) error {
 	}
 	var err error
 	_, err = dbConn.Exec(`UPDATE workspaces SET status=$1 WHERE wid=$2`, status, wid)
+	return err
+}
+
+// AddFolderEntry adds a mapping of a server path to an encrypted client path
+func AddFolderEntry(wid types.UUID, serverPath string, clientPath ezn.CryptoString) error {
+
+	// The dbhandler-level calls do only minimal validation
+	if !wid.IsValid() || serverPath == "" || !clientPath.IsValid() {
+		return misc.ErrBadArgument
+	}
+
+	row := dbConn.QueryRow(`SELECT wid FROM iwkspc_folders WHERE wid=$1 AND serverpath=$2`,
+		wid.AsString(), serverPath)
+	var tempStr string
+	err := row.Scan(&tempStr)
+
+	if err == nil {
+		// Error will be nil if the entry already exists
+		return misc.ErrExists
+	}
+
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	_, err = dbConn.Exec(`INSERT INTO iwkspc_folders(wid, serverpath, clientpath) `+
+		`VALUES($1, $2, $3)`, wid.AsString(), serverPath, clientPath.AsString())
+	return err
+}
+
+// RemoveFolderEntry deletes a folder mapping
+func RemoveFolderEntry(wid types.UUID, serverPath string) error {
+	if !wid.IsValid() || serverPath == "" {
+		return misc.ErrBadArgument
+	}
+
+	row := dbConn.QueryRow(`SELECT wid FROM iwkspc_folders WHERE wid=$1 AND serverpath=$2`,
+		wid.AsString(), serverPath)
+	var tempStr string
+	err := row.Scan(&tempStr)
+
+	if !errors.Is(err, sql.ErrNoRows) {
+		return misc.ErrNotFound
+	}
+
+	_, err = dbConn.Exec(`DELETE FROM iwkspc_folders WHERE wid=$1 AND serverpath=$2 `,
+		wid.AsString(), serverPath)
 	return err
 }
