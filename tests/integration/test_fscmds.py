@@ -695,7 +695,8 @@ def test_mkdir():
 	conn.send_message({
 		'Action': 'MKDIR',
 		'Data': {
-			'Path': '/ wsp ' + dbdata['admin_wid'] + ' some_dir_name'
+			'Path': '/ wsp ' + dbdata['admin_wid'] + ' some_dir_name',
+			'ClientPath': r"XSALSA20:^nYyCWf?8WE;xn=b+IPz@6a)g%U_-(5OzlNe7b$POYgfTu|*B%VXq$a4wD`"
 		}
 	})
 	response = conn.read_response(server_response)
@@ -707,7 +708,8 @@ def test_mkdir():
 	conn.send_message({
 		'Action': 'MKDIR',
 		'Data': {
-			'Path': '/ wsp ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+			'Path': '/ wsp ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111',
+			'ClientPath': r"XSALSA20:^nYyCWf?8WE;xn=b+IPz@6a)g%U_-(5OzlNe7b$POYgfTu|*B%VXq$a4wD`"
 		}
 	})
 	response = conn.read_response(server_response)
@@ -718,7 +720,8 @@ def test_mkdir():
 	conn.send_message({
 		'Action': 'MKDIR',
 		'Data': {
-			'Path': '/ wsp ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111'
+			'Path': '/ wsp ' + dbdata['admin_wid'] + ' 11111111-1111-1111-1111-111111111111',
+			'ClientPath': r"XSALSA20:^nYyCWf?8WE;xn=b+IPz@6a)g%U_-(5OzlNe7b$POYgfTu|*B%VXq$a4wD`"
 		}
 	})
 	response = conn.read_response(server_response)
@@ -735,7 +738,8 @@ def test_mkdir():
 	conn.send_message({
 		'Action': 'MKDIR',
 		'Data': {
-			'Path': multipath
+			'Path': multipath,
+			'ClientPath': r"XSALSA20:imXG&W*VPneDWhI5JR7vbo~V__dO?D{Z=!#m;1q4(Qq?JA!Pn7m7o#ZJa~<+NGI64gqz0"
 		}
 	})
 	response = conn.read_response(server_response)
@@ -1434,12 +1438,12 @@ def test_upload():
 
 if __name__ == '__main__':
 	# test_copy()
-	test_delete()
+	# test_delete()
 	# test_download()
 	# test_getquotainfo()
 	# test_list()
 	# test_listdirs()
-	# test_mkdir()
+	test_mkdir()
 	# test_move()
 	# test_replace()
 	# test_rmdir()

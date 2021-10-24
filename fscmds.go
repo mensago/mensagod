@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -460,8 +461,14 @@ func commandMkDir(session *sessionState) {
 		return
 	}
 
-	if session.Message.Validate([]string{"Path"}) != nil {
+	if session.Message.Validate([]string{"Path", "ClientPath"}) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	clientPath := ezn.NewCS(session.Message.Data["ClientPath"])
+	if !clientPath.IsValid() {
+		session.SendQuickResponse(400, "BAD REQUEST", "Client path missing or bad value")
 		return
 	}
 
@@ -473,10 +480,21 @@ func commandMkDir(session *sessionState) {
 		return
 	}
 
+	err = dbhandler.AddFolderEntry(session.WID, dirPath, clientPath)
+	if err != nil {
+		fsh.RemoveDirectory(dirPath, false)
+		if errors.Is(err, misc.ErrExists) {
+			session.SendQuickResponse(408, "RESOURCE EXISTS", "")
+		} else {
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "commandMkDir.1")
+		}
+		return
+	}
+
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		ID:   uuid.NewString(),
 		Type: dbhandler.UpdateMkDir,
-		Data: dirPath,
+		Data: dirPath + " " + clientPath.AsString(),
 		Time: time.Now().UTC().Unix(),
 	})
 	session.SendQuickResponse(200, "OK", "")
