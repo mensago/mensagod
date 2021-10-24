@@ -178,7 +178,7 @@ func commandDevKey(session *sessionState) {
 
 	err = dbhandler.UpdateDevice(session.WID, devid, oldkey, newkey)
 	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "DevKey.1")
 		logging.Writef("commandDevKey: error updating device: %s", err.Error())
 		return
 	}

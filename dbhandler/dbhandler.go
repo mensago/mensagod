@@ -397,7 +397,8 @@ func CheckDevice(wid types.UUID, devid types.UUID, devkey ezn.CryptoString) (boo
 func UpdateDevice(wid types.UUID, devid types.UUID, oldkey ezn.CryptoString,
 	newkey ezn.CryptoString) error {
 	_, err := dbConn.Exec(`UPDATE iwkspc_devices SET devkey=$1 WHERE wid=$2 AND 
-		devid=$3 AND devkey=$4`, newkey, wid.AsString(), devid.AsString(), oldkey)
+		devid=$3 AND devkey=$4`, newkey.AsString(), wid.AsString(), devid.AsString(),
+		oldkey.AsString())
 
 	return err
 }
