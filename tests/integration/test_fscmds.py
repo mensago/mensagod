@@ -243,7 +243,8 @@ def test_delete():
 	conn.send_message({
 		'Action': 'DELETE',
 		'Data': {
-			'Path': f"/ wsp {dbdata['admin_wid']} some_dir_name"
+			'PathCount': '1',
+			'Path0': f"/ wsp {dbdata['admin_wid']} some_dir_name"
 		}
 	})
 	response = conn.read_response(server_response)
@@ -254,13 +255,15 @@ def test_delete():
 	conn.send_message({
 		'Action': 'DELETE',
 		'Data': {
-			'Path': f"/ wsp {dbdata['admin_wid']} 1234.1234.11111111-1111-1111-1111-111111111111"
+			'PathCount': '1',
+			'Path0': f"/ wsp {dbdata['admin_wid']} 1234.1234.11111111-1111-1111-1111-111111111111"
 		}
 	})
 	response = conn.read_response(server_response)
 	assert response['Code'] == 404, f"{funcname()}: #2 failed to handle nonexistent file"
 
-	# Subtest #3: Actual success
+	# Subtest #3: Actual success: 1 file
+
 	admin_dir = os.path.join(dbdata['configfile']['global']['workspace_dir'],
 		dbdata['admin_wid'])
 	status = make_test_file(admin_dir)
@@ -270,11 +273,25 @@ def test_delete():
 	conn.send_message({
 		'Action': 'DELETE',
 		'Data': {
-			'Path': f"/ wsp {dbdata['admin_wid']} {filename}"
+			'PathCount': '1',
+			'Path0': f"/ wsp {dbdata['admin_wid']} {filename}"
 		}
 	})
 	response = conn.read_response(server_response)
 	assert response['Code'] == 200, f"{funcname()}: #3 failed to delete file"
+
+	# Subtest #4: Actual success: 3 files
+
+	request = { 'Action': 'DELETE', 'Data': { 'PathCount': '3' } }
+	for i in range(3):
+		status = make_test_file(admin_dir)
+		assert not status.error(), f"{funcname()}: #4 failed to create test file"
+		filename = status["name"]
+		request['Data'][f'Path{i}'] = f"/ wsp {dbdata['admin_wid']} {filename}"
+	conn.send_message(request)
+
+	response = conn.read_response(server_response)
+	assert response['Code'] == 200, f"{funcname()}: #4 failed to delete files"
 
 
 def test_download():
@@ -1417,14 +1434,14 @@ def test_upload():
 
 if __name__ == '__main__':
 	# test_copy()
-	# test_delete()
+	test_delete()
 	# test_download()
 	# test_getquotainfo()
 	# test_list()
 	# test_listdirs()
 	# test_mkdir()
 	# test_move()
-	test_replace()
+	# test_replace()
 	# test_rmdir()
 	# test_setquota()
 	# test_select()

@@ -118,35 +118,51 @@ func commandCopy(session *sessionState) {
 
 func commandDelete(session *sessionState) {
 	// Command syntax:
-	// DELETE(FilePath)
+	// DELETE(PathCount, Path0[, Path1...])
 	if !session.RequireLogin() {
 		return
 	}
 
-	if session.Message.Validate([]string{"Path"}) != nil {
+	if session.Message.Validate([]string{"PathCount", "Path0"}) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
-	deletePath := strings.ToLower(session.Message.Data["Path"])
-	parts := strings.Split(deletePath, " ")
-	filename := parts[len(parts)-1]
-
-	fsh := fshandler.GetFSProvider()
-	fshandler.LockFile(filename)
-	err := fsh.DeleteFile(deletePath)
-	fshandler.UnlockFile(filename)
+	pathCount, err := strconv.Atoi(session.Message.Data["PathCount"])
 	if err != nil {
-		handleFSError(session, err)
+		session.SendQuickResponse(400, "BAD REQUEST", "PathCount missing or bad value")
 		return
 	}
 
-	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-		ID:   uuid.NewString(),
-		Type: dbhandler.UpdateDelete,
-		Data: deletePath,
-		Time: time.Now().UTC().Unix(),
-	})
+	for i := 0; i < pathCount; i++ {
+		fieldName := fmt.Sprintf("Path%d", i)
+		_, ok := session.Message.Data[fieldName]
+		if !ok {
+			session.SendQuickResponse(400, "BAD REQUEST", "Message missing field "+fieldName)
+			return
+		}
+
+		deletePath := strings.TrimSpace(strings.ToLower(session.Message.Data[fieldName]))
+		parts := strings.Split(deletePath, " ")
+		filename := parts[len(parts)-1]
+
+		fsh := fshandler.GetFSProvider()
+		fshandler.LockFile(filename)
+		err := fsh.DeleteFile(deletePath)
+		fshandler.UnlockFile(filename)
+		if err != nil {
+			handleFSError(session, err)
+			return
+		}
+
+		dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
+			ID:   uuid.NewString(),
+			Type: dbhandler.UpdateDelete,
+			Data: deletePath,
+			Time: time.Now().UTC().Unix(),
+		})
+	}
+
 	session.SendQuickResponse(200, "OK", "")
 }
 
