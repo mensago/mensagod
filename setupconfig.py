@@ -370,7 +370,7 @@ cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.
 rows = cur.fetchall()
 if rows[0][0] is False:
 	cur.execute("CREATE TABLE iwkspc_folders(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL, "
-				"enc_key VARCHAR(64) NOT NULL);")
+				"serverpath VARCHAR(512) NOT NULL, clientpath VARCHAR(768) NOT NULL);")
 
 
 cur.execute("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON "
