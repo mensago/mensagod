@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
-	"database/sql"
 	"errors"
 	"fmt"
 	"os"
@@ -14,49 +12,14 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/darkwyrm/b85"
 	"gitlab.com/mensago/mensagod/dbhandler"
-	"golang.org/x/crypto/argon2"
 )
-
-var (
-	connected bool
-	dbConn    *sql.DB
-)
-
-func DeriveKey(password string) map[string]string {
-	out := make(map[string]string)
-
-	// Ensuring password complexity is not in scope of this function. We're preventing only
-	// empty passwords from being used here.
-	if len(password) < 1 {
-		return out
-	}
-
-	// Generate the salt using a cryptographically-secure method provided by the OS
-	salt := make([]byte, 16)
-	rand.Read(salt)
-
-	var timeNeeded uint32 = 1
-	var memlimit uint32 = 64 * 1024
-	var threadCount uint8 = 4
-	var keyLength uint32 = 32
-
-	key := argon2.IDKey([]byte(password), salt, timeNeeded, memlimit, threadCount, keyLength)
-
-	out["algorithm"] = "argon2id"
-	out["memory"] = "65536"
-	out["time"] = "1"
-	out["salt"] = b85.Encode(salt)
-	out["key"] = b85.Encode(key)
-
-	return out
-}
 
 // SetupConfigFile is used to obtain the necessary information from the user for creating the
 // server config file
 func SetupConfigFile() {
 
+	// Prerequisite: check for admin privileges
 	switch runtime.GOOS {
 	case "js", "android", "ios":
 		fmt.Println("Javascript, Android, and iOS are not supported platforms.")
@@ -86,9 +49,30 @@ func SetupConfigFile() {
 		"The database will be emptied and reset, but any existing config file will be\n" +
 		"backed up.\n\n")
 
+	// Step 2: Get necessary information from the user
+	// - location of workspace data
+	// - registration type
+	// - is separate abuse account desired?
+	// - is separate support account desired?
+	// - quota size
+	// - IP address of postgres server
+	// - port of postgres server
+	// - database name
+	// - database username
+	// - database user password
+	// - required keycard fields
 	config := make(map[string]string)
 
 	var tempStr string
+	var defaultDataPath string
+
+	// TODO: location of workspace data
+	// TODO: registration type
+	// TODO: is separate abuse account desired?
+	// TODO: is separate support account desired?
+	// TODO: quota size
+
+	// location of server config and log files
 
 	if runtime.GOOS == "windows" {
 		programData := ""
@@ -100,21 +84,23 @@ func SetupConfigFile() {
 			}
 		}
 
-		config["config_path"] = programData + "\\sra"
-		config["log_path"] = programData + "\\sra"
+		config["config_path"] = programData + "\\mensagod"
+		config["log_path"] = programData + "\\mensagod"
+		defaultDataPath = programData + "\\mensagod"
 	} else {
-		config["config_path"] = "/etc/sra"
-		config["log_path"] = "/var/log/sra"
+		config["config_path"] = "/etc/mensagod"
+		config["log_path"] = "/var/log/mensagod"
+		defaultDataPath = "/var/mensagod"
 
-		fmt.Print("Enter the name of the user to run the server as. [mensagod]: ")
+		fmt.Print("Enter the name of the user to run the server as. [mensago]: ")
 		if len, _ := fmt.Scanln(&tempStr); len == 0 {
-			tempStr = "mensagod"
+			tempStr = "mensago"
 		}
 		config["server_user"] = tempStr
 
 		fmt.Print("Enter the name of the group for the server user. [mensago]: ")
 		if len, _ := fmt.Scanln(&tempStr); len == 0 {
-			tempStr = "mensagod"
+			tempStr = "mensago"
 		}
 		config["server_group"] = tempStr
 	}
@@ -130,17 +116,23 @@ func SetupConfigFile() {
 	}
 	config["server_name"] = tempStr
 
+	// IP address of postgres server
+
 	fmt.Print("\nEnter the IP address of the database server. [localhost]: ")
 	if len, _ := fmt.Scanln(&tempStr); len == 0 {
 		tempStr = "localhost"
 	}
 	config["server_ip"] = tempStr
 
+	// port of postgres server
+
 	fmt.Print("Enter the database server port. [5432]: ")
 	if len, _ := fmt.Scanln(&tempStr); len == 0 {
 		tempStr = "5432"
 	}
 	config["server_port"] = tempStr
+
+	// database and username/password
 
 	fmt.Print("Enter the name of the database to store data. [sra]: ")
 	if len, _ := fmt.Scanln(&tempStr); len == 0 {
@@ -163,6 +155,10 @@ func SetupConfigFile() {
 		}
 	}
 
+	// TODO: required keycard fields
+
+	// connectivity check
+
 	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		config["server_ip"], config["server_port"], config["db_user"], config["db_password"],
 		config["db_name"])
@@ -174,6 +170,8 @@ func SetupConfigFile() {
 			"are resolved")
 		os.Exit(1)
 	}
+
+	// Step 3: set up the database tables
 
 	if !dbhandler.IsEmpty() {
 		fmt.Printf(`
@@ -198,9 +196,15 @@ users, inventory, and other information will be erased.
 		}
 	}
 
+	// TODO: create the org's keys and put them in the table
+	// TODO: preregister the admin account and put into the serverconfig
+	// TODO: preregister the abuse account if not aliased and put into the serverconfig
+	// TODO: preregister the support account if not aliased and put into the serverconfig
+
 	// Now that we have all the information we need from the user and the database is ready for us,
 	// configure the system and create the server config file.
 
+	// For POSIX platforms, ensure that the user and group for the server daemon exist
 	if runtime.GOOS != "windows" {
 
 		// Set up the group the server's user will run in
@@ -219,7 +223,8 @@ users, inventory, and other information will be erased.
 			output, err := cmd.CombinedOutput()
 			if output != nil || err != nil {
 				fmt.Printf("Unable to create group '%s'. Error: %s\n"+
-					"Please resolve and rerun this command", config["server_group"], output)
+					"Please create the group manually as a system group and rerun this command",
+					config["server_group"], output)
 				os.Exit(1)
 			}
 		}
@@ -241,16 +246,20 @@ users, inventory, and other information will be erased.
 			output, err := cmd.CombinedOutput()
 			if output != nil || err != nil {
 				fmt.Printf("Unable to create user '%s'. Error: %s\n"+
-					"Please resolve and rerun this command", config["server_user"], output)
+					"Please create the user manually as a system user without a login shell "+
+					"and rerun this command", config["server_user"], output)
 				os.Exit(1)
 			}
 		}
 	}
 
+	// create the server config folder and, for POSIX platforms, the log folder
+
 	if _, err := os.Stat(config["config_path"]); err != nil {
 		if err = os.MkdirAll(config["config_path"], os.ModePerm); err != nil {
 			fmt.Printf("Unable to create directory '%s'. Error: %s\n"+
-				"Please resolve and rerun this command", config["config_path"], err.Error())
+				"Please create this folder manually and rerun this command", config["config_path"],
+				err.Error())
 			os.Exit(1)
 		}
 	}
@@ -258,7 +267,8 @@ users, inventory, and other information will be erased.
 	if _, err := os.Stat(config["log_path"]); err != nil {
 		if err = os.MkdirAll(config["log_path"], os.ModePerm); err != nil {
 			fmt.Printf("Unable to create directory '%s'. Error: %s\n"+
-				"Please resolve and rerun this command", config["log_path"], err.Error())
+				"Please create this folder manually and rerun this command", config["log_path"],
+				err.Error())
 			os.Exit(1)
 		}
 
@@ -276,12 +286,13 @@ users, inventory, and other information will be erased.
 		err = os.Chown(config["log_path"], os.Getuid(), gid)
 		if err != nil {
 			fmt.Printf("Failed to set owner/group for log directory %s. "+
-				"Please resolve and rerun this command. Error: %s", config["log_path"], err.Error())
+				"Please set the group to %s and rerun this command.\n"+
+				"Error: %s", config["log_path"], config["server_group"], err.Error())
 			os.Exit(2)
 		}
 	}
 
-	// Save the config file
+	// Step 4: save the config file
 
 	configFilePath := filepath.Join(config["config_path"], "serverconfig.toml")
 	if _, err := os.Stat(configFilePath); err == nil {
@@ -290,7 +301,7 @@ users, inventory, and other information will be erased.
 		err := os.Rename(configFilePath, filepath.Join(configFilePath, backupName))
 		if err != nil {
 			fmt.Println("Error backing up the server config file: " + err.Error())
-			fmt.Println("You will need to resolve this and re-run this command.")
+			fmt.Println("Please resolve this and re-run this command.")
 			os.Exit(1)
 		}
 	}
@@ -298,25 +309,24 @@ users, inventory, and other information will be erased.
 	fHandle, err := os.Create(configFilePath)
 	if err != nil {
 		fmt.Println("Error creating the server config file: " + err.Error())
-		fmt.Println("You will need to resolve this and re-run this command.")
+		fmt.Println("Please resolve this and re-run this command.")
 		os.Exit(1)
 	}
 	defer fHandle.Close()
 
-	fHandle.WriteString(`# This is config file for the Simple Remote Administrator
-# server. Each value listed below is the default value. Every effort has been
-# made to set this file to sensible defaults so that configuration is kept to
-# a minimum. This file is expected to be found in /etc/sra/serverconfig.toml
-# or C:\\ProgramData\\sra on Windows.
+	fHandle.WriteString(`# This is a Mensago server config file. Each value listed below is the
+# default value. Every effort has been made to set this file to sensible
+# defaults to keep things simple. This file is expected to be found in
+# /etc/mensagod/serverconfig.toml or C:\ProgramData\mensagod on Windows.
 
 [database]
-# The database section should generally be the only real editing for this 
+# The database section should generally be the only real editing for this
 # file.
 #
 # ip = "localhost"
 # port = "5432"
-# name = "sra"
-# user = "sra"
+# name = "mensago"
+# user = "mensago"
 `)
 
 	if config["server_ip"] != "localhost" {
@@ -327,31 +337,192 @@ users, inventory, and other information will be erased.
 		fmt.Fprintln(fHandle, `port = "`+config["server_port"]+`"`)
 	}
 
-	if config["db_name"] != "sra" {
+	if config["db_name"] != "mensago" {
 		fmt.Fprintln(fHandle, `name = "`+config["db_name"]+`"`)
 	}
 
-	if config["db_user"] != "sra" {
+	if config["db_user"] != "mensago" {
 		fmt.Fprintln(fHandle, `user = "`+config["db_user"]+`"`)
 	}
 
 	fmt.Fprintln(fHandle, `password = "`+config["db_password"]+`"`)
 
-	fmt.Fprint(fHandle, `# This is an Mensago server config file. Each value listed below is the 
-	# default value. Every effort has been made to set this file to sensible 
-	# defaults so that configuration is kept to a minimum. This file is expected
-	# to be found in /etc/mensagod/serverconfig.toml or C:\\ProgramData\\mensagod
-	# on Windows.
-	
-	[database]
-	# The database section should generally be the only real editing for this 
-	# file.
-	#
-	# ip = "localhost"
-	# port = "5432"
-	# name = "mensago"
-	# user = "mensago"
+	fHandle.WriteString(`
+# The location where user data is stored. The default for Windows is 
+# "C:\ProgramData\mensago", but for other platforms is "/var/mensago".
+`)
+	// Make sure that the commented-out line is correct for the platform
+	if runtime.GOOS != "windows" {
+		fHandle.WriteString(`# top_dir = "C:\ProgramData\mensago"` + "\n")
+	} else {
+		fHandle.WriteString(`# top_dir = "/var/mensago"` + "\n")
+	}
+
+	if config["top_path"] != defaultDataPath {
+		fmt.Fprintln(fHandle, `top_dir = "`+config["top_dir"]+`"`)
+	}
+
+	fHandle.WriteString(`
+# The type of registration. 'public' is open to outside registration requests,
+# and would be appropriate only for hosting a public free server. 'moderated'
+# is open to public registration, but an administrator must approve the request
+# before an account can be created. 'network' limits registration to a 
+# specified subnet or IP address. 'private' permits account registration only
+# by an administrator. For most situations 'private' is the appropriate setting.
+# registration = "private"
 `)
 
-	// TODO: A lot of work to finish the setup module
+	if config["regtype"] != "private" {
+		fmt.Fprintln(fHandle, `regtype = "`+config["regtype"]+`"`)
+	}
+
+	fHandle.WriteString(`
+# For servers configured to network registration, this variable sets the 
+# subnet(s) to which account registration is limited. Subnets are expected to
+# be in CIDR notation and comma-separated. The default setting restricts
+# registration to the private (non-routable) networks.
+# registration_subnet = "192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8, 127.0.0.1/8"
+# registration_subnet6 = "fe80::/10"
+# 
+# The default storage quota for a workspace, measured in MiB. 0 means no limit.
+# default_quota = 0
+`)
+
+	if config["quota_size"] != "0" {
+		fmt.Fprintln(fHandle, `quota_size = "`+config["quota_size"]+`"`)
+	}
+
+	fHandle.WriteString(`
+# Location for log files. This directory requires full permissions for the
+# user mensagod runs as. On Windows, this defaults to the same location as the
+# server config file, i.e. C:\ProgramData\mensagod
+# log_path = "/var/log/mensagod"
+`)
+	if runtime.GOOS != "windows" {
+		fHandle.WriteString(`# log_path = "` + config["config_path"] + `"` + "\n")
+	} else {
+		fHandle.WriteString(`# top_dir = "/var/mensago"` + "\n")
+	}
+
+	fHandle.WriteString(`
+[network]
+# The interface and port to listen on
+# listen_ip = "127.0.0.1"
+# port = "2001"
+
+[performance]
+# Items in this section are for performance tuning. They are set to defaults
+# which should work for most environments. Care should be used when changing
+# any of these values.
+# 
+# The maximum size in MiB of a file stored on the server. Note that this is 
+# the size of the actual data stored on disk. Encoding adds 25% overhead.
+# max_file_size = 50
+#
+# The maximum size in MiB of a message. The value of max_file_size takes 
+# precedence if this value is larger than the value of max_file_size.
+# max_message_size = 50
+#
+# Max age of sync records in days. Any records older than the oldest device 
+# login timestamp minus this number of days are purged. Defaults to 1 week,
+# which should be plenty.
+#
+# performance.max_sync_age = 7
+#
+# The maximum number of worker threads created handle delivering messages,
+# both internally and externally
+#
+# performance.max_delivery_threads = 100
+#
+# The maximum number of client worker threads. Be careful in changing this
+# number -- if it is too low, client devices many not be able to connect
+# and messages may not be delivered from outside the organization, and if it
+# is set too high, client demand may overwhelm the server.
+#
+# performance.max_client_threads = 10000
+#
+# The maximum number of keycards to keep in the in-memory cache. This number
+# has a direct effect on the server's memory usage, so adjust this with care.
+# performance.keycard_cache_size = 5000
+
+[security]
+# The Diceware passphrase method is used to generate preregistration and
+# password reset codes. Four word lists are available for use:
+# 
+# 'eff_long' - List from the Electronic Frontier Foundation of long words.
+# 'eff_short' - The EFF's short word list.
+# 'eff_short_prefix' - Another short word list from the EFF with some features
+                       that make typing easier and offer a little more
+                       security over eff_short.
+# 'original' - Arnold Reinhold's original Diceware word list. Not recommended
+#              for most situations.
+#
+# The EFF's rationale for these word lists can be found at 
+# https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases
+#
+# For more information about Diceware, visit
+# https://theworld.com/~reinhold/diceware.html
+# diceware_wordlist = 'eff_short_prefix'
+#
+# The number of words used in a Diceware code. 6 is recommended for best
+# security in most situations. This value cannot be less than 3.
+# diceware_wordcount = 6
+#
+# The number of seconds to wait after a login failure before accepting another
+# attempt
+# failure_delay_sec = 3
+# 
+# The number of login failures made before a connection is closed. 
+# max_failures = 5
+# 
+# The number of minutes the client must wait after reaching max_failures
+# before another attempt may be made. Note that additional attempts to login
+# prior to the completion of this delay resets the timeout.
+# lockout_delay_min = 15
+# 
+# The delay, in minutes, between account registration requests from the same
+# IP address. This is to prevent registration spam.
+# registration_delay_min = 15
+# 
+# The amount of time, in minutes, a password reset code is valid. It must be
+# at least 10 and no more than 2880 (48 hours).
+# password_reset_min = 60
+# 
+# Adjust the password security strength. Argon2id is used for the hash
+# generation algorithm. This setting may be 'normal' or 'enhanced'. Normal is
+# best for most situations, but for environments which require extra security,
+# 'enhanced' provides additional protection at the cost of higher server
+# demands.
+# password_security = normal
+`)
+	fmt.Printf(`
+
+==============================================================================
+Basic setup is complete.
+
+From here, please make sure you:
+		
+`)
+	fmt.Printf("1) Review the config file at %s", config["config_path"])
+
+	fmt.Printf(`
+2) Make sure port 2001 is open on the firewall.
+3) Start the mensagod service.
+4) Finish registration of the admin account on a device that is NOT this server.
+5) If you are using separate abuse or support accounts, also complete
+   registration for those accounts on a device that is NOT this server.
+`)
+
+	fmt.Printf("Administrator workspace: %s/%s\n", config["admin_wid"], config["org_domain"])
+	fmt.Printf("Administrator registration code: %s\n\n", config["admin_regcode"])
+
+	if config["foward_abuse"] != "y" {
+		fmt.Printf("Abuse workspace: %s/%s\n", config["abuse_wid"], config["org_domain"])
+		fmt.Printf("Abuse registration code: %s\n\n", config["abuse_regcode"])
+	}
+
+	if config["foward_support"] != "y" {
+		fmt.Printf("Support workspace: %s/%s\n", config["support_wid"], config["org_domain"])
+		fmt.Printf("Support registration code: %s\n\n", config["support_regcode"])
+	}
 }
