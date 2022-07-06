@@ -3,7 +3,7 @@ package fshandler
 import (
 	"sync"
 
-	"github.com/darkwyrm/mensagod/misc"
+	"gitlab.com/mensago/mensagod/misc"
 )
 
 var lockList sync.Map

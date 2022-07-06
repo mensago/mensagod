@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/darkwyrm/mensagod/dbhandler"
-	"github.com/darkwyrm/mensagod/fshandler"
-	"github.com/darkwyrm/mensagod/logging"
-	"github.com/darkwyrm/mensagod/messaging"
-	"github.com/darkwyrm/mensagod/misc"
-	"github.com/darkwyrm/mensagod/msgapi"
-	"github.com/darkwyrm/mensagod/types"
 	"github.com/spf13/viper"
+	"gitlab.com/mensago/mensagod/dbhandler"
+	"gitlab.com/mensago/mensagod/fshandler"
+	"gitlab.com/mensago/mensagod/logging"
+	"gitlab.com/mensago/mensagod/messaging"
+	"gitlab.com/mensago/mensagod/misc"
+	"gitlab.com/mensago/mensagod/msgapi"
+	"gitlab.com/mensago/mensagod/types"
 )
 
 type loginStatus int

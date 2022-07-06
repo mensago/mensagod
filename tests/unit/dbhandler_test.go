@@ -3,7 +3,7 @@ package mensagod
 import (
 	"testing"
 
-	"github.com/darkwyrm/mensagod/dbhandler"
+	"gitlab.com/mensago/mensagod/dbhandler"
 )
 
 func TestValidateUUID(t *testing.T) {

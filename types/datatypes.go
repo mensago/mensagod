@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/darkwyrm/mensagod/misc"
+	"gitlab.com/mensago/mensagod/misc"
 )
 
 // For when a Mensago address or a workspace address is acceptable

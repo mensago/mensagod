@@ -14,12 +14,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/darkwyrm/b85"
-	ezn "github.com/darkwyrm/goeznacl"
-	"github.com/darkwyrm/mensagod/logging"
-	"github.com/darkwyrm/mensagod/misc"
 	"github.com/spf13/viper"
 	"github.com/zeebo/blake3"
+	"gitlab.com/darkwyrm/b85"
+	ezn "gitlab.com/darkwyrm/goeznacl"
+	"gitlab.com/mensago/mensagod/logging"
+	"gitlab.com/mensago/mensagod/misc"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/sha3"
 )

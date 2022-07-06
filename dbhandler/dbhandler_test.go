@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/darkwyrm/mensagod/config"
-	"github.com/darkwyrm/mensagod/fshandler"
-	"github.com/darkwyrm/mensagod/misc"
-	"github.com/darkwyrm/mensagod/types"
+	"gitlab.com/mensago/mensagod/config"
+	"gitlab.com/mensago/mensagod/fshandler"
+	"gitlab.com/mensago/mensagod/misc"
+	"gitlab.com/mensago/mensagod/types"
 )
 
 // setupTest initializes the global config and resets the database

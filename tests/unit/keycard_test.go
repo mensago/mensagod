@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	ezn "github.com/darkwyrm/goeznacl"
-	"github.com/darkwyrm/mensagod/keycard"
+	ezn "gitlab.com/darkwyrm/goeznacl"
+	"gitlab.com/mensago/mensagod/keycard"
 )
 
 func TestSetField(t *testing.T) {

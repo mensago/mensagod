@@ -3,8 +3,8 @@ package mensagod
 import (
 	"testing"
 
-	ezn "github.com/darkwyrm/goeznacl"
-	"github.com/darkwyrm/mensagod/keycard"
+	ezn "gitlab.com/darkwyrm/goeznacl"
+	"gitlab.com/mensago/mensagod/keycard"
 )
 
 func TestEntrySize(t *testing.T) {

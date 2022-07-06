@@ -6,11 +6,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/darkwyrm/mensagod/dbhandler"
-	"github.com/darkwyrm/mensagod/keycard"
-	"github.com/darkwyrm/mensagod/misc"
-	"github.com/darkwyrm/mensagod/types"
 	"github.com/spf13/viper"
+	"gitlab.com/mensago/mensagod/dbhandler"
+	"gitlab.com/mensago/mensagod/keycard"
+	"gitlab.com/mensago/mensagod/misc"
+	"gitlab.com/mensago/mensagod/types"
 )
 
 type cacheItem struct {

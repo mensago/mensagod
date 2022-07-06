@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/darkwyrm/mensagod/misc"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
+	"gitlab.com/mensago/mensagod/misc"
 )
 
 // MPath encapsulates all the translation between a standard Mensago path into whatever format

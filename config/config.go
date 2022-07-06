@@ -7,10 +7,10 @@ import (
 	"regexp"
 	"runtime"
 
-	"github.com/darkwyrm/mensagod/logging"
 	"github.com/everlastingbeta/diceware"
 	"github.com/everlastingbeta/diceware/wordlist"
 	"github.com/spf13/viper"
+	"gitlab.com/mensago/mensagod/logging"
 )
 
 var gSetupInit bool

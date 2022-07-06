@@ -9,16 +9,16 @@ import (
 
 	"database/sql"
 
-	ezn "github.com/darkwyrm/goeznacl"
-	"github.com/darkwyrm/gostringlist"
-	"github.com/darkwyrm/mensagod/fshandler"
-	"github.com/darkwyrm/mensagod/keycard"
-	"github.com/darkwyrm/mensagod/logging"
-	"github.com/darkwyrm/mensagod/misc"
-	"github.com/darkwyrm/mensagod/types"
 	"github.com/everlastingbeta/diceware"
 	"github.com/lib/pq"
 	"github.com/spf13/viper"
+	ezn "gitlab.com/darkwyrm/goeznacl"
+	"gitlab.com/darkwyrm/gostringlist"
+	"gitlab.com/mensago/mensagod/fshandler"
+	"gitlab.com/mensago/mensagod/keycard"
+	"gitlab.com/mensago/mensagod/logging"
+	"gitlab.com/mensago/mensagod/misc"
+	"gitlab.com/mensago/mensagod/types"
 )
 
 var (

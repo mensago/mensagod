@@ -5,14 +5,14 @@ import (
 	"net"
 	"strings"
 
-	ezn "github.com/darkwyrm/goeznacl"
-	"github.com/darkwyrm/mensagod/dbhandler"
-	"github.com/darkwyrm/mensagod/fshandler"
-	"github.com/darkwyrm/mensagod/logging"
-	"github.com/darkwyrm/mensagod/misc"
-	"github.com/darkwyrm/mensagod/types"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
+	ezn "gitlab.com/darkwyrm/goeznacl"
+	"gitlab.com/mensago/mensagod/dbhandler"
+	"gitlab.com/mensago/mensagod/fshandler"
+	"gitlab.com/mensago/mensagod/logging"
+	"gitlab.com/mensago/mensagod/misc"
+	"gitlab.com/mensago/mensagod/types"
 )
 
 func commandGetWID(session *sessionState) {

@@ -5,10 +5,10 @@ import (
 	"strings"
 	"sync"
 
-	ezn "github.com/darkwyrm/goeznacl"
-	"github.com/darkwyrm/mensagod/dbhandler"
-	"github.com/darkwyrm/mensagod/misc"
 	"github.com/spf13/viper"
+	ezn "gitlab.com/darkwyrm/goeznacl"
+	"gitlab.com/mensago/mensagod/dbhandler"
+	"gitlab.com/mensago/mensagod/misc"
 )
 
 type SealedEnvelope struct {

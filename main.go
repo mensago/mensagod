@@ -9,18 +9,18 @@ import (
 	"strings"
 	"time"
 
-	ezn "github.com/darkwyrm/goeznacl"
-	"github.com/darkwyrm/mensagod/config"
-	"github.com/darkwyrm/mensagod/dbhandler"
-	"github.com/darkwyrm/mensagod/fshandler"
-	"github.com/darkwyrm/mensagod/kcresolver"
-	"github.com/darkwyrm/mensagod/logging"
-	"github.com/darkwyrm/mensagod/messaging"
-	"github.com/darkwyrm/mensagod/misc"
-	"github.com/darkwyrm/mensagod/types"
-	"github.com/darkwyrm/mensagod/workerpool"
 	"github.com/everlastingbeta/diceware"
 	"github.com/spf13/viper"
+	ezn "gitlab.com/darkwyrm/goeznacl"
+	"gitlab.com/mensago/mensagod/config"
+	"gitlab.com/mensago/mensagod/dbhandler"
+	"gitlab.com/mensago/mensagod/fshandler"
+	"gitlab.com/mensago/mensagod/kcresolver"
+	"gitlab.com/mensago/mensagod/logging"
+	"gitlab.com/mensago/mensagod/messaging"
+	"gitlab.com/mensago/mensagod/misc"
+	"gitlab.com/mensago/mensagod/types"
+	"gitlab.com/mensago/mensagod/workerpool"
 )
 
 // gDiceWordList is a copy of the word list for preregistration code generation

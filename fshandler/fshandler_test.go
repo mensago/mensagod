@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	ezn "github.com/darkwyrm/goeznacl"
-	"github.com/darkwyrm/mensagod/config"
-	"github.com/darkwyrm/mensagod/misc"
 	"github.com/spf13/viper"
+	ezn "gitlab.com/darkwyrm/goeznacl"
+	"gitlab.com/mensago/mensagod/config"
+	"gitlab.com/mensago/mensagod/misc"
 )
 
 // setupTest initializes the global config and resets the workspace directory

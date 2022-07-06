@@ -3,7 +3,7 @@ package mensagod
 import (
 	"testing"
 
-	"github.com/darkwyrm/mensagod/types"
+	"gitlab.com/mensago/mensagod/types"
 )
 
 func TestMAddressSet(t *testing.T) {

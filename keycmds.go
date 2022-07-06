@@ -6,13 +6,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/darkwyrm/b85"
-	ezn "github.com/darkwyrm/goeznacl"
-	"github.com/darkwyrm/mensagod/dbhandler"
-	"github.com/darkwyrm/mensagod/keycard"
-	"github.com/darkwyrm/mensagod/logging"
-	"github.com/darkwyrm/mensagod/types"
 	"github.com/spf13/viper"
+	"gitlab.com/darkwyrm/b85"
+	ezn "gitlab.com/darkwyrm/goeznacl"
+	"gitlab.com/mensago/mensagod/dbhandler"
+	"gitlab.com/mensago/mensagod/keycard"
+	"gitlab.com/mensago/mensagod/logging"
+	"gitlab.com/mensago/mensagod/types"
 )
 
 func commandAddEntry(session *sessionState) {
