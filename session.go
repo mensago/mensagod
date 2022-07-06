@@ -13,6 +13,7 @@ import (
 	"github.com/darkwyrm/mensagod/logging"
 	"github.com/darkwyrm/mensagod/messaging"
 	"github.com/darkwyrm/mensagod/misc"
+	"github.com/darkwyrm/mensagod/msgapi"
 	"github.com/darkwyrm/mensagod/types"
 	"github.com/spf13/viper"
 )
@@ -91,8 +92,7 @@ func (r *ClientRequest) Validate(fieldlist []string) error {
 // GetRequest reads a request from a client from the socket
 func (s *sessionState) GetRequest() (ClientRequest, error) {
 	var out ClientRequest
-	buffer := make([]byte, MaxCommandLength)
-	bytesRead, err := s.Connection.Read(buffer)
+	buffer, err := msgapi.ReadMessage(s.Connection, time.Minute*30)
 	if err != nil {
 		ne, ok := err.(*net.OpError)
 		if ok && ne.Timeout() {
@@ -106,7 +106,7 @@ func (s *sessionState) GetRequest() (ClientRequest, error) {
 		return out, err
 	}
 
-	err = json.Unmarshal(buffer[:bytesRead], &out)
+	err = json.Unmarshal(buffer, &out)
 	if err != nil {
 		return out, misc.ErrJSONUnmarshal
 	}
@@ -125,8 +125,7 @@ func (s *sessionState) SendResponse(msg ServerResponse) (err error) {
 		return err
 	}
 
-	_, err = s.Connection.Write([]byte(out))
-	return err
+	return msgapi.WriteMessage(s.Connection, []byte(out), time.Minute*10)
 }
 
 // SendQuickResponse is a syntactic sugar command for quickly sending error responses. The Info
