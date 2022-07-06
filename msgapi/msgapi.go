@@ -25,7 +25,7 @@ var ErrMultipartSession = errors.New("multipart session error")
 // bulk transfers are not subject to this restriction -- just the initial command.
 const MinCommandLength = 35
 
-// DataFrame type codes
+// dataFrame type codes
 const (
 	SingleFrame = uint8(50) + iota
 	MultipartFrameStart
@@ -33,34 +33,34 @@ const (
 	MultipartFrameFinal
 )
 
-// DataFrame is a structure for the lowest layer of network interaction in Oganesson. It
+// dataFrame is a structure for the lowest layer of network interaction in Oganesson. It
 // represents a segment of data. Depending on the type code for the instance, it may indicate that
 // the data payload is complete -- the SingleFrame type -- or it may be part of a larger set. In
-// all cases a DataFrame is required to be equal to or smaller than the buffer size negotiated
+// all cases a dataFrame is required to be equal to or smaller than the buffer size negotiated
 // between the local host and the remote host.
-type DataFrame struct {
+type dataFrame struct {
 	buffer []byte
 	index  int
 }
 
-// NewDataFrame creates a new instance with an allocated memory buffer ready for use. If given a
+// newdataFrame creates a new instance with an allocated memory buffer ready for use. If given a
 // value less than the required 1024 bytes, it returns nil.
-func NewDataFrame(bufferSize uint16) *DataFrame {
+func newdataFrame(bufferSize uint16) *dataFrame {
 	if bufferSize < 1024 {
 		return nil
 	}
 
-	var out DataFrame
-	out.allocateDataFrameBuffer(bufferSize)
+	var out dataFrame
+	out.allocatedataFrameBuffer(bufferSize)
 	return &out
 }
 
-func (df *DataFrame) allocateDataFrameBuffer(bufferSize uint16) {
+func (df *dataFrame) allocatedataFrameBuffer(bufferSize uint16) {
 	df.buffer = make([]byte, bufferSize)
 }
 
-// GetType returns the frame type or 255 if the frame is invalid
-func (df *DataFrame) GetType() uint8 {
+// getType returns the frame type or 255 if the frame is invalid
+func (df *dataFrame) GetType() uint8 {
 
 	if df.buffer == nil {
 		return 255
@@ -68,8 +68,8 @@ func (df *DataFrame) GetType() uint8 {
 	return df.buffer[0]
 }
 
-// GetType returns the size of the payload or 0 if the frame is invalid/
-func (df *DataFrame) GetSize() uint16 {
+// getSize returns the size of the payload or 0 if the frame is invalid/
+func (df *dataFrame) GetSize() uint16 {
 
 	if len(df.buffer) < 4 {
 		return 0
@@ -78,8 +78,8 @@ func (df *DataFrame) GetSize() uint16 {
 	return uint16(len(df.buffer) - 3)
 }
 
-// GetType returns the data held by the frame or nil if the frame is invalid
-func (df *DataFrame) GetPayload() []byte {
+// getPayload returns the data held by the frame or nil if the frame is invalid
+func (df *dataFrame) GetPayload() []byte {
 
 	if len(df.buffer) < 4 {
 		return nil
@@ -89,7 +89,7 @@ func (df *DataFrame) GetPayload() []byte {
 }
 
 // Read() reads in a chunk of data from the network socket and ensures the frame structure is valid
-func (df *DataFrame) Read(r io.Reader) error {
+func (df *dataFrame) Read(r io.Reader) error {
 
 	// Invalidate the index in case we error out
 	df.index = 0
@@ -118,9 +118,9 @@ func (df *DataFrame) Read(r io.Reader) error {
 	return nil
 }
 
-// WriteFrame exists because the way ReadMessage and WriteMessage are used, it's just simpler to do
+// writeFrame exists because the way ReadMessage and WriteMessage are used, it's just simpler to do
 // this way -- no state needs to be involved.
-func WriteFrame(w io.Writer, fieldType uint8, payload []byte) error {
+func writeFrame(w io.Writer, fieldType uint8, payload []byte) error {
 	payloadLen := len(payload)
 
 	buffer := make([]byte, payloadLen+3)
@@ -135,7 +135,7 @@ func WriteFrame(w io.Writer, fieldType uint8, payload []byte) error {
 
 func ReadMessage(conn net.Conn, timeout time.Duration) ([]byte, error) {
 
-	chunk := NewDataFrame(65535)
+	chunk := newdataFrame(65535)
 	err := chunk.Read(conn)
 	if err != nil {
 		return nil, err
@@ -154,7 +154,7 @@ func ReadMessage(conn net.Conn, timeout time.Duration) ([]byte, error) {
 
 	// We got this far, so we have a multipart message which we need to reassemble.
 
-	// No validity checking is performed on the actual data in a DataFrame, so we need to validate
+	// No validity checking is performed on the actual data in a dataFrame, so we need to validate
 	// the total payload size.
 	var totalSize uint64
 	totalSize, err = strconv.ParseUint(string(chunk.GetPayload()), 10, 64)
@@ -204,7 +204,7 @@ func WriteMessage(conn net.Conn, message []byte, timeout time.Duration) error {
 	if msgLen < 65532 {
 		conn.SetReadDeadline(time.Now().Add(timeout))
 		conn.SetWriteDeadline(time.Now().Add(timeout))
-		return WriteFrame(conn, SingleFrame, message)
+		return writeFrame(conn, SingleFrame, message)
 	}
 
 	ValueSize := 65532
@@ -218,14 +218,14 @@ func WriteMessage(conn net.Conn, message []byte, timeout time.Duration) error {
 	// total message size in the Value. All messages that follow contain the actual message data.
 	// The size Value is actually a decimal string of the total message size
 
-	if err := WriteFrame(conn, MultipartFrameStart,
+	if err := writeFrame(conn, MultipartFrameStart,
 		[]byte(fmt.Sprintf("%d", msgLen))); err != nil {
 		return err
 	}
 
 	var index int
 	for index+ValueSize < msgLen {
-		if err := WriteFrame(conn, MultipartFrame,
+		if err := writeFrame(conn, MultipartFrame,
 			message[index:index+ValueSize]); err != nil {
 			return err
 		}
@@ -233,5 +233,5 @@ func WriteMessage(conn net.Conn, message []byte, timeout time.Duration) error {
 		index += ValueSize
 	}
 
-	return WriteFrame(conn, MultipartFrameFinal, message[index:])
+	return writeFrame(conn, MultipartFrameFinal, message[index:])
 }
