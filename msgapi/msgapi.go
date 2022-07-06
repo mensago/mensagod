@@ -133,7 +133,7 @@ func WriteFrame(w io.Writer, fieldType uint8, payload []byte) error {
 	return err
 }
 
-func ReadMessage(conn net.Conn) ([]byte, error) {
+func ReadMessage(conn net.Conn, timeout time.Duration) ([]byte, error) {
 
 	chunk := NewDataFrame(65535)
 	err := chunk.Read(conn)
@@ -166,6 +166,7 @@ func ReadMessage(conn net.Conn) ([]byte, error) {
 	var sizeRead uint64
 
 	for sizeRead < totalSize {
+		conn.SetReadDeadline(time.Now().Add(timeout))
 		err := chunk.Read(conn)
 		if err != nil {
 			return nil, err
