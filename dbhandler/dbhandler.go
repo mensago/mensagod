@@ -58,16 +58,120 @@ func Connect() {
 	connected = true
 }
 
+func ConnectWithString(connString string) {
+	var err error
+	dbConn, err = sql.Open("postgres", connString)
+	if err != nil {
+		logging.Writef("Failed to open database connection. Exiting. Error: %s", err.Error())
+		logging.Shutdown()
+		os.Exit(1)
+	}
+	// Calling Ping() is required because Open() just validates the settings passed
+	err = dbConn.Ping()
+	if err != nil {
+		logging.Writef("Failed to open database connection. Exiting. Error: %s", err.Error())
+		logging.Shutdown()
+		os.Exit(1)
+	}
+	connected = true
+}
+
 // Disconnect shuts down the connection to the database server
 func Disconnect() {
 	if IsConnected() {
 		dbConn.Close()
+		connected = false
+		dbConn = nil
 	}
 }
 
 // IsConnected returns a boolean if it has successfully connected to the Mensago server database
 func IsConnected() bool {
 	return connected
+}
+
+// GetConnection returns a pointer to the database connection
+func GetConnection() *sql.DB {
+	if !IsConnected() {
+		Connect()
+	}
+	return dbConn
+}
+
+func IsEmpty() bool {
+	rows, err := dbConn.Query("SELECT table_name FROM information_schema.tables " +
+		"WHERE table_schema = 'public' ORDER BY table_name;")
+	return err != nil || rows == nil
+}
+
+// Reset clears all database to empty tables
+func Reset() error {
+	if !IsConnected() {
+		Connect()
+	}
+
+	// Drop all tables
+	_, err := dbConn.Exec(`
+		DO $$ DECLARE
+		r RECORD;
+		BEGIN
+			FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = current_schema()) LOOP
+				EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
+			END LOOP;
+		END $$;
+	`)
+	if err != nil {
+		return err
+	}
+
+	sqlCmds := []string{
+		`CREATE TABLE workspaces(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
+			uid VARCHAR(64), domain VARCHAR(255) NOT NULL, wtype VARCHAR(32) NOT NULL,
+			status VARCHAR(16) NOT NULL, password VARCHAR(128));`,
+
+		`CREATE TABLE aliases(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
+			alias CHAR(292) NOT NULL);`,
+
+		`CREATE TABLE iwkspc_folders(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL,
+			serverpath VARCHAR(512) NOT NULL, clientpath VARCHAR(768) NOT NULL);`,
+
+		`CREATE TABLE iwkspc_devices(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
+			devid CHAR(36) NOT NULL, devkey VARCHAR(1000) NOT NULL,
+			lastlogin VARCHAR(32) NOT NULL, status VARCHAR(16) NOT NULL);`,
+
+		`CREATE TABLE quotas(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
+			usage BIGINT, quota BIGINT);`,
+
+		`CREATE TABLE failure_log(rowid SERIAL PRIMARY KEY, type VARCHAR(16) NOT NULL,
+			id VARCHAR(36), source VARCHAR(36) NOT NULL, count INTEGER,
+			last_failure TIMESTAMP NOT NULL, lockout_until TIMESTAMP);`,
+
+		`CREATE TABLE passcodes(rowid SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE,
+			passcode VARCHAR(128) NOT NULL, expires TIMESTAMP NOT NULL);`,
+
+		`CREATE TABLE prereg(rowid SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE,
+			uid VARCHAR(128) NOT NULL, domain VARCHAR(255) NOT NULL, regcode VARCHAR(128));`,
+
+		`CREATE TABLE keycards(rowid SERIAL PRIMARY KEY, owner VARCHAR(292) NOT NULL,
+			creationtime TIMESTAMP NOT NULL, index INTEGER NOT NULL,
+			entry VARCHAR(8192) NOT NULL, fingerprint VARCHAR(96) NOT NULL);`,
+
+		`CREATE TABLE orgkeys(rowid SERIAL PRIMARY KEY, creationtime TIMESTAMP NOT NULL,
+			pubkey VARCHAR(7000), privkey VARCHAR(7000) NOT NULL,
+			purpose VARCHAR(8) NOT NULL, fingerprint VARCHAR(96) NOT NULL);`,
+
+		`CREATE TABLE updates(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
+			update_type INTEGER, update_data VARCHAR(2048), unixtime BIGINT);`,
+	}
+
+	for _, cmd := range sqlCmds {
+		_, err = dbConn.Exec(cmd)
+		if err != nil {
+			panic(err.Error())
+		}
+	}
+
+	return nil
 }
 
 // LogFailure adds an entry to the database of a failure which needs tracked. This
