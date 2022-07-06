@@ -25,23 +25,12 @@ var ErrMultipartSession = errors.New("multipart session error")
 // bulk transfers are not subject to this restriction -- just the initial command.
 const MinCommandLength = 35
 
-var PacketSessionTimeout = 30 * time.Second
-
 // DataFrame type codes
 const (
 	SingleFrame = uint8(50) + iota
-
-	// Codes for multipart message handling
 	MultipartFrameStart
 	MultipartFrame
 	MultipartFrameFinal
-
-	SessionSetupRequest
-	SessionSetupResponse
-
-	// This code isn't used for any frames; instead it marks the upper boundary for valid frame
-	// codes. This entry should ALWAYS be last.
-	FrameUpperBound
 )
 
 // DataFrame is a structure for the lowest layer of network interaction in Oganesson. It
@@ -114,7 +103,7 @@ func (df *DataFrame) Read(r io.Reader) error {
 		return ErrIO
 	}
 
-	if df.buffer[0] < SingleFrame || df.buffer[0] >= FrameUpperBound {
+	if df.buffer[0] < SingleFrame || df.buffer[0] >= MultipartFrameFinal {
 		return ErrInvalidFrame
 	}
 
@@ -146,117 +135,8 @@ func WriteFrame(w io.Writer, fieldType uint8, payload []byte) error {
 
 func ReadMessage(conn net.Conn) ([]byte, error) {
 
-	// TODO: Implement msgapi::ReadMessage
-	return nil, errors.New("unimplemented")
-}
-
-func WriteMessage(conn net.Conn, message []byte) error {
-
-	// TODO: Implement msgapi::WriteMessage
-	return errors.New("unimplemented")
-}
-
-// PacketSession works at the lowest layer of the framework. Its job is to break arbitrary-sized
-// chunks of data into segments that fit into the network buffer on both sides of the channel.
-// It performs no encryption.
-type PacketSession struct {
-	Connection net.Conn
-	Timeout    time.Duration
-	BufferSize uint16
-	isInit     bool
-}
-
-func NewPacketRequester(conn net.Conn) *PacketSession {
-	out := PacketSession{conn, PacketSessionTimeout, 65535, false}
-	return &out
-}
-
-func NewPacketResponder(conn net.Conn, bufferSize uint16) *PacketSession {
-
-	if bufferSize < 1024 {
-		return nil
-	}
-
-	out := PacketSession{conn, PacketSessionTimeout, bufferSize, false}
-	return &out
-}
-
-func (s *PacketSession) InitRequester() error {
-
-	setupBuffer := []byte{SessionSetupRequest, 255, 255, 0}
-	s.UpdateTimeout()
-	byteCount, err := s.Connection.Write(setupBuffer)
-	if byteCount != 4 {
-		return ErrSize
-	}
-	if err != nil {
-		return err
-	}
-
-	s.UpdateTimeout()
-	byteCount, err = s.Connection.Read(setupBuffer)
-	if byteCount != 4 {
-		return ErrSize
-	}
-	if err != nil {
-		return err
-	}
-
-	listenerSize := uint16(setupBuffer[1])<<8 + uint16(setupBuffer[2])
-	if listenerSize < s.BufferSize {
-		s.BufferSize = listenerSize
-	}
-
-	s.isInit = true
-	return nil
-}
-
-func (s *PacketSession) InitResponder() error {
-
-	setupBuffer := []byte{0, 0, 0, 0}
-	s.UpdateTimeout()
-	byteCount, err := s.Connection.Read(setupBuffer)
-	if byteCount != 4 {
-		return ErrSize
-	}
-	if err != nil {
-		return err
-	}
-
-	bufferSize := uint16(setupBuffer[1])<<8 + uint16(setupBuffer[2])
-	if bufferSize < s.BufferSize {
-		s.BufferSize = bufferSize
-	}
-
-	setupBuffer[0] = SessionSetupResponse
-	setupBuffer[1] = uint8((s.BufferSize >> 8) & 255)
-	setupBuffer[2] = uint8(s.BufferSize & 255)
-	// the fourth byte is ignored and exists just for compliance -- a DataFrame must be at least
-	// 4 bytes
-	s.UpdateTimeout()
-	byteCount, err = s.Connection.Write(setupBuffer)
-	if byteCount != 4 {
-		return ErrSize
-	}
-
-	s.isInit = true
-	return err
-}
-
-func (s *PacketSession) UpdateTimeout() {
-	s.Connection.SetReadDeadline(time.Now().Add(s.Timeout))
-	s.Connection.SetWriteDeadline(time.Now().Add(s.Timeout))
-}
-
-// Read() reads packets from a socket and hides away the chunking logic
-func (s *PacketSession) Read() ([]byte, error) {
-
-	if !s.isInit {
-		return nil, ErrNoInit
-	}
-
-	chunk := NewDataFrame(s.BufferSize)
-	err := chunk.Read(s.Connection)
+	chunk := NewDataFrame(65535)
+	err := chunk.Read(conn)
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +166,7 @@ func (s *PacketSession) Read() ([]byte, error) {
 	var sizeRead uint64
 
 	for sizeRead < totalSize {
-		err := chunk.Read(s.Connection)
+		err := chunk.Read(conn)
 		if err != nil {
 			return nil, err
 		}
@@ -311,25 +191,22 @@ func (s *PacketSession) Read() ([]byte, error) {
 	return out, nil
 }
 
-// Write() is the sending counterpart to Read().
-func (s *PacketSession) Write(packet []byte) error {
+func WriteMessage(conn net.Conn, message []byte, timeout time.Duration) error {
 
-	if !s.isInit {
-		return ErrNoInit
-	}
-	if packet == nil {
+	if message == nil {
 		return ErrEmptyData
 	}
 
-	packetLen := len(packet)
+	msgLen := len(message)
 
-	// If the packet is small enough to fit into a single frame, just send it and be done.
-	if packetLen < int(s.BufferSize)-3 {
-		s.UpdateTimeout()
-		return WriteFrame(s.Connection, SingleFrame, packet)
+	// If the message is small enough to fit into a single frame, just send it and be done.
+	if msgLen < 65532 {
+		conn.SetReadDeadline(time.Now().Add(timeout))
+		conn.SetWriteDeadline(time.Now().Add(timeout))
+		return WriteFrame(conn, SingleFrame, message)
 	}
 
-	ValueSize := int(s.BufferSize) - 3
+	ValueSize := 65532
 
 	// If the message is bigger than the max command length, then we will send the Value as
 	// a multipart message. This takes more work internally, but the benefits at the application
@@ -340,20 +217,20 @@ func (s *PacketSession) Write(packet []byte) error {
 	// total message size in the Value. All messages that follow contain the actual message data.
 	// The size Value is actually a decimal string of the total message size
 
-	if err := WriteFrame(s.Connection, MultipartFrameStart,
-		[]byte(fmt.Sprintf("%d", packetLen))); err != nil {
+	if err := WriteFrame(conn, MultipartFrameStart,
+		[]byte(fmt.Sprintf("%d", msgLen))); err != nil {
 		return err
 	}
 
 	var index int
-	for index+ValueSize < packetLen {
-		if err := WriteFrame(s.Connection, MultipartFrame,
-			packet[index:index+ValueSize]); err != nil {
+	for index+ValueSize < msgLen {
+		if err := WriteFrame(conn, MultipartFrame,
+			message[index:index+ValueSize]); err != nil {
 			return err
 		}
 
 		index += ValueSize
 	}
 
-	return WriteFrame(s.Connection, MultipartFrameFinal, packet[index:])
+	return WriteFrame(conn, MultipartFrameFinal, message[index:])
 }
