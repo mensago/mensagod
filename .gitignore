@@ -3,3 +3,4 @@
 serverconfig.toml
 *.pyc
 tests/integration/testfiles/**
+.venv/**
