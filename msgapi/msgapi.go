@@ -51,12 +51,8 @@ func newdataFrame(bufferSize uint16) *dataFrame {
 	}
 
 	var out dataFrame
-	out.allocatedataFrameBuffer(bufferSize)
+	out.buffer = make([]byte, bufferSize)
 	return &out
-}
-
-func (df *dataFrame) allocatedataFrameBuffer(bufferSize uint16) {
-	df.buffer = make([]byte, bufferSize)
 }
 
 // getType returns the frame type or 255 if the frame is invalid
