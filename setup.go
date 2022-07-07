@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -66,11 +67,97 @@ func SetupConfigFile() {
 	var tempStr string
 	var defaultDataPath string
 
-	// TODO: location of workspace data
-	// TODO: registration type
-	// TODO: is separate abuse account desired?
-	// TODO: is separate support account desired?
-	// TODO: quota size
+	// location of workspace data
+
+	fmt.Printf("Where should server-side user data be stored? [%s]: \n", defaultDataPath)
+	if len, _ := fmt.Scanln(&tempStr); len == 0 {
+		tempStr = defaultDataPath
+	}
+	config["top_path"] = tempStr
+
+	if _, err := os.Stat(config["top_path"]); err != nil {
+		if err = os.MkdirAll(config["top_path"], os.ModePerm); err != nil {
+			fmt.Printf("Unable to create directory '%s'. Error: %s\n"+
+				"Please create this folder manually and rerun this command", config["config_path"],
+				err.Error())
+			os.Exit(1)
+		}
+	}
+
+	// registration type
+
+	fmt.Printf(`
+Registration types:
+  - private (default): the admin creates all accounts manually.
+  - moderated: anyone can ask for an account, but the admin must approve.
+  - network: anyone on a subnet can create a new account. By default this is
+        set to the local network (192.168/16, 172.16/12, 10/8).
+  - public: anyone with access can create a new account. Not recommended.
+`)
+	config["regtype"] = ""
+	for config["regtype"] == "" {
+		fmt.Printf("Registration mode [private]: ")
+		if len, _ := fmt.Scanln(&tempStr); len == 0 {
+			tempStr = "private"
+		} else {
+			tempStr = strings.ToLower(tempStr)
+		}
+
+		switch tempStr {
+		case "private", "public", "network", "moderated":
+			config["regtype"] = tempStr
+		}
+	}
+
+	// are separate abuse and/or support accounts desired?
+
+	fmt.Printf(`
+Each instance has abuse and support addresses. These can autoforward
+to the admin workspace or be their own separate, distinct workspaces. Smaller
+environments probably will want to say "yes" here.
+`)
+
+	config["forward_abuse"] = ""
+	for config["forward_abuse"] == "" {
+		fmt.Printf("Do you want to autoforward abuse to admin? [Y/n]: \n")
+		_, _ = fmt.Scanln(&tempStr)
+		tempStr = strings.ToLower(tempStr)
+
+		switch tempStr {
+		case "y", "yes", "":
+			config["forward_abuse"] = "y"
+		case "n", "no":
+			config["forward_abuse"] = "n"
+		}
+	}
+
+	config["forward_support"] = ""
+	for config["forward_support"] == "" {
+		fmt.Printf("Do you want to autoforward support to admin? [Y/n]: \n")
+		_, _ = fmt.Scanln(&tempStr)
+		tempStr = strings.ToLower(tempStr)
+
+		switch tempStr {
+		case "y", "yes", "":
+			config["forward_support"] = "y"
+		case "n", "no":
+			config["forward_support"] = "n"
+		}
+	}
+
+	config["quota_size"] = ""
+	fmt.Printf("\nDisk quotas set each user to a customizable default value.\n")
+	for config["quota_size"] == "" {
+		fmt.Printf("Size, in MiB, of default user disk quota (0 = No quota, default): \n")
+		if len, _ := fmt.Scanln(&tempStr); len == 0 {
+			tempStr = "0"
+		}
+
+		_, err := strconv.ParseInt(tempStr, 10, 64)
+		if err == nil {
+			config["quota_size"] = tempStr
+		}
+	}
 
 	// location of server config and log files
 
@@ -155,7 +242,31 @@ func SetupConfigFile() {
 		}
 	}
 
-	// TODO: required keycard fields
+	fmt.Printf(`
+NOTE: Now it is time to enter the information used in the organization's
+root keycard. This information can be changed, but the original information
+will still be a permanent part of the organization's keycard.
+
+Please use care when answering.
+`)
+
+	orgname_pattern := regexp.MustCompile(`\w+`)
+	config["org_name"] = ""
+	for config["org_name"] == "" {
+		fmt.Print("Name of organization (max 64 characters): ")
+		fmt.Scanln(&tempStr)
+		tempStr = strings.TrimSpace(tempStr)
+
+		if len(tempStr) > 64 && len(tempStr) < 1 {
+			continue
+		}
+
+		if orgname_pattern.Match([]byte(tempStr)) {
+			config["org_name"] = tempStr
+		}
+	}
+
+	// TODO: finish required keycard fields
 
 	// connectivity check
 
