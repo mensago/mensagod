@@ -13,12 +13,13 @@ import (
 	"strings"
 	"time"
 
+	ezn "gitlab.com/darkwyrm/goeznacl"
 	"gitlab.com/mensago/mensagod/dbhandler"
 )
 
 // SetupConfigFile is used to obtain the necessary information from the user for creating the
 // server config file
-func SetupConfigFile() {
+func SetupConfigFile() error {
 
 	// Prerequisite: check for admin privileges
 	switch runtime.GOOS {
@@ -106,6 +107,37 @@ Registration types:
 		switch tempStr {
 		case "private", "public", "network", "moderated":
 			config["regtype"] = tempStr
+		}
+	}
+
+	// certified algorithms required?
+
+	fmt.Printf(`
+Some organizations are under legal requirements to use certified algorithms
+for encryption and signing, such as FIPS in the United States.
+
+By answering yes to the following question, the server will prefer to use
+algorithms which are certified for U.S. government use. These algorithms are
+commonly certified in other countries, but you will need to check your local
+laws to confirm.
+
+By answering no, the server will use newer algorithms which are recommended
+for use unless required.
+
+In either case, this can be changed later, if needed.
+`)
+
+	config["certified_algos"] = ""
+	for config["certified_algos"] == "" {
+		fmt.Printf("Do you want to use certified algorithms? [y/N]: \n")
+		_, _ = fmt.Scanln(&tempStr)
+		tempStr = strings.ToLower(tempStr)
+
+		switch tempStr {
+		case "y", "yes", "":
+			config["certified_algos"] = "y"
+		case "n", "no":
+			config["certified_algos"] = "n"
 		}
 	}
 
@@ -352,7 +384,50 @@ users, inventory, and other information will be erased.
 		}
 	}
 
-	// TODO: create the org's keys and put them in the table
+	// TODO: Generate keys based on if user needs certified algorithms
+	// This depends on corresponding support in goeznacl
+
+	epair, err := ezn.GenerateEncryptionPair()
+	if err != nil {
+		return err
+	}
+	config["org_encrypt"] = epair.PublicKey.AsString()
+	config["org_decrypt"] = epair.PrivateKey.AsString()
+
+	pspair, err := ezn.GenerateSigningPair()
+	if err != nil {
+		return err
+	}
+	config["org_verify"] = pspair.PublicKey.AsString()
+	config["org_sign"] = pspair.PrivateKey.AsString()
+
+	sspair, err := ezn.GenerateSigningPair()
+	if err != nil {
+		return err
+	}
+	config["org_sverify"] = sspair.PublicKey.AsString()
+	config["org_ssign"] = sspair.PrivateKey.AsString()
+
+	timestamp := time.Now().UTC().Format("20060102T030405Z")
+
+	db.Exec("INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose, fingerprint) "+
+		"VALUES(?1,?2,?3,?4,?5)",
+		timestamp, epair.PublicKey.AsString(), epair.PrivateKey.AsString(), "encrypt",
+		epair.PublicHash.AsString(),
+	)
+
+	db.Exec("INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose, fingerprint) "+
+		"VALUES(?1,?2,?3,?4,?5)",
+		timestamp, pspair.PublicKey.AsString(), pspair.PrivateKey.AsString(), "sign",
+		pspair.PublicHash.AsString(),
+	)
+
+	db.Exec("INSERT INTO orgkeys(creationtime, pubkey, privkey, purpose, fingerprint) "+
+		"VALUES(?1,?2,?3,?4,?5)",
+		timestamp, sspair.PublicKey.AsString(), sspair.PrivateKey.AsString(), "altsign",
+		sspair.PublicHash.AsString(),
+	)
+
 	// TODO: preregister the admin account and put into the serverconfig
 	// TODO: preregister the abuse account if not aliased and put into the serverconfig
 	// TODO: preregister the support account if not aliased and put into the serverconfig
@@ -681,4 +756,6 @@ From here, please make sure you:
 		fmt.Printf("Support workspace: %s/%s\n", config["support_wid"], config["org_domain"])
 		fmt.Printf("Support registration code: %s\n\n", config["support_regcode"])
 	}
+
+	return nil
 }
