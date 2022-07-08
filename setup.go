@@ -266,7 +266,52 @@ Please use care when answering.
 		}
 	}
 
-	// TODO: finish required keycard fields
+	orgdomain_pattern := regexp.MustCompile(`([a-zA-Z0-9]+\.)+[a-zA-Z0-9]+`)
+	config["org_domain"] = ""
+	for config["org_domain"] == "" {
+		fmt.Print("Organization's domain (max 253 characters): ")
+		fmt.Scanln(&tempStr)
+		tempStr = strings.TrimSpace(tempStr)
+
+		if len(tempStr) > 253 && len(tempStr) < 3 {
+			continue
+		}
+
+		if orgdomain_pattern.Match([]byte(tempStr)) {
+			config["org_domain"] = tempStr
+		}
+	}
+
+	fmt.Printf(`Specifying the languages used by your organization is optional.
+
+Please use two- or three-letter language codes in order of preference from 
+greatest to least and separated by a comma. You may choose up to 10 languages.
+
+Examples: 'en' or 'fr,es'
+
+A complete list may be found at 
+https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes.
+`)
+
+	language_pattern := regexp.MustCompile(`^[a-zA-Z]{2,3}(,[a-zA-Z]{2,3})*?$`)
+	config["org_language"] = ""
+	for config["org_language"] == "" {
+		fmt.Print("Organization's domain (max 253 characters): ")
+		fmt.Scanln(&tempStr)
+		tempStr = strings.TrimSpace(tempStr)
+
+		if len(strings.Split(tempStr, ",")) > 10 {
+			fmt.Println("Too many languages given. Please specify no more than 10.")
+			continue
+		}
+		if len(tempStr) > 253 {
+			continue
+		}
+
+		if language_pattern.Match([]byte(tempStr)) {
+			config["org_language"] = tempStr
+		}
+	}
 
 	// connectivity check
 
