@@ -13,13 +13,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/everlastingbeta/diceware"
+	"github.com/google/uuid"
 	ezn "gitlab.com/darkwyrm/goeznacl"
 	"gitlab.com/mensago/mensagod/dbhandler"
+	"gitlab.com/mensago/mensagod/keycard"
 )
 
 // SetupConfigFile is used to obtain the necessary information from the user for creating the
 // server config file
-func SetupConfigFile() error {
+func SetupConfigFile(wordList *diceware.Wordlist) error {
 
 	// Prerequisite: check for admin privileges
 	switch runtime.GOOS {
@@ -428,9 +431,92 @@ users, inventory, and other information will be erased.
 		sspair.PublicHash.AsString(),
 	)
 
-	// TODO: preregister the admin account and put into the serverconfig
-	// TODO: preregister the abuse account if not aliased and put into the serverconfig
-	// TODO: preregister the support account if not aliased and put into the serverconfig
+	admin_wid := uuid.New().String()
+	regcode, err := diceware.RollWords(6, " ", *wordList)
+	if err != nil {
+		return err
+	}
+	config["admin_wid"] = admin_wid
+	config["admin_regcode"] = regcode
+
+	db.Exec("INSERT INTO prereg(wid, uid, domain, regcode) VALUES(?1,?2,?3,?4)",
+		admin_wid, "admin", config["org_domain"], regcode,
+	)
+
+	abuse_wid := uuid.New().String()
+	regcode, err = diceware.RollWords(6, " ", *wordList)
+	if err != nil {
+		return err
+	}
+	config["abuse_wid"] = abuse_wid
+
+	if config["forward_abuse"] == "y" {
+		db.Exec("INSERT INTO workspaces(wid, uid, domain, wtype, status) VALUES(?1,?2,?3,?4,?5)",
+			abuse_wid, "abuse", config["org_domain"], "alias", "active")
+		db.Exec("INSERT INTO aliases(wid, alias) VALUES(?1,?2)",
+			abuse_wid, abuse_wid+"/"+config["org_domain"])
+
+	} else {
+		db.Exec("INSERT INTO prereg(wid, uid, domain, regcode) VALUES(?1,?2,?3,?4)",
+			abuse_wid, "abuse", config["org_domain"], regcode)
+		db.Exec("INSERT INTO workspaces(wid, uid, domain, wtype, status) VALUES(?1,?2,?3,?4,?5)",
+			abuse_wid, "abuse", config["org_domain"], "individual", "active")
+	}
+
+	support_wid := uuid.New().String()
+	regcode, err = diceware.RollWords(6, " ", *wordList)
+	if err != nil {
+		return err
+	}
+	config["support_wid"] = support_wid
+
+	if config["forward_support"] == "y" {
+		db.Exec("INSERT INTO workspaces(wid, uid, domain, wtype, status) VALUES(?1,?2,?3,?4,?5)",
+			support_wid, "support", config["org_domain"], "alias", "active")
+		db.Exec("INSERT INTO aliases(wid, alias) VALUES(?1,?2)",
+			support_wid, support_wid+"/"+config["org_domain"])
+
+	} else {
+		db.Exec("INSERT INTO prereg(wid, uid, domain, regcode) VALUES(?1,?2,?3,?4)",
+			support_wid, "support", config["org_domain"], regcode)
+		db.Exec("INSERT INTO workspaces(wid, uid, domain, wtype, status) VALUES(?1,?2,?3,?4,?5)",
+			support_wid, "support", config["org_domain"], "individual", "active")
+	}
+
+	rootentry := keycard.NewOrgEntry()
+	rootentry.SetFields(map[string]string{
+		"Name":                       config["org_name"],
+		"Primary-Verification-Key":   config["org_verify"],
+		"Secondary-Verification-Key": config["org_sverify"],
+		"Encryption-Key":             config["org_encrypt"],
+		"Contact-Admin":              config["admin_wid"] + "/" + config["org_domain"],
+	})
+
+	if config["forward_abuse"] == "n" {
+		rootentry.SetField("Contact-Abuse", config["abuse_wid"]+"/"+config["org_domain"])
+	}
+	if config["forward_support"] == "n" {
+		rootentry.SetField("Contact-Support", config["support_wid"]+"/"+config["org_domain"])
+	}
+	if config["org_language"] != "" {
+		rootentry.SetField("Language", config["org_language"])
+	}
+
+	if !rootentry.IsDataCompliant() {
+		fmt.Printf("There was a problem with the organization data:\n%s\n",
+			rootentry.MakeByteString(0))
+		return errors.New("non-compliant organization data in keycard root entry")
+	}
+
+	hashAlgorithm := "BLAKE2B-256"
+	if config["certified_algos"] == "y" {
+		hashAlgorithm = "SHA256"
+	}
+	if err := rootentry.GenerateHash(hashAlgorithm); err != nil {
+		return err
+	}
+
+	// TODO: finish generating root keycard entry
 
 	// Now that we have all the information we need from the user and the database is ready for us,
 	// configure the system and create the server config file.
