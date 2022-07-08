@@ -516,7 +516,21 @@ users, inventory, and other information will be erased.
 		return err
 	}
 
-	// TODO: finish generating root keycard entry
+	if err := rootentry.Sign(pspair.PublicKey, "Organization"); err != nil {
+		fmt.Printf("There was a problem signing organization's keycard:\n")
+		return err
+	}
+
+	if !rootentry.IsCompliant() {
+		fmt.Printf("There was a problem with the organization's keycard:\n%s\n",
+			rootentry.MakeByteString(0))
+		return errors.New("non-compliant organization keycard")
+	}
+
+	db.Exec(`INSERT INTO keycards(owner, creationtime, index, entry, fingerprint)
+			VALUES(?1,?2,?3,?4,?5)`,
+		"organization", rootentry.Fields["Timestamp"], rootentry.Fields["Index"],
+		string(rootentry.MakeByteString(0)), rootentry.Hash)
 
 	// Now that we have all the information we need from the user and the database is ready for us,
 	// configure the system and create the server config file.
