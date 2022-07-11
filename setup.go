@@ -139,6 +139,7 @@ In either case, this can be changed later, if needed.
 		switch tempStr {
 		case "y", "yes", "":
 			config["certified_algos"] = "y"
+			ezn.RequireCertifiedAlgorithms(true)
 		case "n", "no":
 			config["certified_algos"] = "n"
 		}
@@ -387,9 +388,6 @@ users, inventory, and other information will be erased.
 		}
 	}
 
-	// TODO: Generate keys based on if user needs certified algorithms
-	// This depends on corresponding support in goeznacl
-
 	epair, err := ezn.GenerateEncryptionPair(ezn.PreferredAsymmetricType())
 	if err != nil {
 		return err
@@ -508,11 +506,9 @@ users, inventory, and other information will be erased.
 		return errors.New("non-compliant organization data in keycard root entry")
 	}
 
-	hashAlgorithm := "BLAKE2B-256"
-	if config["certified_algos"] == "y" {
-		hashAlgorithm = "SHA256"
-	}
-	if err := rootentry.GenerateHash(hashAlgorithm); err != nil {
+	// The preferred hash type from goeznacl changes depending on if certified algorithms are
+	// required
+	if err := rootentry.GenerateHash(ezn.PreferredHashType()); err != nil {
 		return err
 	}
 
@@ -793,7 +789,7 @@ users, inventory, and other information will be erased.
 #
 # For more information about Diceware, visit
 # https://theworld.com/~reinhold/diceware.html
-# diceware_wordlist = 'eff_short_prefix'
+# diceware_wordlist = "eff_short_prefix"
 #
 # The number of words used in a Diceware code. 6 is recommended for best
 # security in most situations. This value cannot be less than 3.
@@ -819,13 +815,14 @@ users, inventory, and other information will be erased.
 # at least 10 and no more than 2880 (48 hours).
 # password_reset_min = 60
 # 
-# Adjust the password security strength. Argon2id is used for the hash
-# generation algorithm. This setting may be 'normal' or 'enhanced'. Normal is
-# best for most situations, but for environments which require extra security,
-# 'enhanced' provides additional protection at the cost of higher server
-# demands.
-# password_security = normal
+# Are certified algorithms required?
+# certified_algorithms = n
 `)
+
+	if config["certified_algos"] == "y" {
+		fmt.Fprintln(fHandle, `certified_algorithms = "y"`)
+	}
+
 	fmt.Printf(`
 
 ==============================================================================
