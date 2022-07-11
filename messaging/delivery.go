@@ -300,7 +300,7 @@ func Bounce(errorCode int, info *messageInfo, extraData *map[string]string) {
 	msg.Date = now.Format("20060102T030405Z")
 
 	// PayloadKey
-	msgKey := ezn.GenerateSecretKey()
+	msgKey := ezn.GenerateSecretKey(ezn.PreferredSecretType())
 	encPayloadKey, err := userKey.Encrypt(msgKey.Key.RawData())
 	if err != nil {
 		logging.Writef("Bounce: unable to encrypt payload key for sender %s: %s", info.Sender,

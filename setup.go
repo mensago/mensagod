@@ -390,21 +390,21 @@ users, inventory, and other information will be erased.
 	// TODO: Generate keys based on if user needs certified algorithms
 	// This depends on corresponding support in goeznacl
 
-	epair, err := ezn.GenerateEncryptionPair()
+	epair, err := ezn.GenerateEncryptionPair(ezn.PreferredAsymmetricType())
 	if err != nil {
 		return err
 	}
 	config["org_encrypt"] = epair.PublicKey.AsString()
 	config["org_decrypt"] = epair.PrivateKey.AsString()
 
-	pspair, err := ezn.GenerateSigningPair()
+	pspair, err := ezn.GenerateSigningPair(ezn.PreferredSigningType())
 	if err != nil {
 		return err
 	}
 	config["org_verify"] = pspair.PublicKey.AsString()
 	config["org_sign"] = pspair.PrivateKey.AsString()
 
-	sspair, err := ezn.GenerateSigningPair()
+	sspair, err := ezn.GenerateSigningPair(ezn.PreferredSigningType())
 	if err != nil {
 		return err
 	}

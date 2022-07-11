@@ -20,7 +20,7 @@ import (
 // 'pending', or 'disabled'.
 func AddWorkspace(wid string, uid string, domain string, password string, status string,
 	wtype string) error {
-	passString := ezn.HashPassword(password, false)
+	passString := ezn.HashPassword(password)
 
 	// wid, uid, domain, wtype, status, password
 	var err error

@@ -430,7 +430,7 @@ func SetPassword(wid types.UUID, password string) error {
 	if len(password) > 128 {
 		return misc.ErrOutOfRange
 	}
-	passHash := ezn.HashPassword(password, false)
+	passHash := ezn.HashPassword(password)
 	_, err := dbConn.Exec(`UPDATE workspaces SET password=$1 WHERE wid=$2`, passHash, wid.AsString())
 	return err
 }
