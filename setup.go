@@ -149,11 +149,11 @@ In either case, this can be changed later, if needed.
 	config["certified_algos"] = ""
 	for config["certified_algos"] == "" {
 		fmt.Printf("Do you want to use certified algorithms? [y/N]: ")
-		_, _ = fmt.Scanln(&tempStr)
-		if tempStr == "" {
-			config["certified_algos"] = "n"
+		if len, _ := fmt.Scanln(&tempStr); len == 0 {
+			tempStr = "n"
+		} else {
+			tempStr = strings.ToLower(tempStr)
 		}
-		tempStr = strings.ToLower(tempStr)
 
 		switch tempStr {
 		case "y", "yes":
@@ -170,11 +170,12 @@ In either case, this can be changed later, if needed.
 Each instance has abuse and support addresses. These can autoforward
 to the admin workspace or be their own separate, distinct workspaces. Smaller
 environments probably will want to say "yes" here.
+
 `)
 
 	config["forward_abuse"] = ""
 	for config["forward_abuse"] == "" {
-		fmt.Printf("Do you want to autoforward abuse to admin? [Y/n]: \n")
+		fmt.Printf("Do you want to autoforward abuse to admin? [Y/n]: ")
 		_, _ = fmt.Scanln(&tempStr)
 		tempStr = strings.ToLower(tempStr)
 
@@ -188,7 +189,7 @@ environments probably will want to say "yes" here.
 
 	config["forward_support"] = ""
 	for config["forward_support"] == "" {
-		fmt.Printf("Do you want to autoforward support to admin? [Y/n]: \n")
+		fmt.Printf("Do you want to autoforward support to admin? [Y/n]: ")
 		_, _ = fmt.Scanln(&tempStr)
 		tempStr = strings.ToLower(tempStr)
 
@@ -203,7 +204,7 @@ environments probably will want to say "yes" here.
 	config["quota_size"] = ""
 	fmt.Printf("\nDisk quotas set each user to a customizable default value.\n")
 	for config["quota_size"] == "" {
-		fmt.Printf("Size, in MiB, of default user disk quota (0 = No quota, default): \n")
+		fmt.Printf("Size, in MiB, of default user disk quota (0 = No quota, default): ")
 		if len, _ := fmt.Scanln(&tempStr); len == 0 {
 			tempStr = "0"
 		}
@@ -276,15 +277,15 @@ environments probably will want to say "yes" here.
 
 	// database and username/password
 
-	fmt.Print("Enter the name of the database to store data. [sra]: ")
+	fmt.Print("Enter the name of the database to store data. [mensago]: ")
 	if len, _ := fmt.Scanln(&tempStr); len == 0 {
 		tempStr = "mensago"
 	}
 	config["db_name"] = tempStr
 
-	fmt.Print("Enter a username which has admin privileges on this database. [sra]: ")
+	fmt.Print("Enter a username which has admin privileges on this database. [mensago]: ")
 	if len, _ := fmt.Scanln(&tempStr); len == 0 {
-		tempStr = "mensagod"
+		tempStr = "mensago"
 	}
 	config["db_user"] = tempStr
 
