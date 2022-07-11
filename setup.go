@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/everlastingbeta/diceware"
+	"github.com/everlastingbeta/diceware/wordlist"
 	"github.com/google/uuid"
 	ezn "gitlab.com/darkwyrm/goeznacl"
 	"gitlab.com/mensago/mensagod/dbhandler"
@@ -22,7 +23,7 @@ import (
 
 // SetupConfigFile is used to obtain the necessary information from the user for creating the
 // server config file
-func SetupConfigFile(wordList *diceware.Wordlist) error {
+func SetupConfigFile() error {
 
 	// Prerequisite: check for admin privileges
 	switch runtime.GOOS {
@@ -69,11 +70,24 @@ func SetupConfigFile(wordList *diceware.Wordlist) error {
 	config := make(map[string]string)
 
 	var tempStr string
-	var defaultDataPath string
+	var defaultDataPath = "/var/mensago"
 
 	// location of workspace data
 
-	fmt.Printf("Where should server-side user data be stored? [%s]: \n", defaultDataPath)
+	programData := ""
+	if runtime.GOOS == "windows" {
+		for _, s := range os.Environ() {
+			if strings.HasPrefix(s, "ProgramData") {
+				parts := strings.Split(s, "=")
+				programData = parts[1]
+				break
+			}
+		}
+
+		defaultDataPath = programData + "\\mensagodata"
+	}
+
+	fmt.Printf("Where should server-side user data be stored? [%s]: ", defaultDataPath)
 	if len, _ := fmt.Scanln(&tempStr); len == 0 {
 		tempStr = defaultDataPath
 	}
@@ -116,6 +130,8 @@ Registration types:
 	// certified algorithms required?
 
 	fmt.Printf(`
+---------------------------------------------------------------------------
+
 Some organizations are under legal requirements to use certified algorithms
 for encryption and signing, such as FIPS in the United States.
 
@@ -132,12 +148,15 @@ In either case, this can be changed later, if needed.
 
 	config["certified_algos"] = ""
 	for config["certified_algos"] == "" {
-		fmt.Printf("Do you want to use certified algorithms? [y/N]: \n")
+		fmt.Printf("Do you want to use certified algorithms? [y/N]: ")
 		_, _ = fmt.Scanln(&tempStr)
+		if tempStr == "" {
+			config["certified_algos"] = "n"
+		}
 		tempStr = strings.ToLower(tempStr)
 
 		switch tempStr {
-		case "y", "yes", "":
+		case "y", "yes":
 			config["certified_algos"] = "y"
 			ezn.RequireCertifiedAlgorithms(true)
 		case "n", "no":
@@ -430,7 +449,7 @@ users, inventory, and other information will be erased.
 	)
 
 	admin_wid := uuid.New().String()
-	regcode, err := diceware.RollWords(6, " ", *wordList)
+	regcode, err := diceware.RollWords(6, " ", wordlist.EFFLong)
 	if err != nil {
 		return err
 	}
@@ -442,7 +461,7 @@ users, inventory, and other information will be erased.
 	)
 
 	abuse_wid := uuid.New().String()
-	regcode, err = diceware.RollWords(6, " ", *wordList)
+	regcode, err = diceware.RollWords(6, " ", wordlist.EFFLong)
 	if err != nil {
 		return err
 	}
@@ -462,7 +481,7 @@ users, inventory, and other information will be erased.
 	}
 
 	support_wid := uuid.New().String()
-	regcode, err = diceware.RollWords(6, " ", *wordList)
+	regcode, err = diceware.RollWords(6, " ", wordlist.EFFLong)
 	if err != nil {
 		return err
 	}

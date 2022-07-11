@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -41,6 +42,8 @@ type greetingStruct struct {
 }
 
 func main() {
+
+	handleArgs(os.Args)
 	gDiceWordList = config.SetupConfig()
 	messaging.InitDelivery()
 	kcresolver.InitCache()
@@ -90,6 +93,26 @@ func main() {
 		id, _ := clientPool.Add()
 		go connectionWorker(conn, id)
 	}
+}
+
+func printUsage(args []string) {
+	fmt.Printf("Usage: %s [options]\n\n" +
+		"--setup     Performs first-time setup. This option WILL DELETE EXISTING DATA.\n" +
+		path.Base(args[0]))
+}
+
+func handleArgs(args []string) {
+	switch len(args) {
+	case 1:
+		return
+	case 2:
+		if args[1] == "--setup" {
+			SetupConfigFile()
+			os.Exit(0)
+		}
+	}
+	printUsage(args)
+	os.Exit(1)
 }
 
 func connectionWorker(conn net.Conn, workerID uint64) {
