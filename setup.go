@@ -70,7 +70,7 @@ func SetupConfigFile() error {
 	config := make(map[string]string)
 
 	var tempStr string
-	var defaultDataPath = "/var/mensago"
+	var defaultDataPath = "/var/mensagod"
 
 	// location of workspace data
 
@@ -91,10 +91,10 @@ func SetupConfigFile() error {
 	if len, _ := fmt.Scanln(&tempStr); len == 0 {
 		tempStr = defaultDataPath
 	}
-	config["top_path"] = tempStr
+	config["top_dir"] = tempStr
 
-	if _, err := os.Stat(config["top_path"]); err != nil {
-		if err = os.MkdirAll(config["top_path"], os.ModePerm); err != nil {
+	if _, err := os.Stat(config["top_dir"]); err != nil {
+		if err = os.MkdirAll(config["top_dir"], os.ModePerm); err != nil {
 			fmt.Printf("Unable to create directory '%s'. Error: %s\n"+
 				"Please create this folder manually and rerun this command", config["config_path"],
 				err.Error())
@@ -649,7 +649,7 @@ users, inventory, and other information will be erased.
 	if _, err := os.Stat(configFilePath); err == nil {
 		backupName := fmt.Sprintf("serverconfig.toml.%s", time.Now().Format("20060102T150405Z"))
 		fmt.Printf("Config file %s exists. Renaming to %s\n", configFilePath, backupName)
-		err := os.Rename(configFilePath, filepath.Join(configFilePath, backupName))
+		err := os.Rename(configFilePath, filepath.Join(config["config_path"], backupName))
 		if err != nil {
 			fmt.Println("Error backing up the server config file: " + err.Error())
 			fmt.Println("Please resolve this and re-run this command.")
@@ -703,13 +703,13 @@ users, inventory, and other information will be erased.
 # "C:\ProgramData\mensago", but for other platforms is "/var/mensago".
 `)
 	// Make sure that the commented-out line is correct for the platform
-	if runtime.GOOS != "windows" {
+	if runtime.GOOS == "windows" {
 		fHandle.WriteString(`# top_dir = "C:\ProgramData\mensago"` + "\n")
 	} else {
-		fHandle.WriteString(`# top_dir = "/var/mensago"` + "\n")
+		fHandle.WriteString(`# top_dir = "/var/mensagod"` + "\n")
 	}
 
-	if config["top_path"] != defaultDataPath {
+	if config["top_dir"] != defaultDataPath {
 		fmt.Fprintln(fHandle, `top_dir = "`+config["top_dir"]+`"`)
 	}
 
@@ -747,12 +747,11 @@ users, inventory, and other information will be erased.
 # Location for log files. This directory requires full permissions for the
 # user mensagod runs as. On Windows, this defaults to the same location as the
 # server config file, i.e. C:\ProgramData\mensagod
-# log_path = "/var/log/mensagod"
 `)
 	if runtime.GOOS != "windows" {
 		fHandle.WriteString(`# log_path = "` + config["config_path"] + `"` + "\n")
 	} else {
-		fHandle.WriteString(`# top_dir = "/var/mensago"` + "\n")
+		fHandle.WriteString(`# top_dir = "/var/mensagod"` + "\n")
 	}
 
 	fHandle.WriteString(`
