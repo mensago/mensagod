@@ -803,8 +803,8 @@ users, inventory, and other information will be erased.
 # 'eff_long' - List from the Electronic Frontier Foundation of long words.
 # 'eff_short' - The EFF's short word list.
 # 'eff_short_prefix' - Another short word list from the EFF with some features
-                       that make typing easier and offer a little more
-                       security over eff_short.
+#                      that make typing easier and offer a little more
+#                      security over eff_short.
 # 'original' - Arnold Reinhold's original Diceware word list. Not recommended
 #              for most situations.
 #
