@@ -299,6 +299,8 @@ environments probably will want to say "yes" here.
 	}
 
 	fmt.Printf(`
+==============================================================================
+
 NOTE: Now it is time to enter the information used in the organization's
 root keycard. This information can be changed, but the original information
 will still be a permanent part of the organization's keycard.
@@ -352,8 +354,10 @@ https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes.
 	language_pattern := regexp.MustCompile(`^[a-zA-Z]{2,3}(,[a-zA-Z]{2,3})*?$`)
 	config["org_language"] = ""
 	for config["org_language"] == "" {
-		fmt.Print("Organization's domain (max 253 characters): ")
-		fmt.Scanln(&tempStr)
+		fmt.Print("Language(s) [Enter to skip]: ")
+		if choiceLen, _ := fmt.Scanln(&tempStr); choiceLen == 0 {
+			break
+		}
 		tempStr = strings.TrimSpace(tempStr)
 
 		if len(strings.Split(tempStr, ",")) > 10 {
@@ -859,17 +863,18 @@ From here, please make sure you:
 4) Finish registration of the admin account on a device that is NOT this server.
 5) If you are using separate abuse or support accounts, also complete
    registration for those accounts on a device that is NOT this server.
+
 `)
 
 	fmt.Printf("Administrator workspace: %s/%s\n", config["admin_wid"], config["org_domain"])
 	fmt.Printf("Administrator registration code: %s\n\n", config["admin_regcode"])
 
-	if config["foward_abuse"] != "y" {
+	if config["foward_abuse"] == "n" {
 		fmt.Printf("Abuse workspace: %s/%s\n", config["abuse_wid"], config["org_domain"])
 		fmt.Printf("Abuse registration code: %s\n\n", config["abuse_regcode"])
 	}
 
-	if config["foward_support"] != "y" {
+	if config["foward_support"] == "n" {
 		fmt.Printf("Support workspace: %s/%s\n", config["support_wid"], config["org_domain"])
 		fmt.Printf("Support registration code: %s\n\n", config["support_regcode"])
 	}
