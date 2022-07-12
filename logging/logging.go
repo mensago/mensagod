@@ -31,21 +31,32 @@ func GetLog() *log.Logger {
 
 // Shutdown shuts down the global logging facilities
 func Shutdown() {
-	logHandle.Close()
+	if logHandle != nil {
+		logHandle.Close()
+	}
 }
 
 // Write prints a message to the log and stdout if turned on
 func Write(msg string) {
-	serverLog.Println(msg)
-	if alsoStdout {
+	if serverLog == nil {
 		fmt.Println(msg)
+	} else {
+		serverLog.Println(msg)
+		if alsoStdout {
+			fmt.Println(msg)
+		}
 	}
 }
 
 // Writef is a Printf() interface to the log and possibly stdout
 func Writef(msg string, v ...interface{}) {
-	serverLog.Printf(msg, v...)
-	if alsoStdout {
+	if serverLog == nil {
 		fmt.Printf(msg, v...)
+	} else {
+		serverLog.Printf(msg, v...)
+		if alsoStdout {
+			fmt.Printf(msg, v...)
+		}
 	}
+
 }
