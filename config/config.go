@@ -134,7 +134,7 @@ func SetupConfig() diceware.Wordlist {
 	// Read the config file
 	err := viper.ReadInConfig()
 	if err != nil {
-		fmt.Printf("Unable to locate config file. Exiting. Error: %s", err)
+		fmt.Printf("Unable to load config file. Error: %s\nExiting.\n", err)
 		os.Exit(1)
 	}
 
