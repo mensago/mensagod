@@ -699,18 +699,24 @@ users, inventory, and other information will be erased.
 	fmt.Fprintln(fHandle, `password = "`+config["db_password"]+`"`)
 
 	fHandle.WriteString(`
+[global]
+# The domain for the organization.
+domain = "` + config["org_domain"] + `"
+`)
+
+	fHandle.WriteString(`
 # The location where user data is stored. The default for Windows is 
-# "C:\ProgramData\mensago", but for other platforms is "/var/mensago".
+# "C:\\ProgramData\\mensago", but for other platforms is "/var/mensago".
 `)
 	// Make sure that the commented-out line is correct for the platform
 	if runtime.GOOS == "windows" {
-		fHandle.WriteString(`# top_dir = "C:\ProgramData\mensago"` + "\n")
+		fHandle.WriteString(`# top_dir = "C:\\ProgramData\\mensago"` + "\n")
 	} else {
 		fHandle.WriteString(`# top_dir = "/var/mensagod"` + "\n")
 	}
 
 	if config["top_dir"] != defaultDataPath {
-		fmt.Fprintln(fHandle, `top_dir = "`+config["top_dir"]+`"`)
+		fmt.Fprintln(fHandle, `top_dir = "`+strings.ReplaceAll(config["top_dir"], `\`, `\\`)+`"`)
 	}
 
 	fHandle.WriteString(`
