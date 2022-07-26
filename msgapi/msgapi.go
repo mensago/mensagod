@@ -95,7 +95,7 @@ func (df *dataFrame) Read(r io.Reader) error {
 		return err
 	}
 
-	if bytesRead < 4 {
+	if bytesRead < 3 {
 		return ErrIO
 	}
 
@@ -106,11 +106,16 @@ func (df *dataFrame) Read(r io.Reader) error {
 	// The size bytes are in network order (MSB), so this makes dealing with CPU architecture much
 	// less of a headache regardless of what archictecture this is compiled for.
 	payloadSize := (uint16(df.buffer[1]) << 8) + uint16(df.buffer[2])
-	if bytesRead != int(payloadSize)+3 {
+
+	bytesRead, err = r.Read(df.buffer[3 : 3+payloadSize])
+	if err != nil {
+		return err
+	}
+	if bytesRead != int(payloadSize) {
 		return ErrSize
 	}
 
-	df.index = bytesRead
+	df.index = bytesRead + 3
 	return nil
 }
 
