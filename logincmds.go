@@ -536,7 +536,7 @@ func challengeDevice(session *sessionState, keytype string, devkeystr string) (b
 	}
 
 	response := NewServerResponse(100, "CONTINUE")
-	response.Data["Challenge"] = encryptedChallenge
+	response.Data["Challenge"] = keytype + ":" + encryptedChallenge
 	err = session.SendResponse(*response)
 	if err != nil {
 		return false, err
@@ -598,7 +598,7 @@ func dualChallengeDevice(session *sessionState, oldkey ezn.CryptoString,
 	}
 
 	response := NewServerResponse(100, "CONTINUE")
-	response.Data["Challenge"] = encryptedChallenge
+	response.Data["Challenge"] = oldkey.Prefix + ":" + encryptedChallenge
 
 	_, err = rand.Read(randBytes)
 	if err != nil {
@@ -615,7 +615,7 @@ func dualChallengeDevice(session *sessionState, oldkey ezn.CryptoString,
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return false, err
 	}
-	response.Data["New-Challenge"] = encryptedNewChallenge
+	response.Data["New-Challenge"] = newkey.Prefix + ":" + encryptedNewChallenge
 
 	err = session.SendResponse(*response)
 	if err != nil {
