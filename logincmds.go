@@ -249,13 +249,18 @@ func commandLogin(session *sessionState) {
 		return
 	}
 
+	// The challenge is expected to be in CryptoString format in order to be able to ensure the
+	// algorithm used by the client matches the org's key
+	challengeCS := ezn.NewCS(session.Message.Data["Challenge"])
+
 	// We got this far, so decrypt the challenge and send it to the client
 	keypair, err := dbhandler.GetEncryptionPair()
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
-	decryptedChallenge, err := keypair.Decrypt(session.Message.Data["Challenge"])
+
+	decryptedChallenge, err := keypair.Decrypt(challengeCS.Data)
 	if err != nil {
 		session.SendQuickResponse(306, "KEY FAILURE", "Challenge decryption failure")
 		return
