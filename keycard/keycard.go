@@ -861,8 +861,8 @@ func NewUserEntry() *Entry {
 	self.FieldNames.Items = []string{
 		"Index",
 		"Name",
-		"Workspace-ID",
 		"User-ID",
+		"Workspace-ID",
 		"Domain",
 		"Contact-Request-Verification-Key",
 		"Contact-Request-Encryption-Key",
