@@ -574,11 +574,19 @@ func challengeDevice(session *sessionState, keytype string, devkeystr string) (b
 
 func dualChallengeDevice(session *sessionState, oldkey ezn.CryptoString,
 	newkey ezn.CryptoString) (bool, error) {
-	// This is just like challengeDevice, but using two keys, an old one and a new one
+	// This is much like challengeDevice, but using two keys, an old one and a new one
+	// - receive 2 keys
+	// - send 2 challenges
+	// - receive and verify 2 responses
+	// - update device key
+
+	// TODO: utilize goeznacl::IsSupportedAlgorithm()
 
 	if oldkey.Prefix != "CURVE25519" || newkey.Prefix != "CURVE25519" {
 		return false, ezn.ErrUnsupportedAlgorithm
 	}
+
+	// Create old key challenge
 
 	randBytes := make([]byte, 32)
 	_, err := rand.Read(randBytes)
@@ -587,19 +595,18 @@ func dualChallengeDevice(session *sessionState, oldkey ezn.CryptoString,
 		logging.Writef("challengeDevice: error checking lockout: %s", err.Error())
 		return false, err
 	}
-	challenge := b85.Encode(randBytes)
+	oldChallenge := b85.Encode(randBytes)
 
 	encryptor := ezn.NewEncryptionKey(oldkey)
-	encryptedChallenge, err := encryptor.Encrypt([]byte(challenge))
-
+	oldEncChallenge, err := encryptor.Encrypt([]byte(oldChallenge))
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return false, err
 	}
 
-	response := NewServerResponse(100, "CONTINUE")
-	response.Data["Challenge"] = oldkey.Prefix + ":" + encryptedChallenge
+	// Create new key challenge
 
+	randBytes = make([]byte, 32)
 	_, err = rand.Read(randBytes)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
@@ -609,13 +616,15 @@ func dualChallengeDevice(session *sessionState, oldkey ezn.CryptoString,
 	newChallenge := b85.Encode(randBytes)
 
 	encryptor = ezn.NewEncryptionKey(newkey)
-	encryptedNewChallenge, err := encryptor.Encrypt([]byte(newChallenge))
-
+	newEncChallenge, err := encryptor.Encrypt([]byte(newChallenge))
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return false, err
 	}
-	response.Data["New-Challenge"] = newkey.Prefix + ":" + encryptedNewChallenge
+
+	response := NewServerResponse(100, "CONTINUE")
+	response.Data["Challenge"] = oldkey.Prefix + ":" + oldEncChallenge
+	response.Data["New-Challenge"] = newkey.Prefix + ":" + newEncChallenge
 
 	err = session.SendResponse(*response)
 	if err != nil {
@@ -641,7 +650,7 @@ func dualChallengeDevice(session *sessionState, oldkey ezn.CryptoString,
 	}
 
 	// Validate client response
-	if challenge != request.Data["Response"] || newChallenge != request.Data["New-Response"] {
+	if oldChallenge != request.Data["Response"] || newChallenge != request.Data["New-Response"] {
 		return false, nil
 	}
 
