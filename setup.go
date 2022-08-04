@@ -730,7 +730,7 @@ domain = "` + config["org_domain"] + `"
 `)
 
 	if config["regtype"] != "private" {
-		fmt.Fprintln(fHandle, `regtype = "`+config["regtype"]+`"`)
+		fmt.Fprintln(fHandle, `registration = "`+config["regtype"]+`"`)
 	}
 
 	fHandle.WriteString(`
