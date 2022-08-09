@@ -291,10 +291,10 @@ func commandOrgCard(session *sessionState) {
 	var response ServerResponse
 	if entryCount > 0 {
 		transmissionSize := uint64(0)
+
+		headerSize := len("----- BEGIN ENTRY -----\r\n") + len("----- END ENTRY -----\r\n")
 		for _, entry := range entries {
-			// 56 is the size of the header and footer and accompanying line terminators
-			transmissionSize += uint64(len(entry) + len("----- BEGIN ORG ENTRY -----\r\n") +
-				len("----- END ORG ENTRY -----\r\n"))
+			transmissionSize += uint64(len(entry) + headerSize)
 		}
 
 		response.Code = 104
@@ -319,14 +319,21 @@ func commandOrgCard(session *sessionState) {
 			return
 		}
 
-		totalBytes := 0
+		cardParts := make([]string, 0)
 		for _, entry := range entries {
-			bytesWritten, err := session.WriteClient("----- BEGIN ORG ENTRY -----\r\n" + entry +
-				"----- END ORG ENTRY -----\r\n")
-			if err != nil {
-				return
-			}
-			totalBytes += bytesWritten
+			cardParts = append(cardParts,
+				"----- BEGIN ENTRY -----\r\n"+entry+"----- END ENTRY -----\r\n",
+			)
+		}
+
+		response.Code = 104
+		response.Status = "TRANSFER"
+		response.Data = make(map[string]string)
+		response.Data["Item-Count"] = fmt.Sprintf("%d", entryCount)
+		response.Data["Total-Size"] = fmt.Sprintf("%d", transmissionSize)
+		response.Data["Card-Data"] = strings.Join(cardParts, "")
+		if session.SendResponse(response) != nil {
+			return
 		}
 	} else {
 		session.SendQuickResponse(404, "NOT FOUND", "")
