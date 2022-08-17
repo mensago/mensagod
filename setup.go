@@ -508,6 +508,7 @@ users, inventory, and other information will be erased.
 	rootentry := keycard.NewOrgEntry()
 	rootentry.SetFields(map[string]string{
 		"Name":                       config["org_name"],
+		"Domain":                     config["org_domain"],
 		"Primary-Verification-Key":   config["org_verify"],
 		"Secondary-Verification-Key": config["org_sverify"],
 		"Encryption-Key":             config["org_encrypt"],
