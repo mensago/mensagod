@@ -355,6 +355,7 @@ func TestIsCompliantOrg(t *testing.T) {
 	entry.SetFields(map[string]string{
 		"Name":                     "Acme, Inc.",
 		"Contact-Admin":            "ae406c5e-2673-4d3e-af20-91325d9623ca/acme.com",
+		"Domain":                   "example.com",
 		"Language":                 "en",
 		"Primary-Verification-Key": "ED25519:)8id(gE02^S<{3H>9B;X4{DuYcb`%wo^mC&1lN88",
 		"Encryption-Key":           "CURVE25519:@b?cjpeY;<&y+LSOA&yUQ&ZIrp(JGt{W$*V>ATLG",
@@ -422,6 +423,7 @@ func TestOrgChain(t *testing.T) {
 		"Name":                     "Acme, Inc.",
 		"Contact-Admin":            "ae406c5e-2673-4d3e-af20-91325d9623ca/acme.com",
 		"Language":                 "en",
+		"Domain":                   "example.com",
 		"Primary-Verification-Key": "ED25519:)8id(gE02^S<{3H>9B;X4{DuYcb`%wo^mC&1lN88",
 		"Encryption-Key":           "CURVE25519:@b?cjpeY;<&y+LSOA&yUQ&ZIrp(JGt{W$*V>ATLG",
 		"Time-To-Live":             "14",
@@ -630,6 +632,7 @@ func TestIsDataCompliantOrg(t *testing.T) {
 		"Name":                     "Acme, Inc.",
 		"Contact-Admin":            "54025843-bacc-40cc-a0e4-df48a099c2f3/acme.com",
 		"Language":                 "en",
+		"Domain":                   "example.com",
 		"Primary-Verification-Key": "ED25519:)8id(gE02^S<{3H>9B;X4{DuYcb`%wo^mC&1lN88",
 		"Encryption-Key":           "CURVE25519:@b?cjpeY;<&y+LSOA&yUQ&ZIrp(JGt{W$*V>ATLG",
 		"Time-To-Live":             "14",

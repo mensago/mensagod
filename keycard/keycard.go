@@ -623,17 +623,17 @@ func (entry *Entry) Chain(key ezn.CryptoString, rotateOptional bool) (*Entry, ma
 func NewEntryFromData(textBlock string) (*Entry, error) {
 	// CAUTION: This function needs to be extra careful because it handles untrusted data
 
-	// The minimum number of lines is 11 because every org keycard, which is the smaller of the two,
+	// The minimum number of lines is 12 because every org keycard, which is the smaller of the two,
 	// has 9 required fields in addition to the Type line and the entry header and footer lines.
 	lines := strings.Split(textBlock, "\r\n")
-	if len(lines) < 11 {
+	if len(lines) < 12 {
 		return nil, errors.New("entry too short")
 	}
 
 	var outEntry *Entry
 	if lines[0] == "Type:User" {
-		// 9 required fields for User entries + Type line
-		if len(lines) < 10 {
+		// 10 required fields for User entries + Type line
+		if len(lines) < 11 {
 			return nil, errors.New("entry too short")
 		}
 
@@ -676,6 +676,7 @@ func NewOrgEntry() *Entry {
 	self.RequiredFields.Items = []string{
 		"Index",
 		"Name",
+		"Domain",
 		"Contact-Admin",
 		"Primary-Verification-Key",
 		"Encryption-Key",
