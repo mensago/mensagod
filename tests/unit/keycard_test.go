@@ -27,7 +27,7 @@ func TestSetFields(t *testing.T) {
 }
 
 func TestSet(t *testing.T) {
-	sampleString := "----- BEGIN ORG ENTRY -----\r\n" +
+	sampleString := "----- BEGIN ENTRY -----\r\n" +
 		"Name:Acme, Inc.\r\n" +
 		"Contact-Admin:admin/acme.com\r\n" +
 		"Language:en\r\n" +
@@ -38,7 +38,7 @@ func TestSet(t *testing.T) {
 		"Hash:BLAKE3-256:^zPiV;CKvLd2(uwpIzmyMotYFsKM=cgbL=nSI2LN\r\n" +
 		"Organization-Signature:ED25519:6lXjej0C~!F&_`qnkPHrC`z8+>;#g*fNfjV@4ngGlp#xsr8}1rS2(NG" +
 		")@ANTe`~05d)3*<q%pX`Oj0-t\r\n" +
-		"----- END ORG ENTRY -----\r\n"
+		"----- END ENTRY -----\r\n"
 
 	entry := keycard.NewOrgEntry()
 	err := entry.Set([]byte(sampleString))
@@ -54,7 +54,7 @@ func TestSet(t *testing.T) {
 
 func TestMakeByteString(t *testing.T) {
 	sampleString :=
-		"----- BEGIN USER ENTRY -----\r\n" +
+		"----- BEGIN ENTRY -----\r\n" +
 			"Name:Corbin Smith\r\n" +
 			"User-ID:csmith\r\n" +
 			"Expires:20201001\r\n" +
@@ -62,7 +62,7 @@ func TestMakeByteString(t *testing.T) {
 			"Custody-Signature:0000000000\r\n" +
 			"Organization-Signature:2222222222\r\n" +
 			"User-Signature:1111111111\r\n" +
-			"----- END USER ENTRY -----\r\n"
+			"----- END ENTRY -----\r\n"
 
 	entry := keycard.NewUserEntry()
 	err := entry.Set([]byte(sampleString))

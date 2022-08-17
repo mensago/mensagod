@@ -293,8 +293,8 @@ func (entry *Entry) Set(data []byte) error {
 
 	stripHeader := false
 	if entry.Type == "Organization" {
-		if lines[0] == "----- BEGIN ORG ENTRY -----" {
-			if lines[len(lines)-1] != "----- END ORG ENTRY -----" {
+		if lines[0] == "----- BEGIN ENTRY -----" {
+			if lines[len(lines)-1] != "----- END ENTRY -----" {
 				return errors.New("bad entry header/footer")
 			}
 			stripHeader = true
@@ -303,8 +303,8 @@ func (entry *Entry) Set(data []byte) error {
 		}
 
 	} else if entry.Type == "User" {
-		if lines[0] == "----- BEGIN USER ENTRY -----" {
-			if lines[len(lines)-1] != "----- END USER ENTRY -----" {
+		if lines[0] == "----- BEGIN ENTRY -----" {
+			if lines[len(lines)-1] != "----- END ENTRY -----" {
 				return errors.New("bad entry header/footer")
 			}
 			stripHeader = true

@@ -388,8 +388,8 @@ func commandUserCard(session *sessionState) {
 		transmissionSize := uint64(0)
 		for _, entry := range entries {
 			// 56 is the size of the header and footer and accompanying line terminators
-			transmissionSize += uint64(len(entry) + len("----- BEGIN USER ENTRY -----\r\n") +
-				len("----- END USER ENTRY -----\r\n"))
+			transmissionSize += uint64(len(entry) + len("----- BEGIN ENTRY -----\r\n") +
+				len("----- END ENTRY -----\r\n"))
 		}
 
 		response.Code = 104
@@ -416,8 +416,8 @@ func commandUserCard(session *sessionState) {
 
 		totalBytes := 0
 		for _, entry := range entries {
-			bytesWritten, err := session.WriteClient("----- BEGIN USER ENTRY -----\r\n" + entry +
-				"----- END USER ENTRY -----\r\n")
+			bytesWritten, err := session.WriteClient("----- BEGIN ENTRY -----\r\n" + entry +
+				"----- END ENTRY -----\r\n")
 			if err != nil {
 				return
 			}
