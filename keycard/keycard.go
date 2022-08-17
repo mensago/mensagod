@@ -660,6 +660,7 @@ func NewOrgEntry() *Entry {
 	self.FieldNames.Items = []string{
 		"Index",
 		"Name",
+		"Domain",
 		"Contact-Admin",
 		"Contact-Abuse",
 		"Contact-Support",
