@@ -345,7 +345,7 @@ func commandUserCard(session *sessionState) {
 	// USERCARD(Owner, Start-Index, End-Index=0)
 
 	if session.Message.Validate([]string{"Owner", "Start-Index"}) != nil {
-		session.SendQuickResponse(400, "BAD REQUEST", "Missing Start-Index")
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing field")
 		return
 	}
 
@@ -414,14 +414,21 @@ func commandUserCard(session *sessionState) {
 			return
 		}
 
-		totalBytes := 0
+		cardParts := make([]string, 0)
 		for _, entry := range entries {
-			bytesWritten, err := session.WriteClient("----- BEGIN ENTRY -----\r\n" + entry +
-				"----- END ENTRY -----\r\n")
-			if err != nil {
-				return
-			}
-			totalBytes += bytesWritten
+			cardParts = append(cardParts,
+				"----- BEGIN ENTRY -----\r\n"+entry+"----- END ENTRY -----\r\n",
+			)
+		}
+
+		response.Code = 104
+		response.Status = "TRANSFER"
+		response.Data = make(map[string]string)
+		response.Data["Item-Count"] = fmt.Sprintf("%d", entryCount)
+		response.Data["Total-Size"] = fmt.Sprintf("%d", transmissionSize)
+		response.Data["Card-Data"] = strings.Join(cardParts, "")
+		if session.SendResponse(response) != nil {
+			return
 		}
 	} else {
 		session.SendQuickResponse(404, "NOT FOUND", "")
