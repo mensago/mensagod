@@ -112,8 +112,8 @@ Registration types:
         set to the local network (192.168/16, 172.16/12, 10/8).
   - public: anyone with access can create a new account. Not recommended.
 `)
-	config["regtype"] = ""
-	for config["regtype"] == "" {
+	config["registration"] = ""
+	for config["registration"] == "" {
 		fmt.Printf("Registration mode [private]: ")
 		if len, _ := fmt.Scanln(&tempStr); len == 0 {
 			tempStr = "private"
@@ -123,7 +123,7 @@ Registration types:
 
 		switch tempStr {
 		case "private", "public", "network", "moderated":
-			config["regtype"] = tempStr
+			config["registration"] = tempStr
 		}
 	}
 
@@ -730,8 +730,8 @@ domain = "` + config["org_domain"] + `"
 # registration = "private"
 `)
 
-	if config["regtype"] != "private" {
-		fmt.Fprintln(fHandle, `registration = "`+config["regtype"]+`"`)
+	if config["registration"] != "private" {
+		fmt.Fprintln(fHandle, `registration = "`+config["registration"]+`"`)
 	}
 
 	fHandle.WriteString(`
