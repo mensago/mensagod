@@ -90,7 +90,7 @@ func (df *dataFrame) Read(r io.Reader) error {
 	// Invalidate the index in case we error out
 	df.index = 0
 
-	bytesRead, err := r.Read(df.buffer)
+	bytesRead, err := r.Read(df.buffer[0:3])
 	if err != nil {
 		return err
 	}
