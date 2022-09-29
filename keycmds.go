@@ -122,10 +122,13 @@ func commandAddEntry(session *sessionState) {
 	// into a positive integer
 	currentIndex, _ := strconv.Atoi(entry.Fields["Index"])
 
+	var prevcrkey ezn.CryptoString
+
 	// Passing a 0 as the start index means we'll get just the current entry
 	tempStrList, err := dbhandler.GetUserEntries(wid, 0, 0)
 	if err == nil {
 		if len(tempStrList) == 0 {
+			// TODO: update index handling in commandAddEntry -- root indices aren't always 1
 			if currentIndex != 1 {
 				session.SendQuickResponse(412, "NONCOMPLIANT KEYCARD DATA",
 					"Root entry index must be 1")
@@ -153,6 +156,7 @@ func commandAddEntry(session *sessionState) {
 					"Entry failed to chain verify")
 				return
 			}
+			prevcrkey.Set(prevEntry.Fields["Contact-Request-Verification-Key"])
 		}
 	}
 
@@ -241,7 +245,13 @@ func commandAddEntry(session *sessionState) {
 		session.SendQuickResponse(413, "INVALID SIGNATURE", "Bad Contact-Request-Verification-Key")
 		return
 	}
-	verified, err := entry.VerifySignature(crkey, "User")
+
+	verified := false
+	if prevcrkey.IsValid() {
+		verified, err = entry.VerifySignature(prevcrkey, "User")
+	} else {
+		verified, err = entry.VerifySignature(crkey, "User")
+	}
 	if err != nil || !verified {
 		session.SendQuickResponse(413, "INVALID SIGNATURE", "User-Signature failed to verify")
 		return
