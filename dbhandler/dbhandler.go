@@ -381,7 +381,7 @@ func CheckPasscode(wid types.UUID, passcode string) (bool, error) {
 
 	// We made it this far, so the combination is valid. Is it expired?
 	var codestamp time.Time
-	codestamp, err = time.Parse(time.RFC3339, expires)
+	codestamp, err = time.Parse("20060102T150405Z", expires)
 	if err != nil {
 		logging.Write("dbhandler.CheckPasscode: bad timestamp in database")
 		return false, err
