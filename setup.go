@@ -707,7 +707,7 @@ domain = "` + config["org_domain"] + `"
 
 	fHandle.WriteString(`
 # The location where user data is stored. The default for Windows is 
-# "C:\\ProgramData\\mensago", but for other platforms is "/var/mensago".
+# "C:\\ProgramData\\mensago", but for other platforms is "/var/mensagod".
 `)
 	// Make sure that the commented-out line is correct for the platform
 	if runtime.GOOS == "windows" {
