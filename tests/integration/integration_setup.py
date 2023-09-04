@@ -181,8 +181,8 @@ def load_server_config_file() -> dict:
 	serverconfig.setdefault('global', dict())
 
 	if platform.system() == 'Windows':
-		serverconfig['global'].setdefault('top_dir','C:\\ProgramData\\mensago')
-		serverconfig['global'].setdefault('workspace_dir','C:\\ProgramData\\mensago\\wsp')
+		serverconfig['global'].setdefault('top_dir','C:\\ProgramData\\mensagodata')
+		serverconfig['global'].setdefault('workspace_dir','C:\\ProgramData\\mensagodata\\wsp')
 	else:
 		serverconfig['global'].setdefault('top_dir','/var/mensago')
 		serverconfig['global'].setdefault('workspace_dir','/var/mensago/wsp')
