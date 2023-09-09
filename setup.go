@@ -146,8 +146,8 @@ for use unless required.
 In either case, this can be changed later, if needed.
 `)
 
-	config["certified_algos"] = ""
-	for config["certified_algos"] == "" {
+	config["certified_algorithms"] = ""
+	for config["certified_algorithms"] == "" {
 		fmt.Printf("Do you want to use certified algorithms? [y/N]: ")
 		if len, _ := fmt.Scanln(&tempStr); len == 0 {
 			tempStr = "n"
@@ -157,10 +157,10 @@ In either case, this can be changed later, if needed.
 
 		switch tempStr {
 		case "y", "yes":
-			config["certified_algos"] = "y"
+			config["certified_algorithms"] = "true"
 			ezn.RequireCertifiedAlgorithms(true)
 		case "n", "no":
-			config["certified_algos"] = "n"
+			config["certified_algorithms"] = "false"
 		}
 	}
 
@@ -846,11 +846,11 @@ domain = "` + config["org_domain"] + `"
 # password_reset_min = 60
 # 
 # Are certified algorithms required?
-# certified_algorithms = n
+# certified_algorithms = false
 `)
 
-	if config["certified_algos"] == "y" {
-		fmt.Fprintln(fHandle, `certified_algorithms = "y"`)
+	if config["certified_algorithms"] == "y" {
+		fmt.Fprintln(fHandle, `certified_algorithms = "true"`)
 	}
 
 	fmt.Printf(`
