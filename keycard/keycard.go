@@ -969,14 +969,14 @@ func (entry *Entry) validateUserEntry() (bool, error) {
 	}
 
 	// Required field: Expires
-	pattern = regexp.MustCompile("^[[:digit:]]{8}$")
+	pattern = regexp.MustCompile("^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}$")
 	if !pattern.MatchString(entry.Fields["Expires"]) {
 		return false, errors.New("bad expiration date format")
 	}
 
 	year, _ := strconv.Atoi(entry.Fields["Expires"][0:4])
-	month, _ := strconv.Atoi(entry.Fields["Expires"][4:6])
-	day, _ := strconv.Atoi(entry.Fields["Expires"][6:8])
+	month, _ := strconv.Atoi(entry.Fields["Expires"][5:7])
+	day, _ := strconv.Atoi(entry.Fields["Expires"][8:10])
 
 	var validDate bool
 	validDate, err := isValidDate(month, day, year)
@@ -985,28 +985,28 @@ func (entry *Entry) validateUserEntry() (bool, error) {
 	}
 
 	// Required field: Timestamp
-	pattern = regexp.MustCompile("^[[:digit:]]{8}T[[:digit:]]{6}Z$")
+	pattern = regexp.MustCompile("^[[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}T[[:digit:]]{2}:[[:digit:]]{2}:[[:digit:]]{2}Z$")
 	if !pattern.MatchString(entry.Fields["Timestamp"]) {
 		return false, errors.New("bad timestamp format")
 	}
 	year, _ = strconv.Atoi(entry.Fields["Timestamp"][0:4])
-	month, _ = strconv.Atoi(entry.Fields["Timestamp"][4:6])
-	day, _ = strconv.Atoi(entry.Fields["Timestamp"][6:8])
+	month, _ = strconv.Atoi(entry.Fields["Timestamp"][5:7])
+	day, _ = strconv.Atoi(entry.Fields["Timestamp"][8:10])
 
 	validDate, err = isValidDate(month, day, year)
 	if !validDate {
 		return false, fmt.Errorf("bad timestamp date %s", err.Error())
 	}
 
-	intValue, _ = strconv.Atoi(entry.Fields["Timestamp"][9:11])
+	intValue, _ = strconv.Atoi(entry.Fields["Timestamp"][11:13])
 	if intValue > 23 {
 		return false, fmt.Errorf("bad timestamp hours")
 	}
-	intValue, _ = strconv.Atoi(entry.Fields["Timestamp"][11:13])
+	intValue, _ = strconv.Atoi(entry.Fields["Timestamp"][14:16])
 	if intValue > 59 {
 		return false, fmt.Errorf("bad timestamp minutes")
 	}
-	intValue, _ = strconv.Atoi(entry.Fields["Timestamp"][13:15])
+	intValue, _ = strconv.Atoi(entry.Fields["Timestamp"][17:19])
 	if intValue > 59 {
 		return false, fmt.Errorf("bad timestamp seconds")
 	}
@@ -1390,6 +1390,7 @@ func (card Keycard) VerifyChain(path string, clobber bool) (bool, error) {
 
 // check formatting for both timestamps and expiration dates
 func validateTimeString(timestr string) error {
+	// TODO: Fix validateTimeString()
 	pattern := regexp.MustCompile("^[[:digit:]]{8}T[[:digit:]]{6}Z$")
 	if !pattern.MatchString(timestr) {
 		return errors.New("bad timestr format")
