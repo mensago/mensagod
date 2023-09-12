@@ -141,7 +141,7 @@ func IsTimestampValid(timestr string) error {
 	}
 
 	now := time.Now().UTC()
-	timestamp, err := time.Parse("20060102T150405Z", timestr)
+	timestamp, err := time.Parse("2006-01-02T15:04:05Z", timestr)
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func IsExpirationValid(timestr string) error {
 	}
 
 	now := time.Now().UTC()
-	timestamp, err := time.Parse("20060102T150405Z", timestr)
+	timestamp, err := time.Parse("2006-01-02T15:04:05Z", timestr)
 	if err != nil {
 		return err
 	}

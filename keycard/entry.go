@@ -107,7 +107,7 @@ func (entry Entry) IsExpired() (bool, error) {
 	}
 
 	now := time.Now()
-	expiration, _ := time.Parse("20060102", entry.Fields["Expires"])
+	expiration, _ := time.Parse("2006-01-02", entry.Fields["Expires"])
 	return now.After(expiration), nil
 }
 
@@ -872,9 +872,8 @@ func (entry *Entry) validateUserEntry() (bool, error) {
 	}
 
 	// Required field: Timestamp
-	_, err = StringToTimestamp(entry.Fields["Timestamp"])
-	if err != nil {
-		return false, err
+	if IsTimestampValid(entry.Fields["Timestamp"]) != nil {
+		return false, errors.New("invalid timestamp")
 	}
 
 	// Optional field: Name
@@ -908,10 +907,6 @@ func (entry *Entry) validateUserEntry() (bool, error) {
 		if utf8.RuneCountInString(strValue) > 64 {
 			return false, errors.New("user id too long")
 		}
-	}
-
-	if IsTimestampValid(entry.Fields["Timestamp"]) != nil {
-		return false, errors.New("invalid timestamp")
 	}
 
 	return true, nil
