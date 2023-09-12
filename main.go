@@ -86,7 +86,7 @@ func main() {
 
 			var session sessionState
 			session.Connection = conn
-			session.WriteClient(string(noCanHazMsg))
+			session.WriteClient(string(noCanHazMsg) + "\r\n")
 
 			continue
 		}
@@ -134,7 +134,7 @@ func connectionWorker(conn net.Conn, workerID uint64) {
 		Date:    time.Now().UTC().Format("20060102T150405Z"),
 	}
 	greeting, _ := json.Marshal(greetingData)
-	session.WriteClient(string(greeting))
+	session.WriteClient(string(greeting) + "\r\n")
 	for {
 		request, err := session.GetRequest()
 		if err != nil {
