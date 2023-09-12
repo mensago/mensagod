@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"database/sql"
@@ -378,6 +379,7 @@ func CheckPasscode(wid types.UUID, passcode string) (bool, error) {
 		}
 		return false, err
 	}
+	expires = strings.TrimSpace(expires)
 
 	// We made it this far, so the combination is valid. Is it expired?
 	var codestamp time.Time
