@@ -135,6 +135,7 @@ func connectionWorker(conn net.Conn, workerID uint64) {
 	}
 	greeting, _ := json.Marshal(greetingData)
 	session.WriteClient(string(greeting) + "\r\n")
+
 	for {
 		request, err := session.GetRequest()
 		if err != nil {
@@ -144,9 +145,12 @@ func connectionWorker(conn net.Conn, workerID uint64) {
 				conn.SetWriteDeadline(time.Now().Add(time.Minute * 10))
 				continue
 			}
+
+			// For now, break on any other error, but log any that aren't EOF
 			if err.Error() != "EOF" {
-				break
+				logging.Writef("connectionWorker: Unhandled error %s", err)
 			}
+			break
 		}
 		session.Message = request
 
