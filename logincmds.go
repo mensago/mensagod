@@ -215,6 +215,11 @@ func commandLogin(session *sessionState) {
 	var exists bool
 	exists, session.WorkspaceStatus = dbhandler.CheckWorkspace(wid.AsString())
 	if exists {
+		if session.WorkspaceStatus == "deleted" {
+			session.SendQuickResponse(404, "NOT FOUND", "")
+			return
+		}
+
 		lockout, err := isLocked(session, "workspace", wid)
 		if err != nil || lockout {
 			return
