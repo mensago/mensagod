@@ -472,6 +472,12 @@ func commandUnregister(session *sessionState) {
 	// command syntax:
 	// UNREGISTER(Password-Hash)
 
+	// TODO: Update commandUnregister behavior
+	// - If a user submits the request and is successful, the session should be logged out
+	//   automatically.
+	// - If an admin unregisters an account, it should succeed immediately regardless of the
+	//   registration mode
+
 	if !session.RequireLogin() {
 		return
 	}
