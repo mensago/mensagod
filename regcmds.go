@@ -472,12 +472,6 @@ func commandUnregister(session *sessionState) {
 	// command syntax:
 	// UNREGISTER(Password-Hash)
 
-	// TODO: Update commandUnregister behavior
-	// - If a user submits the request and is successful, the session should be logged out
-	//   automatically.
-	// - If an admin unregisters an account, it should succeed immediately regardless of the
-	//   registration mode
-
 	if !session.RequireLogin() {
 		return
 	}
@@ -503,22 +497,17 @@ func commandUnregister(session *sessionState) {
 		return
 	}
 
-	regType := strings.ToLower(viper.GetString("global.registration"))
-	if regType == "private" || regType == "moderated" {
-		// TODO: submit admin request to delete workspace
-		// session.SendQuickResponse(101, "PENDING", "Pending administrator approval")
-		session.SendQuickResponse(301, "NOT IMPLEMENTED", "Not implemented yet. Sorry!")
-		return
-	}
-
 	adminAddress, err := GetAdmin()
 	if err != nil {
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("Unregister: failed to get admin address: %s", err.Error())
 		return
 	}
+	isAdmin := session.WID.Equals(adminAddress.ID)
 
 	// This command can be used to unregister other workspaces, but only the admin account is
 	// allowed to do this
-	wid := session.WID
+	targetWid := session.WID
 	if session.Message.HasField("Workspace-ID") {
 		tempWid := types.ToUUID(session.Message.Data["Workspace-ID"])
 		if !tempWid.IsValid() {
@@ -526,20 +515,20 @@ func commandUnregister(session *sessionState) {
 			return
 		}
 
-		if !session.WID.Equals(tempWid) {
+		if !isAdmin {
 
 			if !session.WID.Equals(adminAddress.ID) {
 				session.SendQuickResponse(401, "UNAUTHORIZED",
 					"Only admin can unregister other workspaces")
 				return
 			}
-			wid = tempWid
+			targetWid = tempWid
 
 		}
 	}
 
 	// You can't unregister the admin account
-	if wid.Equals(adminAddress.ID) {
+	if targetWid.Equals(adminAddress.ID) {
 		session.SendQuickResponse(403, "FORBIDDEN", "Can't unregister the admin account")
 		return
 	}
@@ -554,7 +543,7 @@ func commandUnregister(session *sessionState) {
 			logging.Write("Unregister: failed to resolve account " + builtin)
 			return
 		}
-		if wid.Equals(resolved) {
+		if targetWid.Equals(resolved) {
 			session.SendQuickResponse(403, "FORBIDDEN",
 				fmt.Sprintf("Can't unregister the built-in %s account", builtin))
 			return
@@ -562,24 +551,42 @@ func commandUnregister(session *sessionState) {
 	}
 
 	// You also don't delete aliases with this command
-	isAlias, _ := dbhandler.IsAlias(wid.AsString())
+	isAlias, _ := dbhandler.IsAlias(targetWid.AsString())
 	if isAlias {
 		session.SendQuickResponse(403, "FORBIDDEN", "Aliases aren't removed with this command")
 		return
 	}
 
-	err = dbhandler.RemoveWorkspace(wid.AsString())
+	// The admin account can immediately unregister any workspace. Users attempting to unregister
+	// their own account on a private or moderated server have to get administrator approval.
+	regType := strings.ToLower(viper.GetString("global.registration"))
+	if !isAdmin && (regType == "private" || regType == "moderated") {
+		// TODO: submit admin request to delete workspace
+		// session.SendQuickResponse(101, "PENDING", "Pending administrator approval")
+		session.SendQuickResponse(301, "NOT IMPLEMENTED", "Not implemented yet. Sorry!")
+		return
+	}
+
+	err = dbhandler.RemoveWorkspace(targetWid.AsString())
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Unregister: error removing workspace from db: %s", err.Error())
 		return
 	}
 
-	err = fshandler.GetFSProvider().RemoveDirectory("/ wsp "+wid.AsString(), true)
+	err = fshandler.GetFSProvider().RemoveDirectory("/ wsp "+targetWid.AsString(), true)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Unregister: error removing workspace from filesystem: %s", err.Error())
 		return
+	}
+
+	// If a user submits the request and is successful, the session should be logged out
+	// automatically.
+	if !isAdmin {
+		session.LoginState = loginNoSession
+		session.WID.Set("")
+		session.WorkspaceStatus = ""
 	}
 
 	session.SendQuickResponse(202, "UNREGISTERED", "")
