@@ -170,7 +170,7 @@ func (s *sessionState) AppendUpdateField(msg *ServerResponse) {
 func (s *sessionState) RequireLogin() bool {
 
 	if s.LoginState != loginClientSession {
-		s.SendQuickResponse(401, "UNAUTHORIZED", "")
+		s.SendQuickResponse(401, "UNAUTHORIZED", "Login required")
 		return false
 	}
 	return true
