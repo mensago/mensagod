@@ -515,16 +515,12 @@ func commandUnregister(session *sessionState) {
 			return
 		}
 
-		if !isAdmin {
-
-			if !session.WID.Equals(adminAddress.ID) {
-				session.SendQuickResponse(401, "UNAUTHORIZED",
-					"Only admin can unregister other workspaces")
-				return
-			}
-			targetWid = tempWid
-
+		if !isAdmin && !session.WID.Equals(adminAddress.ID) {
+			session.SendQuickResponse(401, "UNAUTHORIZED",
+				"Only admin can unregister other workspaces")
+			return
 		}
+		targetWid = tempWid
 	}
 
 	// You can't unregister the admin account
