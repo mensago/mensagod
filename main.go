@@ -296,29 +296,30 @@ func commandIdle(session *sessionState) {
 	// Command syntax:
 	// IDLE(CountUpdates=-1)
 
+	if !session.Message.HasField("CountUpdates") {
+		session.SendQuickResponse(200, "OK", "")
+		return
+	}
+
 	if !session.RequireLogin() {
 		return
 	}
 
-	if session.Message.HasField("CountUpdates") {
-		unixtime, err := strconv.ParseInt(session.Message.Data["CountUpdates"], 10, 64)
-		if err != nil {
-			session.SendQuickResponse(400, "BAD REQUEST", "Bad time value")
-			return
-		}
-
-		recordCount, err := dbhandler.CountSyncRecords(session.WID.AsString(), unixtime)
-		if err != nil {
-			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-			return
-		}
-
-		response := NewServerResponse(200, "OK")
-		response.Data["UpdateCount"] = fmt.Sprintf("%d", recordCount)
-		session.SendResponse(*response)
+	unixtime, err := strconv.ParseInt(session.Message.Data["CountUpdates"], 10, 64)
+	if err != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad time value")
 		return
 	}
-	session.SendQuickResponse(200, "OK", "")
+
+	recordCount, err := dbhandler.CountSyncRecords(session.WID.AsString(), unixtime)
+	if err != nil {
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+
+	response := NewServerResponse(200, "OK")
+	response.Data["UpdateCount"] = fmt.Sprintf("%d", recordCount)
+	session.SendResponse(*response)
 }
 
 func commandSend(session *sessionState) {
