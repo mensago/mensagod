@@ -214,23 +214,8 @@ func commandLogin(session *sessionState) {
 
 	var exists bool
 	exists, session.WorkspaceStatus = dbhandler.CheckWorkspace(wid.AsString())
-	if exists {
-		if session.WorkspaceStatus == "deleted" {
-			session.SendQuickResponse(404, "NOT FOUND", "")
-			return
-		}
 
-		lockout, err := isLocked(session, "workspace", wid)
-		if err != nil || lockout {
-			return
-		}
-
-		lockout, err = isLocked(session, "password", wid)
-		if err != nil || lockout {
-			return
-		}
-
-	} else {
+	if !exists {
 		terminate, err := logFailure(session, "workspace", "")
 		if err != nil || terminate {
 			return
@@ -241,16 +226,38 @@ func commandLogin(session *sessionState) {
 	}
 
 	switch session.WorkspaceStatus {
+	case "active", "approved":
+		// This is fine. Everything is fine. 😉
+		break
+	case "awaiting":
+		session.SendQuickResponse(101, "PENDING", "Registration awaiting administrator approval")
+		return
+	case "deleted":
+		session.SendQuickResponse(404, "NOT FOUND", "")
+		return
 	case "disabled":
 		session.SendQuickResponse(407, "UNAVAILABLE", "account disabled")
 		return
-	case "awaiting":
-		session.SendQuickResponse(101, "PENDING", "")
+	case "suspended":
+		session.SendQuickResponse(407, "UNAVAILABLE", "account suspended")
 		return
-	case "active", "approved":
-		break
+	case "unpaid":
+		session.SendQuickResponse(406, "PAYMENT REQUIRED", "")
+		return
 	default:
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("Unrecognized workspace status '%s' during login", session.WorkspaceStatus)
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR",
+			"Unrecognized status for workspace")
+		return
+	}
+
+	lockout, err := isLocked(session, "workspace", wid)
+	if err != nil || lockout {
+		return
+	}
+
+	lockout, err = isLocked(session, "password", wid)
+	if err != nil || lockout {
 		return
 	}
 
