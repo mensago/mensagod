@@ -540,7 +540,7 @@ func commandSetStatus(session *sessionState) {
 	}
 
 	switch session.Message.Data["Status"] {
-	case "active", "disabled", "approved":
+	case "active", "disabled", "approved", "suspended", "unpaid":
 		break
 	default:
 		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Status")

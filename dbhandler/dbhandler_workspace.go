@@ -122,12 +122,15 @@ func RemoveWorkspace(wid string) error {
 func SetWorkspaceStatus(wid string, status string) error {
 	realStatus := strings.ToLower(status)
 
-	if realStatus == "awaiting" {
+	switch realStatus {
+	case "awaiting":
 		return fmt.Errorf("awaiting is an internal-only workspace status")
-	}
-	if realStatus != "active" && realStatus != "disabled" && realStatus != "approved" {
+	case "active", "disabled", "approved", "unpaid", "suspended":
+		break
+	default:
 		return fmt.Errorf("%s is not a valid status", realStatus)
 	}
+
 	if !ValidateUUID(wid) {
 		return fmt.Errorf("%s is not a valid workspace ID", wid)
 	}
