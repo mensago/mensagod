@@ -484,6 +484,19 @@ func commandSetPassword(session *sessionState) {
 		return
 	}
 
+	if len(session.Message.Data["Password-Hash"]) < 16 ||
+		len(session.Message.Data["NewPassword-Hash"]) < 16 {
+
+		session.SendQuickResponse(400, "BAD REQUEST", "password hashes must be at least 128 bits")
+		return
+	}
+
+	if session.Message.Data["Password-Hash"] == session.Message.Data["NewPassword-Hash"] {
+
+		session.SendQuickResponse(400, "BAD REQUEST", "password hashes must not be the same")
+		return
+	}
+
 	goodPass, err := ezn.IsArgonHash(session.Message.Data["Password-Hash"])
 	if !goodPass || err != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "bad old password hash")
