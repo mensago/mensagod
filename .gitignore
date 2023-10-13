@@ -5,3 +5,4 @@ serverconfig.toml
 tests/integration/testfiles/**
 .venv/**
 mensagod
+mensagod.exe
