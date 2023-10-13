@@ -298,13 +298,13 @@ func commandPasscode(session *sessionState) {
 	// Command syntax:
 	// PASSCODE(Workspace-ID, Reset-Code, Password-Hash)
 
-	if session.LoginState != loginNoSession {
-		session.SendQuickResponse(403, "FORBIDDEN", "Can't reset a password while logged in")
+	if session.Message.Validate([]string{"Workspace-ID", "Reset-Code", "Password-Hash"}) != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
-	if session.Message.Validate([]string{"Workspace-ID", "Reset-Code", "Password-Hash"}) != nil {
-		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
+	if len(session.Message.Data["Reset-Code"]) < 8 || len(session.Message.Data["Reset-Code"]) > 128 {
+		session.SendQuickResponse(400, "BAD REQUEST", "Reset code too small/large")
 		return
 	}
 
