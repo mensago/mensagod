@@ -184,8 +184,8 @@ def load_server_config_file() -> dict:
 		serverconfig['global'].setdefault('top_dir','C:\\ProgramData\\mensagodata')
 		serverconfig['global'].setdefault('workspace_dir','C:\\ProgramData\\mensagodata\\wsp')
 	else:
-		serverconfig['global'].setdefault('top_dir','/var/mensago')
-		serverconfig['global'].setdefault('workspace_dir','/var/mensago/wsp')
+		serverconfig['global'].setdefault('top_dir','/var/mensagod')
+		serverconfig['global'].setdefault('workspace_dir','/var/mensagod/wsp')
 	serverconfig['global'].setdefault('registration','private')
 	serverconfig['global'].setdefault('default_quota',0)
 

@@ -115,7 +115,7 @@ else:
 #	- required keycard fields
 
 config = dict()
-default_data_path = '/var/mensago'
+default_data_path = '/var/mensagod'
 if server_platform == 'windows':
 	default_data_path = os.environ['PROGRAMDATA'] + '\\mensago'
 
@@ -714,8 +714,8 @@ fhandle.write('''
 
 fhandle.write('''
 # The location where user data is stored. The default for Windows is 
-# "C:\\ProgramData\\mensago", but for other platforms is "/var/mensago".
-# top_dir = "/var/mensago"
+# "C:\\ProgramData\\mensago", but for other platforms is "/var/mensagod".
+# top_dir = "/var/mensagod"
 ''')
 
 if config['top_path'] != default_data_path:

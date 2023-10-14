@@ -353,7 +353,7 @@ func TestLocalFSHandler_Exists(t *testing.T) {
 	fsh := GetFSProvider()
 
 	// Subtest #1: bad path
-	_, err = fsh.Exists("/var/mensago/" + wid)
+	_, err = fsh.Exists("/var/mensagod/" + wid)
 	if err == nil {
 		t.Fatal("TestLocalFSHandler_Exists: failed to handle bad path")
 	}
@@ -488,7 +488,7 @@ func TestLocalFSHandler_ListFiles(t *testing.T) {
 
 	// Subtest #1: bad path
 
-	err = fsh.MakeDirectory("/var/mensago/" + wid)
+	err = fsh.MakeDirectory("/var/mensagod/" + wid)
 	if err == nil {
 		t.Fatal("TestLocalFSHandler_ListFiles: failed to handle bad path")
 	}
@@ -573,7 +573,7 @@ func TestLocalFSHandler_ListDirectories(t *testing.T) {
 
 	// Subtest #1: bad path
 
-	err = fsh.MakeDirectory("/var/mensago/" + wid)
+	err = fsh.MakeDirectory("/var/mensagod/" + wid)
 	if err == nil {
 		t.Fatal("TestLocalFSHandler_ListDirectories: failed to handle bad path")
 	}
@@ -648,7 +648,7 @@ func TestLocalFSHandler_MakeDirectory(t *testing.T) {
 	fsh := GetFSProvider()
 
 	// Subtest #1: bad path
-	err = fsh.MakeDirectory("/var/mensago/" + wid)
+	err = fsh.MakeDirectory("/var/mensagod/" + wid)
 	if err == nil {
 		t.Fatal("TestLocalFSHandler_MakeDirectory: failed to handle bad path")
 	}
@@ -898,7 +898,7 @@ func TestLocalFSHandler_RemoveDirectory(t *testing.T) {
 
 	// Subtest #1: bad path
 
-	err = fsh.MakeDirectory("/var/mensago/" + wid)
+	err = fsh.MakeDirectory("/var/mensagod/" + wid)
 	if err == nil {
 		t.Fatal("TestLocalFSHandler_RemoveDirectory: failed to handle bad path")
 	}
