@@ -34,7 +34,7 @@ Although the final product will have a very polished install experience, develop
 
 ## Current Status and Roadmap
 
-As of 12/2022, mensagod is developed enough to provide local message delivery and basic file synchronization. To reduce maintenance workload, the Python-based integration tests have been deprecated in favor of the Rust-based ones packaged with [libmensago](https://gitlab.com/mensago/libmensago). Because development is just one person as of this writing, the current focus is on the client side until it has caught up sufficiently to warrant the finish work on mensagod.
+As of 10/2023, mensagod is developed enough to provide local message delivery and basic file synchronization. To reduce maintenance workload, the Python-based integration tests have been deprecated in favor of the Kotlin-based ones packaged with [Mensago Connect](https://gitlab.com/mensago/connect). Because development is just one person as of this writing, the current focus is on the client side until it has caught up sufficiently to warrant the finish work on mensagod.
 
 Some of the remaining tasks to bring mensagod to a complete 1.0 status:
 
