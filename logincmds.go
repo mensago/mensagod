@@ -449,6 +449,8 @@ func commandResetPassword(session *sessionState) {
 		if err != nil {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad Expires field")
 			return
+		} else {
+			// TODO: Check duration minimum 10min and max 48hrs
 		}
 		expires = session.Message.Data["Expires"]
 	}
