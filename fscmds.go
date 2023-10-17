@@ -816,13 +816,13 @@ func commandSelect(session *sessionState) {
 
 func commandSetQuota(session *sessionState) {
 	// Command syntax:
-	// SETQUOTA(Workspaces, Size)
+	// SETQUOTA(Workspace, Size)
 
 	if !session.RequireLogin() {
 		return
 	}
 
-	if session.Message.Validate([]string{"Workspaces", "Size"}) != nil {
+	if session.Message.Validate([]string{"Workspace", "Size"}) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
@@ -840,20 +840,17 @@ func commandSetQuota(session *sessionState) {
 
 	// If an error occurs processing one workspace, no further processing is made for reasons of
 	// both security and simplicity
-	workspaces := strings.Split(strings.ToLower(session.Message.Data["Workspaces"]), ",")
-	for _, rawWID := range workspaces {
-		w := types.ToUUID(rawWID)
-		if !w.IsValid() {
-			session.SendQuickResponse(400, "BAD REQUEST", fmt.Sprintf("Bad workspace ID "+
-				w.AsString()))
-			return
-		}
+	wid := types.ToUUID(session.Message.Data["Workspace"])
+	if !wid.IsValid() {
+		session.SendQuickResponse(400, "BAD REQUEST", fmt.Sprintf("Bad workspace ID "+
+			wid.AsString()))
+		return
+	}
 
-		err = dbhandler.SetQuota(w, uint64(quotaSize))
-		if err != nil {
-			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-			return
-		}
+	err = dbhandler.SetQuota(wid, uint64(quotaSize))
+	if err != nil {
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		return
 	}
 
 	session.SendQuickResponse(200, "OK", "")
