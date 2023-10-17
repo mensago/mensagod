@@ -824,17 +824,23 @@ func commandSetQuota(session *sessionState) {
 		return
 	}
 
-	if isAdmin, err := session.IsAdmin(); err != nil || !isAdmin {
+	isAdmin, err := session.IsAdmin()
+	if err != nil || !isAdmin {
 		// IsAdmin() handles notifying the client, too. :)
 		return
 	}
 
 	// If an error occurs processing one workspace, no further processing is made for reasons of
 	// both security and simplicity
-	wid := types.ToUUID(session.Message.Data["Workspace"])
+	wid := types.ToUUID(strings.ToLower(session.Message.Data["Workspace"]))
 	if !wid.IsValid() {
 		session.SendQuickResponse(400, "BAD REQUEST", fmt.Sprintf("Bad workspace ID "+
 			wid.AsString()))
+		return
+	}
+
+	if wid == session.WID {
+		session.SendQuickResponse(403, "FORBIDDEN", "admin accounts may not have quotas")
 		return
 	}
 
