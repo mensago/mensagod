@@ -1051,10 +1051,26 @@ func SetQuota(wid types.UUID, quota uint64) error {
 
 	rowcount, _ := result.RowsAffected()
 	if rowcount == 0 {
-		usage, err := fshandler.GetFSProvider().GetDiskUsage("/ wsp " + wid.AsString())
-		if err != nil {
-			return err
+		fsh := fshandler.GetFSProvider()
+		userWidPath := "/ wsp " + wid.AsString()
+
+		// If the
+		var usage uint64
+		exists, err := fsh.Exists(userWidPath)
+		if err == nil && exists {
+			usage, err = fsh.GetDiskUsage(userWidPath)
+			if err != nil {
+				return err
+			}
+		} else {
+			// If the directory for a workspace exists, check to see if it's at least an actual
+			// workspace somewhere in the system
+			exists, _ = CheckWorkspace(wid.AsString())
+			if !exists {
+				return fmt.Errorf("dbhandler.SetQuota: workspace doesn't exist")
+			}
 		}
+
 		sqlStatement := `INSERT INTO quotas(wid, usage, quota)	VALUES($1, $2, $3)`
 		_, err = dbConn.Exec(sqlStatement, wid.AsString(), usage, quota)
 		if err != nil {

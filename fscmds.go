@@ -311,40 +311,31 @@ func commandGetQuotaInfo(session *sessionState) {
 		return
 	}
 
-	if session.Message.HasField("Workspaces") {
-		if !isAdmin {
-			session.SendQuickResponse(403, "FORBIDDEN", "Only admin can use the Workspaces field")
+	if session.Message.HasField("Workspace-ID") {
+		widStr := strings.ToLower(session.Message.Data["Workspace-ID"])
+		if widStr != string(session.WID) && !isAdmin {
+			session.SendQuickResponse(403, "FORBIDDEN",
+				"No permission to access quota info of other workspaces")
 			return
 		}
 
-		widList := strings.Split(strings.ToLower(session.Message.Data["Workspaces"]), ",")
-		if len(widList) > 100 {
-			session.SendQuickResponse(414, "LIMIT REACHED", "No more than 100 workspaces at once")
+		wid := types.ToUUID(widStr)
+		if !wid.IsValid() {
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad workspace ID "+wid.AsString())
+			return
 		}
 
-		quotaList := make([]string, len(widList))
-		usageList := make([]string, len(widList))
-		for i, rawwid := range widList {
-			wid := types.ToUUID(rawwid)
-			if !wid.IsValid() {
-				session.SendQuickResponse(400, "BAD REQUEST", "Bad workspace ID "+wid.AsString())
-				return
-			}
-
-			u, q, err := dbhandler.GetQuotaInfo(wid)
-			if err != nil {
-				session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-				logging.Writef("commandGetQuotaInfo: Error getting quota info for workspace %s: %s",
-					wid, err)
-				return
-			}
-			usageList[i] = fmt.Sprintf("%d", u)
-			quotaList[i] = fmt.Sprintf("%d", q)
+		u, q, err := dbhandler.GetQuotaInfo(wid)
+		if err != nil {
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+			logging.Writef("commandGetQuotaInfo: Error getting quota info for workspace %s: %s",
+				wid, err)
+			return
 		}
 
 		response := NewServerResponse(200, "OK")
-		response.Data["DiskUsage"] = strings.Join(usageList, ",")
-		response.Data["QuotaSize"] = strings.Join(quotaList, ",")
+		response.Data["DiskUsage"] = fmt.Sprintf("%d", u)
+		response.Data["QuotaSize"] = fmt.Sprintf("%d", q)
 		session.SendResponse(*response)
 		return
 	}
