@@ -428,17 +428,13 @@ func commandListDirs(session *sessionState) {
 		return
 	}
 
+	response := NewServerResponse(200, "OK")
 	if len(names) > 0 {
-		fileNames := make([]string, len(names))
-		for i, name := range names {
-			fileNames[i] = `"` + name + `"`
-		}
-		responseString := `{"Code":200,"Status":"OK","Info":"","Data":{"Directories":[` +
-			strings.Join(fileNames, ",") + `]}}`
-		session.WriteClient(responseString)
+		response.Data["Directories"] = strings.Join(names, ",")
 	} else {
-		session.WriteClient(`{"Code":200,"Status":"OK","Info":"","Data":{"Directories":[]}}`)
+		response.Data["Directories"] = ""
 	}
+	session.SendResponse(*response)
 }
 
 func commandMkDir(session *sessionState) {
