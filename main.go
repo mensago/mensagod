@@ -221,8 +221,6 @@ func processCommand(session *sessionState) {
 		commandRegister(session)
 	case "RESETPASSWORD":
 		commandResetPassword(session)
-	case "REPLACE":
-		commandReplace(session)
 	case "RMDIR":
 		commandRmDir(session)
 	case "SELECT":

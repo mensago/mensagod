@@ -539,196 +539,6 @@ func commandMove(session *sessionState) {
 	session.SendQuickResponse(200, "OK", "")
 }
 
-func commandReplace(session *sessionState) {
-	// Command syntax:
-	// UPLOAD(Size,Hash,Path,Replaces="",Name="",Offset=0)
-
-	if !session.RequireLogin() {
-		return
-	}
-
-	if session.Message.Validate([]string{"Size", "Hash", "OldPath", "NewPath"}) != nil {
-		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
-		return
-	}
-
-	// Both Name and Hash must be present when resuming
-	if (session.Message.HasField("TempName") && !session.Message.HasField("Offset")) ||
-		(session.Message.HasField("Offset") && !session.Message.HasField("TempName")) {
-		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
-		return
-	}
-
-	fsp := fshandler.GetFSProvider()
-
-	replacesPath := ""
-	if session.Message.HasField("Replaces") {
-		replacesPath = strings.ToLower(session.Message.Data["Replaces"])
-		exists, err := fsp.Exists(replacesPath)
-		if err != nil {
-			if err == misc.ErrBadPath {
-				session.SendQuickResponse(400, "BAD REQUEST", "Bad file path")
-			} else {
-				session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-			}
-			return
-		}
-		if !exists {
-			session.SendQuickResponse(404, "NOT FOUND", "File in Replaces field doesn't exist.")
-			return
-		}
-	}
-	// "We get there when we get there!" -- Mr. Incredible
-	println(replacesPath)
-
-	var fileSize int64
-	var fileHash ezn.CryptoString
-	err := fileHash.Set(session.Message.Data["Hash"])
-	if err != nil {
-		session.SendQuickResponse(400, "BAD REQUEST", err.Error())
-		return
-	}
-
-	fileSize, err = strconv.ParseInt(session.Message.Data["Size"], 10, 64)
-	if err != nil || fileSize < 1 {
-		session.SendQuickResponse(400, "BAD REQUEST", "Bad file size")
-		return
-	}
-
-	newFilePath := strings.ToLower(session.Message.Data["Path"])
-	exists, err := fsp.Exists(newFilePath)
-	if err != nil {
-		if err == misc.ErrBadPath {
-			session.SendQuickResponse(400, "BAD REQUEST", "Bad file path")
-		} else {
-			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		}
-		return
-	}
-	if !exists {
-		session.SendQuickResponse(404, "NOT FOUND", "Path doesn't exist.")
-		return
-	}
-
-	var resumeOffset int64
-	if session.Message.HasField("TempName") {
-		if !fshandler.ValidateTempFileName(session.Message.Data["TempName"]) {
-			session.SendQuickResponse(400, "BAD REQUEST", "Bad file name")
-			return
-		}
-
-		resumeOffset, err = strconv.ParseInt(session.Message.Data["Offset"], 10, 64)
-		if err != nil || resumeOffset < 1 {
-			session.SendQuickResponse(400, "BAD REQUEST", "Bad resume offset")
-			return
-		}
-
-		if resumeOffset > fileSize {
-			session.SendQuickResponse(400, "BAD REQUEST", "Resume offset greater than file size")
-			return
-		}
-	}
-
-	// An administrator can dictate how large a file can be stored on the server
-
-	if fileSize > int64(viper.GetInt("performance.max_file_size"))*0x10_0000 {
-		session.SendQuickResponse(414, "LIMIT REACHED", "")
-		return
-	}
-
-	// Arguments have been validated, do a quota check
-
-	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID)
-	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		return
-	}
-
-	if diskQuota != 0 && uint64(fileSize)+diskUsage > diskQuota {
-		session.SendQuickResponse(409, "QUOTA INSUFFICIENT", "")
-		return
-	}
-
-	var tempHandle *os.File
-	var tempName string
-	if resumeOffset > 0 {
-		tempName = session.Message.Data["TempName"]
-		tempHandle, err = fsp.OpenTempFile(session.WID.AsString(), tempName, resumeOffset)
-
-		if err != nil {
-			session.SendQuickResponse(400, "BAD REQUEST", err.Error())
-			return
-		}
-
-	} else {
-		tempHandle, tempName, err = fsp.MakeTempFile(session.WID.AsString())
-		if err != nil {
-			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-			return
-		}
-	}
-
-	response := NewServerResponse(100, "CONTINUE")
-	response.Data["TempName"] = tempName
-	session.SendResponse(*response)
-
-	if resumeOffset > 0 {
-		_, err = session.ReadFileData(uint64(fileSize-resumeOffset), tempHandle)
-	} else {
-		_, err = session.ReadFileData(uint64(fileSize), tempHandle)
-	}
-	tempHandle.Close()
-	if err != nil {
-		// Transfer was interrupted. We won't delete the file--we will leave it so the client can
-		// attempt to resume the upload later.
-		return
-	}
-
-	hashMatch, err := fshandler.HashFile(strings.Join([]string{"/ tmp", session.WID.AsString(),
-		tempName}, " "), fileHash)
-	if err != nil {
-		if err == ezn.ErrUnsupportedAlgorithm {
-			session.SendQuickResponse(309, "UNSUPPORTED ALGORITHM", "")
-		} else {
-			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		}
-		return
-	}
-	if !hashMatch {
-		fsp.DeleteTempFile(session.WID.AsString(), tempName)
-		session.SendQuickResponse(410, "HASH MISMATCH", "")
-		return
-	}
-
-	realName, err := fsp.InstallTempFile(session.WID.AsString(), tempName, newFilePath)
-	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		return
-	}
-
-	parts := strings.Split(replacesPath, " ")
-	filename := parts[len(parts)-1]
-
-	fshandler.LockFile(filename)
-	err = fsp.DeleteFile(replacesPath)
-	fshandler.UnlockFile(filename)
-	if err != nil {
-		handleFSError(session, err)
-		return
-	}
-
-	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-		ID:   uuid.NewString(),
-		Type: dbhandler.UpdateReplace,
-		Data: strings.ToLower(replacesPath + " " + newFilePath),
-		Time: time.Now().UTC().Unix(),
-	})
-
-	response = NewServerResponse(200, "OK")
-	response.Data["FileName"] = realName
-	session.SendResponse(*response)
-}
-
 func commandRmDir(session *sessionState) {
 	// Command syntax:
 	// RMDIR(Path)
@@ -853,7 +663,7 @@ func commandSetQuota(session *sessionState) {
 
 func commandUpload(session *sessionState) {
 	// Command syntax:
-	// UPLOAD(Size,Hash,Path,Name="",Offset=0)
+	// UPLOAD(Size,Hash,Path,Replaces="",Name="",Offset=0)
 
 	if !session.RequireLogin() {
 		return
@@ -871,6 +681,26 @@ func commandUpload(session *sessionState) {
 		return
 	}
 
+	fsp := fshandler.GetFSProvider()
+
+	replacesPath := ""
+	if session.Message.HasField("Replaces") {
+		replacesPath = strings.ToLower(session.Message.Data["Replaces"])
+		exists, err := fsp.Exists(replacesPath)
+		if err != nil {
+			if err == misc.ErrBadPath {
+				session.SendQuickResponse(400, "BAD REQUEST", "Bad file path")
+			} else {
+				session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+			}
+			return
+		}
+		if !exists {
+			session.SendQuickResponse(404, "NOT FOUND", "File in Replaces field doesn't exist.")
+			return
+		}
+	}
+
 	var fileSize int64
 	var fileHash ezn.CryptoString
 	err := fileHash.Set(session.Message.Data["Hash"])
@@ -886,7 +716,6 @@ func commandUpload(session *sessionState) {
 	}
 
 	filePath := strings.ToLower(session.Message.Data["Path"])
-	fsp := fshandler.GetFSProvider()
 	exists, err := fsp.Exists(filePath)
 	if err != nil {
 		if err == misc.ErrBadPath {
@@ -897,7 +726,7 @@ func commandUpload(session *sessionState) {
 		return
 	}
 	if !exists {
-		session.SendQuickResponse(404, "NOT FOUND", "")
+		session.SendQuickResponse(404, "NOT FOUND", "Path doesn't exist.")
 		return
 	}
 
@@ -997,13 +826,33 @@ func commandUpload(session *sessionState) {
 		return
 	}
 
-	dbhandler.ModifyQuotaUsage(session.WID, fileSize)
-	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-		ID:   uuid.NewString(),
-		Type: dbhandler.UpdateCreate,
-		Data: filePath,
-		Time: time.Now().UTC().Unix(),
-	})
+	if replacesPath != "" {
+		parts := strings.Split(replacesPath, " ")
+		filename := parts[len(parts)-1]
+
+		fshandler.LockFile(filename)
+		err = fsp.DeleteFile(replacesPath)
+		fshandler.UnlockFile(filename)
+		if err != nil {
+			handleFSError(session, err)
+			return
+		}
+
+		dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
+			ID:   uuid.NewString(),
+			Type: dbhandler.UpdateReplace,
+			Data: strings.ToLower(replacesPath + " " + filePath),
+			Time: time.Now().UTC().Unix(),
+		})
+	} else {
+		dbhandler.ModifyQuotaUsage(session.WID, fileSize)
+		dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
+			ID:   uuid.NewString(),
+			Type: dbhandler.UpdateCreate,
+			Data: filePath,
+			Time: time.Now().UTC().Unix(),
+		})
+	}
 
 	response = NewServerResponse(200, "OK")
 	response.Data["FileName"] = realName
