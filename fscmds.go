@@ -541,7 +541,7 @@ func commandMove(session *sessionState) {
 
 func commandReplace(session *sessionState) {
 	// Command syntax:
-	// REPLACE(OldPath, NewPath, Size,Hash,Name="",Offset=0)
+	// UPLOAD(Size,Hash,Path,Replaces="",Name="",Offset=0)
 
 	if !session.RequireLogin() {
 		return
@@ -559,6 +559,28 @@ func commandReplace(session *sessionState) {
 		return
 	}
 
+	fsp := fshandler.GetFSProvider()
+
+	replacesPath := ""
+	if session.Message.HasField("Replaces") {
+		replacesPath = strings.ToLower(session.Message.Data["Replaces"])
+		exists, err := fsp.Exists(replacesPath)
+		if err != nil {
+			if err == misc.ErrBadPath {
+				session.SendQuickResponse(400, "BAD REQUEST", "Bad file path")
+			} else {
+				session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+			}
+			return
+		}
+		if !exists {
+			session.SendQuickResponse(404, "NOT FOUND", "File in Replaces field doesn't exist.")
+			return
+		}
+	}
+	// "We get there when we get there!" -- Mr. Incredible
+	println(replacesPath)
+
 	var fileSize int64
 	var fileHash ezn.CryptoString
 	err := fileHash.Set(session.Message.Data["Hash"])
@@ -573,9 +595,8 @@ func commandReplace(session *sessionState) {
 		return
 	}
 
-	filePath := strings.ToLower(session.Message.Data["OldPath"])
-	fsp := fshandler.GetFSProvider()
-	exists, err := fsp.Exists(filePath)
+	newFilePath := strings.ToLower(session.Message.Data["Path"])
+	exists, err := fsp.Exists(newFilePath)
 	if err != nil {
 		if err == misc.ErrBadPath {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad file path")
@@ -585,22 +606,7 @@ func commandReplace(session *sessionState) {
 		return
 	}
 	if !exists {
-		session.SendQuickResponse(404, "NOT FOUND", "OldPath doesn't exist.")
-		return
-	}
-
-	newFilePath := strings.ToLower(session.Message.Data["NewPath"])
-	exists, err = fsp.Exists(newFilePath)
-	if err != nil {
-		if err == misc.ErrBadPath {
-			session.SendQuickResponse(400, "BAD REQUEST", "Bad file path")
-		} else {
-			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		}
-		return
-	}
-	if !exists {
-		session.SendQuickResponse(404, "NOT FOUND", "NewPath doesn't exist.")
+		session.SendQuickResponse(404, "NOT FOUND", "Path doesn't exist.")
 		return
 	}
 
@@ -700,11 +706,11 @@ func commandReplace(session *sessionState) {
 		return
 	}
 
-	parts := strings.Split(filePath, " ")
+	parts := strings.Split(replacesPath, " ")
 	filename := parts[len(parts)-1]
 
 	fshandler.LockFile(filename)
-	err = fsp.DeleteFile(filePath)
+	err = fsp.DeleteFile(replacesPath)
 	fshandler.UnlockFile(filename)
 	if err != nil {
 		handleFSError(session, err)
@@ -714,7 +720,7 @@ func commandReplace(session *sessionState) {
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		ID:   uuid.NewString(),
 		Type: dbhandler.UpdateReplace,
-		Data: strings.ToLower(filePath + " " + newFilePath),
+		Data: strings.ToLower(replacesPath + " " + newFilePath),
 		Time: time.Now().UTC().Unix(),
 	})
 
