@@ -126,14 +126,14 @@ func Reset() error {
 	}
 
 	sqlCmds := []string{
-		`CREATE TABLE workspaces(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
+		`CREATE TABLE workspaces(rowid BIGSERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
 			uid VARCHAR(64), domain VARCHAR(255) NOT NULL, wtype VARCHAR(32) NOT NULL,
 			status VARCHAR(16) NOT NULL, password VARCHAR(128));`,
 
 		`CREATE TABLE aliases(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
 			alias CHAR(292) NOT NULL);`,
 
-		`CREATE TABLE iwkspc_folders(rowid SERIAL PRIMARY KEY, wid char(36) NOT NULL,
+		`CREATE TABLE iwkspc_folders(rowid BIGSERIAL PRIMARY KEY, wid char(36) NOT NULL,
 			serverpath VARCHAR(512) NOT NULL, clientpath VARCHAR(768) NOT NULL);`,
 
 		`CREATE TABLE iwkspc_devices(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
@@ -161,7 +161,7 @@ func Reset() error {
 			pubkey VARCHAR(7000), privkey VARCHAR(7000) NOT NULL,
 			purpose VARCHAR(8) NOT NULL, fingerprint VARCHAR(96) NOT NULL);`,
 
-		`CREATE TABLE updates(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
+		`CREATE TABLE updates(rowid BIGSERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
 			update_type INTEGER, update_data VARCHAR(2048), unixtime BIGINT);`,
 	}
 
