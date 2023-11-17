@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/lib/pq"
@@ -49,10 +50,16 @@ func AddSyncRecord(wid string, rec UpdateRecord) error {
 	}
 
 	switch rec.Type {
-	case UpdateCreate, UpdateDelete, UpdateMkDir, UpdateRmDir:
+	case UpdateCreate, UpdateDelete, UpdateRmDir:
 		if !fshandler.ValidateMensagoPath(rec.Data) {
 			return errors.New("bad record data")
 		}
+	case UpdateMkDir:
+		parts := strings.Split(rec.Data, " : ")
+		if len(parts) != 2 || !fshandler.ValidateMensagoPath(parts[1]) {
+			return errors.New("bad record data")
+		}
+
 	case UpdateMove:
 		if !movePattern.MatchString(rec.Data) {
 			return errors.New("bad record data")

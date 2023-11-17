@@ -474,12 +474,15 @@ func commandMkDir(session *sessionState) {
 		return
 	}
 
-	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
+	err = dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		ID:   uuid.NewString(),
 		Type: dbhandler.UpdateMkDir,
-		Data: dirPath + " " + clientPath.AsString(),
+		Data: clientPath.AsString() + " : " + dirPath,
 		Time: time.Now().UTC().Unix(),
 	})
+	if err != nil {
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "commandMkDir.2")
+	}
 	session.SendQuickResponse(200, "OK", "")
 }
 
