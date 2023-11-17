@@ -19,7 +19,7 @@ func commandGetWID(session *sessionState) {
 	// command syntax:
 	// GETWID(User-ID, Domain="")
 	if !session.Message.HasField("User-ID") {
-		session.SendQuickResponse(400, "BAD REQUEST", "")
+		session.SendQuickResponse(400, "BAD REQUEST", "Required field missing")
 		return
 	}
 
@@ -47,12 +47,12 @@ func commandGetWID(session *sessionState) {
 	address := types.ToMAddressFromParts(uid, domain)
 	wid, err := dbhandler.ResolveAddress(address)
 	if err != nil {
-		if err.Error() == "workspace not found" {
-			terminate, err := logFailure(session, "widlookup", "")
-			if terminate || err != nil {
-				return
-			}
+		if err.Error() == "not found" {
+			session.SendQuickResponse(404, "NOT FOUND", "")
+		} else {
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", err.Error())
 		}
+		return
 	}
 	response := NewServerResponse(200, "OK")
 	response.Data["Workspace-ID"] = wid.AsString()
