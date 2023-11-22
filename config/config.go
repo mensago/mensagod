@@ -15,6 +15,12 @@ import (
 
 var gSetupInit bool
 
+type commandLineOptions struct {
+	ConfigPath string
+}
+
+var StartupConfig commandLineOptions
+
 // SetupConfig initializes and loads the server's global configuration options
 func SetupConfig() diceware.Wordlist {
 
@@ -63,14 +69,23 @@ func SetupConfig() diceware.Wordlist {
 		viper.SetDefault("global.top_dir", filepath.Join(programData, "mensago"))
 		viper.SetDefault("global.workspace_dir", filepath.Join(programData, "mensago", "wsp"))
 		viper.Set("global.log_dir", filepath.Join(programData, "mensagod"))
-		viper.SetConfigName("serverconfig")
-		viper.AddConfigPath(filepath.Join(programData, "mensagod"))
+		if StartupConfig.ConfigPath != "" {
+			viper.SetConfigFile(StartupConfig.ConfigPath)
+		} else {
+			viper.SetConfigName("serverconfig")
+			viper.AddConfigPath(filepath.Join(programData, "mensagod"))
+		}
+
 	default:
 		viper.SetDefault("global.top_dir", "/var/mensagod")
 		viper.SetDefault("global.workspace_dir", "/var/mensagod/wsp")
 		viper.Set("global.log_dir", "/var/log/mensagod/")
-		viper.SetConfigName("serverconfig")
-		viper.AddConfigPath("/etc/mensagod/")
+		if StartupConfig.ConfigPath != "" {
+			viper.SetConfigFile(StartupConfig.ConfigPath)
+		} else {
+			viper.SetConfigName("serverconfig")
+			viper.AddConfigPath("/etc/mensagod/")
+		}
 	}
 
 	// Account registration modes

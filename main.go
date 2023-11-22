@@ -96,8 +96,10 @@ func main() {
 }
 
 func printUsage(args []string) {
-	fmt.Printf("Usage: %s [options]\n\n" +
-		"--setup     Performs first-time setup. This option WILL DELETE EXISTING DATA.\n" +
+	fmt.Printf("Usage: %s [options]\n\n"+
+		"--setup            Performs first-time setup. This option is only used\n"+
+		"                   by itself and WILL DELETE EXISTING DATA.\n\n"+
+		"--config <path>    Specify the configuration file for the server to use.\n\n",
 		path.Base(args[0]))
 }
 
@@ -110,9 +112,18 @@ func handleArgs(args []string) {
 			SetupConfigFile()
 			os.Exit(0)
 		}
+	case 3:
+		if args[1] == "--config" {
+			if _, err := os.Open(args[2]); err != nil {
+				fmt.Printf("Unable to open file %s: %s\n", args[2], err.Error())
+				os.Exit(2)
+			}
+			config.StartupConfig.ConfigPath = args[2]
+			return
+		}
 	}
 	printUsage(args)
-	os.Exit(1)
+	os.Exit(0)
 }
 
 func connectionWorker(conn net.Conn, workerID uint64) {
