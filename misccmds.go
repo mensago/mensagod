@@ -61,7 +61,12 @@ func commandGetUpdates(session *sessionState) {
 
 	// The code is set to return a maximum of 150 records. It's still very easily possible that
 	// the response could be larger than 16K, so we need to put this thing together very carefully
-	responseString := createUpdateResponse(&records, recordCount)
+	responseString, err := createUpdateResponse(&records, recordCount)
+	if err != nil {
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+
 	session.WriteClient(responseString)
 }
 
@@ -356,7 +361,7 @@ func commandSetStatus(session *sessionState) {
 // than the maximum response size of 16K. Great care must be taken here because the size of a
 // Mensago path can vary greatly in size -- a workspace-level path is 38 bytes without any file
 // name appended to it. These things add up quickly.
-func createUpdateResponse(records *[]dbhandler.UpdateRecord, totalRecords int64) string {
+func createUpdateResponse(records *[]dbhandler.UpdateRecord, totalRecords int64) (string, error) {
 
 	lookupTable := map[dbhandler.UpdateType]string{
 		dbhandler.UpdateCreate:  "CREATE",
@@ -368,27 +373,21 @@ func createUpdateResponse(records *[]dbhandler.UpdateRecord, totalRecords int64)
 		dbhandler.UpdateReplace: "REPLACE",
 	}
 
-	out := []string{`{"Code":200,"Status":"OK","Info":"","Data":{`}
-	updateCountStr := fmt.Sprintf(`"UpdateCount":"%d",`, totalRecords)
-	out = append(out, updateCountStr+`"Updates":[`)
+	builder := strings.Builder{}
+	if _, err := builder.WriteString(`{"Code":200,"Status":"OK","Info":"","Data":{`); err != nil {
+		return "", err
+	}
+	if _, err := builder.WriteString(fmt.Sprintf(`"UpdateCount":"%d",`, totalRecords)); err != nil {
+		return "", err
+	}
 
-	responseSize := 55 + len(updateCountStr)
 	for i, record := range *records {
 
-		recordString := fmt.Sprintf(`{"ID":"%s","Type":"%s","Data":"%s","Time":"%d"}`,
-			record.ID, lookupTable[record.Type], record.Data, record.Time)
-
-		if responseSize+len(recordString)+1 > MaxCommandLength {
-			break
-		}
-		responseSize += len(recordString)
-		if i > 0 {
-			out = append(out, ","+recordString)
-			responseSize++
-		} else {
-			out = append(out, recordString)
-		}
+		recordData := fmt.Sprintf(`Update%d: "%s|%s|%s|%d",`, i, record.ID, lookupTable[record.Type],
+			record.Data, record.Time)
+		builder.WriteString(recordData)
 	}
-	out = append(out, "]}}")
-	return strings.Join(out, "")
+	builder.WriteString("}}")
+
+	return builder.String(), nil
 }

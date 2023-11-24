@@ -536,7 +536,7 @@ func commandMove(session *sessionState) {
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		ID:   uuid.NewString(),
 		Type: dbhandler.UpdateMove,
-		Data: sourcePath + " " + destPath,
+		Data: sourcePath + ":" + destPath,
 		Time: time.Now().UTC().Unix(),
 	})
 	session.SendQuickResponse(200, "OK", "")
@@ -844,7 +844,7 @@ func commandUpload(session *sessionState) {
 		dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 			ID:   uuid.NewString(),
 			Type: dbhandler.UpdateReplace,
-			Data: strings.ToLower(replacesPath + " " + filePath),
+			Data: strings.ToLower(replacesPath + ":" + filePath),
 			Time: time.Now().UTC().Unix(),
 		})
 	} else {
