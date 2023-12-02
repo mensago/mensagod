@@ -181,7 +181,7 @@ func Reset() error {
 // This function will check the server configuration and if the failure has
 // exceeded the threshold for that type of failure, then a lockout timestamp will
 // be set.
-func LogFailure(failType string, wid types.UUID, sourceip string) error {
+func LogFailure(failType string, wid types.RandomID, sourceip string) error {
 	if failType == "" {
 		logging.Write("LogFailure(): empty fail type")
 		return misc.ErrMissingArgument
@@ -253,7 +253,7 @@ func LogFailure(failType string, wid types.UUID, sourceip string) error {
 }
 
 // ResolveAddress returns the WID corresponding to an Mensago address.
-func ResolveAddress(addr types.MAddress) (types.UUID, error) {
+func ResolveAddress(addr types.MAddress) (types.RandomID, error) {
 
 	if !addr.IsValid() {
 		return "", misc.ErrInvalidAddress
@@ -302,7 +302,7 @@ func ResolveAddress(addr types.MAddress) (types.UUID, error) {
 	return types.ToUUID(wid), nil
 }
 
-func ResolveWID(wid types.UUID) (types.WAddress, error) {
+func ResolveWID(wid types.RandomID) (types.WAddress, error) {
 	var domain string
 	row := dbConn.QueryRow(`SELECT domain FROM workspaces WHERE wid = $1`, wid)
 	err := row.Scan(&domain)
@@ -367,7 +367,7 @@ func CheckLockout(failType string, id string, source string) (string, error) {
 
 // CheckPasscode checks the validity of a workspace/passcode combination. This function will return
 // an error of "expired" if the combination is valid but expired.
-func CheckPasscode(wid types.UUID, passcode string) (bool, error) {
+func CheckPasscode(wid types.RandomID, passcode string) (bool, error) {
 	var expires string
 	row := dbConn.QueryRow(`SELECT expires FROM passcodes WHERE wid = $1 AND passcode = $2 `,
 		wid.AsString(), passcode)
@@ -397,7 +397,7 @@ func CheckPasscode(wid types.UUID, passcode string) (bool, error) {
 }
 
 // DeletePasscode deletes a workspace/passcode combination
-func DeletePasscode(wid types.UUID, passcode string) error {
+func DeletePasscode(wid types.RandomID, passcode string) error {
 	_, err := dbConn.Exec(`DELETE FROM passcodes WHERE wid = $1 AND passcode = $2`,
 		wid.AsString(), passcode)
 
@@ -413,7 +413,7 @@ func RemoveExpiredPasscodes() error {
 
 // ResetPassword adds a reset code combination to the database for later authentication by the
 // user. All parameters are expected to be populated.
-func ResetPassword(wid types.UUID, passcode string, expires string) error {
+func ResetPassword(wid types.RandomID, passcode string, expires string) error {
 	_, err := dbConn.Exec(`DELETE FROM passcodes WHERE wid = $1`, wid.AsString())
 	if err != nil {
 		return err
@@ -428,7 +428,7 @@ func ResetPassword(wid types.UUID, passcode string, expires string) error {
 // SetPassword does just that: sets the password for a workspace. It returns a boolean state,
 // indicating a match (or lack thereof) and an error state. It will take any input string of up to
 // 64 characters and store it in the database.
-func SetPassword(wid types.UUID, password string) error {
+func SetPassword(wid types.RandomID, password string) error {
 	if len(password) > 128 {
 		return misc.ErrOutOfRange
 	}
@@ -440,7 +440,7 @@ func SetPassword(wid types.UUID, password string) error {
 // CheckPassword checks a password hash against the one stored in the database. It returns true
 // if the two hashes match. It does not perform any validity checking of the input--this should be
 // done when the input is received from the user.
-func CheckPassword(wid types.UUID, password string) (bool, error) {
+func CheckPassword(wid types.RandomID, password string) (bool, error) {
 	row := dbConn.QueryRow(`SELECT password FROM workspaces WHERE wid=$1`, wid.AsString())
 
 	var dbhash string
@@ -455,7 +455,7 @@ func CheckPassword(wid types.UUID, password string) (bool, error) {
 // AddDevice is used for adding a device to a workspace. The initial last login is set to when
 // this method is called because a new device is only at certain times, such as at registration
 // or when a user logs into a workspace on a new device.
-func AddDevice(wid types.UUID, devid types.UUID, devkey ezn.CryptoString, status string) error {
+func AddDevice(wid types.RandomID, devid types.RandomID, devkey ezn.CryptoString, status string) error {
 	timestamp := fmt.Sprintf("%d", time.Now().UTC().Unix())
 	var err error
 	sqlStatement := `INSERT INTO iwkspc_devices(wid, devid, devkey, lastlogin, status) ` +
@@ -469,7 +469,7 @@ func AddDevice(wid types.UUID, devid types.UUID, devkey ezn.CryptoString, status
 }
 
 // RemoveDevice removes a device from a workspace. It returns true if successful and false if not.
-func RemoveDevice(wid types.UUID, devid types.UUID) (bool, error) {
+func RemoveDevice(wid types.RandomID, devid types.RandomID) (bool, error) {
 	if len(devid) != 40 {
 		return false, misc.ErrBadArgument
 	}
@@ -482,7 +482,7 @@ func RemoveDevice(wid types.UUID, devid types.UUID) (bool, error) {
 }
 
 // CheckDevice checks if a device has been added to a workspace.
-func CheckDevice(wid types.UUID, devid types.UUID, devkey ezn.CryptoString) (bool, error) {
+func CheckDevice(wid types.RandomID, devid types.RandomID, devkey ezn.CryptoString) (bool, error) {
 	row := dbConn.QueryRow(`SELECT status FROM iwkspc_devices WHERE wid=$1 AND 
 		devid=$2 AND devkey=$3`, wid.AsString(), devid.AsString(), devkey.AsString())
 
@@ -500,7 +500,7 @@ func CheckDevice(wid types.UUID, devid types.UUID, devkey ezn.CryptoString) (boo
 }
 
 // UpdateDevice replaces a device's old key with a new one
-func UpdateDevice(wid types.UUID, devid types.UUID, oldkey ezn.CryptoString,
+func UpdateDevice(wid types.RandomID, devid types.RandomID, oldkey ezn.CryptoString,
 	newkey ezn.CryptoString) error {
 	_, err := dbConn.Exec(`UPDATE iwkspc_devices SET devkey=$1 WHERE wid=$2 AND 
 		devid=$3 AND devkey=$4`, newkey.AsString(), wid.AsString(), devid.AsString(),
@@ -510,7 +510,7 @@ func UpdateDevice(wid types.UUID, devid types.UUID, oldkey ezn.CryptoString,
 }
 
 // UpdateLastLogin sets the last login timestamp for a device
-func UpdateLastLogin(wid types.UUID, devid types.UUID) error {
+func UpdateLastLogin(wid types.RandomID, devid types.RandomID) error {
 	_, err := dbConn.Exec(`UPDATE iwkspc_devices SET lastlogin=$1 WHERE wid=$2 AND 
 		devid=$3`, time.Now().UTC().Unix(), wid.AsString(), devid.AsString())
 
@@ -518,7 +518,7 @@ func UpdateLastLogin(wid types.UUID, devid types.UUID) error {
 }
 
 // GetLastLogin gets the last time a device logged in UTC time, UNIX format
-func GetLastLogin(wid types.UUID, devid types.UUID) (int64, error) {
+func GetLastLogin(wid types.RandomID, devid types.RandomID) (int64, error) {
 	// TODO: Fix this query -- needs to use devid, too
 	row := dbConn.QueryRow(`SELECT lastlogin FROM iwkspc_devices WHERE wid=$1`, wid.AsString())
 
@@ -585,7 +585,7 @@ func CheckUserID(uid types.UserID) (bool, string) {
 // a randomly-generated registration code needed to authenticate the first login. Registration
 // codes are stored in the clear, but that's merely because if an attacker already has access to
 // the server to see the codes, the attacker can easily create new workspaces.
-func PreregWorkspace(wid types.UUID, uid types.UserID, domain types.DomainT,
+func PreregWorkspace(wid types.RandomID, uid types.UserID, domain types.DomainT,
 	wordList *diceware.Wordlist, wordcount int) (string, error) {
 
 	if len(wid) > 36 || len(uid) > 128 {
@@ -739,7 +739,7 @@ func GetOrgEntries(startIndex int, endIndex int) ([]string, error) {
 
 // GetUserEntries pulls one or more entries from the database. If an end index is not desired, set
 // it to 0. Passing a starting index of 0 will return the current entry for the workspace specified.
-func GetUserEntries(wid types.UUID, startIndex int, endIndex int) ([]string, error) {
+func GetUserEntries(wid types.RandomID, startIndex int, endIndex int) ([]string, error) {
 	out := make([]string, 0, 10)
 
 	if startIndex < 1 {
@@ -815,7 +815,7 @@ func AddEntry(entry *keycard.Entry) error {
 }
 
 // GetUserKeycard obtains a user's entire keycard as a Keycard object
-func GetUserKeycard(wid types.UUID) (keycard.Keycard, error) {
+func GetUserKeycard(wid types.RandomID) (keycard.Keycard, error) {
 	var out keycard.Keycard
 	out.Type = "User"
 	out.Entries = make([]keycard.Entry, 0)
@@ -894,7 +894,7 @@ func GetEncryptionPair() (*ezn.EncryptionPair, error) {
 }
 
 // GetAliases returns a StringList containing the aliases pointing to the specified WID
-func GetAliases(wid types.UUID) (gostringlist.StringList, error) {
+func GetAliases(wid types.RandomID) (gostringlist.StringList, error) {
 	var out gostringlist.StringList
 	rows, err := dbConn.Query(`SELECT alias FROM alias WHERE wid=$1`, wid.AsString())
 	if err != nil {
@@ -914,7 +914,7 @@ func GetAliases(wid types.UUID) (gostringlist.StringList, error) {
 }
 
 // GetQuotaInfo returns the disk usage and quota size of a workspace in bytes
-func GetQuotaInfo(wid types.UUID) (uint64, uint64, error) {
+func GetQuotaInfo(wid types.RandomID) (uint64, uint64, error) {
 	row := dbConn.QueryRow(`SELECT usage,quota FROM quotas WHERE wid=$1`, wid.AsString())
 
 	var dbUsage, dbQuota int64
@@ -978,7 +978,7 @@ func IsDomainLocal(domain types.DomainT) (bool, error) {
 }
 
 // ModifyQuotaUsage modifies the disk usage by a relative amount, specified in bytes. Note that if
-func ModifyQuotaUsage(wid types.UUID, amount int64) (uint64, error) {
+func ModifyQuotaUsage(wid types.RandomID, amount int64) (uint64, error) {
 	row := dbConn.QueryRow(`SELECT usage FROM quotas WHERE wid=$1`, wid)
 
 	var dbUsage int64
@@ -1040,7 +1040,7 @@ func ResetQuotaUsage() error {
 }
 
 // SetQuota sets the disk quota for a workspace to the specified number of bytes
-func SetQuota(wid types.UUID, quota uint64) error {
+func SetQuota(wid types.RandomID, quota uint64) error {
 	sqlStatement := `UPDATE quotas SET quota=$1 WHERE wid=$2`
 	result, err := dbConn.Exec(sqlStatement, quota, wid.AsString())
 	if err != nil {
@@ -1085,7 +1085,7 @@ func SetQuota(wid types.UUID, quota uint64) error {
 // SetQuotaUsage sets the disk quota usage for a workspace to a specified number of bytes. If the
 // usage has not been updated since boot, the total is ignored and the actual value from disk
 // is used.
-func SetQuotaUsage(wid types.UUID, total uint64) error {
+func SetQuotaUsage(wid types.RandomID, total uint64) error {
 	sqlStatement := `UPDATE quotas SET usage=$1 WHERE wid=$2`
 	result, err := dbConn.Exec(sqlStatement, total, wid.AsString())
 	if err != nil {

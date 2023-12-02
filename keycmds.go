@@ -63,7 +63,7 @@ func commandAddEntry(session *sessionState) {
 		return
 	}
 
-	wid := types.UUID(entry.Fields["Workspace-ID"])
+	wid := types.RandomID(entry.Fields["Workspace-ID"])
 	if !wid.Equals(session.WID) {
 		session.SendQuickResponse(411, "BAD KEYCARD DATA", "Workspace doesn't match login")
 		return

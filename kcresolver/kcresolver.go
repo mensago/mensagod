@@ -116,7 +116,7 @@ func GetKeycard(address types.MAddress, cardType string) (*keycard.Keycard, erro
 
 	if isLocal {
 		if cardType == "User" {
-			out, err = dbhandler.GetUserKeycard(types.UUID(waddr.ID))
+			out, err = dbhandler.GetUserKeycard(types.RandomID(waddr.ID))
 		} else {
 			out, err = dbhandler.GetOrgKeycard()
 		}

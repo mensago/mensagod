@@ -140,7 +140,7 @@ func SetWorkspaceStatus(wid string, status string) error {
 }
 
 // AddFolderEntry adds a mapping of a server path to an encrypted client path
-func AddFolderEntry(wid types.UUID, serverPath string, clientPath ezn.CryptoString) error {
+func AddFolderEntry(wid types.RandomID, serverPath string, clientPath ezn.CryptoString) error {
 
 	// The dbhandler-level calls do only minimal validation
 	if !wid.IsValid() || serverPath == "" || !clientPath.IsValid() {
@@ -167,7 +167,7 @@ func AddFolderEntry(wid types.UUID, serverPath string, clientPath ezn.CryptoStri
 }
 
 // RemoveFolderEntry deletes a folder mapping
-func RemoveFolderEntry(wid types.UUID, serverPath string) error {
+func RemoveFolderEntry(wid types.RandomID, serverPath string) error {
 	if !wid.IsValid() || serverPath == "" {
 		return misc.ErrBadArgument
 	}

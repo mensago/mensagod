@@ -84,7 +84,7 @@ func commandPreregister(session *sessionState) {
 
 	// If the client submits a workspace ID as the user ID, it is considered a request for that
 	// specific workspace ID and the user ID is considered blank.
-	var wid types.UUID
+	var wid types.RandomID
 	if wid.Set(uid.AsString()) == nil {
 		uid.Set("")
 	} else {

@@ -259,7 +259,7 @@ func processCommand(session *sessionState) {
 // true, indicating that the current command handler needs to exit. The wid parameter may be empty,
 // but should be supplied when possible. By doing so, it limits lockouts for an IP address to that
 // specific workspace ID.
-func logFailure(session *sessionState, failType string, wid types.UUID) (bool, error) {
+func logFailure(session *sessionState, failType string, wid types.RandomID) (bool, error) {
 	remoteip := strings.Split(session.Connection.RemoteAddr().String(), ":")[0]
 	err := dbhandler.LogFailure(failType, wid, remoteip)
 	if err != nil {
@@ -286,7 +286,7 @@ func logFailure(session *sessionState, failType string, wid types.UUID) (bool, e
 
 // isLocked checks to see if the client should be locked out of the session. It handles sending
 // the appropriate message and returns true if the command handler should just exit.
-func isLocked(session *sessionState, failType string, wid types.UUID) (bool, error) {
+func isLocked(session *sessionState, failType string, wid types.RandomID) (bool, error) {
 	lockTime, err := getLockout(session, failType, wid)
 	if err != nil {
 		return true, err
@@ -302,7 +302,7 @@ func isLocked(session *sessionState, failType string, wid types.UUID) (bool, err
 	return false, nil
 }
 
-func getLockout(session *sessionState, failType string, wid types.UUID) (string, error) {
+func getLockout(session *sessionState, failType string, wid types.RandomID) (string, error) {
 
 	lockTime, err := dbhandler.CheckLockout(failType, wid.AsString(),
 		session.Connection.RemoteAddr().String())

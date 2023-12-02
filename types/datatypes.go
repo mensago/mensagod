@@ -18,12 +18,12 @@ type MAddress struct {
 
 // For when you *must* have a workspace address
 type WAddress struct {
-	ID     UUID
+	ID     RandomID
 	Domain DomainT
 }
 
 type UserID string
-type UUID string
+type RandomID string
 type DomainT string
 
 var widPattern = regexp.MustCompile(`[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}`)
@@ -222,16 +222,16 @@ func ToUserID(addr string) UserID {
 	return out
 }
 
-func (wid UUID) IsValid() bool {
+func (wid RandomID) IsValid() bool {
 	return widPattern.MatchString(string(wid))
 }
 
-func (wid UUID) AsString() string {
+func (wid RandomID) AsString() string {
 	return string(wid)
 }
 
-func (wid *UUID) Set(data string) error {
-	*wid = UUID(strings.TrimSpace(strings.ToLower(data)))
+func (wid *RandomID) Set(data string) error {
+	*wid = RandomID(strings.TrimSpace(strings.ToLower(data)))
 
 	if wid.IsValid() {
 		return nil
@@ -241,12 +241,12 @@ func (wid *UUID) Set(data string) error {
 	return misc.ErrBadArgument
 }
 
-func (wid UUID) Equals(other UUID) bool {
+func (wid RandomID) Equals(other RandomID) bool {
 	return string(wid) == string(other)
 }
 
-func ToUUID(addr string) UUID {
-	var out UUID
+func ToUUID(addr string) RandomID {
+	var out RandomID
 	out.Set(addr)
 	return out
 }

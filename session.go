@@ -37,7 +37,7 @@ type sessionState struct {
 	Message          ClientRequest
 	LoginState       loginStatus
 	IsTerminating    bool
-	WID              types.UUID
+	WID              types.RandomID
 	DevID            string
 	WorkspaceStatus  string
 	CurrentPath      fshandler.LocalMPath
