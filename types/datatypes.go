@@ -277,6 +277,10 @@ func ToRandomID(addr string) (RandomID, error) {
 	return out, nil
 }
 
+func RandomIDString() string {
+	return strings.TrimSpace(strings.ToLower(uuid.NewString()))
+}
+
 // ------------------------------------------------------------------------------------------------
 
 func (dom DomainT) IsValid() bool {

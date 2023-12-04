@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/spf13/viper"
 	ezn "gitlab.com/darkwyrm/goeznacl"
 	"gitlab.com/mensago/mensagod/dbhandler"
@@ -106,7 +105,7 @@ func commandCopy(session *sessionState) {
 	}
 
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-		ID:   uuid.NewString(),
+		ID:   types.RandomIDString(),
 		Type: dbhandler.UpdateCreate,
 		Data: destPath + " " + newName,
 		Time: time.Now().UTC().Unix(),
@@ -157,7 +156,7 @@ func commandDelete(session *sessionState) {
 		}
 
 		dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-			ID:   uuid.NewString(),
+			ID:   types.RandomIDString(),
 			Type: dbhandler.UpdateDelete,
 			Data: deletePath,
 			Time: time.Now().UTC().Unix(),
@@ -475,7 +474,7 @@ func commandMkDir(session *sessionState) {
 	}
 
 	err = dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-		ID:   uuid.NewString(),
+		ID:   types.RandomIDString(),
 		Type: dbhandler.UpdateMkDir,
 		Data: clientPath.AsString() + " : " + dirPath,
 		Time: time.Now().UTC().Unix(),
@@ -534,7 +533,7 @@ func commandMove(session *sessionState) {
 	}
 
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-		ID:   uuid.NewString(),
+		ID:   types.RandomIDString(),
 		Type: dbhandler.UpdateMove,
 		Data: sourcePath + ":" + destPath,
 		Time: time.Now().UTC().Unix(),
@@ -583,7 +582,7 @@ func commandRmDir(session *sessionState) {
 	dbhandler.ModifyQuotaUsage(session.WID, int64(usage)*-1)
 
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-		ID:   uuid.NewString(),
+		ID:   types.RandomIDString(),
 		Type: dbhandler.UpdateRmDir,
 		Data: dirPath,
 		Time: time.Now().UTC().Unix(),
@@ -842,7 +841,7 @@ func commandUpload(session *sessionState) {
 		}
 
 		dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-			ID:   uuid.NewString(),
+			ID:   types.RandomIDString(),
 			Type: dbhandler.UpdateReplace,
 			Data: strings.ToLower(replacesPath + ":" + filePath),
 			Time: time.Now().UTC().Unix(),
@@ -850,7 +849,7 @@ func commandUpload(session *sessionState) {
 	} else {
 		dbhandler.ModifyQuotaUsage(session.WID, fileSize)
 		dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-			ID:   uuid.NewString(),
+			ID:   types.RandomIDString(),
 			Type: dbhandler.UpdateCreate,
 			Data: filePath,
 			Time: time.Now().UTC().Unix(),

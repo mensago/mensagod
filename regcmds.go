@@ -123,7 +123,7 @@ func commandPreregister(session *sessionState) {
 	} else {
 		haswid = true
 		for haswid {
-			wid.Set(uuid.NewString())
+			wid.Set(types.RandomIDString())
 			haswid, _ = dbhandler.CheckWorkspace(wid.AsString())
 		}
 	}
