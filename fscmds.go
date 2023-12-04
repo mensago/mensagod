@@ -319,8 +319,8 @@ func commandGetQuotaInfo(session *sessionState) {
 			return
 		}
 
-		wid := types.ToUUID(widStr)
-		if !wid.IsValid() {
+		wid, err := types.ToRandomID(widStr)
+		if err != nil || !wid.IsValid() {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad workspace ID "+wid.AsString())
 			return
 		}
@@ -643,8 +643,8 @@ func commandSetQuota(session *sessionState) {
 
 	// If an error occurs processing one workspace, no further processing is made for reasons of
 	// both security and simplicity
-	wid := types.ToUUID(strings.ToLower(session.Message.Data["Workspace"]))
-	if !wid.IsValid() {
+	wid, err := types.ToRandomID(strings.ToLower(session.Message.Data["Workspace"]))
+	if err != nil || !wid.IsValid() {
 		session.SendQuickResponse(400, "BAD REQUEST", fmt.Sprintf("Bad workspace ID "+
 			wid.AsString()))
 		return

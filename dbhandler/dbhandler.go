@@ -282,9 +282,9 @@ func ResolveAddress(addr types.MAddress) (types.RandomID, error) {
 				return "", err
 			}
 
-			return types.ToUUID(targetAddr), nil
+			return types.ToRandomID(targetAddr)
 		}
-		return types.ToUUID(addr.ID), nil
+		return types.ToRandomID(addr.ID)
 	}
 
 	row := dbConn.QueryRow(`SELECT wid,domain FROM workspaces WHERE uid=$1`, addr.ID)
@@ -299,7 +299,7 @@ func ResolveAddress(addr types.MAddress) (types.RandomID, error) {
 		return "", err
 	}
 
-	return types.ToUUID(wid), nil
+	return types.ToRandomID(wid)
 }
 
 func ResolveWID(wid types.RandomID) (types.WAddress, error) {

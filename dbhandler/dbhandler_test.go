@@ -159,7 +159,7 @@ func TestDBHandler_GetQuotaInfo(t *testing.T) {
 
 	resetWorkspaceDir()
 
-	wid := types.ToUUID("11111111-1111-1111-1111-111111111111")
+	wid, _ := types.ToRandomID("11111111-1111-1111-1111-111111111111")
 	testPath := "/ " + wid.AsString()
 	ensureTestDirectory(testPath)
 	generateRandomFile(testPath, 2000)
@@ -221,7 +221,7 @@ func TestDBHandler_ModifyQuotaUsage(t *testing.T) {
 
 	resetWorkspaceDir()
 
-	wid := types.ToUUID("11111111-1111-1111-1111-111111111111")
+	wid, _ := types.ToRandomID("11111111-1111-1111-1111-111111111111")
 	ensureTestDirectory("/ " + wid.AsString())
 	generateRandomFile("/ "+wid.AsString(), 2000)
 
@@ -292,7 +292,7 @@ func TestDBHandler_ResetQuotaUsage(t *testing.T) {
 
 	resetWorkspaceDir()
 
-	wid := types.ToUUID("11111111-1111-1111-1111-111111111111")
+	wid, _ := types.ToRandomID("11111111-1111-1111-1111-111111111111")
 	ensureTestDirectory("/ " + wid.AsString())
 	makeTestFiles("/ "+wid.AsString(), 5)
 
@@ -342,7 +342,7 @@ func TestDBHandler_SetQuota(t *testing.T) {
 
 	resetWorkspaceDir()
 
-	wid := types.ToUUID("11111111-1111-1111-1111-111111111111")
+	wid, _ := types.ToRandomID("11111111-1111-1111-1111-111111111111")
 	ensureTestDirectory("/ " + wid.AsString())
 	makeTestFiles("/ "+wid.AsString(), 5)
 
@@ -395,7 +395,7 @@ func TestDBHandler_SetQuotaUsage(t *testing.T) {
 
 	resetWorkspaceDir()
 
-	wid := types.ToUUID("11111111-1111-1111-1111-111111111111")
+	wid, _ := types.ToRandomID("11111111-1111-1111-1111-111111111111")
 	testPath := "/ " + wid.AsString()
 	ensureTestDirectory(testPath)
 	generateRandomFile(testPath, 2000)

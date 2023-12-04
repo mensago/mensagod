@@ -6,6 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/google/uuid"
 	"gitlab.com/mensago/mensagod/misc"
 )
 
@@ -30,6 +31,8 @@ var widPattern = regexp.MustCompile(`[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[
 var uidPattern1 = regexp.MustCompile("[[:space:]]+")
 var uidPattern2 = regexp.MustCompile("[\\\\/\"]")
 var domainPattern = regexp.MustCompile("^([a-zA-Z0-9\\-]+\x2E)+[a-zA-Z0-9\\-]+$")
+
+// ------------------------------------------------------------------------------------------------
 
 // IsWorkspace returns true if the ID is a workspace ID, not a user ID
 func (a MAddress) IsWorkspace() bool {
@@ -81,8 +84,8 @@ func (a *MAddress) Set(addr string) error {
 		return misc.ErrBadArgument
 	}
 
-	tempWID := ToUUID(parts[0])
-	if tempWID.IsValid() {
+	tempWID, err := ToRandomID(parts[0])
+	if err != nil || tempWID.IsValid() {
 		a.ID = parts[0]
 		a.Domain.Set(parts[1])
 		a.IDType = 1
@@ -125,6 +128,8 @@ func ToMAddressFromParts(uid UserID, dom DomainT) MAddress {
 	out.Domain = dom
 	return out
 }
+
+// ------------------------------------------------------------------------------------------------
 
 func (a WAddress) IsValid() bool {
 	if len(a.ID) != 36 {
@@ -181,6 +186,8 @@ func ToWAddress(addr string) WAddress {
 	return out
 }
 
+// ------------------------------------------------------------------------------------------------
+
 func (uid UserID) IsValid() bool {
 
 	if uidPattern1.MatchString(string(uid)) || uidPattern2.MatchString(string(uid)) ||
@@ -222,6 +229,23 @@ func ToUserID(addr string) UserID {
 	return out
 }
 
+// ------------------------------------------------------------------------------------------------
+
+func NewRandomID() (RandomID, error) {
+	var out RandomID
+	newid, err := uuid.NewRandom()
+	if err != nil {
+		return out, err
+	}
+
+	err = out.Set(newid.String())
+	if err != nil {
+		return out, err
+	}
+
+	return out, nil
+}
+
 func (wid RandomID) IsValid() bool {
 	return widPattern.MatchString(string(wid))
 }
@@ -245,11 +269,15 @@ func (wid RandomID) Equals(other RandomID) bool {
 	return string(wid) == string(other)
 }
 
-func ToUUID(addr string) RandomID {
+func ToRandomID(addr string) (RandomID, error) {
 	var out RandomID
-	out.Set(addr)
-	return out
+	if err := out.Set(addr); err != nil {
+		return out, err
+	}
+	return out, nil
 }
+
+// ------------------------------------------------------------------------------------------------
 
 func (dom DomainT) IsValid() bool {
 	return domainPattern.MatchString(string(dom))

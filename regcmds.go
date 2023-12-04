@@ -180,8 +180,8 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	devid := types.ToUUID(session.Message.Data["Device-ID"])
-	if !devid.IsValid() {
+	devid, err := types.ToRandomID(session.Message.Data["Device-ID"])
+	if err != nil || !devid.IsValid() {
 		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Device-ID")
 		return
 	}
@@ -253,9 +253,9 @@ func commandRegCode(session *sessionState) {
 	}
 
 	msgAddr := types.ToMAddressFromParts(msgid, domain)
-	wid, uid, err := dbhandler.CheckRegCode(msgAddr, session.Message.Data["Reg-Code"])
+	widStr, uid, err := dbhandler.CheckRegCode(msgAddr, session.Message.Data["Reg-Code"])
 
-	if wid == "" {
+	if widStr == "" {
 		// Regardless of whether or not an error has been returned from log, we exit here. In this
 		// case, state doesn't matter.
 		if err == misc.ErrNotFound {
@@ -268,7 +268,7 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.AddWorkspace(wid, uid, domain.AsString(), session.Message.Data["Password-Hash"],
+	err = dbhandler.AddWorkspace(widStr, uid, domain.AsString(), session.Message.Data["Password-Hash"],
 		"active", "identity")
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.3")
@@ -276,14 +276,20 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.SetWorkspaceStatus(wid, "active")
+	err = dbhandler.SetWorkspaceStatus(widStr, "active")
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.4")
 		logging.Writef("Internal server error. commandRegCode.SetWorkspaceStatus. Error: %s\n", err)
 		return
 	}
 
-	err = dbhandler.AddDevice(types.ToUUID(wid), devid, devkey, "active")
+	wid, err := types.ToRandomID(widStr)
+	if err != nil || !wid.IsValid() {
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad Workspace-ID")
+		return
+	}
+
+	err = dbhandler.AddDevice(wid, devid, devkey, "active")
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.5")
 		logging.Writef("Internal server error. commandRegCode.AddDevice. Error: %s\n", err)
@@ -297,7 +303,7 @@ func commandRegCode(session *sessionState) {
 	}
 
 	response := NewServerResponse(201, "REGISTERED")
-	response.Data["Workspace-ID"] = wid
+	response.Data["Workspace-ID"] = widStr
 	response.Data["User-ID"] = uid
 	response.Data["Domain"] = domain.AsString()
 	session.SendResponse(*response)
@@ -313,14 +319,14 @@ func commandRegister(session *sessionState) {
 		return
 	}
 
-	wid := types.ToUUID(session.Message.Data["Workspace-ID"])
-	if !wid.IsValid() {
+	wid, err := types.ToRandomID(session.Message.Data["Workspace-ID"])
+	if err != nil || !wid.IsValid() {
 		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Workspace-ID")
 		return
 	}
 
-	devid := types.ToUUID(session.Message.Data["Device-ID"])
-	if !devid.IsValid() {
+	devid, err := types.ToRandomID(session.Message.Data["Device-ID"])
+	if err != nil || !devid.IsValid() {
 		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Device-ID")
 		return
 	}
@@ -422,7 +428,7 @@ func commandRegister(session *sessionState) {
 		return
 	}
 
-	err := dbhandler.AddWorkspace(wid.AsString(), uid.AsString(), viper.GetString("global.domain"),
+	err = dbhandler.AddWorkspace(wid.AsString(), uid.AsString(), viper.GetString("global.domain"),
 		session.Message.Data["Password-Hash"], workspaceStatus, wtype)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
@@ -509,8 +515,8 @@ func commandUnregister(session *sessionState) {
 	// allowed to do this
 	targetWid := session.WID
 	if session.Message.HasField("Workspace-ID") {
-		tempWid := types.ToUUID(session.Message.Data["Workspace-ID"])
-		if !tempWid.IsValid() {
+		tempWid, err := types.ToRandomID(session.Message.Data["Workspace-ID"])
+		if err != nil || !tempWid.IsValid() {
 			session.SendQuickResponse(400, "BAD REQUEST", "Bad Workspace-ID")
 			return
 		}

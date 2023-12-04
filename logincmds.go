@@ -26,9 +26,8 @@ func commandDevice(session *sessionState) {
 		return
 	}
 
-	devid := types.ToUUID(session.Message.Data["Device-ID"])
-	if !devid.IsValid() ||
-		session.LoginState != loginAwaitingSessionID {
+	devid, err := types.ToRandomID(session.Message.Data["Device-ID"])
+	if err != nil || !devid.IsValid() || session.LoginState != loginAwaitingSessionID {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad device ID")
 		return
 	}
@@ -146,12 +145,12 @@ func commandDevKey(session *sessionState) {
 		return
 	}
 
-	devid := types.ToUUID(session.Message.Data["Device-ID"])
-	if !devid.IsValid() {
+	devid, err := types.ToRandomID(session.Message.Data["Device-ID"])
+	if err != nil || !devid.IsValid() {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad device ID")
 		return
 	}
-	_, err := dbhandler.CheckDevice(session.WID, devid, oldkey)
+	_, err = dbhandler.CheckDevice(session.WID, devid, oldkey)
 
 	if err != nil {
 		if err.Error() == "cancel" {
@@ -201,8 +200,8 @@ func commandLogin(session *sessionState) {
 		return
 	}
 
-	wid := types.ToUUID(session.Message.Data["Workspace-ID"])
-	if !wid.IsValid() {
+	wid, err := types.ToRandomID(session.Message.Data["Workspace-ID"])
+	if err != nil || !wid.IsValid() {
 		session.SendQuickResponse(400, "BAD REQUEST", "Invalid workspace ID")
 		return
 	}
@@ -308,8 +307,8 @@ func commandPasscode(session *sessionState) {
 		return
 	}
 
-	wid := types.ToUUID(session.Message.Data["Workspace-ID"])
-	if !wid.IsValid() {
+	wid, err := types.ToRandomID(session.Message.Data["Workspace-ID"])
+	if err != nil || !wid.IsValid() {
 		session.SendQuickResponse(400, "BAD REQUEST", "bad workspace ID")
 		return
 	}
@@ -407,7 +406,8 @@ func commandResetPassword(session *sessionState) {
 	// Command syntax:
 	// RESETPASSWORD(Workspace-ID, Reset-Code="", Expires="")
 
-	if isAdmin, err := session.RequireAdmin(); err != nil || !isAdmin {
+	isAdmin, err := session.RequireAdmin()
+	if err != nil || !isAdmin {
 		return
 	}
 
@@ -416,8 +416,8 @@ func commandResetPassword(session *sessionState) {
 		return
 	}
 
-	wid := types.ToUUID(session.Message.Data["Workspace-ID"])
-	if !wid.IsValid() {
+	wid, err := types.ToRandomID(session.Message.Data["Workspace-ID"])
+	if err != nil || !wid.IsValid() {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad workspace id")
 		return
 	}
@@ -432,7 +432,6 @@ func commandResetPassword(session *sessionState) {
 		passcode = session.Message.Data["Reset-Code"]
 	}
 
-	var err error
 	if passcode == "" {
 		passcode, err = diceware.RollWords(viper.GetInt("security.diceware_wordcount"), "-",
 			gDiceWordList)
