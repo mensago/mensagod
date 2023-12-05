@@ -15,10 +15,10 @@ import (
 
 	"github.com/everlastingbeta/diceware"
 	"github.com/everlastingbeta/diceware/wordlist"
-	"github.com/google/uuid"
 	ezn "gitlab.com/darkwyrm/goeznacl"
 	"gitlab.com/mensago/mensagod/dbhandler"
 	"gitlab.com/mensago/mensagod/keycard"
+	"gitlab.com/mensago/mensagod/types"
 )
 
 // SetupConfigFile is used to obtain the necessary information from the user for creating the
@@ -453,7 +453,7 @@ users, inventory, and other information will be erased.
 		sspair.PublicHash.AsString(),
 	)
 
-	admin_wid := uuid.New().String()
+	admin_wid := types.RandomIDString()
 	regcode, err := diceware.RollWords(6, " ", wordlist.EFFLong)
 	if err != nil {
 		return err
@@ -465,7 +465,7 @@ users, inventory, and other information will be erased.
 		admin_wid, "admin", config["org_domain"], regcode,
 	)
 
-	abuse_wid := uuid.New().String()
+	abuse_wid := types.RandomIDString()
 	regcode, err = diceware.RollWords(6, " ", wordlist.EFFLong)
 	if err != nil {
 		return err
@@ -485,7 +485,7 @@ users, inventory, and other information will be erased.
 			abuse_wid, "abuse", config["org_domain"], "individual", "active")
 	}
 
-	support_wid := uuid.New().String()
+	support_wid := types.RandomIDString()
 	regcode, err = diceware.RollWords(6, " ", wordlist.EFFLong)
 	if err != nil {
 		return err

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/spf13/viper"
 	"gitlab.com/mensago/mensagod/misc"
+	"gitlab.com/mensago/mensagod/types"
 )
 
 // MPath encapsulates all the translation between a standard Mensago path into whatever format
@@ -128,11 +128,11 @@ func ValidateTempFileName(filename string) bool {
 
 // GenerateFileName creates a filename matching the format expected by the Mensago platform
 func GenerateFileName(filesize int) string {
-	return fmt.Sprintf("%d.%d.%s", time.Now().Unix(), filesize, uuid.New().String())
+	return fmt.Sprintf("%d.%d.%s", time.Now().Unix(), filesize, types.RandomIDString())
 }
 
 // GenerateTempFileName creates a temporary file name. It is similar to an Mensago file name
 // except that the file's size is not included.
 func GenerateTempFileName() string {
-	return fmt.Sprintf("%d.%s", time.Now().Unix(), uuid.New().String())
+	return fmt.Sprintf("%d.%s", time.Now().Unix(), types.RandomIDString())
 }

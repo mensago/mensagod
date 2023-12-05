@@ -141,7 +141,7 @@ func makeTestFiles(dir string, count int) error {
 
 // 	names := make([]string, count)
 // 	for i := 0; i < count; i++ {
-// 		dirname := uuid.New().String()
+// 		dirname := types.RandomIDString()
 // 		dirpath := filepath.Join(anpath.ProviderPath(), dirname)
 // 		err := os.Mkdir(dirpath, 0777)
 // 		if err != nil {

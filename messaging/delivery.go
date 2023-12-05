@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/spf13/viper"
 	ezn "gitlab.com/darkwyrm/goeznacl"
 	"gitlab.com/mensago/mensagod/dbhandler"
@@ -313,7 +312,7 @@ func Bounce(errorCode int, info *messageInfo, extraData *map[string]string) {
 	payload.From = orgDomain
 	payload.To = info.Sender
 	payload.Date = msg.Date
-	payload.ThreadID = uuid.New().String()
+	payload.ThreadID = types.RandomIDString()
 
 	switch errorCode {
 	case 300:
