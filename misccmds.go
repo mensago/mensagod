@@ -368,8 +368,8 @@ func createUpdateResponse(records *[]dbhandler.UpdateRecord, totalRecords int64)
 
 	for i, record := range *records {
 		recordName := fmt.Sprintf("Update%d", i)
-		recordValue := fmt.Sprintf("%s,%s,%s,%d", record.ID, lookupTable[record.Type], record.Data,
-			record.Time)
+		recordValue := fmt.Sprintf("%s,%s,%s,%d,%s", record.ID, lookupTable[record.Type],
+			record.Data, record.Time, record.DeviceID)
 		data[recordName] = recordValue
 	}
 	data["UpdateCount"] = fmt.Sprintf("%d", len(data))

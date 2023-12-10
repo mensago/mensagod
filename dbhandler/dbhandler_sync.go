@@ -126,7 +126,7 @@ func GetSyncRecords(wid string, unixtime int64) ([]UpdateRecord, error) {
 		return nil, misc.ErrBadArgument
 	}
 
-	rows, err := dbConn.Query(`SELECT rid,update_type,update_data,unixtime FROM updates `+
+	rows, err := dbConn.Query(`SELECT rid,update_type,update_data,unixtime,devid FROM updates `+
 		`WHERE wid = $1 AND unixtime > $2 ORDER BY rowid`, wid, unixtime)
 	if err != nil {
 		return nil, err
@@ -136,7 +136,7 @@ func GetSyncRecords(wid string, unixtime int64) ([]UpdateRecord, error) {
 	out := make([]UpdateRecord, 0)
 	for rows.Next() {
 		var rec UpdateRecord
-		err = rows.Scan(&rec.ID, &rec.Type, &rec.Data, &rec.Time)
+		err = rows.Scan(&rec.ID, &rec.Type, &rec.Data, &rec.Time, &rec.DeviceID)
 		if err != nil {
 			return out, err
 		}

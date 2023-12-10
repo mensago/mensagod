@@ -105,6 +105,7 @@ func commandDevice(session *sessionState) {
 		lastLogin = -1
 	}
 	session.LastUpdateSent = lastLogin
+	session.DevID = session.Message.Data["Device-ID"]
 
 	response := NewServerResponse(200, "OK")
 
