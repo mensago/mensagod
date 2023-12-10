@@ -476,7 +476,7 @@ func commandMkDir(session *sessionState) {
 	err = dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
 		ID:   types.RandomIDString(),
 		Type: dbhandler.UpdateMkDir,
-		Data: clientPath.AsString() + " : " + dirPath,
+		Data: dirPath + ":" + clientPath.AsString(),
 		Time: time.Now().UTC().Unix(),
 	})
 	if err != nil {

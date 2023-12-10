@@ -9,6 +9,7 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/spf13/viper"
+	"gitlab.com/darkwyrm/goeznacl"
 	"gitlab.com/mensago/mensagod/fshandler"
 	"gitlab.com/mensago/mensagod/logging"
 	"gitlab.com/mensago/mensagod/misc"
@@ -55,8 +56,13 @@ func AddSyncRecord(wid string, rec UpdateRecord) error {
 			return errors.New("bad record data")
 		}
 	case UpdateMkDir:
-		parts := strings.Split(rec.Data, " : ")
-		if len(parts) != 2 || !fshandler.ValidateMensagoPath(parts[1]) {
+		parts := strings.SplitN(rec.Data, ":", 2)
+		if len(parts) != 2 {
+			return errors.New("bad record data")
+		}
+
+		encPath := goeznacl.NewCS(strings.TrimSpace(parts[1]))
+		if !fshandler.ValidateMensagoPath(strings.TrimSpace(parts[0])) || !encPath.IsValid() {
 			return errors.New("bad record data")
 		}
 

@@ -56,16 +56,13 @@ func commandGetUpdates(session *sessionState) {
 	// The communication protocol code is now limited to 2GB, which *better* be a lot more than
 	// necessary. If not, then there are *serious* problems on the server side in letting updates
 	// accumulate beyond a certain threshold.
-
-	// The code is set to return a maximum of 150 records. It's still very easily possible that
-	// the response could be larger than 16K, so we need to put this thing together very carefully
-	responseString, err := createUpdateResponse(&records, recordCount)
+	response, err := createUpdateResponse(&records, recordCount)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 
-	session.WriteClient(responseString)
+	session.SendResponse(response)
 }
 
 func commandIdle(session *sessionState) {
@@ -355,11 +352,7 @@ func commandSetStatus(session *sessionState) {
 	session.SendQuickResponse(200, "OK", "")
 }
 
-// createUpdateResponse takes a list of UpdateRecords and returns a ServerResponse which is smaller
-// than the maximum response size of 16K. Great care must be taken here because the size of a
-// Mensago path can vary greatly in size -- a workspace-level path is 38 bytes without any file
-// name appended to it. These things add up quickly.
-func createUpdateResponse(records *[]dbhandler.UpdateRecord, totalRecords int64) (string, error) {
+func createUpdateResponse(records *[]dbhandler.UpdateRecord, totalRecords int64) (ServerResponse, error) {
 
 	lookupTable := map[dbhandler.UpdateType]string{
 		dbhandler.UpdateCreate:  "CREATE",
@@ -371,21 +364,15 @@ func createUpdateResponse(records *[]dbhandler.UpdateRecord, totalRecords int64)
 		dbhandler.UpdateReplace: "REPLACE",
 	}
 
-	builder := strings.Builder{}
-	if _, err := builder.WriteString(`{"Code":200,"Status":"OK","Info":"","Data":{`); err != nil {
-		return "", err
-	}
-	if _, err := builder.WriteString(fmt.Sprintf(`"UpdateCount":"%d",`, totalRecords)); err != nil {
-		return "", err
-	}
+	data := make(map[string]string, 0)
 
 	for i, record := range *records {
-
-		recordData := fmt.Sprintf(`Update%d: "%s|%s|%s|%d",`, i, record.ID, lookupTable[record.Type],
-			record.Data, record.Time)
-		builder.WriteString(recordData)
+		recordName := fmt.Sprintf("Update%d", i)
+		recordValue := fmt.Sprintf("%s,%s,%s,%d", record.ID, lookupTable[record.Type], record.Data,
+			record.Time)
+		data[recordName] = recordValue
 	}
-	builder.WriteString("}}")
+	data["UpdateCount"] = fmt.Sprintf("%d", len(data))
 
-	return builder.String(), nil
+	return ServerResponse{200, "OK", "", data}, nil
 }
