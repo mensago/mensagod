@@ -38,10 +38,11 @@ var movePattern = regexp.MustCompile(
 		`( new)?$`)
 
 type UpdateRecord struct {
-	ID   string
-	Type UpdateType
-	Data string
-	Time int64
+	ID       string
+	Type     UpdateType
+	Data     string
+	Time     int64
+	DeviceID string
 }
 
 // AddSyncRecord adds a record to the update table
@@ -76,9 +77,9 @@ func AddSyncRecord(wid string, rec UpdateRecord) error {
 
 	now := time.Now().UTC().Unix()
 
-	_, err := dbConn.Exec(`INSERT INTO updates(rid, wid, update_type, update_data, unixtime) `+
-		`VALUES($1, $2, $3, $4, $5)`,
-		rec.ID, wid, rec.Type, rec.Data, now)
+	_, err := dbConn.Exec(`INSERT INTO updates(rid,wid,update_type,update_data,unixtime,devid) `+
+		`VALUES($1, $2, $3, $4, $5, $6)`,
+		rec.ID, wid, rec.Type, rec.Data, now, rec.DeviceID)
 	if err != nil {
 		logging.Write("dbhandler.AddSyncRecord: failed to add update record")
 	}
@@ -125,11 +126,8 @@ func GetSyncRecords(wid string, unixtime int64) ([]UpdateRecord, error) {
 		return nil, misc.ErrBadArgument
 	}
 
-	// A maximum of 150 records is returned because with the shortest possible updates, a maximum
-	// of about 160 records can be returned in 16k. For more average update sizes (34 byte overhead,
-	// 104 byte record), we can only fit about 156.
 	rows, err := dbConn.Query(`SELECT rid,update_type,update_data,unixtime FROM updates `+
-		`WHERE wid = $1 AND unixtime > $2 ORDER BY unixtime LIMIT 150`, wid, unixtime)
+		`WHERE wid = $1 AND unixtime > $2 ORDER BY rowid`, wid, unixtime)
 	if err != nil {
 		return nil, err
 	}

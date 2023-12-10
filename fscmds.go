@@ -105,10 +105,11 @@ func commandCopy(session *sessionState) {
 	}
 
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-		ID:   types.RandomIDString(),
-		Type: dbhandler.UpdateCreate,
-		Data: destPath + " " + newName,
-		Time: time.Now().UTC().Unix(),
+		ID:       types.RandomIDString(),
+		Type:     dbhandler.UpdateCreate,
+		Data:     destPath + " " + newName,
+		Time:     time.Now().UTC().Unix(),
+		DeviceID: session.DevID,
 	})
 
 	response := NewServerResponse(200, "OK")
@@ -156,10 +157,11 @@ func commandDelete(session *sessionState) {
 		}
 
 		dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-			ID:   types.RandomIDString(),
-			Type: dbhandler.UpdateDelete,
-			Data: deletePath,
-			Time: time.Now().UTC().Unix(),
+			ID:       types.RandomIDString(),
+			Type:     dbhandler.UpdateDelete,
+			Data:     deletePath,
+			Time:     time.Now().UTC().Unix(),
+			DeviceID: session.DevID,
 		})
 	}
 
@@ -474,10 +476,11 @@ func commandMkDir(session *sessionState) {
 	}
 
 	err = dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-		ID:   types.RandomIDString(),
-		Type: dbhandler.UpdateMkDir,
-		Data: dirPath + ":" + clientPath.AsString(),
-		Time: time.Now().UTC().Unix(),
+		ID:       types.RandomIDString(),
+		Type:     dbhandler.UpdateMkDir,
+		Data:     dirPath + ":" + clientPath.AsString(),
+		Time:     time.Now().UTC().Unix(),
+		DeviceID: session.DevID,
 	})
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "commandMkDir.2")
@@ -533,10 +536,11 @@ func commandMove(session *sessionState) {
 	}
 
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-		ID:   types.RandomIDString(),
-		Type: dbhandler.UpdateMove,
-		Data: sourcePath + ":" + destPath,
-		Time: time.Now().UTC().Unix(),
+		ID:       types.RandomIDString(),
+		Type:     dbhandler.UpdateMove,
+		Data:     sourcePath + ":" + destPath,
+		Time:     time.Now().UTC().Unix(),
+		DeviceID: session.DevID,
 	})
 	session.SendQuickResponse(200, "OK", "")
 }
@@ -582,10 +586,11 @@ func commandRmDir(session *sessionState) {
 	dbhandler.ModifyQuotaUsage(session.WID, int64(usage)*-1)
 
 	dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-		ID:   types.RandomIDString(),
-		Type: dbhandler.UpdateRmDir,
-		Data: dirPath,
-		Time: time.Now().UTC().Unix(),
+		ID:       types.RandomIDString(),
+		Type:     dbhandler.UpdateRmDir,
+		Data:     dirPath,
+		Time:     time.Now().UTC().Unix(),
+		DeviceID: session.DevID,
 	})
 	session.SendQuickResponse(200, "OK", "")
 }
@@ -841,18 +846,20 @@ func commandUpload(session *sessionState) {
 		}
 
 		dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-			ID:   types.RandomIDString(),
-			Type: dbhandler.UpdateReplace,
-			Data: strings.ToLower(replacesPath + ":" + filePath),
-			Time: time.Now().UTC().Unix(),
+			ID:       types.RandomIDString(),
+			Type:     dbhandler.UpdateReplace,
+			Data:     strings.ToLower(replacesPath + ":" + filePath),
+			Time:     time.Now().UTC().Unix(),
+			DeviceID: session.DevID,
 		})
 	} else {
 		dbhandler.ModifyQuotaUsage(session.WID, fileSize)
 		dbhandler.AddSyncRecord(session.WID.AsString(), dbhandler.UpdateRecord{
-			ID:   types.RandomIDString(),
-			Type: dbhandler.UpdateCreate,
-			Data: filePath,
-			Time: time.Now().UTC().Unix(),
+			ID:       types.RandomIDString(),
+			Type:     dbhandler.UpdateCreate,
+			Data:     filePath,
+			Time:     time.Now().UTC().Unix(),
+			DeviceID: session.DevID,
 		})
 	}
 

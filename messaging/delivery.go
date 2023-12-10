@@ -135,10 +135,11 @@ func deliveryWorker(workerID uint64) {
 
 			timestamp := time.Now().UTC().Unix()
 			dbhandler.AddSyncRecord(parts[0], dbhandler.UpdateRecord{
-				ID:   types.RandomIDString(),
-				Type: dbhandler.UpdateCreate,
-				Data: strings.Join([]string{"/", "wsp", parts[0], "new", basename}, " "),
-				Time: timestamp,
+				ID:       types.RandomIDString(),
+				Type:     dbhandler.UpdateCreate,
+				Data:     strings.Join([]string{"/", "wsp", parts[0], "new", basename}, " "),
+				Time:     timestamp,
+				DeviceID: "00000000-0000-0000-0000-000000000000",
 			})
 
 			if IsWorkspaceRegistered(parts[0]) {
@@ -391,10 +392,11 @@ func Bounce(errorCode int, info *messageInfo, extraData *map[string]string) {
 	parts := strings.SplitN(info.Sender, "/", 1)
 	timestamp := time.Now().UTC().Unix()
 	dbhandler.AddSyncRecord(parts[0], dbhandler.UpdateRecord{
-		ID:   types.RandomIDString(),
-		Type: dbhandler.UpdateCreate,
-		Data: strings.Join([]string{"/", "wsp", parts[0], "new", msgFileName}, " "),
-		Time: timestamp,
+		ID:       types.RandomIDString(),
+		Type:     dbhandler.UpdateCreate,
+		Data:     strings.Join([]string{"/", "wsp", parts[0], "new", msgFileName}, " "),
+		Time:     timestamp,
+		DeviceID: "00000000-0000-0000-0000-000000000000",
 	})
 
 	if IsWorkspaceRegistered(parts[0]) {

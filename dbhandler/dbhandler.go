@@ -162,7 +162,8 @@ func Reset() error {
 			purpose VARCHAR(8) NOT NULL, fingerprint VARCHAR(96) NOT NULL);`,
 
 		`CREATE TABLE updates(rowid BIGSERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
-			update_type INTEGER, update_data VARCHAR(2048), unixtime BIGINT);`,
+			update_type INTEGER, update_data VARCHAR(2048), unixtime BIGINT,
+			devid CHAR(36) NOT NULL);`,
 	}
 
 	for _, cmd := range sqlCmds {
