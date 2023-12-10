@@ -226,7 +226,7 @@ func LogFailure(failType string, wid types.RandomID, sourceip string) error {
 		lockout := time.Now().UTC()
 		delay, _ := time.ParseDuration(fmt.Sprintf("%dm",
 			viper.GetInt64("security.lockout_delay_min")))
-		lockout.Add(delay)
+		lockout = lockout.Add(delay)
 		sqlStatement := `
 			UPDATE failure_log 
 			SET count=$1, last_failure=$2, lockout_until=$3
