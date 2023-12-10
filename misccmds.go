@@ -53,8 +53,6 @@ func commandGetUpdates(session *sessionState) {
 		return
 	}
 
-	// TODO: Update commandGetUpdates to no longer be limited by size.
-
 	// The communication protocol code is now limited to 2GB, which *better* be a lot more than
 	// necessary. If not, then there are *serious* problems on the server side in letting updates
 	// accumulate beyond a certain threshold.
