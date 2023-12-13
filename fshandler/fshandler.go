@@ -377,18 +377,18 @@ func (lfs *LocalFSHandler) ListFiles(path string, afterTime int64) ([]string, er
 func (lfs *LocalFSHandler) MakeDirectory(path string) error {
 
 	// Path validation handled in FromPath()
-	var anpath LocalMPath
-	err := anpath.Set(path)
+	var mpath LocalMPath
+	err := mpath.Set(path)
 	if err != nil {
 		return err
 	}
 
-	_, err = os.Stat(anpath.LocalPath)
+	_, err = os.Stat(mpath.LocalPath)
 	if err == nil {
 		return os.ErrExist
 	}
 
-	return os.MkdirAll(anpath.LocalPath, 0770)
+	return os.Mkdir(mpath.LocalPath, 0770)
 }
 
 // MakeTempFile creates a file in the temporary file area and returns a handle to it. The caller is
