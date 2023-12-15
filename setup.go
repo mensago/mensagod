@@ -308,7 +308,7 @@ will still be a permanent part of the organization's keycard.
 Please use care when answering.
 `)
 
-	orgname_pattern := regexp.MustCompile(`\w+`)
+	orgname_pattern := regexp.MustCompile(`[\w\s]+`)
 	config["org_name"] = ""
 	for config["org_name"] == "" {
 		fmt.Print("Name of organization (max 64 characters): ")
@@ -564,7 +564,7 @@ users, inventory, and other information will be erased.
 		if err != nil {
 			var groupError *user.UnknownGroupError
 			if !errors.As(err, &groupError) {
-				fmt.Printf("Unable to determine if group %s exists. Aborting.",
+				fmt.Printf("Unable to determine if group %s exists. Aborting.\n",
 					config["server_group"])
 				os.Exit(2)
 			}
