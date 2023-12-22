@@ -235,8 +235,8 @@ func processCommand(session *sessionState) {
 		commandSelect(session)
 	case "SEND":
 		commandSend(session)
-	case "SENDFAST":
-		commandSendFast(session)
+	case "SENDLARGE":
+		commandSendLarge(session)
 	case "SETPASSWORD":
 		commandSetPassword(session)
 	case "SETQUOTA":

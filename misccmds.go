@@ -97,7 +97,63 @@ func commandIdle(session *sessionState) {
 
 func commandSend(session *sessionState) {
 	// Command syntax:
-	// SEND(Size, Hash, Domain, TempName="", Offset=0)
+	// SEND(Size, Hash, Domain)
+
+	if !session.RequireLogin() {
+		return
+	}
+
+	if session.Message.Validate([]string{"Domain", "Message"}) != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	domain, err := types.ToDomain(session.Message.Data["Domain"])
+	if err != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad domain")
+	}
+
+	// Arguments have been validated, do a quota check
+
+	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID)
+	if err != nil {
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+
+	if diskQuota != 0 && MaxCommandLength+diskUsage > diskQuota {
+		session.SendQuickResponse(409, "QUOTA INSUFFICIENT", "")
+		return
+	}
+
+	fsp := fshandler.GetFSProvider()
+	var tempHandle *os.File
+	var tempName string
+	tempHandle, tempName, err = fsp.MakeTempFile(session.WID.AsString())
+	if err != nil {
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
+
+	tempHandle.Write([]byte(session.Message.Data["Message"]))
+
+	tempHandle.Close()
+
+	address, err := dbhandler.ResolveWID(session.WID)
+	if err != nil {
+		logging.Writef("commandSend: Unable to resolve WID %s", err)
+		fsp.DeleteTempFile(session.WID.AsString(), tempName)
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+	}
+
+	tempName, _ = fsp.InstallTempFile(session.WID.AsString(), tempName, "/ out")
+	messaging.PushMessage(address.AsString(), domain.AsString(), "/ out "+tempName)
+	session.SendQuickResponse(200, "OK", "")
+}
+
+func commandSendLarge(session *sessionState) {
+	// Command syntax:
+	// SENDLARGE(Size, Hash, Domain, TempName="", Offset=0)
 
 	if !session.RequireLogin() {
 		return
@@ -233,62 +289,6 @@ func commandSend(session *sessionState) {
 	}
 
 	fsp.InstallTempFile(session.WID.AsString(), tempName, "/ out")
-	messaging.PushMessage(address.AsString(), domain.AsString(), "/ out "+tempName)
-	session.SendQuickResponse(200, "OK", "")
-}
-
-func commandSendFast(session *sessionState) {
-	// Command syntax:
-	// SENDFAST(Size, Hash, Domain)
-
-	if !session.RequireLogin() {
-		return
-	}
-
-	if session.Message.Validate([]string{"Domain", "Message"}) != nil {
-		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
-		return
-	}
-
-	domain, err := types.ToDomain(session.Message.Data["Domain"])
-	if err != nil {
-		session.SendQuickResponse(400, "BAD REQUEST", "Bad domain")
-	}
-
-	// Arguments have been validated, do a quota check
-
-	diskUsage, diskQuota, err := dbhandler.GetQuotaInfo(session.WID)
-	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		return
-	}
-
-	if diskQuota != 0 && MaxCommandLength+diskUsage > diskQuota {
-		session.SendQuickResponse(409, "QUOTA INSUFFICIENT", "")
-		return
-	}
-
-	fsp := fshandler.GetFSProvider()
-	var tempHandle *os.File
-	var tempName string
-	tempHandle, tempName, err = fsp.MakeTempFile(session.WID.AsString())
-	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-		return
-	}
-
-	tempHandle.Write([]byte(session.Message.Data["Message"]))
-
-	tempHandle.Close()
-
-	address, err := dbhandler.ResolveWID(session.WID)
-	if err != nil {
-		logging.Writef("commandSend: Unable to resolve WID %s", err)
-		fsp.DeleteTempFile(session.WID.AsString(), tempName)
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
-	}
-
-	tempName, _ = fsp.InstallTempFile(session.WID.AsString(), tempName, "/ out")
 	messaging.PushMessage(address.AsString(), domain.AsString(), "/ out "+tempName)
 	session.SendQuickResponse(200, "OK", "")
 }
