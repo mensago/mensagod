@@ -78,7 +78,7 @@ func (a MAddress) AsString() string {
 }
 
 func (a *MAddress) Set(addr string) error {
-	parts := strings.SplitN(addr, "/", 2)
+	parts := strings.Split(addr, "/")
 	if len(parts) != 2 {
 		return misc.ErrBadArgument
 	}
