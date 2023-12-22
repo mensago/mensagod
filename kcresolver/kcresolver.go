@@ -29,7 +29,7 @@ var cardCache keycardCache
 
 func InitCache() {
 	cardCache.Items = make(map[string]*cacheItem)
-	cardCache.Capacity = viper.GetInt("performance.kcresolver_size")
+	cardCache.Capacity = viper.GetInt("performance.keycard_cache_size")
 	cardCache.ItemQueue = list.New()
 }
 
@@ -58,6 +58,10 @@ func (c *keycardCache) Queue(card *keycard.Keycard) error {
 
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
+
+	if c.Capacity == 0 {
+		return nil
+	}
 
 	// If the queue is at capacity, pop the last one off the back
 	if len(c.Items) == c.Capacity {

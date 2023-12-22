@@ -104,6 +104,9 @@ func SetupConfig() diceware.Wordlist {
 	// Default user workspace quota in MiB. 0 = no quota
 	viper.SetDefault("global.default_quota", 0)
 
+	// The default capacity of the keycard resolver cache
+	viper.SetDefault("performance.keycard_cache_size", 100)
+
 	// Max item size in MiB.
 	viper.SetDefault("performance.max_file_size", 50)
 
