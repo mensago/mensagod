@@ -46,13 +46,28 @@ func TestToRandomID(t *testing.T) {
 func TestToUserID(t *testing.T) {
 	testname := "TestToUserID"
 
-	// TODO: Finish TestToUserID() test
-
-	if _, err := ToUserID("981ad932-8fb9-47c5-8f03-56c8f9f5dc2f"); err != nil {
-		t.Fatalf("%s: test failure on valid UserID", testname)
+	for _, val := range []string{
+		"GoodID",
+		"alsogoooood",
+		"3_Simons_and_a_fuzzy",
+		"11111111-1111-1111-1111-111111111111",
+		strings.Repeat("a", 64),
+	} {
+		if _, err := ToUserID(val); err != nil {
+			t.Fatalf("%s: test failure on valid UserID %s", testname, val)
+		}
 	}
 
-	for _, val := range []string{} {
+	for _, val := range []string{
+		"has spaces",
+		"has_a_\"",
+		"🐧",
+		"ಅಎಇ",
+		"consecutive..dots",
+		"hashtag-invalid#2",
+		"also/bad",
+		strings.Repeat("a", 65),
+	} {
 		if _, err := ToUserID(val); err == nil {
 			t.Fatalf("%s: test failure on invalid UserID %s", testname, val)
 		}

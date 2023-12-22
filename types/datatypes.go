@@ -28,8 +28,7 @@ type RandomID string
 type DomainT string
 
 var widPattern = regexp.MustCompile(`^[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}$`)
-var uidPattern1 = regexp.MustCompile("[[:space:]]+")
-var uidPattern2 = regexp.MustCompile("[\\\\/\"]")
+var uidPattern = regexp.MustCompile(`^([\w\-]|\.[^.]){0,65}$`)
 var domainPattern = regexp.MustCompile("^([a-zA-Z0-9\\-]+\x2E)+[a-zA-Z0-9\\-]+$")
 
 // ------------------------------------------------------------------------------------------------
@@ -50,7 +49,7 @@ func (a MAddress) IsValid() bool {
 		return widPattern.MatchString(a.ID) && domainPattern.MatchString(string(a.Domain))
 	// Mensago address
 	case 2:
-		if uidPattern1.MatchString(a.ID) || uidPattern2.MatchString(a.ID) {
+		if uidPattern.MatchString(a.ID) {
 			return false
 		}
 
@@ -84,18 +83,22 @@ func (a *MAddress) Set(addr string) error {
 		return misc.ErrBadArgument
 	}
 
-	tempWID, err := ToRandomID(parts[0])
-	if err != nil || tempWID.IsValid() {
+	_, err := ToRandomID(parts[0])
+	if err == nil {
+		if err = a.Domain.Set(parts[1]); err != nil {
+			return err
+		}
 		a.ID = parts[0]
-		a.Domain.Set(parts[1])
 		a.IDType = 1
 		return nil
 	}
 
 	_, err = ToUserID(parts[0])
-	if err != nil {
+	if err == nil {
+		if err = a.Domain.Set(parts[1]); err != nil {
+			return err
+		}
 		a.ID = parts[0]
-		a.Domain.Set(parts[1])
 		a.IDType = 2
 		return nil
 	}
@@ -190,9 +193,7 @@ func ToWAddress(addr string) WAddress {
 
 func (uid UserID) IsValid() bool {
 
-	if uidPattern1.MatchString(string(uid)) || uidPattern2.MatchString(string(uid)) ||
-		len(uid) == 0 {
-		// if uidPattern1.MatchString(string(uid)) || uidPattern2.MatchString(string(uid)) {
+	if len(uid) == 0 || !uidPattern.MatchString(string(uid)) {
 		return false
 	}
 
