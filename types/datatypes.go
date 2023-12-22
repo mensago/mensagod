@@ -50,10 +50,6 @@ func (a MAddress) IsValid() bool {
 	// Mensago address
 	case 2:
 		if uidPattern.MatchString(a.ID) {
-			return false
-		}
-
-		if utf8.RuneCountInString(a.ID) <= 64 && domainPattern.MatchString(string(a.Domain)) {
 			return true
 		}
 	// uninitialized or bad type
