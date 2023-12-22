@@ -29,7 +29,7 @@ type DomainT string
 
 var widPattern = regexp.MustCompile(`^[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}$`)
 var uidPattern = regexp.MustCompile(`^([\w\-]|\.[^.]){0,65}$`)
-var domainPattern = regexp.MustCompile("^([a-zA-Z0-9\\-]+\x2E)+[a-zA-Z0-9\\-]+$")
+var domainPattern = regexp.MustCompile(`^([a-zA-Z0-9\-]+\.)+[a-zA-Z0-9\-]+$`)
 
 // ------------------------------------------------------------------------------------------------
 
@@ -307,10 +307,10 @@ func (dom DomainT) Equals(other DomainT) bool {
 	return string(dom) == string(other)
 }
 
-func ToDomain(addr string) DomainT {
+func ToDomain(addr string) (DomainT, error) {
 	var out DomainT
-	out.Set(addr)
-	return out
+	err := out.Set(addr)
+	return out, err
 }
 
 func ValidateDomain(domain string) bool {

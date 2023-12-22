@@ -129,8 +129,8 @@ func commandSend(session *sessionState) {
 		return
 	}
 
-	domain := types.ToDomain(session.Message.Data["Domain"])
-	if !domain.IsValid() {
+	domain, err := types.ToDomain(session.Message.Data["Domain"])
+	if err != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad domain")
 	}
 
@@ -250,8 +250,8 @@ func commandSendFast(session *sessionState) {
 		return
 	}
 
-	domain := types.ToDomain(session.Message.Data["Domain"])
-	if !domain.IsValid() {
+	domain, err := types.ToDomain(session.Message.Data["Domain"])
+	if err != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad domain")
 	}
 

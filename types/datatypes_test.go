@@ -5,6 +5,28 @@ import (
 	"testing"
 )
 
+func TestToDomain(t *testing.T) {
+	testname := "TestToDomain"
+
+	for _, val := range []string{
+		"foo-bar.baz.com",
+		"FOO.bar.com ",
+	} {
+		if _, err := ToDomain(val); err != nil {
+			t.Fatalf("%s: test failure on valid domain %s", testname, val)
+		}
+	}
+
+	for _, val := range []string{
+		"a bad-id.com",
+		"also_bad.org",
+	} {
+		if _, err := ToDomain(val); err == nil {
+			t.Fatalf("%s: test failure on invalid domain %s", testname, val)
+		}
+	}
+}
+
 func TestToMAddress(t *testing.T) {
 	testname := "TestToMAddress"
 
