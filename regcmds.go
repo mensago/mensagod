@@ -23,8 +23,8 @@ func commandGetWID(session *sessionState) {
 		return
 	}
 
-	uid := types.ToUserID(session.Message.Data["User-ID"])
-	if !uid.IsValid() {
+	uid, err := types.ToUserID(session.Message.Data["User-ID"])
+	if err != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad User ID")
 		return
 	}

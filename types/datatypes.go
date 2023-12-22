@@ -27,7 +27,7 @@ type UserID string
 type RandomID string
 type DomainT string
 
-var widPattern = regexp.MustCompile(`[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}`)
+var widPattern = regexp.MustCompile(`^[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}$`)
 var uidPattern1 = regexp.MustCompile("[[:space:]]+")
 var uidPattern2 = regexp.MustCompile("[\\\\/\"]")
 var domainPattern = regexp.MustCompile("^([a-zA-Z0-9\\-]+\x2E)+[a-zA-Z0-9\\-]+$")
@@ -92,8 +92,8 @@ func (a *MAddress) Set(addr string) error {
 		return nil
 	}
 
-	tempUID := ToUserID(parts[0])
-	if tempUID.IsValid() {
+	_, err = ToUserID(parts[0])
+	if err != nil {
 		a.ID = parts[0]
 		a.Domain.Set(parts[1])
 		a.IDType = 2
@@ -110,10 +110,10 @@ func (a MAddress) Equals(other MAddress) bool {
 	return a.IDType == other.IDType && a.ID == other.ID && a.Domain.Equals(other.Domain)
 }
 
-func ToMAddress(addr string) MAddress {
+func ToMAddress(addr string) (MAddress, error) {
 	var out MAddress
-	out.Set(addr)
-	return out
+	err := out.Set(addr)
+	return out, err
 }
 
 func ToMAddressFromParts(uid UserID, dom DomainT) MAddress {
@@ -223,10 +223,10 @@ func (uid UserID) Equals(other UserID) bool {
 	return string(uid) == string(other)
 }
 
-func ToUserID(addr string) UserID {
+func ToUserID(addr string) (UserID, error) {
 	var out UserID
-	out.Set(addr)
-	return out
+	err := out.Set(addr)
+	return out, err
 }
 
 // ------------------------------------------------------------------------------------------------

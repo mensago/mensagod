@@ -325,7 +325,13 @@ func commandSetStatus(session *sessionState) {
 		return
 	}
 
-	adminAddress := types.ToMAddress("admin/" + viper.GetString("global.domain"))
+	adminAddress, err := types.ToMAddress("admin/" + viper.GetString("global.domain"))
+	if err != nil {
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		logging.Writef("commandPreregister: Bad domain in server config file: %s", err)
+		return
+	}
+
 	adminWid, err := dbhandler.ResolveAddress(adminAddress)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")

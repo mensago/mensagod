@@ -359,8 +359,8 @@ func commandUserCard(session *sessionState) {
 		return
 	}
 
-	ownerAddr := types.ToMAddress(session.Message.Data["Owner"])
-	if !ownerAddr.IsValid() {
+	ownerAddr, err := types.ToMAddress(session.Message.Data["Owner"])
+	if err != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad owner address")
 		return
 	}
@@ -372,7 +372,7 @@ func commandUserCard(session *sessionState) {
 	}
 
 	var startIndex, endIndex int
-	startIndex, err := strconv.Atoi(session.Message.Data["Start-Index"])
+	startIndex, err = strconv.Atoi(session.Message.Data["Start-Index"])
 	if err != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad Start-Index")
 		return
