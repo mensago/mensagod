@@ -28,7 +28,7 @@ type RandomID string
 type DomainT string
 
 var widPattern = regexp.MustCompile(`^[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}$`)
-var uidPattern = regexp.MustCompile(`^([\w\-]|\.[^.]){0,65}$`)
+var uidPattern = regexp.MustCompile(`^([\w\-]|\.[^.]){1,64}$`)
 var domainPattern = regexp.MustCompile(`^([a-zA-Z0-9\-]+\.)+[a-zA-Z0-9\-]+$`)
 
 // ------------------------------------------------------------------------------------------------
