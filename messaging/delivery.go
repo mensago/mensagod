@@ -221,7 +221,12 @@ func DecryptRecipientHeader(header string) (string, error) {
 		return "", err
 	}
 
-	decrypted, err := encPair.Decrypt(header)
+	encData := ezn.NewCS(header)
+	if !encData.IsValid() {
+		return "", ezn.ErrInvalidCS
+	}
+
+	decrypted, err := encPair.Decrypt(encData.Data)
 	if err != nil {
 		return "", err
 	}
