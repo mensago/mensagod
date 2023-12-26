@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"slices"
 	"time"
 
 	"github.com/everlastingbeta/diceware"
@@ -607,9 +608,9 @@ func dualChallengeDevice(session *sessionState, oldkey ezn.CryptoString,
 	// - receive and verify 2 responses
 	// - update device key
 
-	// TODO: utilize goeznacl::IsSupportedAlgorithm()
-
-	if oldkey.Prefix != "CURVE25519" || newkey.Prefix != "CURVE25519" {
+	supportedAlgorithms := ezn.GetAsymmetricAlgorithms()
+	if !slices.Contains(supportedAlgorithms, oldkey.Prefix) ||
+		!slices.Contains(supportedAlgorithms, newkey.Prefix) {
 		return false, ezn.ErrUnsupportedAlgorithm
 	}
 
