@@ -520,8 +520,9 @@ func UpdateLastLogin(wid types.RandomID, devid types.RandomID) error {
 
 // GetLastLogin gets the last time a device logged in UTC time, UNIX format
 func GetLastLogin(wid types.RandomID, devid types.RandomID) (int64, error) {
-	// TODO: Fix this query -- needs to use devid, too
-	row := dbConn.QueryRow(`SELECT lastlogin FROM iwkspc_devices WHERE wid=$1`, wid.AsString())
+
+	row := dbConn.QueryRow(`SELECT lastlogin FROM iwkspc_devices WHERE wid=$1 AND devid=$2`,
+		wid.AsString(), devid.AsString())
 
 	var lastlogin int64
 	err := row.Scan(&lastlogin)
