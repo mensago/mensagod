@@ -376,7 +376,6 @@ def init_server(dbconn) -> dict:
 	}
 
 
-# TODO: Replace calls to validate_uuid() to pymensago-based code
 def validate_uuid(indata):
 	'''Validates a UUID's basic format. Does not check version information.'''
 

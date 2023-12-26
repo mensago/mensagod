@@ -69,11 +69,7 @@ def test_send():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 400, 'test_send: #1 failed to handle missing parameter'
 
-	# Subtest #2: Non-existent domain
-
-	# TODO: POSTDEMO: Implement SEND subtest for non-existent domain
-
-	# Subtest #3: Size too big
+	# Subtest #2: Size too big
 
 	conn.send_message({
 		'Action': 'SEND',
@@ -88,7 +84,7 @@ def test_send():
 	response = conn.read_response(server_response)
 	assert response['Code'] == 414, 'test_send: #3 failed to handle file too big'
 
-	# Subtest #4: Insufficient quota remaining
+	# Subtest #3: Insufficient quota remaining
 
 	# The administrator normally can't have a quota. We'll just fix that just for this one test
 	# *heh*
@@ -116,8 +112,6 @@ def test_send():
 	cur = dbconn.cursor()
 	cur.execute(f"UPDATE quotas SET quota=0 WHERE wid = '{dbdata['admin_wid']}'")
 	dbconn.commit()
-
-	# TODO: Finish tests once PyMensago messaging code is implemented
 
 
 def test_sendfast():
@@ -268,12 +262,6 @@ def test_sendfast():
 	filepath = dbdata['configfile']['global']['workspace_dir']
 
 	assert os.path.exists(filepath), f"{funcname()}: client file for message missing"
-
-	# Subtest #3: Non-existent domain
-
-	# TODO: POSTDEMO: Implement SENDFAST subtest for non-existent domain
-
-
 
 
 if __name__ == '__main__':
