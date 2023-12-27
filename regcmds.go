@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"net"
+	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
@@ -14,6 +16,9 @@ import (
 	"gitlab.com/mensago/mensagod/misc"
 	"gitlab.com/mensago/mensagod/types"
 )
+
+var supportedPassAlgorithms = []string{"ARGON2I", "ARGON2ID", "ARGON2D", "BCRYPT", "SCRYPT",
+	"PBKDF2"}
 
 func commandGetWID(session *sessionState) {
 	// command syntax:
@@ -171,11 +176,13 @@ func commandPreregister(session *sessionState) {
 
 func commandRegCode(session *sessionState) {
 	// command syntax:
-	// REGCODE(User-ID, Reg-Code, Password-Hash, Device-ID, Device-Key, Domain="")
-	// REGCODE(Workspace-ID, Reg-Code, Password-Hash, Device-ID, Device-Key, Domain="")
+	// REGCODE(User-ID, Reg-Code, Password-Hash, Password-Algorithm, Device-ID, Device-Key,
+	//     Password-Salt="", Password-Parameters="", Domain="")
+	// REGCODE(Workspace-ID, Reg-Code, Password-Hash, Password-Algorithm, Device-ID, Device-Key,
+	//     Password-Salt="", Password-Parameters="", Domain="")
 
-	if session.Message.Validate([]string{"Reg-Code", "Password-Hash", "Device-ID",
-		"Device-Key"}) != nil {
+	if session.Message.Validate([]string{"Reg-Code", "Password-Hash", "Password-Algorithm",
+		"Device-ID", "Device-Key"}) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
@@ -186,21 +193,23 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	if len(session.Message.Data["Reg-Code"]) > 128 {
+	regCodeLen := utf8.RuneCountInString(session.Message.Data["Reg-Code"])
+	if regCodeLen > 128 || regCodeLen < 16 {
 		session.SendQuickResponse(400, "BAD REQUEST", "Invalid reg code")
 		return
 	}
 
-	// The password field is expected to contain an Argon2id password hash
-	isArgon, err := ezn.IsArgonHash(session.Message.Data["Password-Hash"])
-	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.1")
-		logging.Writef("commandRegCode: error check password hash: %s", err)
+	// The password field must pass some basic checks for length, but because we will be hashing
+	// the thing with Argon2id, even if the client does a dumb thing and submit a cleartext
+	// password, there will be a pretty decent baseline of security in place.
+	passLen := utf8.RuneCountInString(session.Message.Data["Password-Hash"])
+	if passLen > 128 || passLen < 16 {
+		session.SendQuickResponse(400, "BAD REQUEST", "Invalid password hash")
 		return
 	}
 
-	if !isArgon {
-		session.SendQuickResponse(400, "BAD REQUEST", "Invalid password hash")
+	if !slices.Contains(supportedPassAlgorithms, session.Message.Data["Password-Algorithm"]) {
+		session.SendQuickResponse(417, "NOT SUPPORTED", "Unsupported password algorithm")
 		return
 	}
 
@@ -247,8 +256,21 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	if devkey.Prefix != "CURVE25519" {
-		session.SendQuickResponse(309, "ENCRYPTION TYPE NOT SUPPORTED", "Supported: CURVE25519")
+	passType, exists := session.Message.Data["Password-Algorithm"]
+	if exists {
+		passType = strings.ToUpper(passType)
+	} else {
+		passType = ""
+	}
+
+	if !slices.Contains(supportedPassAlgorithms, session.Message.Data["Password-Algorithm"]) {
+		session.SendQuickResponse(417, "NOT SUPPORTED", "Unsupported password algorithm")
+		return
+	}
+
+	if !slices.Contains(ezn.GetAsymmetricAlgorithms(), devkey.Prefix) {
+		session.SendQuickResponse(309, "ENCRYPTION TYPE NOT SUPPORTED",
+			"Supported: "+strings.Join(ezn.GetAsymmetricAlgorithms(), ", "))
 		return
 	}
 
@@ -261,24 +283,34 @@ func commandRegCode(session *sessionState) {
 		if err == misc.ErrNotFound {
 			session.SendQuickResponse(404, "NOT FOUND", "")
 		} else {
-			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.2")
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.1")
 			logging.Writef("Internal server error. commandRegCode.CheckRegCode. Error: %s\n", err)
 		}
 		logFailure(session, "prereg", "")
 		return
 	}
 
+	salt, exists := session.Message.Data["Password-Salt"]
+	if !exists {
+		salt = ""
+	}
+
+	passParams, exists := session.Message.Data["Password-Parameters"]
+	if !exists {
+		passParams = ""
+	}
+
 	err = dbhandler.AddWorkspace(widStr, uid, domain.AsString(), session.Message.Data["Password-Hash"],
-		"active", "identity")
+		passType, salt, passParams, "active", "identity")
 	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.3")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.2")
 		logging.Writef("Internal server error. commandRegCode.AddWorkspace. Error: %s\n", err)
 		return
 	}
 
 	err = dbhandler.SetWorkspaceStatus(widStr, "active")
 	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.4")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.3")
 		logging.Writef("Internal server error. commandRegCode.SetWorkspaceStatus. Error: %s\n", err)
 		return
 	}
@@ -291,7 +323,7 @@ func commandRegCode(session *sessionState) {
 
 	err = dbhandler.AddDevice(wid, devid, devkey, "active")
 	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.5")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.4")
 		logging.Writef("Internal server error. commandRegCode.AddDevice. Error: %s\n", err)
 		return
 	}
@@ -311,10 +343,11 @@ func commandRegCode(session *sessionState) {
 
 func commandRegister(session *sessionState) {
 	// command syntax:
-	// REGISTER(Workspace-ID, Password-Hash, Device-ID, Device-Key, User-ID="", Type="")
+	// REGISTER(Workspace-ID, Password-Hash, Password-Algorithm, Device-ID, Device-Key,
+	//     User-ID="", Type="", Password-Salt="", PasswordParameters="")
 
-	if session.Message.Validate([]string{"Workspace-ID", "Password-Hash", "Device-ID",
-		"Device-Key"}) != nil {
+	if session.Message.Validate([]string{"Workspace-ID", "Password-Hash", "Password-Algorithm",
+		"Device-ID", "Device-Key"}) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
@@ -331,6 +364,18 @@ func commandRegister(session *sessionState) {
 		return
 	}
 
+	passType, exists := session.Message.Data["Password-Algorithm"]
+	if exists {
+		passType = strings.ToUpper(passType)
+	} else {
+		passType = ""
+	}
+
+	if !slices.Contains(supportedPassAlgorithms, session.Message.Data["Password-Algorithm"]) {
+		session.SendQuickResponse(417, "NOT SUPPORTED", "Unsupported password algorithm")
+		return
+	}
+
 	// Just do some basic syntax checks on the user ID
 	var uid types.UserID
 	if session.Message.HasField("User-ID") {
@@ -341,9 +386,28 @@ func commandRegister(session *sessionState) {
 		}
 	}
 
-	if _, err := ezn.IsArgonHash(session.Message.Data["Password-Hash"]); err != nil {
-		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Password Hash")
+	// The password field must pass some basic checks for length, but because we will be hashing
+	// the thing with Argon2id, even if the client does a dumb thing and submit a cleartext
+	// password, there will be a pretty decent baseline of security in place.
+	passLen := utf8.RuneCountInString(session.Message.Data["Password-Hash"])
+	if passLen > 128 || passLen < 16 {
+		session.SendQuickResponse(400, "BAD REQUEST", "Invalid password hash")
 		return
+	}
+
+	if !slices.Contains(supportedPassAlgorithms, session.Message.Data["Password-Algorithm"]) {
+		session.SendQuickResponse(417, "NOT SUPPORTED", "Unsupported password algorithm")
+		return
+	}
+
+	salt, exists := session.Message.Data["Password-Salt"]
+	if !exists {
+		salt = ""
+	}
+
+	passParams, exists := session.Message.Data["Password-Parameters"]
+	if !exists {
+		passParams = ""
 	}
 
 	wtype := "identity"
@@ -423,13 +487,14 @@ func commandRegister(session *sessionState) {
 		return
 	}
 
-	if devkey.Prefix != "CURVE25519" {
-		session.SendQuickResponse(309, "ENCRYPTION TYPE NOT SUPPORTED", "Supported: CURVE25519")
+	if !slices.Contains(ezn.GetAsymmetricAlgorithms(), devkey.Prefix) {
+		session.SendQuickResponse(309, "ENCRYPTION TYPE NOT SUPPORTED",
+			"Supported: "+strings.Join(ezn.GetAsymmetricAlgorithms(), ", "))
 		return
 	}
 
 	err = dbhandler.AddWorkspace(wid.AsString(), uid.AsString(), viper.GetString("global.domain"),
-		session.Message.Data["Password-Hash"], workspaceStatus, wtype)
+		session.Message.Data["Password-Hash"], passType, salt, passParams, workspaceStatus, wtype)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Internal server error. commandRegister.AddWorkspace. Error: %s\n", err)
@@ -444,16 +509,16 @@ func commandRegister(session *sessionState) {
 	}
 
 	fsp := fshandler.GetFSProvider()
-	exists, err := fsp.Exists("/ " + wid.AsString())
+	exists, err = fsp.Exists("/ " + wid.AsString())
 	if err != nil {
-		logging.Writef("commandPreregister: Failed to check workspace %s existence: %s", wid, err)
+		logging.Writef("commandRegister: Failed to check workspace %s existence: %s", wid, err)
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		return
 	}
 	if !exists {
 		fsp.MakeDirectory("/ " + wid.AsString())
 		if err != nil {
-			logging.Writef("commandPreregister: Failed to create workspace %s top directory: %s",
+			logging.Writef("commandRegister: Failed to create workspace %s top directory: %s",
 				wid, err)
 			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 			return

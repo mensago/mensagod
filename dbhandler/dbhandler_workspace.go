@@ -18,15 +18,16 @@ import (
 // the workspace in the filesystem. Note that this function is strictly for adding workspaces for
 // individuals. Shared workspaces are not yet supported/implemented. Status may be 'active',
 // 'pending', or 'disabled'.
-func AddWorkspace(wid string, uid string, domain string, password string, status string,
-	wtype string) error {
-	passString := ezn.HashPassword(password)
+func AddWorkspace(wid string, uid string, domain string, password string, algorithm string,
+	salt string, passParams string, status string, wtype string) error {
 
-	// wid, uid, domain, wtype, status, password
+	passHash := ezn.HashPassword(password)
+
+	// wid, uid, domain, password, salt, passparams, status, wtype
 	var err error
-	_, err = dbConn.Exec(`INSERT INTO workspaces(wid, uid, domain, password, status, wtype) `+
-		`VALUES($1, $2, $3, $4, $5, $6)`,
-		wid, uid, domain, passString, status, wtype)
+	_, err = dbConn.Exec(`INSERT INTO workspaces(wid, uid, domain, password, passtype, salt, `+
+		`passparams, status, wtype) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		wid, uid, domain, passHash, algorithm, salt, passParams, status, wtype)
 	return err
 }
 

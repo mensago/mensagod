@@ -3,7 +3,9 @@ package main
 import (
 	"crypto/rand"
 	"slices"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/everlastingbeta/diceware"
 	"github.com/spf13/viper"
@@ -297,9 +299,11 @@ func commandLogout(session *sessionState) {
 
 func commandPasscode(session *sessionState) {
 	// Command syntax:
-	// PASSCODE(Workspace-ID, Reset-Code, Password-Hash)
+	// PASSCODE(Workspace-ID, Reset-Code, Password-Hash, Password-Algorithm, Password-Salt="",
+	//     Password-Parameters="")
 
-	if session.Message.Validate([]string{"Workspace-ID", "Reset-Code", "Password-Hash"}) != nil {
+	if session.Message.Validate([]string{"Workspace-ID", "Reset-Code", "Password-Hash",
+		"Password-Algorithm"}) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
@@ -315,10 +319,35 @@ func commandPasscode(session *sessionState) {
 		return
 	}
 
-	goodPass, err := ezn.IsArgonHash(session.Message.Data["Password-Hash"])
-	if !goodPass || err != nil {
-		session.SendQuickResponse(400, "BAD REQUEST", "bad password hash")
+	// The password field must pass some basic checks for length, but because we will be hashing
+	// the thing with Argon2id, even if the client does a dumb thing and submit a cleartext
+	// password, there will be a pretty decent baseline of security in place.
+	passLen := utf8.RuneCountInString(session.Message.Data["Password-Hash"])
+	if passLen > 128 || passLen < 16 {
+		session.SendQuickResponse(400, "BAD REQUEST", "Invalid password hash")
 		return
+	}
+
+	passType, exists := session.Message.Data["Password-Algorithm"]
+	if exists {
+		passType = strings.ToUpper(passType)
+	} else {
+		passType = ""
+	}
+
+	if !slices.Contains(supportedPassAlgorithms, session.Message.Data["Password-Algorithm"]) {
+		session.SendQuickResponse(417, "NOT SUPPORTED", "Unsupported password algorithm")
+		return
+	}
+
+	salt, exists := session.Message.Data["Password-Salt"]
+	if !exists {
+		salt = ""
+	}
+
+	passParams, exists := session.Message.Data["Password-Parameters"]
+	if !exists {
+		passParams = ""
 	}
 
 	verified, err := dbhandler.CheckPasscode(wid, session.Message.Data["Reset-Code"])
@@ -343,7 +372,8 @@ func commandPasscode(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.SetPassword(session.WID, session.Message.Data["Password-Hash"])
+	err = dbhandler.SetPassword(session.WID, session.Message.Data["Password-Hash"], passType, salt,
+		passParams)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandPasscode: failed to update password: %s", err.Error())
@@ -476,21 +506,25 @@ func commandResetPassword(session *sessionState) {
 
 func commandSetPassword(session *sessionState) {
 	// Command syntax:
-	// SETPASSWORD(Password-Hash, NewPassword-Hash)
+	// SETPASSWORD(Password-Hash, NewPassword-Hash, NewPassword-Algorithm, NewPassword-Salt="",
+	//     NewPassword-Parameters)
 
 	if !session.RequireLogin() {
 		return
 	}
 
-	if session.Message.Validate([]string{"Password-Hash", "NewPassword-Hash"}) != nil {
+	if session.Message.Validate([]string{"Password-Hash", "NewPassword-Hash",
+		"NewPassword-Algorithm"}) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
 
-	if len(session.Message.Data["Password-Hash"]) < 16 ||
-		len(session.Message.Data["NewPassword-Hash"]) < 16 {
-
-		session.SendQuickResponse(400, "BAD REQUEST", "password hashes must be at least 128 bits")
+	// The password field must pass some basic checks for length, but because we will be hashing
+	// the thing with Argon2id, even if the client does a dumb thing and submit a cleartext
+	// password, there will be a pretty decent baseline of security in place.
+	passLen := utf8.RuneCountInString(session.Message.Data["NewPassword-Hash"])
+	if passLen > 128 || passLen < 16 {
+		session.SendQuickResponse(400, "BAD REQUEST", "Invalid password hash")
 		return
 	}
 
@@ -500,16 +534,26 @@ func commandSetPassword(session *sessionState) {
 		return
 	}
 
-	goodPass, err := ezn.IsArgonHash(session.Message.Data["Password-Hash"])
-	if !goodPass || err != nil {
-		session.SendQuickResponse(400, "BAD REQUEST", "bad old password hash")
+	passType, exists := session.Message.Data["NewPassword-Algorithm"]
+	if exists {
+		passType = strings.ToUpper(passType)
+	} else {
+		passType = ""
+	}
+
+	if !slices.Contains(supportedPassAlgorithms, session.Message.Data["NewPassword-Algorithm"]) {
+		session.SendQuickResponse(417, "NOT SUPPORTED", "Unsupported password algorithm")
 		return
 	}
 
-	goodPass, err = ezn.IsArgonHash(session.Message.Data["NewPassword-Hash"])
-	if !goodPass || err != nil {
-		session.SendQuickResponse(400, "BAD REQUEST", "bad new password hash")
-		return
+	salt, exists := session.Message.Data["Password-Salt"]
+	if !exists {
+		salt = ""
+	}
+
+	passParams, exists := session.Message.Data["Password-Parameters"]
+	if !exists {
+		passParams = ""
 	}
 
 	match, err := dbhandler.CheckPassword(session.WID, session.Message.Data["Password-Hash"])
@@ -523,7 +567,8 @@ func commandSetPassword(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.SetPassword(session.WID, session.Message.Data["NewPassword-Hash"])
+	err = dbhandler.SetPassword(session.WID, session.Message.Data["NewPassword-Hash"], passType,
+		salt, passParams)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("commandSetPassword: failed to update password: %s", err.Error())

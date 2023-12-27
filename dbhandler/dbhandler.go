@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"database/sql"
 
@@ -128,7 +129,8 @@ func Reset() error {
 	sqlCmds := []string{
 		`CREATE TABLE workspaces(rowid BIGSERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
 			uid VARCHAR(64), domain VARCHAR(255) NOT NULL, wtype VARCHAR(32) NOT NULL,
-			status VARCHAR(16) NOT NULL, password VARCHAR(128));`,
+			status VARCHAR(16) NOT NULL, password VARCHAR(128) NOT NULL,
+			passtype VARCHAR(32) NOT NULL, salt VARCHAR(32), passparams VARCHAR(128) );`,
 
 		`CREATE TABLE aliases(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
 			alias CHAR(292) NOT NULL);`,
@@ -429,12 +431,17 @@ func ResetPassword(wid types.RandomID, passcode string, expires string) error {
 // SetPassword does just that: sets the password for a workspace. It returns a boolean state,
 // indicating a match (or lack thereof) and an error state. It will take any input string of up to
 // 64 characters and store it in the database.
-func SetPassword(wid types.RandomID, password string) error {
-	if len(password) > 128 {
+func SetPassword(wid types.RandomID, password string, algorithm string, salt string,
+	passParams string) error {
+
+	passLen := utf8.RuneCountInString(password)
+	if passLen > 128 || passLen < 16 {
 		return misc.ErrOutOfRange
 	}
+
 	passHash := ezn.HashPassword(password)
-	_, err := dbConn.Exec(`UPDATE workspaces SET password=$1 WHERE wid=$2`, passHash, wid.AsString())
+	_, err := dbConn.Exec(`UPDATE workspaces SET password=$1,passtype=$2,salt=$3,passparams=$4 `+
+		`WHERE wid=$5`, passHash, algorithm, salt, passParams, wid.AsString())
 	return err
 }
 
@@ -442,15 +449,23 @@ func SetPassword(wid types.RandomID, password string) error {
 // if the two hashes match. It does not perform any validity checking of the input--this should be
 // done when the input is received from the user.
 func CheckPassword(wid types.RandomID, password string) (bool, error) {
-	row := dbConn.QueryRow(`SELECT password FROM workspaces WHERE wid=$1`, wid.AsString())
+	row := dbConn.QueryRow(`SELECT password,passtype FROM workspaces WHERE wid=$1`, wid.AsString())
 
-	var dbhash string
+	var dbhash, passtype string
 	err := row.Scan(&dbhash)
 	if err != nil {
 		return false, err
 	}
+	err = row.Scan(&passtype)
+	if err != nil {
+		return false, err
+	}
 
-	return ezn.VerifyPasswordHash(password, dbhash)
+	switch passtype {
+	case "ARGON2ID":
+		ezn.VerifyPasswordHash(password, dbhash)
+	}
+	return false, ezn.ErrUnsupportedAlgorithm
 }
 
 // AddDevice is used for adding a device to a workspace. The initial last login is set to when
