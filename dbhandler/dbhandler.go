@@ -414,6 +414,30 @@ func RemoveExpiredPasscodes() error {
 	return err
 }
 
+// GetPasswordInfo obtains all the information needed for a client to generate a password hash
+// that will pass authentication on the server side. Returns the algorithm name, the base62-encoded
+// salt, and the parameter string.
+func GetPasswordInfo(wid types.RandomID) (string, string, string, error) {
+	row := dbConn.QueryRow(`SELECT passtype,salt,passparams FROM workspaces WHERE wid=$1`,
+		wid.AsString())
+
+	var passtype, salt, passparams string
+	err := row.Scan(&passtype)
+	if err != nil {
+		return "", "", "", err
+	}
+	err = row.Scan(&salt)
+	if err != nil {
+		return "", "", "", err
+	}
+	err = row.Scan(&passparams)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	return passtype, salt, passparams, nil
+}
+
 // ResetPassword adds a reset code combination to the database for later authentication by the
 // user. All parameters are expected to be populated.
 func ResetPassword(wid types.RandomID, passcode string, expires string) error {

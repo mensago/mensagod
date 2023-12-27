@@ -271,7 +271,7 @@ func commandLogin(session *sessionState) {
 	// We got this far, so decrypt the challenge and send it to the client
 	keypair, err := dbhandler.GetEncryptionPair()
 	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "Login.1")
 		return
 	}
 
@@ -281,10 +281,19 @@ func commandLogin(session *sessionState) {
 		return
 	}
 
+	passType, salt, passParams, err := dbhandler.GetPasswordInfo(wid)
+	if err != nil {
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "Login.2")
+		return
+	}
+
 	session.LoginState = loginAwaitingPassword
 	session.WID = wid
 	response := NewServerResponse(100, "CONTINUE")
 	response.Data["Response"] = string(decryptedChallenge)
+	response.Data["Password-Algorithm"] = passType
+	response.Data["Password-Salt"] = salt
+	response.Data["Password-Parameters"] = passParams
 	session.SendResponse(*response)
 }
 
