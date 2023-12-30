@@ -129,8 +129,8 @@ func Reset() error {
 	sqlCmds := []string{
 		`CREATE TABLE workspaces(rowid BIGSERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
 			uid VARCHAR(64), domain VARCHAR(255) NOT NULL, wtype VARCHAR(32) NOT NULL,
-			status VARCHAR(16) NOT NULL, password VARCHAR(128) NOT NULL,
-			passtype VARCHAR(32) NOT NULL, salt VARCHAR(32), passparams VARCHAR(128) );`,
+			status VARCHAR(16) NOT NULL, password VARCHAR(128), passtype VARCHAR(32),
+			salt VARCHAR(32), passparams VARCHAR(128));`,
 
 		`CREATE TABLE aliases(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
 			alias CHAR(292) NOT NULL);`,
@@ -422,15 +422,7 @@ func GetPasswordInfo(wid types.RandomID) (string, string, string, error) {
 		wid.AsString())
 
 	var passtype, salt, passparams string
-	err := row.Scan(&passtype)
-	if err != nil {
-		return "", "", "", err
-	}
-	err = row.Scan(&salt)
-	if err != nil {
-		return "", "", "", err
-	}
-	err = row.Scan(&passparams)
+	err := row.Scan(&passtype, &salt, &passparams)
 	if err != nil {
 		return "", "", "", err
 	}
@@ -476,18 +468,14 @@ func CheckPassword(wid types.RandomID, password string) (bool, error) {
 	row := dbConn.QueryRow(`SELECT password,passtype FROM workspaces WHERE wid=$1`, wid.AsString())
 
 	var dbhash, passtype string
-	err := row.Scan(&dbhash)
-	if err != nil {
-		return false, err
-	}
-	err = row.Scan(&passtype)
+	err := row.Scan(&dbhash, &passtype)
 	if err != nil {
 		return false, err
 	}
 
 	switch passtype {
 	case "ARGON2ID":
-		ezn.VerifyPasswordHash(password, dbhash)
+		return ezn.VerifyPasswordHash(password, dbhash)
 	}
 	return false, ezn.ErrUnsupportedAlgorithm
 }
