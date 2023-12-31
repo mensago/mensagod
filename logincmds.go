@@ -341,7 +341,8 @@ func commandPasscode(session *sessionState) {
 	if exists {
 		passType = strings.ToUpper(passType)
 	} else {
-		passType = ""
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
+		return
 	}
 
 	if !slices.Contains(supportedPassAlgorithms, session.Message.Data["Password-Algorithm"]) {
@@ -547,7 +548,8 @@ func commandSetPassword(session *sessionState) {
 	if exists {
 		passType = strings.ToUpper(passType)
 	} else {
-		passType = ""
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
+		return
 	}
 
 	if !slices.Contains(supportedPassAlgorithms, session.Message.Data["NewPassword-Algorithm"]) {
