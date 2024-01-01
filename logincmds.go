@@ -22,7 +22,7 @@ import (
 
 func commandDevice(session *sessionState) {
 	// Command syntax:
-	// DEVICE(Device-ID,Device-Key)
+	// DEVICE(Device-ID,Device-Key,Client-Info=nil)
 
 	if session.Message.Validate([]string{"Device-ID", "Device-Key"}) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
@@ -30,7 +30,7 @@ func commandDevice(session *sessionState) {
 	}
 
 	devid, err := types.ToRandomID(session.Message.Data["Device-ID"])
-	if err != nil || !devid.IsValid() || session.LoginState != loginAwaitingSessionID {
+	if err != nil || !devid.IsValid() || session.LoginState != loginAwaitingDeviceID {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad device ID")
 		return
 	}
@@ -41,51 +41,67 @@ func commandDevice(session *sessionState) {
 		return
 	}
 
-	success, err := dbhandler.CheckDevice(session.WID, devid, devkey)
+	devStatus, err := dbhandler.GetDeviceStatus(session.WID, devid, devkey)
 	if err != nil {
-		if err.Error() == "cancel" {
-			session.LoginState = loginNoSession
-			session.SendQuickResponse(200, "OK", "")
-			return
-		}
-
-		session.SendQuickResponse(400, "BAD REQUEST", "Bad Device-ID or Device-Key")
+		session.LoginState = loginNoSession
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "commandDevice.1")
 		return
 	}
 
-	if !success {
-		// TODO: implement device checking:
-		// 1) Check to see if there are multiple devices
-		// 2) If there are multiple devices, push out an authorization message.
-		// 3) Record the session ID in the table as a pending device.
-		// 4) Return 101 PENDING and close the connection
-		// 5) Upon receipt of authorization approval, update the device status in the database
-		// 6) Upon receipt of denial, log the failure and apply a lockout to the IP
+	switch devStatus {
+	case dbhandler.DeviceBlocked:
+		session.SendQuickResponse(403, "FORBIDDEN", "")
+		return
+	case dbhandler.DevicePending:
+		session.SendQuickResponse(101, "PENDING", "Awaiting device approval")
+		return
+	case dbhandler.DeviceRegistered, dbhandler.DeviceApproved:
+		// The device is part of the workspace, so now we issue undergo a challenge-response
+		// to ensure that the device really is authorized and the key wasn't stolen by an impostor
 
-		// This code exists to at least enable the server to work until device checking can
-		// be implemented.
-		dbhandler.AddDevice(session.WID, devid, devkey, "active")
-	}
+		success, _ := challengeDevice(session, "CURVE25519", devkey.AsString())
+		if !success {
+			lockout, err := logFailure(session, "device", session.WID)
+			if err != nil {
+				// No need to log here -- logFailure does that.
+				session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "commandDevice.2")
+				return
+			}
 
-	// The device is part of the workspace, so now we issue undergo a challenge-response
-	// to ensure that the device really is authorized and the key wasn't stolen by an impostor
+			// If locked out, the client has already been notified of the connection termination and
+			// all that is left is to exit the command handler
+			if !lockout {
+				session.SendQuickResponse(401, "UNAUTHORIZED", "")
+			}
+			return
+		}
+	case dbhandler.DeviceNotRegistered:
 
-	success, _ = challengeDevice(session, "CURVE25519", devkey.AsString())
-	if !success {
-		lockout, err := logFailure(session, "device", session.WID)
+		// 1) Check to see if the workspace has any devices registered.
+		devCount, err := dbhandler.CountDevices(session.WID)
 		if err != nil {
-			// No need to log here -- logFailure does that.
-			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "commandDevice.3")
+			logging.Writef("commandDevKey: error counting devices: %s", err.Error())
 			return
 		}
 
-		// If locked out, the client has already been notified of the connection termination and
-		// all that is left is to exit the command handler
-		if !lockout {
-			session.SendQuickResponse(401, "UNAUTHORIZED", "")
+		// There aren't any, add the device and move on to the client challenge phase
+		if devCount == 0 {
+			dbhandler.AddDevice(session.WID, devid, devkey, "active")
+			break
 		}
+
+		// 2) If there are multiple devices, push out an approval request.
+		// TODO: construct and deliver approval request in commandDevice()
+
+		// 3) Record the device ID in the table as a pending device and return status code
+		dbhandler.AddDevice(session.WID, devid, devkey, "pending")
+		session.SendQuickResponse(105, "APPROVAL REQUIRED", "New device requires approval")
 		return
 	}
+
+	// If we've gotten this far, the device is approved and we just need to finish setting up
+	// connection state and give the device a success response
 
 	fsp := fshandler.GetFSProvider()
 	exists, err := fsp.Exists("/ wsp " + session.WID.AsString())
@@ -111,6 +127,12 @@ func commandDevice(session *sessionState) {
 	session.DevID = session.Message.Data["Device-ID"]
 
 	response := NewServerResponse(200, "OK")
+	if devStatus == dbhandler.DeviceApproved {
+		response.Code = 203
+		response.Status = "APPROVED"
+
+		// TODO: Attach key information to approved device in commandDevice()
+	}
 
 	isAdmin, err := session.IsAdmin()
 	if err != nil {
@@ -154,7 +176,7 @@ func commandDevKey(session *sessionState) {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad device ID")
 		return
 	}
-	_, err = dbhandler.CheckDevice(session.WID, devid, oldkey)
+	_, err = dbhandler.GetDeviceStatus(session.WID, devid, oldkey)
 
 	if err != nil {
 		if err.Error() == "cancel" {
@@ -179,7 +201,7 @@ func commandDevKey(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.UpdateDevice(session.WID, devid, oldkey, newkey)
+	err = dbhandler.UpdateDeviceKey(session.WID, devid, oldkey, newkey)
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "DevKey.1")
 		logging.Writef("commandDevKey: error updating device: %s", err.Error())
@@ -440,7 +462,7 @@ func commandPassword(session *sessionState) {
 		return
 	}
 
-	session.LoginState = loginAwaitingSessionID
+	session.LoginState = loginAwaitingDeviceID
 	session.SendQuickResponse(100, "CONTINUE", "")
 }
 

@@ -1,10 +1,12 @@
 package dbhandler
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -26,6 +28,25 @@ import (
 var (
 	connected bool
 	dbConn    *sql.DB
+)
+
+type deviceStatus int
+
+const (
+	// Client device is not registered with the server
+	DeviceNotRegistered deviceStatus = iota
+
+	// Client device is awaiting approval
+	DevicePending
+
+	// Client device has been approved, but has not yet received its key information
+	DeviceApproved
+
+	// Client has been denied
+	DeviceBlocked
+
+	// Client device is fully registered with the server
+	DeviceRegistered
 )
 
 // Connect utilizes the viper config system and connects to the specified database. Because
@@ -498,9 +519,7 @@ func AddDevice(wid types.RandomID, devid types.RandomID, devkey ezn.CryptoString
 
 // RemoveDevice removes a device from a workspace. It returns true if successful and false if not.
 func RemoveDevice(wid types.RandomID, devid types.RandomID) (bool, error) {
-	if len(devid) != 40 {
-		return false, misc.ErrBadArgument
-	}
+
 	_, err := dbConn.Exec(`DELETE FROM iwkspc_devices WHERE wid=$1 AND devid=$2`, wid.AsString(),
 		devid.AsString())
 	if err != nil {
@@ -509,8 +528,57 @@ func RemoveDevice(wid types.RandomID, devid types.RandomID) (bool, error) {
 	return true, nil
 }
 
-// CheckDevice checks if a device has been added to a workspace.
-func CheckDevice(wid types.RandomID, devid types.RandomID, devkey ezn.CryptoString) (bool, error) {
+func CountDevices(wid types.RandomID) (int, error) {
+
+	row := dbConn.QueryRow(`SELECT COUNT(*) FROM iwkspc_devices WHERE wid=$1`, wid.AsString())
+	var countStr string
+
+	err := row.Scan(&countStr)
+	switch err {
+	case sql.ErrNoRows:
+		return 0, nil
+	case nil:
+		break
+	default:
+		return 0, err
+	}
+
+	return strconv.Atoi(countStr)
+}
+
+// GetDeviceStatus checks if a device has been added to a workspace.
+func GetDeviceStatus(wid types.RandomID, devid types.RandomID,
+	devkey ezn.CryptoString) (deviceStatus, error) {
+
+	row := dbConn.QueryRow(`SELECT status FROM iwkspc_devices WHERE wid=$1 AND 
+		devid=$2 AND devkey=$3`, wid.AsString(), devid.AsString(), devkey.AsString())
+
+	var widStatus string
+	err := row.Scan(&widStatus)
+
+	switch err {
+	case sql.ErrNoRows:
+		return DeviceNotRegistered, nil
+	case nil:
+		break
+	default:
+		return DeviceNotRegistered, err
+	}
+
+	switch widStatus {
+	case "active":
+		return DeviceRegistered, nil
+	case "blocked":
+		return DeviceBlocked, nil
+	case "pending":
+		return DevicePending, nil
+	default:
+		return DeviceNotRegistered, errors.New("unknown device status " + widStatus)
+	}
+}
+
+// SetDeviceStatus checks if a device has been added to a workspace.
+func SetDeviceStatus(wid types.RandomID, devid types.RandomID, devkey ezn.CryptoString) (bool, error) {
 	row := dbConn.QueryRow(`SELECT status FROM iwkspc_devices WHERE wid=$1 AND 
 		devid=$2 AND devkey=$3`, wid.AsString(), devid.AsString(), devkey.AsString())
 
@@ -527,8 +595,8 @@ func CheckDevice(wid types.RandomID, devid types.RandomID, devkey ezn.CryptoStri
 	}
 }
 
-// UpdateDevice replaces a device's old key with a new one
-func UpdateDevice(wid types.RandomID, devid types.RandomID, oldkey ezn.CryptoString,
+// UpdateDeviceKey replaces a device's old key with a new one
+func UpdateDeviceKey(wid types.RandomID, devid types.RandomID, oldkey ezn.CryptoString,
 	newkey ezn.CryptoString) error {
 	_, err := dbConn.Exec(`UPDATE iwkspc_devices SET devkey=$1 WHERE wid=$2 AND 
 		devid=$3 AND devkey=$4`, newkey.AsString(), wid.AsString(), devid.AsString(),
