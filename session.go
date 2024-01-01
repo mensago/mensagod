@@ -23,10 +23,13 @@ type loginStatus int
 const (
 	// Unauthenticated state
 	loginNoSession loginStatus = iota
+
 	// Client has requested a valid workspace. Awaiting password.
 	loginAwaitingPassword
-	// Client has submitted a valid password. Awaiting session ID.
-	loginAwaitingSessionID
+
+	// Client has submitted a valid password. Awaiting device ID.
+	loginAwaitingDeviceID
+
 	// Client has successfully authenticated
 	loginClientSession
 )
