@@ -20,6 +20,8 @@ import (
 	"gitlab.com/mensago/mensagod/types"
 )
 
+// TODO: Check commands which need to forcibly disconnect client connection and implement
+
 func commandDevice(session *sessionState) {
 	// Command syntax:
 	// DEVICE(Device-ID,Device-Key,Client-Info=nil)
@@ -41,7 +43,7 @@ func commandDevice(session *sessionState) {
 		return
 	}
 
-	devStatus, err := dbhandler.GetDeviceStatus(session.WID, devid, devkey)
+	devStatus, err := dbhandler.GetDeviceStatus(session.WID, devid)
 	if err != nil {
 		session.LoginState = loginNoSession
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "commandDevice.1")
@@ -51,6 +53,9 @@ func commandDevice(session *sessionState) {
 	switch devStatus {
 	case dbhandler.DeviceBlocked:
 		session.SendQuickResponse(403, "FORBIDDEN", "")
+
+		// TODO: Terminate connection for blocked device in commandDevice()
+
 		return
 	case dbhandler.DevicePending:
 		session.SendQuickResponse(101, "PENDING", "Awaiting device approval")
@@ -176,7 +181,7 @@ func commandDevKey(session *sessionState) {
 		session.SendQuickResponse(400, "BAD REQUEST", "Bad device ID")
 		return
 	}
-	_, err = dbhandler.GetDeviceStatus(session.WID, devid, oldkey)
+	_, err = dbhandler.GetDeviceStatus(session.WID, devid)
 
 	if err != nil {
 		if err.Error() == "cancel" {
@@ -209,6 +214,66 @@ func commandDevKey(session *sessionState) {
 	}
 
 	session.SendQuickResponse(200, "OK", "")
+}
+
+func commandKeyPkg(session *sessionState) {
+	// Command syntax:
+	// KEYPKG(Device-ID, Keys)
+
+	if !session.RequireLogin() {
+		return
+	}
+
+	if session.Message.Validate([]string{"Device-ID", "Keys"}) != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	devid, err := types.ToRandomID(session.Message.Data["Device-ID"])
+	if err != nil || !devid.IsValid() {
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad device ID")
+		return
+	}
+
+	var keyInfo ezn.CryptoString
+	if keyInfo.Set(session.Message.Data["Key-Info"]) != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad key info")
+		return
+	}
+
+	devStatus, err := dbhandler.GetDeviceStatus(session.WID, devid)
+	if err != nil {
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "commandKeyPkg.1")
+		return
+	}
+
+	switch devStatus {
+	case dbhandler.DeviceBlocked:
+		session.SendQuickResponse(403, "FORBIDDEN", "Device has already been blocked")
+		return
+	case dbhandler.DeviceRegistered:
+		session.SendQuickResponse(201, "REGISTERED", "Device already registered")
+		return
+	case dbhandler.DeviceNotRegistered:
+		session.SendQuickResponse(404, "NOT FOUND", "Device not registered")
+		return
+	case dbhandler.DeviceApproved:
+		session.SendQuickResponse(203, "APPROVED", "Device already approved")
+		return
+	case dbhandler.DevicePending:
+		break
+	default:
+		logging.Writef("commandKeyPkg: unhandled device status")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "commandKeyPkg.2")
+		return
+	}
+
+	// We got this far, so it means that we need to save the key information to a safe place and
+	// notify the client of completion
+
+	// TODO: Save key information to file in commandKeyPkg()
+
+	session.SendQuickResponse(301, "NOT IMPLEMENTED", "KEYPKG not yet fully implemented")
 }
 
 func commandLogin(session *sessionState) {

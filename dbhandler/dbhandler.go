@@ -547,11 +547,10 @@ func CountDevices(wid types.RandomID) (int, error) {
 }
 
 // GetDeviceStatus checks if a device has been added to a workspace.
-func GetDeviceStatus(wid types.RandomID, devid types.RandomID,
-	devkey ezn.CryptoString) (deviceStatus, error) {
+func GetDeviceStatus(wid types.RandomID, devid types.RandomID) (deviceStatus, error) {
 
 	row := dbConn.QueryRow(`SELECT status FROM iwkspc_devices WHERE wid=$1 AND 
-		devid=$2 AND devkey=$3`, wid.AsString(), devid.AsString(), devkey.AsString())
+		devid=$2`, wid.AsString(), devid.AsString())
 
 	var widStatus string
 	err := row.Scan(&widStatus)

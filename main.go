@@ -203,6 +203,8 @@ func processCommand(session *sessionState) {
 		commandIdle(session)
 	case "ISCURRENT":
 		commandIsCurrent(session)
+	case "KEYPKG":
+		commandKeyPkg(session)
 	case "LIST":
 		commandList(session)
 	case "LISTDIRS":
