@@ -148,45 +148,48 @@ func Reset() error {
 	}
 
 	sqlCmds := []string{
-		`CREATE TABLE workspaces(rowid BIGSERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
-			uid VARCHAR(64), domain VARCHAR(255) NOT NULL, wtype VARCHAR(32) NOT NULL,
-			status VARCHAR(16) NOT NULL, password VARCHAR(128), passtype VARCHAR(32),
-			salt VARCHAR(32), passparams VARCHAR(128));`,
-
 		`CREATE TABLE aliases(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
-			alias CHAR(292) NOT NULL);`,
-
-		`CREATE TABLE iwkspc_folders(rowid BIGSERIAL PRIMARY KEY, wid char(36) NOT NULL,
-			serverpath VARCHAR(512) NOT NULL, clientpath VARCHAR(768) NOT NULL);`,
-
-		`CREATE TABLE iwkspc_devices(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
-			devid CHAR(36) NOT NULL, devkey VARCHAR(1000) NOT NULL,
-			lastlogin VARCHAR(32) NOT NULL, status VARCHAR(16) NOT NULL);`,
-
-		`CREATE TABLE quotas(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
-			usage BIGINT, quota BIGINT);`,
+				alias CHAR(292) NOT NULL);`,
 
 		`CREATE TABLE failure_log(rowid SERIAL PRIMARY KEY, type VARCHAR(16) NOT NULL,
 			id VARCHAR(36), source VARCHAR(36) NOT NULL, count INTEGER,
 			last_failure TIMESTAMP NOT NULL, lockout_until TIMESTAMP);`,
 
-		`CREATE TABLE passcodes(rowid SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE,
-			passcode VARCHAR(128) NOT NULL, expires TIMESTAMP NOT NULL);`,
+		`CREATE TABLE iwkspc_folders(rowid BIGSERIAL PRIMARY KEY, wid char(36) NOT NULL,
+				serverpath VARCHAR(512) NOT NULL, clientpath VARCHAR(768) NOT NULL);`,
 
-		`CREATE TABLE prereg(rowid SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE,
-			uid VARCHAR(128) NOT NULL, domain VARCHAR(255) NOT NULL, regcode VARCHAR(128));`,
+		`CREATE TABLE iwkspc_devices(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
+				devid CHAR(36) NOT NULL, devkey VARCHAR(1000) NOT NULL,
+				lastlogin VARCHAR(32) NOT NULL, status VARCHAR(16) NOT NULL);`,
 
 		`CREATE TABLE keycards(rowid SERIAL PRIMARY KEY, owner VARCHAR(292) NOT NULL,
-			creationtime TIMESTAMP NOT NULL, index INTEGER NOT NULL,
-			entry VARCHAR(8192) NOT NULL, fingerprint VARCHAR(96) NOT NULL);`,
+				creationtime TIMESTAMP NOT NULL, index INTEGER NOT NULL,
+				entry VARCHAR(8192) NOT NULL, fingerprint VARCHAR(96) NOT NULL);`,
+
+		`CREATE TABLE keyinfo(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
+			devid CHAR(36) NOT NULL, path VARCHAR(128));`,
 
 		`CREATE TABLE orgkeys(rowid SERIAL PRIMARY KEY, creationtime TIMESTAMP NOT NULL,
-			pubkey VARCHAR(7000), privkey VARCHAR(7000) NOT NULL,
-			purpose VARCHAR(8) NOT NULL, fingerprint VARCHAR(96) NOT NULL);`,
+				pubkey VARCHAR(7000), privkey VARCHAR(7000) NOT NULL,
+				purpose VARCHAR(8) NOT NULL, fingerprint VARCHAR(96) NOT NULL);`,
+
+		`CREATE TABLE passcodes(rowid SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE,
+				passcode VARCHAR(128) NOT NULL, expires TIMESTAMP NOT NULL);`,
+
+		`CREATE TABLE prereg(rowid SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE,
+				uid VARCHAR(128) NOT NULL, domain VARCHAR(255) NOT NULL, regcode VARCHAR(128));`,
+
+		`CREATE TABLE quotas(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
+			usage BIGINT, quota BIGINT);`,
 
 		`CREATE TABLE updates(rowid BIGSERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
-			update_type INTEGER, update_data VARCHAR(2048), unixtime BIGINT,
-			devid CHAR(36) NOT NULL);`,
+				update_type INTEGER, update_data VARCHAR(2048), unixtime BIGINT,
+				devid CHAR(36) NOT NULL);`,
+
+		`CREATE TABLE workspaces(rowid BIGSERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
+				uid VARCHAR(64), domain VARCHAR(255) NOT NULL, wtype VARCHAR(32) NOT NULL,
+				status VARCHAR(16) NOT NULL, password VARCHAR(128), passtype VARCHAR(32),
+				salt VARCHAR(32), passparams VARCHAR(128));`,
 	}
 
 	for _, cmd := range sqlCmds {

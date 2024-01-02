@@ -173,6 +173,7 @@ func SetupConfig() diceware.Wordlist {
 		filepath.Join(viper.GetString("global.top_dir"), "out"),
 		filepath.Join(viper.GetString("global.top_dir"), "tmp"),
 		filepath.Join(viper.GetString("global.top_dir"), "wsp"),
+		filepath.Join(viper.GetString("global.top_dir"), "keys"),
 	}
 	for _, dir := range dirList {
 		_, err = os.Stat(dir)
