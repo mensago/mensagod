@@ -13,6 +13,7 @@ import (
 	"gitlab.com/mensago/mensagod/fshandler"
 	"gitlab.com/mensago/mensagod/logging"
 	"gitlab.com/mensago/mensagod/misc"
+	"gitlab.com/mensago/mensagod/types"
 )
 
 // Sync-related functions
@@ -162,4 +163,19 @@ func CullOldSyncRecords(wid string, unixtime int64) error {
 		return err
 	}
 	return nil
+}
+
+func AddKeyPackage(wid types.RandomID, devid types.RandomID, filename string) error {
+	// TODO: Implement AddKeyPackage()
+	return errors.New("AddKeyPackage unimplemented")
+}
+
+func RemoveKeyPackage(wid types.RandomID, filename string) error {
+	// TODO: Implement RemoveKeyPackage()
+	return errors.New("RemoveKeyPackage unimplemented")
+}
+
+func GetKeyPackage(wid types.RandomID, devid types.RandomID) (string, error) {
+	// TODO: Implement GetKeyPackage()
+	return "", errors.New("GetKeyPackage unimplemented")
 }
