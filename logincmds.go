@@ -131,12 +131,48 @@ func commandDevice(session *sessionState) {
 	session.LastUpdateSent = lastLogin
 	session.DevID = session.Message.Data["Device-ID"]
 
+	keyInfoPath := ""
+
 	response := NewServerResponse(200, "OK")
+
 	if devStatus == dbhandler.DeviceApproved {
+
+		keyInfoPath, err = dbhandler.GetKeyInfo(session.WID, devid)
+		if err != nil {
+			session.LoginState = loginNoSession
+			logging.Writef("commandDevice: error getting key info path for device %s: %s",
+				devid.AsString(), err.Error())
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR",
+				"Error new device key information")
+			return
+		}
+
+		fsp := fshandler.GetFSProvider()
+		handle, err := fsp.OpenFile(keyInfoPath)
+		if err != nil {
+			session.LoginState = loginNoSession
+			handleFSError(session, err)
+			return
+		}
+
+		fileSize, err := fsp.GetFileSize(handle)
+		if err != nil {
+			session.LoginState = loginNoSession
+			handleFSError(session, err)
+			return
+		}
+
+		buffer := make([]byte, fileSize)
+		_, err = fsp.ReadFile(handle, buffer)
+		if err != nil {
+			session.LoginState = loginNoSession
+			handleFSError(session, err)
+			return
+		}
+
 		response.Code = 203
 		response.Status = "APPROVED"
-
-		// TODO: Attach key information to approved device in commandDevice()
+		response.Data["Key-Info"] = string(buffer)
 	}
 
 	isAdmin, err := session.IsAdmin()
@@ -154,6 +190,14 @@ func commandDevice(session *sessionState) {
 	if err != nil {
 		logging.Writef("commandDevice: error setting last login for %s:%s: %s", session.WID.AsString(),
 			session.Message.Data["Device-ID"], err.Error())
+	}
+
+	if devStatus == dbhandler.DeviceApproved {
+		err = dbhandler.RemoveKeyInfo(session.WID, devid)
+		if err != nil {
+			logging.Writef("commandDevice: error removing key info %s: %s", devid.AsString(),
+				err.Error())
+		}
 	}
 }
 
