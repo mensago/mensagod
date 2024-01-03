@@ -30,11 +30,11 @@ var (
 	dbConn    *sql.DB
 )
 
-type deviceStatus int
+type DeviceStatus int
 
 const (
 	// Client device is not registered with the server
-	DeviceNotRegistered deviceStatus = iota
+	DeviceNotRegistered DeviceStatus = iota
 
 	// Client device is awaiting approval
 	DevicePending
@@ -48,6 +48,23 @@ const (
 	// Client device is fully registered with the server
 	DeviceRegistered
 )
+
+func DeviceStatusAsString(status DeviceStatus) string {
+	switch status {
+	case DeviceNotRegistered:
+		return "unregistered"
+	case DevicePending:
+		return "pending"
+	case DeviceApproved:
+		return "approved"
+	case DeviceBlocked:
+		return "blocked"
+	case DeviceRegistered:
+		return "active"
+	default:
+		return ""
+	}
+}
 
 // Connect utilizes the viper config system and connects to the specified database. Because
 // problems in the connection are almost always fatal to the successful continuation of the server
@@ -550,7 +567,7 @@ func CountDevices(wid types.RandomID) (int, error) {
 }
 
 // GetDeviceStatus checks if a device has been added to a workspace.
-func GetDeviceStatus(wid types.RandomID, devid types.RandomID) (deviceStatus, error) {
+func GetDeviceStatus(wid types.RandomID, devid types.RandomID) (DeviceStatus, error) {
 
 	row := dbConn.QueryRow(`SELECT status FROM iwkspc_devices WHERE wid=$1 AND 
 		devid=$2`, wid.AsString(), devid.AsString())
@@ -579,21 +596,18 @@ func GetDeviceStatus(wid types.RandomID, devid types.RandomID) (deviceStatus, er
 	}
 }
 
-// SetDeviceStatus checks if a device has been added to a workspace.
-func SetDeviceStatus(wid types.RandomID, devid types.RandomID, devkey ezn.CryptoString) (bool, error) {
-	row := dbConn.QueryRow(`SELECT status FROM iwkspc_devices WHERE wid=$1 AND 
-		devid=$2 AND devkey=$3`, wid.AsString(), devid.AsString(), devkey.AsString())
-
-	var widStatus string
-	err := row.Scan(&widStatus)
+// SetDeviceStatus updates a device's status
+func SetDeviceStatus(wid types.RandomID, devid types.RandomID, status DeviceStatus) error {
+	_, err := dbConn.Exec(`UPDATE SET status=$1 FROM iwkspc_devices WHERE wid=$2 AND 
+		devid=$3`, wid.AsString(), devid.AsString())
 
 	switch err {
 	case sql.ErrNoRows:
-		return false, nil
+		return errors.New("device not found")
 	case nil:
-		return true, nil
+		return nil
 	default:
-		return false, err
+		return err
 	}
 }
 
