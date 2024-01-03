@@ -184,7 +184,7 @@ func Reset() error {
 				entry VARCHAR(8192) NOT NULL, fingerprint VARCHAR(96) NOT NULL);`,
 
 		`CREATE TABLE keyinfo(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
-			devid CHAR(36) NOT NULL, path VARCHAR(128));`,
+			devid CHAR(36) UNIQUE NOT NULL, path VARCHAR(128));`,
 
 		`CREATE TABLE orgkeys(rowid SERIAL PRIMARY KEY, creationtime TIMESTAMP NOT NULL,
 				pubkey VARCHAR(7000), privkey VARCHAR(7000) NOT NULL,

@@ -310,7 +310,7 @@ func commandKeyPkg(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.AddKeyPackage(session.WID, devid, tempName)
+	err = dbhandler.AddKeyInfo(session.WID, devid, tempName)
 	if err != nil {
 		logging.Writef("commandKeyPkg: error adding key package  %s to database: %s",
 			devid.AsString(), err.Error())

@@ -165,17 +165,34 @@ func CullOldSyncRecords(wid string, unixtime int64) error {
 	return nil
 }
 
-func AddKeyPackage(wid types.RandomID, devid types.RandomID, filename string) error {
-	// TODO: Implement AddKeyPackage()
-	return errors.New("AddKeyPackage unimplemented")
+// AddKeyInfo adds a key information package to the database
+func AddKeyInfo(wid types.RandomID, devid types.RandomID, path string) error {
+	_, err := dbConn.Exec(`INSERT OR REPLACE INTO keyinfo(wid, devid, path) VALUES($1, $2, $3)`,
+		wid.AsString(), devid.AsString(), path)
+
+	return err
 }
 
-func RemoveKeyPackage(wid types.RandomID, filename string) error {
-	// TODO: Implement RemoveKeyPackage()
-	return errors.New("RemoveKeyPackage unimplemented")
+func RemoveKeyInfo(wid types.RandomID, devid types.RandomID) error {
+	_, err := dbConn.Exec(`DELETE FROM keyinfo WHERE wid=$1 AND filename=$2`,
+		wid.AsString(), devid.AsString())
+
+	return err
 }
 
-func GetKeyPackage(wid types.RandomID, devid types.RandomID) (string, error) {
-	// TODO: Implement GetKeyPackage()
-	return "", errors.New("GetKeyPackage unimplemented")
+func GetKeyInfo(wid types.RandomID, devid types.RandomID) (string, error) {
+	row := dbConn.QueryRow(`SELECT path FROM keyinfo WHERE wid=$1 AND 
+		devid=$2`, wid.AsString(), devid.AsString())
+
+	var path string
+	err := row.Scan(&path)
+
+	switch err {
+	case sql.ErrNoRows:
+		return "", errors.New("device not found")
+	case nil:
+		return path, nil
+	default:
+		return "", err
+	}
 }
