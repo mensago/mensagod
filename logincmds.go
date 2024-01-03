@@ -271,9 +271,62 @@ func commandKeyPkg(session *sessionState) {
 	// We got this far, so it means that we need to save the key information to a safe place and
 	// notify the client of completion
 
-	// TODO: Save key information to file in commandKeyPkg()
+	fsp := fshandler.GetFSProvider()
+	tempHandle, tempName, err := fsp.MakeTempFile(session.WID.AsString())
+	if err != nil {
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		return
+	}
 
-	session.SendQuickResponse(301, "NOT IMPLEMENTED", "KEYPKG not yet fully implemented")
+	_, err = tempHandle.Write([]byte(session.Message.Data["Message"]))
+	if err != nil {
+		logging.Writef("commandKeyPkg: error saving key package %s: %s", tempName, err.Error())
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "Error saving key package")
+		return
+	}
+	tempHandle.Close()
+
+	pkgPath := "/ keys " + session.WID.AsString()
+	exists, err := fsp.Exists(pkgPath)
+	if err != nil {
+		logging.Writef("commandKeyPkg: error checking for key info directory %s: %s", pkgPath,
+			err.Error())
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR",
+			"Error checking for key package directory")
+		return
+	}
+	if !exists {
+		err := fsp.MakeDirectory(pkgPath)
+		if err != nil {
+			handleFSError(session, err)
+			return
+		}
+	}
+
+	tempName, err = fsp.InstallTempFile(session.WID.AsString(), tempName, pkgPath)
+	if err != nil {
+		logging.Writef("commandKeyPkg: error installing temp file %s: %s", tempName, err.Error())
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "Error installing key package")
+		return
+	}
+
+	err = dbhandler.AddKeyPackage(session.WID, devid, tempName)
+	if err != nil {
+		logging.Writef("commandKeyPkg: error adding key package  %s to database: %s",
+			devid.AsString(), err.Error())
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "Key package database error")
+		return
+	}
+
+	err = dbhandler.SetDeviceStatus(session.WID, devid, dbhandler.DeviceApproved)
+	if err != nil {
+		logging.Writef("commandKeyPkg: error updating status for new device %s: %s",
+			devid.AsString(), err.Error())
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "Error updating new device status")
+		return
+	}
+
+	session.SendQuickResponse(200, "OK", "")
 }
 
 func commandLogin(session *sessionState) {
