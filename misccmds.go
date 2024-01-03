@@ -135,7 +135,12 @@ func commandSend(session *sessionState) {
 		return
 	}
 
-	tempHandle.Write([]byte(session.Message.Data["Message"]))
+	_, err = tempHandle.Write([]byte(session.Message.Data["Message"]))
+	if err != nil {
+		logging.Writef("commandSend: error saving message %s: %s", tempName, err.Error())
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "Error saving message")
+		return
+	}
 
 	tempHandle.Close()
 
@@ -146,7 +151,14 @@ func commandSend(session *sessionState) {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 	}
 
-	tempName, _ = fsp.InstallTempFile(session.WID.AsString(), tempName, "/ out")
+	tempName, err = fsp.InstallTempFile(session.WID.AsString(), tempName, "/ out")
+	if err != nil {
+		logging.Writef("commandSend: error installing temp file %s: %s", tempName, err.Error())
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR",
+			"Error moving message to delivery queue")
+		return
+	}
+
 	messaging.PushMessage(address.AsString(), domain.AsString(), "/ out "+tempName)
 	session.SendQuickResponse(200, "OK", "")
 }
