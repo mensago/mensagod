@@ -29,16 +29,19 @@ import (
 //	        "Data": "CURVE25519:{UfJ=rOoXjUA-Q$rBMw<70Q{eK&ro?HYKGB$zPtG",
 //	    }]
 //	}
-func NewDeviceApproval(info messageInfo, devid types.RandomID) (*SealedEnvelope, error) {
+func NewDeviceApproval(info messageInfo, devid types.RandomID) (SealedSysEnvelope, error) {
+	var out SealedSysEnvelope
 
-	return nil, errors.New("NewDeviceApproval unimplemented")
+	// TODO: Implement NewDeviceApproval()
+
+	return out, errors.New("NewDeviceApproval unimplemented")
 }
 
 // NewSysMessage() is used to create system messages intended for delivery to a local user.
 func NewSysMessage(msgType string, info *messageInfo, subject string,
-	body string) (SealedMessage, error) {
+	body string) (SealedSysMessage, error) {
 
-	var out SealedMessage
+	var out SealedSysMessage
 
 	orgDomain := viper.GetString("global.domain")
 	now := time.Now().UTC()
@@ -71,8 +74,9 @@ func NewSysMessage(msgType string, info *messageInfo, subject string,
 	}
 	userKey := ezn.NewEncryptionKey(userKeyString)
 
-	var msg SealedEnvelope
-	msg.Type = msgType
+	var msg SealedSysEnvelope
+	msg.Type = "sysmessage"
+	msg.Subtype = msgType
 	msg.Version = "1.0"
 
 	receiver := RecipientInfo{

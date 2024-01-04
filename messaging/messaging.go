@@ -20,6 +20,11 @@ type SealedEnvelope struct {
 	PayloadKey string
 }
 
+type SealedSysEnvelope struct {
+	SealedEnvelope
+	Subtype string
+}
+
 type Envelope struct {
 	Type       string
 	Version    string
@@ -29,8 +34,8 @@ type Envelope struct {
 	PayloadKey string
 }
 
-type SealedMessage struct {
-	Envelope SealedEnvelope
+type SealedSysMessage struct {
+	Envelope SealedSysEnvelope
 	Payload  string
 }
 
