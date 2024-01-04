@@ -35,8 +35,8 @@ func NewDeviceApproval(info messageInfo, devid types.RandomID) (*SealedEnvelope,
 }
 
 // NewSysMessage() is used to create system messages intended for delivery to a local user.
-func NewSysMessage(msgType string, info *messageInfo, subject string, body string,
-	extraData *map[string]string) (SealedMessage, error) {
+func NewSysMessage(msgType string, info *messageInfo, subject string,
+	body string) (SealedMessage, error) {
 
 	var out SealedMessage
 
