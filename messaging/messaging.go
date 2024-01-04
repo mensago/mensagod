@@ -29,6 +29,11 @@ type Envelope struct {
 	PayloadKey string
 }
 
+type SealedMessage struct {
+	Envelope SealedEnvelope
+	Payload  string
+}
+
 type RecipientInfo struct {
 	// To contains the full recipient address
 	To string
