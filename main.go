@@ -193,6 +193,8 @@ func processCommand(session *sessionState) {
 		commandDownload(session)
 	case "EXISTS":
 		commandExists(session)
+	case "GETDEVICEINFO":
+		commandGetDeviceInfo(session)
 	case "GETQUOTAINFO":
 		commandGetQuotaInfo(session)
 	case "GETUPDATES":
@@ -229,6 +231,8 @@ func processCommand(session *sessionState) {
 		commandRegCode(session)
 	case "REGISTER":
 		commandRegister(session)
+	case "REMOVEDEVICEINFO":
+		commandRemoveDeviceInfo(session)
 	case "RESETPASSWORD":
 		commandResetPassword(session)
 	case "RMDIR":
@@ -239,6 +243,8 @@ func processCommand(session *sessionState) {
 		commandSend(session)
 	case "SENDLARGE":
 		commandSendLarge(session)
+	case "SETDEVICEINFO":
+		commandSetDeviceInfo(session)
 	case "SETPASSWORD":
 		commandSetPassword(session)
 	case "SETQUOTA":

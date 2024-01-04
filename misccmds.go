@@ -95,6 +95,14 @@ func commandIdle(session *sessionState) {
 	session.SendResponse(*response)
 }
 
+func commandGetDeviceInfo(session *sessionState) {
+	// TODO: Implement commandGetDeviceInfo
+}
+
+func commandRemoveDeviceInfo(session *sessionState) {
+	// TODO: Implement commandRemoveDeviceInfo
+}
+
 func commandSend(session *sessionState) {
 	// Command syntax:
 	// SEND(Size, Hash, Domain)
@@ -303,6 +311,10 @@ func commandSendLarge(session *sessionState) {
 	fsp.InstallTempFile(session.WID.AsString(), tempName, "/ out")
 	messaging.PushMessage(address.AsString(), domain.AsString(), "/ out "+tempName)
 	session.SendQuickResponse(200, "OK", "")
+}
+
+func commandSetDeviceInfo(session *sessionState) {
+	// TODO: Implement commandSetDeviceInfo
 }
 
 func commandSetStatus(session *sessionState) {
