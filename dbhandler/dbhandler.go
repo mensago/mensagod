@@ -164,6 +164,8 @@ func Reset() error {
 		return err
 	}
 
+	// This code defines the schema for mensagod's database. If you modify this, be sure to update
+	// the schema in the integration test support code for Mensago Connect.
 	sqlCmds := []string{
 		`CREATE TABLE aliases(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
 				alias CHAR(292) NOT NULL);`,
@@ -172,12 +174,13 @@ func Reset() error {
 			id VARCHAR(36), source VARCHAR(36) NOT NULL, count INTEGER,
 			last_failure TIMESTAMP NOT NULL, lockout_until TIMESTAMP);`,
 
-		`CREATE TABLE iwkspc_folders(rowid BIGSERIAL PRIMARY KEY, wid char(36) NOT NULL,
-				serverpath VARCHAR(512) NOT NULL, clientpath VARCHAR(768) NOT NULL);`,
-
 		`CREATE TABLE iwkspc_devices(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
 				devid CHAR(36) NOT NULL, devkey VARCHAR(1000) NOT NULL,
+				devinfo VARCHAR(8192) NOT NULL,
 				lastlogin VARCHAR(32) NOT NULL, status VARCHAR(16) NOT NULL);`,
+
+		`CREATE TABLE iwkspc_folders(rowid BIGSERIAL PRIMARY KEY, wid char(36) NOT NULL,
+				serverpath VARCHAR(512) NOT NULL, clientpath VARCHAR(768) NOT NULL);`,
 
 		`CREATE TABLE keycards(rowid SERIAL PRIMARY KEY, owner VARCHAR(292) NOT NULL,
 				creationtime TIMESTAMP NOT NULL, index INTEGER NOT NULL,
