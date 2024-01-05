@@ -154,8 +154,38 @@ func commandGetDeviceInfo(session *sessionState) {
 	session.SendResponse(*response)
 }
 
-func commandRemoveDeviceInfo(session *sessionState) {
-	// TODO: Implement commandRemoveDeviceInfo
+func commandRemoveDevice(session *sessionState) {
+	// Command syntax:
+	// REMOVEDEVICE(Device-ID="")
+
+	if !session.RequireLogin() {
+		return
+	}
+
+	if session.Message.Validate([]string{"Device-ID"}) != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	devid, err := types.ToRandomID(session.Message.Data["Device-ID"])
+	if err != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad Device-ID")
+		return
+	}
+
+	exists, err := dbhandler.RemoveDevice(session.WID, devid)
+	if err != nil {
+		logging.Writef("commandSetDeviceInfo: error removing device %s for %s: %s",
+			devid.AsString(), session.WID.AsString(), err)
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "commandRemoveDevice.1")
+		return
+	}
+
+	if exists {
+		session.SendQuickResponse(200, "OK", "")
+	} else {
+		session.SendQuickResponse(404, "RESOURCE NOT FOUND", "Device not found")
+	}
 }
 
 func commandSend(session *sessionState) {

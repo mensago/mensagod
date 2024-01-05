@@ -231,8 +231,8 @@ func processCommand(session *sessionState) {
 		commandRegCode(session)
 	case "REGISTER":
 		commandRegister(session)
-	case "REMOVEDEVICEINFO":
-		commandRemoveDeviceInfo(session)
+	case "REMOVEDEVICE":
+		commandRemoveDevice(session)
 	case "RESETPASSWORD":
 		commandResetPassword(session)
 	case "RMDIR":
