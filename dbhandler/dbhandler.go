@@ -569,14 +569,34 @@ func CountDevices(wid types.RandomID) (int, error) {
 	return strconv.Atoi(countStr)
 }
 
-// GetDeviceStatus checks if a device has been added to a workspace.
+// GetDeviceInfo returns a device's encrypted client information
+func GetDeviceInfo(wid types.RandomID, devid types.RandomID) (string, error) {
+
+	row := dbConn.QueryRow(`SELECT devinfo FROM iwkspc_devices WHERE wid=$1 AND 
+		devid=$2`, wid.AsString(), devid.AsString())
+
+	var devInfo string
+	err := row.Scan(&devInfo)
+
+	switch err {
+	case sql.ErrNoRows:
+		return "", errors.New("device not found")
+	case nil:
+		return devInfo, nil
+	default:
+		return "", err
+	}
+}
+
+// GetDeviceStatus checks if a device has been added to a workspace and returns its status if
+// it exists.
 func GetDeviceStatus(wid types.RandomID, devid types.RandomID) (DeviceStatus, error) {
 
 	row := dbConn.QueryRow(`SELECT status FROM iwkspc_devices WHERE wid=$1 AND 
 		devid=$2`, wid.AsString(), devid.AsString())
 
-	var widStatus string
-	err := row.Scan(&widStatus)
+	var devStatus string
+	err := row.Scan(&devStatus)
 
 	switch err {
 	case sql.ErrNoRows:
@@ -587,7 +607,7 @@ func GetDeviceStatus(wid types.RandomID, devid types.RandomID) (DeviceStatus, er
 		return DeviceNotRegistered, err
 	}
 
-	switch widStatus {
+	switch devStatus {
 	case "active":
 		return DeviceRegistered, nil
 	case "blocked":
@@ -595,14 +615,34 @@ func GetDeviceStatus(wid types.RandomID, devid types.RandomID) (DeviceStatus, er
 	case "pending":
 		return DevicePending, nil
 	default:
-		return DeviceNotRegistered, errors.New("unknown device status " + widStatus)
+		return DeviceNotRegistered, errors.New("unknown device status " + devStatus)
+	}
+}
+
+// SetDeviceInfo updates a device's encrypted client info
+func SetDeviceInfo(wid types.RandomID, devid types.RandomID, info ezn.CryptoString) error {
+	_, err := dbConn.Exec(`UPDATE SET devinfo=$1 FROM iwkspc_devices WHERE wid=$2 AND 
+		devid=$3`, info.AsString(), wid.AsString(), devid.AsString())
+
+	switch err {
+	case sql.ErrNoRows:
+		return errors.New("device not found")
+	case nil:
+		return nil
+	default:
+		return err
 	}
 }
 
 // SetDeviceStatus updates a device's status
 func SetDeviceStatus(wid types.RandomID, devid types.RandomID, status DeviceStatus) error {
+	statusStr := DeviceStatusAsString(status)
+	if statusStr == "" {
+		return errors.New("bad device status")
+	}
+
 	_, err := dbConn.Exec(`UPDATE SET status=$1 FROM iwkspc_devices WHERE wid=$2 AND 
-		devid=$3`, wid.AsString(), devid.AsString())
+		devid=$3`, statusStr, wid.AsString(), devid.AsString())
 
 	switch err {
 	case sql.ErrNoRows:

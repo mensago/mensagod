@@ -314,7 +314,33 @@ func commandSendLarge(session *sessionState) {
 }
 
 func commandSetDeviceInfo(session *sessionState) {
-	// TODO: Implement commandSetDeviceInfo
+	// Command syntax:
+	// SETDEVICEINFO(devinfo)
+
+	if !session.RequireLogin() {
+		return
+	}
+
+	if session.Message.Validate([]string{"Device-Info"}) != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
+		return
+	}
+
+	var devInfo ezn.CryptoString
+	if err := devInfo.Set(session.Message.Data["Device-Info"]); err != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Device-Info must be a CryptoString")
+		return
+	}
+
+	err := dbhandler.SetDeviceInfo(session.WID, types.RandomID(session.DevID), devInfo)
+	if err != nil {
+		logging.Writef("commandSetDeviceInfo: error setting device info for %s: %s",
+			string(session.DevID), err)
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "commandSetDeviceInfo.1")
+		return
+	}
+
+	session.SendQuickResponse(200, "OK", "")
 }
 
 func commandSetStatus(session *sessionState) {
