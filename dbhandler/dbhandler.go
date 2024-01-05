@@ -569,23 +569,63 @@ func CountDevices(wid types.RandomID) (int, error) {
 	return strconv.Atoi(countStr)
 }
 
+type DeviceInfoPair struct {
+	DevID types.RandomID
+	Info  ezn.CryptoString
+}
+
 // GetDeviceInfo returns a device's encrypted client information
-func GetDeviceInfo(wid types.RandomID, devid types.RandomID) (string, error) {
+func GetDeviceInfo(wid types.RandomID, devidStr string) ([]DeviceInfoPair, error) {
 
-	row := dbConn.QueryRow(`SELECT devinfo FROM iwkspc_devices WHERE wid=$1 AND 
-		devid=$2`, wid.AsString(), devid.AsString())
+	var rows *sql.Rows
+	if devidStr != "" {
+		devid, err := types.ToRandomID(devidStr)
+		if err != nil {
+			return nil, err
+		}
 
-	var devInfo string
-	err := row.Scan(&devInfo)
+		rows, err = dbConn.Query(`SELECT devinfo FROM iwkspc_devices WHERE wid=$1 `+
+			`AND devid=$2`, wid.AsString(), devid.AsString())
+		if err != nil {
+			return nil, err
+		}
 
-	switch err {
-	case sql.ErrNoRows:
-		return "", errors.New("device not found")
-	case nil:
-		return devInfo, nil
-	default:
-		return "", err
+	} else {
+		var err error
+		rows, err = dbConn.Query(`SELECT devid,devinfo FROM iwkspc_devices WHERE wid=$1`)
+		if err != nil {
+			return nil, err
+		}
 	}
+	defer rows.Close()
+
+	out := make([]DeviceInfoPair, 1)
+	for rows.Next() {
+		var rawID, rawInfo string
+		err := rows.Scan(&rawID, &rawInfo)
+		switch err {
+		case sql.ErrNoRows:
+			return nil, errors.New("device not found")
+		case nil:
+			/* Move on to more processing */
+		default:
+			return nil, err
+		}
+
+		devid, err := types.ToRandomID(rawID)
+		if err != nil {
+			return nil, err
+		}
+
+		var devInfo ezn.CryptoString
+		err = devInfo.Set(rawInfo)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, DeviceInfoPair{devid, devInfo})
+	}
+
+	return out, nil
 }
 
 // GetDeviceStatus checks if a device has been added to a workspace and returns its status if

@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/viper"
 	ezn "gitlab.com/darkwyrm/goeznacl"
+	"gitlab.com/darkwyrm/gostringlist"
 	"gitlab.com/mensago/mensagod/dbhandler"
 	"gitlab.com/mensago/mensagod/fshandler"
 	"gitlab.com/mensago/mensagod/logging"
@@ -96,7 +97,61 @@ func commandIdle(session *sessionState) {
 }
 
 func commandGetDeviceInfo(session *sessionState) {
-	// TODO: Implement commandGetDeviceInfo
+	// Command syntax:
+	// GETDEVICEINFO(Device-ID="")
+
+	if !session.RequireLogin() {
+		return
+	}
+
+	devidStr, ok := session.Message.Data["Device-ID"]
+	if ok {
+		// Client has requested device info for just 1 device
+		devid, err := types.ToRandomID(devidStr)
+		if err != nil {
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad Device-ID")
+			return
+		}
+
+		devInfo, err := dbhandler.GetDeviceInfo(session.WID, devidStr)
+		if err != nil {
+			if err.Error() == "device not found" {
+				session.SendQuickResponse(404, "RESOURCE NOT FOUND", "Device not found")
+				return
+			}
+
+			logging.Writef("commandGetDeviceInfo: error getting device info for %s: %s",
+				string(devid), err)
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "commandGetDeviceInfo.1")
+			return
+		}
+
+		response := NewServerResponse(200, "OK")
+		response.Data["Device-Info"] = devInfo[0].Info.AsString()
+		session.SendResponse(*response)
+	}
+
+	devInfoList, err := dbhandler.GetDeviceInfo(session.WID, devidStr)
+	if err != nil {
+		if err.Error() == "device not found" {
+			session.SendQuickResponse(404, "RESOURCE NOT FOUND", "Device not found")
+			return
+		}
+
+		logging.Writef("commandGetDeviceInfo: error getting info for devices in wid %s: %s",
+			session.WID.AsString(), err)
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "commandGetDeviceInfo.2")
+		return
+	}
+
+	var idList gostringlist.StringList
+	response := NewServerResponse(200, "OK")
+	for _, infoPair := range devInfoList {
+		response.Data[infoPair.DevID.AsString()] = infoPair.Info.AsString()
+		idList.Append(infoPair.DevID.AsString())
+	}
+	response.Data["Devices"] = idList.Join(",")
+	session.SendResponse(*response)
 }
 
 func commandRemoveDeviceInfo(session *sessionState) {
