@@ -5,31 +5,15 @@ import (
 	"errors"
 	"time"
 
-	"github.com/spf13/viper"
 	ezn "gitlab.com/darkwyrm/goeznacl"
+	"gitlab.com/mensago/mensagod/config"
 	"gitlab.com/mensago/mensagod/dbhandler"
 	"gitlab.com/mensago/mensagod/kcresolver"
 	"gitlab.com/mensago/mensagod/logging"
 	"gitlab.com/mensago/mensagod/types"
 )
 
-//	{
-//	    "Type" : "sysmessage",
-//	    "Subtype" : "devrequest",
-//	    "Version" : "1.0",
-//	    "From" : "mensago-example.com",
-//	    "To" : "662679bd-3611-4d5e-a570-52812bdcc6f3/example.com",
-//	    "Date" : "2022-05-05T10:07:56Z",
-//	    "Format": "text",
-//	    "Subject" : "New Device Approval",
-//	    "Body" : "Time:2022-05-05T10:07:56Z\r\nExpires:2022-05-05T18:07:56Z\r\nIP:12.80.0.162\r\nLocation:Morristown, New Jersey\r\n",
-//	    "Attachments": [{
-//	        "Name": "deviceinfo",
-//	        "Type": "application/vnd.mensago.encrypted-json",
-//	        "Data": "CURVE25519:{UfJ=rOoXjUA-Q$rBMw<70Q{eK&ro?HYKGB$zPtG",
-//	    }]
-//	}
-func NewDeviceApproval(info messageInfo, devid types.RandomID) (SealedSysEnvelope, error) {
+func NewDeviceApproval(info MessageInfo, devid types.RandomID) (SealedSysEnvelope, error) {
 	var out SealedSysEnvelope
 
 	// TODO: Implement NewDeviceApproval()
@@ -37,13 +21,13 @@ func NewDeviceApproval(info messageInfo, devid types.RandomID) (SealedSysEnvelop
 	return out, errors.New("NewDeviceApproval unimplemented")
 }
 
-// NewSysMessage() is used to create system messages intended for delivery to a local user.
-func NewSysMessage(msgType string, info *messageInfo, subject string,
+// NewSysMessage() is used to create system messages intended for delivery to a local user. Note
+// that system messages can be sent to both local and remote recipients
+func NewSysMessage(msgType string, recipient types.WAddress, subject string,
 	body string) (SealedSysMessage, error) {
 
 	var out SealedSysMessage
 
-	orgDomain := viper.GetString("global.domain")
 	now := time.Now().UTC()
 	encPair, err := dbhandler.GetEncryptionPair()
 	if err != nil {
@@ -51,16 +35,11 @@ func NewSysMessage(msgType string, info *messageInfo, subject string,
 		return out, err
 	}
 
-	var addr types.MAddress
-	err = addr.Set(info.Sender)
+	var maddr = recipient.AsMAddress()
+	userCard, err := kcresolver.GetKeycard(maddr, "User")
 	if err != nil {
-		logging.Writef("NewSysMessage: invalid sender addres %s", info.Sender)
-		return out, err
-	}
-	userCard, err := kcresolver.GetKeycard(addr, "User")
-	if err != nil {
-		logging.Writef("NewSysMessage: unable to obtain keycard for sender %s: %s", info.Sender,
-			err.Error())
+		logging.Writef("NewSysMessage: unable to obtain keycard for recipient %s: %s",
+			recipient.AsString(), err.Error())
 		return out, err
 	}
 
@@ -68,8 +47,8 @@ func NewSysMessage(msgType string, info *messageInfo, subject string,
 	var userKeyString ezn.CryptoString
 	err = userKeyString.Set(rawUserKeyString)
 	if err != nil {
-		logging.Writef("NewSysMessage: error setting encryption key for sender %s: %s", info.Sender,
-			err.Error())
+		logging.Writef("NewSysMessage: error setting encryption key for recipient %s: %s",
+			recipient.AsString(), err.Error())
 		return out, err
 	}
 	userKey := ezn.NewEncryptionKey(userKeyString)
@@ -80,8 +59,8 @@ func NewSysMessage(msgType string, info *messageInfo, subject string,
 	msg.Version = "1.0"
 
 	receiver := RecipientInfo{
-		To:           info.Sender,
-		SenderDomain: orgDomain,
+		To:           recipient.AsString(),
+		SenderDomain: config.GServerDomain.AsString(),
 	}
 	rawJSON, err := json.Marshal(receiver)
 	if err != nil {
@@ -95,8 +74,8 @@ func NewSysMessage(msgType string, info *messageInfo, subject string,
 	}
 
 	sender := SenderInfo{
-		From:            orgDomain,
-		RecipientDomain: orgDomain,
+		From:            config.GServerAddress.AsString(),
+		RecipientDomain: recipient.GetDomain(),
 	}
 	rawJSON, err = json.Marshal(sender)
 	if err != nil {
@@ -115,16 +94,16 @@ func NewSysMessage(msgType string, info *messageInfo, subject string,
 	msgKey := ezn.GenerateSecretKey(ezn.PreferredSecretType())
 	encPayloadKey, err := userKey.Encrypt(msgKey.Key.RawData())
 	if err != nil {
-		logging.Writef("NewSysMessage: unable to encrypt payload key for sender %s: %s", info.Sender,
-			err.Error())
+		logging.Writef("NewSysMessage: unable to encrypt payload key for recipient %s: %s",
+			recipient.AsString(), err.Error())
 		return out, err
 	}
 	msg.PayloadKey = encPayloadKey
 	out.Envelope = msg
 
 	var payload MsgBody
-	payload.From = orgDomain
-	payload.To = info.Sender
+	payload.From = config.GServerAddress.AsString()
+	payload.To = recipient.AsString()
 	payload.Date = msg.Date
 	payload.ThreadID = types.RandomIDString()
 	payload.Subject = subject
@@ -132,15 +111,15 @@ func NewSysMessage(msgType string, info *messageInfo, subject string,
 
 	rawJSON, err = json.Marshal(payload)
 	if err != nil {
-		logging.Writef("NewSysMessage: unable to marshal payload for sender %s: %s", info.Sender,
-			err.Error())
+		logging.Writef("NewSysMessage: unable to marshal payload for recipient %s: %s",
+			recipient.AsString(), err.Error())
 		return out, err
 	}
 
 	encryptedPayload, err := msgKey.Encrypt(rawJSON)
 	if err != nil {
-		logging.Writef("NewSysMessage: unable to encrypt payload for sender %s: %s", info.Sender,
-			err.Error())
+		logging.Writef("NewSysMessage: unable to encrypt payload for recipient %s: %s",
+			recipient.AsString(), err.Error())
 		return out, err
 	}
 	out.Payload = encryptedPayload
