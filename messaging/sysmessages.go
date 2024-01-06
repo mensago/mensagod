@@ -2,7 +2,8 @@ package messaging
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
+	"net"
 	"time"
 
 	ezn "gitlab.com/darkwyrm/goeznacl"
@@ -13,12 +14,18 @@ import (
 	"gitlab.com/mensago/mensagod/types"
 )
 
-func NewDeviceApproval(info MessageInfo, devid types.RandomID) (SealedSysEnvelope, error) {
-	var out SealedSysEnvelope
+func NewDeviceApproval(wid types.RandomID, devid types.RandomID,
+	addr net.Addr) (SealedSysMessage, error) {
 
-	// TODO: Implement NewDeviceApproval()
+	userAddr, err := dbhandler.ResolveWID(wid)
+	if err != nil {
+		return SealedSysMessage{}, err
+	}
 
-	return out, errors.New("NewDeviceApproval unimplemented")
+	body := fmt.Sprintf("Timestamp:%s\r\nIP-Address:%s\r\n",
+		time.Now().UTC().Format("2006-01-02 03:04:05"), addr.String())
+
+	return NewSysMessage("devrequest", userAddr, "New Device Login", body)
 }
 
 // NewSysMessage() is used to create system messages intended for delivery to a local user. Note
