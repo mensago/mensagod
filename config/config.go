@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 
 	"github.com/everlastingbeta/diceware"
 	"github.com/everlastingbeta/diceware/wordlist"
 	"github.com/spf13/viper"
 	"gitlab.com/mensago/mensagod/logging"
+	"gitlab.com/mensago/mensagod/types"
 )
 
 var gSetupInit bool
@@ -20,6 +20,8 @@ type commandLineOptions struct {
 }
 
 var StartupConfig commandLineOptions
+var GServerDomain types.DomainT
+var GServerAddress types.WAddress
 
 // SetupConfig initializes and loads the server's global configuration options
 func SetupConfig() diceware.Wordlist {
@@ -192,13 +194,13 @@ func SetupConfig() diceware.Wordlist {
 		os.Exit(1)
 	}
 
-	pattern := regexp.MustCompile("([a-zA-Z0-9]+\x2E)+[a-zA-Z0-9]+")
-	if viper.GetString("global.domain") == "" ||
-		!pattern.MatchString(viper.GetString("global.domain")) {
+	if GServerDomain.Set(viper.GetString("global.domain")) != nil {
 		logging.Write("Missing or invalid domain in config file. Exiting.")
 		logging.Shutdown()
 		os.Exit(1)
 	}
+
+	GServerAddress.Set("00000000-0000-0000-0000-000000000000/" + GServerDomain.AsString())
 
 	switch viper.GetString("global.registration") {
 	case "private", "public", "network", "moderated":
