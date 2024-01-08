@@ -129,7 +129,7 @@ func NewSysMessage(msgType string, recipient types.WAddress, subject string,
 			recipient.AsString(), err.Error())
 		return out, err
 	}
-	out.Payload = encryptedPayload
+	out.Payload = ezn.NewCS(encryptedPayload)
 
 	return out, nil
 }

@@ -1,6 +1,9 @@
 package messaging
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
 	"regexp"
 	"strings"
 	"sync"
@@ -36,7 +39,7 @@ type Envelope struct {
 
 type SealedSysMessage struct {
 	Envelope SealedSysEnvelope
-	Payload  string
+	Payload  ezn.CryptoString
 }
 
 type RecipientInfo struct {
@@ -181,4 +184,18 @@ func GetOrgVerificationKey(domain string) (ezn.CryptoString, error) {
 	// TODO: POSTDEMO: Implement getting keys for external servers
 
 	return ezn.CryptoString{}, misc.ErrUnimplemented
+}
+
+func (sm SealedSysMessage) Write(w io.Writer) (int, error) {
+	rawJSON, err := json.Marshal(sm.Envelope)
+	if err != nil {
+		return 0, err
+	}
+
+	bytesWritten, err := w.Write([]byte(fmt.Sprintf("MENSAGO\r\n%s\r\n----------\r\n"+
+		"%s\r\n%s\r\n", rawJSON, sm.Payload.Prefix, sm.Payload.Data)))
+	if err != nil {
+		return bytesWritten, err
+	}
+	return bytesWritten, nil
 }
