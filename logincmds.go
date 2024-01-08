@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -86,7 +87,7 @@ func commandDevice(session *sessionState) {
 		devCount, err := dbhandler.CountDevices(session.WID)
 		if err != nil {
 			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "commandDevice.3")
-			logging.Writef("commandDevKey: error counting devices: %s", err.Error())
+			logging.Writef("commandDevice: error counting devices: %s", err.Error())
 			return
 		}
 
@@ -98,6 +99,50 @@ func commandDevice(session *sessionState) {
 
 		// 2) If there are multiple devices, push out an approval request.
 		// TODO: construct and deliver approval request in commandDevice()
+		approval, err := messaging.NewDeviceApproval(session.WID, devid,
+			session.Connection.RemoteAddr())
+		if err != nil {
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "commandDevice.4")
+			logging.Writef("commandDevice: error creating device approval message "+
+				"for workspace %s: %s", session.WID, err.Error())
+			return
+		}
+
+		fsp := fshandler.GetFSProvider()
+		var tempHandle *os.File
+		var tempName string
+		tempHandle, tempName, err = fsp.MakeTempFile(session.WID.AsString())
+		if err != nil {
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+			return
+		}
+
+		_, err = approval.Write(tempHandle)
+		if err != nil {
+			logging.Writef("commandDevice: error saving message %s: %s", tempName, err.Error())
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR",
+				"Error saving message during device authentication")
+			return
+		}
+
+		tempHandle.Close()
+
+		address, err := dbhandler.ResolveWID(session.WID)
+		if err != nil {
+			logging.Writef("commandDevice: Unable to resolve WID %s", err)
+			fsp.DeleteTempFile(session.WID.AsString(), tempName)
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		}
+
+		tempName, err = fsp.InstallTempFile(session.WID.AsString(), tempName, "/ out")
+		if err != nil {
+			logging.Writef("commandDevice: error installing temp file %s: %s", tempName, err.Error())
+			session.SendQuickResponse(300, "INTERNAL SERVER ERROR",
+				"Error moving message to delivery queue")
+			return
+		}
+
+		messaging.PushMessage(address.AsString(), address.Domain.AsString(), "/ out "+tempName)
 
 		// 3) Record the device ID in the table as a pending device and return status code
 		dbhandler.AddDevice(session.WID, devid, devkey, "pending")
@@ -111,7 +156,7 @@ func commandDevice(session *sessionState) {
 	fsp := fshandler.GetFSProvider()
 	exists, err := fsp.Exists("/ wsp " + session.WID.AsString())
 	if err != nil {
-		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
+		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "commandDevice.5")
 		return
 	}
 	if !exists {
