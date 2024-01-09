@@ -83,7 +83,19 @@ func commandDevice(session *sessionState) {
 		}
 	case dbhandler.DeviceNotRegistered:
 
-		// 1) Check to see if the workspace has any devices registered.
+		// 1) Get the device information
+		_, exists := session.Message.Data["Device-Info"]
+		if !exists {
+			session.SendQuickResponse(400, "BAD REQUEST", "Device-Info field required for new devices")
+			return
+		}
+		var devinfo ezn.CryptoString
+		if devinfo.Set(session.Message.Data["Device-Info"]) != nil {
+			session.SendQuickResponse(400, "BAD REQUEST", "Bad Device-Info")
+			return
+		}
+
+		// 2) Check to see if the workspace has any devices registered.
 		devCount, err := dbhandler.CountDevices(session.WID)
 		if err != nil {
 			session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "commandDevice.3")
@@ -93,11 +105,11 @@ func commandDevice(session *sessionState) {
 
 		// There aren't any, add the device and move on to the client challenge phase
 		if devCount == 0 {
-			dbhandler.AddDevice(session.WID, devid, devkey, "active")
+			dbhandler.AddDevice(session.WID, devid, devkey, devinfo, "active")
 			break
 		}
 
-		// 2) If there are multiple devices, push out an approval request.
+		// 3) If there are multiple devices, push out an approval request.
 		// TODO: construct and deliver approval request in commandDevice()
 		approval, err := messaging.NewDeviceApproval(session.WID, devid,
 			session.Connection.RemoteAddr())
@@ -144,8 +156,8 @@ func commandDevice(session *sessionState) {
 
 		messaging.PushMessage(address.AsString(), address.Domain.AsString(), "/ out "+tempName)
 
-		// 3) Record the device ID in the table as a pending device and return status code
-		dbhandler.AddDevice(session.WID, devid, devkey, "pending")
+		// 4) Record the device ID in the table as a pending device and return status code
+		dbhandler.AddDevice(session.WID, devid, devkey, devinfo, "pending")
 		session.SendQuickResponse(105, "APPROVAL REQUIRED", "New device requires approval")
 		return
 	}

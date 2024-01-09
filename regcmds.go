@@ -177,12 +177,12 @@ func commandPreregister(session *sessionState) {
 func commandRegCode(session *sessionState) {
 	// command syntax:
 	// REGCODE(User-ID, Reg-Code, Password-Hash, Password-Algorithm, Device-ID, Device-Key,
-	//     Password-Salt="", Password-Parameters="", Domain="")
+	//     Device-Info, Password-Salt="", Password-Parameters="", Domain="")
 	// REGCODE(Workspace-ID, Reg-Code, Password-Hash, Password-Algorithm, Device-ID, Device-Key,
-	//     Password-Salt="", Password-Parameters="", Domain="")
+	//     Device-Info, Password-Salt="", Password-Parameters="", Domain="")
 
 	if session.Message.Validate([]string{"Reg-Code", "Password-Hash", "Password-Algorithm",
-		"Device-ID", "Device-Key"}) != nil {
+		"Device-ID", "Device-Key", "Device-Info"}) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
@@ -196,6 +196,12 @@ func commandRegCode(session *sessionState) {
 	regCodeLen := utf8.RuneCountInString(session.Message.Data["Reg-Code"])
 	if regCodeLen > 128 || regCodeLen < 16 {
 		session.SendQuickResponse(400, "BAD REQUEST", "Invalid reg code")
+		return
+	}
+
+	var devinfo ezn.CryptoString
+	if devinfo.Set(session.Message.Data["Device-Info"]) != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad Device-Info")
 		return
 	}
 
@@ -322,7 +328,7 @@ func commandRegCode(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.AddDevice(wid, devid, devkey, "active")
+	err = dbhandler.AddDevice(wid, devid, devkey, devinfo, "active")
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "RegCode.4")
 		logging.Writef("Internal server error. commandRegCode.AddDevice. Error: %s\n", err)
@@ -348,7 +354,7 @@ func commandRegister(session *sessionState) {
 	//     User-ID="", Type="", Password-Salt="", PasswordParameters="")
 
 	if session.Message.Validate([]string{"Workspace-ID", "Password-Hash", "Password-Algorithm",
-		"Device-ID", "Device-Key"}) != nil {
+		"Device-ID", "Device-Key", "Device-Info"}) != nil {
 		session.SendQuickResponse(400, "BAD REQUEST", "Missing required field")
 		return
 	}
@@ -362,6 +368,12 @@ func commandRegister(session *sessionState) {
 	devid, err := types.ToRandomID(session.Message.Data["Device-ID"])
 	if err != nil || !devid.IsValid() {
 		session.SendQuickResponse(400, "BAD REQUEST", "Invalid Device-ID")
+		return
+	}
+
+	var devinfo ezn.CryptoString
+	if devinfo.Set(session.Message.Data["Device-Info"]) != nil {
+		session.SendQuickResponse(400, "BAD REQUEST", "Bad Device-Info")
 		return
 	}
 
@@ -503,7 +515,7 @@ func commandRegister(session *sessionState) {
 		return
 	}
 
-	err = dbhandler.AddDevice(wid, devid, devkey, "active")
+	err = dbhandler.AddDevice(wid, devid, devkey, devinfo, "active")
 	if err != nil {
 		session.SendQuickResponse(300, "INTERNAL SERVER ERROR", "")
 		logging.Writef("Internal server error. commandRegister.AddDevice. Error: %s\n", err)

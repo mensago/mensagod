@@ -527,13 +527,14 @@ func CheckPassword(wid types.RandomID, password string) (bool, error) {
 // AddDevice is used for adding a device to a workspace. The initial last login is set to when
 // this method is called because a new device is only at certain times, such as at registration
 // or when a user logs into a workspace on a new device.
-func AddDevice(wid types.RandomID, devid types.RandomID, devkey ezn.CryptoString, status string) error {
+func AddDevice(wid types.RandomID, devid types.RandomID, devkey ezn.CryptoString,
+	devinfo ezn.CryptoString, status string) error {
 	timestamp := fmt.Sprintf("%d", time.Now().UTC().Unix())
 	var err error
-	sqlStatement := `INSERT INTO iwkspc_devices(wid, devid, devkey, lastlogin, status) ` +
-		`VALUES($1, $2, $3, $4, $5)`
+	sqlStatement := `INSERT INTO iwkspc_devices(wid, devid, devkey, lastlogin, devinfo, status) ` +
+		`VALUES($1, $2, $3, $4, $5, $6)`
 	_, err = dbConn.Exec(sqlStatement, wid.AsString(), devid.AsString(), devkey.AsString(),
-		timestamp, status)
+		timestamp, devinfo.AsString(), status)
 	if err != nil {
 		return err
 	}
