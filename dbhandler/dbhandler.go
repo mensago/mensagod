@@ -1018,6 +1018,10 @@ func GetUserKeycard(wid types.RandomID) (keycard.Keycard, error) {
 	out.Entries = make([]keycard.Entry, 0)
 
 	err := loadKeycardEntries(&out, wid.AsString())
+	if len(out.Entries) == 0 {
+		return out, misc.ErrNotFound
+	}
+
 	return out, err
 }
 
@@ -1028,6 +1032,10 @@ func GetOrgKeycard() (keycard.Keycard, error) {
 	out.Entries = make([]keycard.Entry, 0)
 
 	err := loadKeycardEntries(&out, "organization")
+	if len(out.Entries) == 0 {
+		return out, misc.ErrNotFound
+	}
+
 	return out, err
 }
 
