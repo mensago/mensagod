@@ -110,7 +110,6 @@ func commandDevice(session *sessionState) {
 		}
 
 		// 3) If there are multiple devices, push out an approval request.
-		// TODO: construct and deliver approval request in commandDevice()
 		approval, err := messaging.NewDeviceApproval(session.WID, devid,
 			session.Connection.RemoteAddr())
 		if err != nil {
