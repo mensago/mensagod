@@ -36,13 +36,29 @@ func NewSysMessage(msgType string, recipient types.WAddress, subject string,
 	var out SealedSysMessage
 
 	now := time.Now().UTC()
-	encPair, err := dbhandler.GetEncryptionPair()
+	sendingServerPair, err := dbhandler.GetEncryptionPair()
 	if err != nil {
 		logging.Writef("NewSysMessage: unable to get org encryption pair: %s", err.Error())
 		return out, err
 	}
 
 	var maddr = recipient.AsMAddress()
+	recipientOrgCard, err := kcresolver.GetKeycard(maddr, "Organization")
+	if err != nil {
+		logging.Writef("NewSysMessage: unable to obtain keycard for recipient %s's organization: %s",
+			recipient.AsString(), err.Error())
+		return out, err
+	}
+	rawOrgKeyString := recipientOrgCard.Entries[len(recipientOrgCard.Entries)-1].Fields["Encryption-Key"]
+	var orgKeyString ezn.CryptoString
+	err = orgKeyString.Set(rawOrgKeyString)
+	if err != nil {
+		logging.Writef("NewSysMessage: error setting encryption key for recipient %s's organization: %s",
+			recipient.AsString(), err.Error())
+		return out, err
+	}
+	orgKey := ezn.NewEncryptionKey(orgKeyString)
+
 	userCard, err := kcresolver.GetKeycard(maddr, "User")
 	if err != nil {
 		logging.Writef("NewSysMessage: unable to obtain keycard for recipient %s: %s",
@@ -74,7 +90,7 @@ func NewSysMessage(msgType string, recipient types.WAddress, subject string,
 		logging.Writef("NewSysMessage: unable to marshal receiver info: %s", err.Error())
 		return out, err
 	}
-	msg.Receiver, err = encPair.Encrypt([]byte(rawJSON))
+	msg.Receiver, err = orgKey.Encrypt([]byte(rawJSON))
 	if err != nil {
 		logging.Writef("NewSysMessage: unable to encrypt receiver info: %s", err.Error())
 		return out, err
@@ -89,7 +105,7 @@ func NewSysMessage(msgType string, recipient types.WAddress, subject string,
 		logging.Writef("NewSysMessage: unable to marshal sender info: %s", err.Error())
 		return out, err
 	}
-	msg.Sender, err = encPair.Encrypt([]byte(rawJSON))
+	msg.Sender, err = sendingServerPair.Encrypt([]byte(rawJSON))
 	if err != nil {
 		logging.Writef("NewSysMessage: unable to encrypt sender info: %s", err.Error())
 		return out, err
