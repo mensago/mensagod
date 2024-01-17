@@ -4,7 +4,6 @@ import keznacl.BadValueException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -54,22 +53,20 @@ class Server private constructor(val config: ServerConfig) {
         }
         println("Listening on port ${config.getString("network.port")}")
 
-        runBlocking {
-            while (true) {
-                val conn = try { listener.accept() }
-                catch (e: IOException) {
-                    logWarn("Failure to accept connection: $e")
-                    continue
-                }
-
-                val id = clientPool.add()
-                if (id == null) {
-                    sendGreeting(conn, 303, "SERVER UNAVAILABLE")
-                    continue
-                }
-
-                scope.launch { connectionWorker(conn, id) }
+        while (true) {
+            val conn = try { listener.accept() }
+            catch (e: IOException) {
+                logWarn("Failure to accept connection: $e")
+                continue
             }
+
+            val id = clientPool.add()
+            if (id == null) {
+                sendGreeting(conn, 303, "SERVER UNAVAILABLE")
+                continue
+            }
+
+            scope.launch { connectionWorker(conn, id) }
         }
 
         // TODO: implement graceful server shutdown
