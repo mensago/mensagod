@@ -1,12 +1,12 @@
 # mensagod: server-side daemon for the [Mensago](https://mensago.org) online communications platform
 
-mensagod provides identity services and data storage and synchronization for Mensago client applications. It is written in Go and is released under the MIT license. 
+**mensagod** (pronounced *mehn-sa-go-DEE*) provides identity services and data storage and synchronization for Mensago client applications. It is written in Go and is released under the MIT license. 
 
 ## Description
 
-This is the reference implementation of the server for the Mensago platform. Its role is to provide message delivery services and user device synchronization.
+This is the reference implementation of the server for the Mensago platform. Its role is to provide strong identity assurances, digital certificate hosting, message delivery services, and user device synchronization.
 
-The server daemon isn't dramatically different from other database-based applications. It sits on top of PostgreSQL, runs as a non-privileged user, stores files in a dedicated directory, and listens on the network. The main server code is written in Go, but ancillary utilities are written in Python to keep the build simple.
+The server daemon isn't dramatically different from other database-based applications. It sits on top of PostgreSQL, runs as a non-privileged user, stores files in a dedicated directory, and listens on the network. The main server code was written in Go, but is currently being rewritten in Kotlin for a number of reasons, among them, stability.
 
 ## Contributing
 
@@ -18,7 +18,7 @@ Mensago itself is a very young, very ambitious project that needs help in all so
 
 Although the final product will have a very polished install experience, development setup is a bit more involved.
 
-#### Prerequisites
+#### Prerequisites -- main branch (Go)
 
 - Supported version of the Go SDK
 - A currently-supported version of PostgreSQL.
@@ -34,10 +34,17 @@ Although the final product will have a very polished install experience, develop
 
 ## Current Status and Roadmap
 
-As of 10/2023, mensagod is developed enough to provide local message delivery and basic file synchronization. To reduce maintenance workload, the Python-based integration tests have been deprecated in favor of the Kotlin-based ones packaged with [Mensago Connect](https://gitlab.com/mensago/connect). Because development is just one person as of this writing, the current focus is on the client side until it has caught up sufficiently to warrant the finish work on mensagod.
+As of 1/2024, the version in the main branch is developed enough to provide local message delivery and basic file synchronization, but isn't entirely stable or well-tested, despite efforts otherwise. The Kotlin rewrite reuses a lot of well-tested code from [Mensago Connect](https://gitlab.com/mensago/connect) and was started specifically because:
 
-Some of the remaining tasks to bring mensagod to a complete 1.0 status:
+- Go has a nasty tendency for runtime errors
+- Its error-handling leaves a lot to be desired
+- Seems to have a fair amount of boilerplate
+- Unit and integration testing capabilities are quite barebones out of the box
+
+The goal is to write a stable, more-polished version which has feature parity.
+
+Some of the remaining tasks to bring mensagod to a complete 1.0 status. A few features needed beyond the Go version's implementation level include: 
 
 - Message delivery between servers
-- Device checking
+- Device management
 - Finish key lifecycle (rotation, revocation, etc.)
