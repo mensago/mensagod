@@ -1,9 +1,7 @@
 package mensagod.dbcmds
 
 import keznacl.EmptyDataException
-import libkeycard.Domain
-import libkeycard.RandomID
-import libkeycard.UserID
+import libkeycard.*
 import mensagod.DBConn
 import mensagod.NotConnectedException
 import mensagod.ResourceExistsException
@@ -37,4 +35,21 @@ fun preregWorkspace(wid: RandomID, userID: UserID?, domain: Domain, reghash: Str
         throw ResourceExistsException("Workspace-ID $wid already exists")
     db.execute("""INSERT INTO prereg(wid, domain, regcode) VALUES(?,?,?)""", wid, domain,
         reghash)
+}
+
+/**
+ * deletePrereg removes preregistration data from the database.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ */
+fun deletePrereg(addr: MAddress) {
+    val db = DBConn()
+    if (addr.userid.type == IDType.WorkspaceID) {
+        db.execute("DELETE FROM prereg WHERE wid=? AND domain=? AND regcode=?", addr.userid,
+            addr.domain)
+    } else {
+        db.execute("DELETE FROM prereg WHERE uid=? AND domain=? AND regcode=?", addr.userid,
+            addr.domain)
+    }
 }
