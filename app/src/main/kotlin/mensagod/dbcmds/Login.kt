@@ -45,11 +45,8 @@ fun preregWorkspace(wid: RandomID, userID: UserID?, domain: Domain, reghash: Str
  */
 fun deletePrereg(addr: MAddress) {
     val db = DBConn()
-    if (addr.userid.type == IDType.WorkspaceID) {
-        db.execute("DELETE FROM prereg WHERE wid=? AND domain=? AND regcode=?", addr.userid,
-            addr.domain)
-    } else {
-        db.execute("DELETE FROM prereg WHERE uid=? AND domain=? AND regcode=?", addr.userid,
-            addr.domain)
-    }
+    if (addr.userid.type == IDType.WorkspaceID)
+        db.execute("DELETE FROM prereg WHERE wid=? AND domain=?", addr.userid, addr.domain)
+    else
+        db.execute("DELETE FROM prereg WHERE uid=? AND domain=?", addr.userid, addr.domain)
 }

@@ -1,8 +1,11 @@
 package mensagod.dbcmds
 
+import libkeycard.MAddress
 import libkeycard.RandomID
 import libkeycard.UserID
 import mensagod.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
@@ -12,21 +15,43 @@ class DBLoginCmdTest {
         val config = ServerConfig.load()
         setupTest(config)
         DBConn.initialize(config)
-        val dbConn = DBConn().connect().getConnection()!!
-        val serverData = initServer(dbConn)
+        val db = DBConn().connect()
+        val serverData = initServer(db.getConnection()!!)
 
         val newWID = RandomID.fromString("94fd481f-6b1c-459b-ada7-5f32b3a1bbf3")!!
-        val newUID = UserID.fromString("csimons")
+        val newWID2 = RandomID.fromString("793e9e33-5c6b-4b6a-8f56-ef64e7db2c21")!!
+        val newUID = UserID.fromString("csimons")!!
         val supportWID = RandomID.fromString(serverData["support_wid"])!!
         val supportUID = UserID.fromString("support")
         val domain = gServerDomain
         assertThrows<ResourceExistsException> {
-            preregWorkspace(supportWID, null, domain, "foobar")
+            preregWorkspace(supportWID, null, domain, "foo")
         }
         assertThrows<ResourceExistsException> {
-            preregWorkspace(supportWID, supportUID, domain, "foobar")
+            preregWorkspace(supportWID, supportUID, domain, "bar")
         }
 
-        // TODO: Finish preregWorkspaceTest
+        preregWorkspace(newWID, newUID, domain, "baz")
+        var rs = db.query("SELECT wid,uid,domain,regcode FROM prereg WHERE wid=?", newWID)
+        assert(rs.next())
+        assertEquals(newWID.toString(), rs.getString("wid"))
+        assertEquals(newUID.toString(), rs.getString("uid"))
+        assertEquals(domain.toString(), rs.getString("domain"))
+        assertEquals("baz", rs.getString("regcode"))
+
+        assertThrows<ResourceExistsException> {
+            preregWorkspace(newWID, newUID, domain, "spam")
+        }
+
+        deletePrereg(MAddress.fromParts(newUID, domain))
+        preregWorkspace(newWID, newUID, domain, "baz")
+
+        preregWorkspace(newWID2, null, domain, "eggs")
+        rs = db.query("SELECT wid,uid,domain,regcode FROM prereg WHERE wid=?", newWID2)
+        assert(rs.next())
+        assertEquals(newWID2.toString(), rs.getString("wid"))
+        assertNull(rs.getString("uid"))
+        assertEquals(domain.toString(), rs.getString("domain"))
+        assertEquals("eggs", rs.getString("regcode"))
     }
 }

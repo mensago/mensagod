@@ -86,7 +86,7 @@ fun resetDB(config: ServerConfig): Connection {
     // Preregistration information. Entries are removed upon successful account registration.
     stmt.addBatch(
         """CREATE TABLE prereg(rowid SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE,
-        uid VARCHAR(128) NOT NULL, domain VARCHAR(255) NOT NULL, regcode VARCHAR(128));"""
+        uid VARCHAR(128), domain VARCHAR(255) NOT NULL, regcode VARCHAR(128));"""
     )
 
     // Disk quota tracking
