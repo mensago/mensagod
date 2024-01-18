@@ -72,5 +72,16 @@ fun checkWorkspace(wid: RandomID): WorkspaceStatus? {
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun resolveUserID(uid: UserID): RandomID? {
-    TODO("Implement resolveUserID")
+    val db = DBConn()
+
+    for (table in listOf("workspaces", "prereg")) {
+        val rs = db.query("""SELECT wid FROM $table WHERE uid=?""", uid)
+        if (rs.next()) {
+            val widStr = rs.getString("wid")
+            return RandomID.fromString(widStr)
+                ?: throw DatabaseCorruptionException("Bad workspace ID '$widStr' for userID $uid")
+        }
+    }
+
+    return null
 }
