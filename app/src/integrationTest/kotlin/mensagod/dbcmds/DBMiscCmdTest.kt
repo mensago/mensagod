@@ -6,7 +6,7 @@ import mensagod.initServer
 import mensagod.setupTest
 import org.junit.jupiter.api.Test
 
-class DBLoginCmdTest {
+class DBMiscCmdTest {
     @Test
     fun keypairTest() {
         val config = ServerConfig.load()
