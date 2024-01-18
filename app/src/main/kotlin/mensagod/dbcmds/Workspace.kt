@@ -1,6 +1,7 @@
 package mensagod.dbcmds
 
 import libkeycard.RandomID
+import libkeycard.UserID
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
 import mensagod.NotConnectedException
@@ -63,3 +64,13 @@ fun checkWorkspace(wid: RandomID): WorkspaceStatus? {
     return null
 }
 
+/**
+ * resolveUserID attempts to return the RandomID corresponding to the specified UserID. If it does
+ * not exist, null is returned.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ */
+fun resolveUserID(uid: UserID): RandomID? {
+    TODO("Implement resolveUserID")
+}
