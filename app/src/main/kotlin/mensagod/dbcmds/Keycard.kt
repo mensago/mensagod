@@ -1,8 +1,6 @@
 package mensagod.dbcmds
 
-import libkeycard.IDType
-import libkeycard.MAddress
-import libkeycard.RandomID
+import libkeycard.*
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
 import mensagod.NotConnectedException
@@ -31,4 +29,21 @@ fun resolveAddress(addr: MAddress): RandomID? {
 
     return RandomID.fromString(rs.getString("wid"))
         ?: throw DatabaseCorruptionException("Bad wid '${rs.getString("wid")}' for address $addr")
+}
+
+/**
+ * resolveWID returns a full workspace address given the workspace ID component
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ */
+fun resolveWID(wid: RandomID): WAddress? {
+    val db = DBConn()
+    val rs = db.query("""SELECT domain FROM workspaces WHERE wid=?""", wid)
+    if (!rs.next()) return null
+
+    val dom = Domain.fromString(rs.getString("domain"))
+        ?: throw DatabaseCorruptionException("Bad domain '${rs.getString("domain")}' "+
+            "for workspace ID $wid")
+    return WAddress.fromParts(wid, dom)
 }
