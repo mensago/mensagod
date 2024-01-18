@@ -66,12 +66,36 @@ class ClientSession(val conn: Socket) {
             }
         }
 
-        val tempDom = UserID.fromString(message.data[field])
-        if (tempDom == null) {
+        val tempUID = UserID.fromString(message.data[field])
+        if (tempUID == null) {
             ServerResponse(400, "BAD REQUEST", "Bad $field").send(conn)
             return null
         }
-        return tempDom
+        return tempUID
+    }
+
+    /**
+     * Validator function which gets a RandomID from the specified field. All error states for the
+     * field are handled internally, so if null is returned, the caller need not do anything else.
+     * If the value is not required to be present, a default value may be specified, as well.
+     */
+    fun getRandomID(field: String, required: Boolean, default: RandomID? = null): RandomID? {
+        if (!message.hasField(field)) {
+            return if (required) {
+                ServerResponse(400, "BAD REQUEST",
+                    "Required field missing: $field").send(conn)
+                return null
+            } else {
+                default
+            }
+        }
+
+        val tempWID = RandomID.fromString(message.data[field])
+        if (tempWID == null) {
+            ServerResponse(400, "BAD REQUEST", "Bad $field").send(conn)
+            return null
+        }
+        return tempWID
     }
 
     /**
