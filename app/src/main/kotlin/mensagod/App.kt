@@ -1,9 +1,6 @@
 package mensagod
 
 import keznacl.BadValueException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -37,7 +34,6 @@ data class ServerGreeting(@SerialName("Name") val name: String,
  */
 class Server private constructor(val config: ServerConfig) {
 
-    private val scope = CoroutineScope(Dispatchers.IO)
     private var clientPool = WorkerPool()
 
     /** Starts the server execution loop */
@@ -66,7 +62,7 @@ class Server private constructor(val config: ServerConfig) {
                 continue
             }
 
-            scope.launch { connectionWorker(conn, id) }
+            Thread.ofVirtual().start { connectionWorker(conn, id) }
         }
 
         // TODO: implement graceful server shutdown

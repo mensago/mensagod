@@ -2,8 +2,6 @@ package mensagod.commands
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import mensagod.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -19,9 +17,9 @@ class CommandTest(private val request: ClientRequest,
     private val srvSocket = ServerSocket(0)
 
     fun run() {
-        scope.launch { serverWorker(srvSocket, request) }
-        scope.launch {
-            delay(100)
+        Thread.ofVirtual().start { serverWorker(srvSocket, request) }
+        Thread.ofVirtual().start {
+            Thread.sleep(1000)
             clientCode(srvSocket.localPort)
         }
     }
