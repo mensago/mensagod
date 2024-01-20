@@ -154,13 +154,10 @@ class ServerConfig {
                 return numMsg
         }
 
-        if (values["security.certified_algorithms"] !is Boolean)
-            return "security.certified_algorithms must be either true or false"
-
         val stringKeys = listOf("database.ip", "database.port", "database.name", "database.user",
             "database.password", "global.domain", "global.top_dir", "global.workspace_dir",
             "global.registration", "global.registration_subnet", "global.registration_subnet6",
-            "global.log_dir", "network.listen_ip", "network.port", "security.diceware_wordlist")
+            "global.log_dir", "network.listen_ip", "network.port")
 
         for (key in stringKeys) {
             if (values[key] !is String)
