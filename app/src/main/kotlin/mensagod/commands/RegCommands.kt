@@ -1,11 +1,11 @@
 package mensagod.commands
 
+import keznacl.Argon2idPassword
 import libkeycard.RandomID
-import mensagod.ClientSession
+import mensagod.*
 import mensagod.dbcmds.checkWorkspace
+import mensagod.dbcmds.preregWorkspace
 import mensagod.dbcmds.resolveUserID
-import mensagod.gServerDomain
-import mensagod.logError
 
 // PREREG(User-ID="", Workspace-ID="",Domain="")
 fun commandPreregister(state: ClientSession) {
@@ -30,7 +30,7 @@ fun commandPreregister(state: ClientSession) {
             }
             return
         }
-        wid
+        uid
     } else null
 
     val outWID = if (wid != null) {
@@ -71,6 +71,28 @@ fun commandPreregister(state: ClientSession) {
 
     // Now that we've gone through the pain of covering for missing arguments and validating the
     // ones that actually exist, preregister the account.
+    val regcode = gRegCodeGenerator.getPassphrase(
+        ServerConfig.get().getInteger("security.diceware_wordcount"))
+    val reghash = Argon2idPassword().updateHash("regcode").getOrElse {
+        logError("commandPreregister.hashRegCode exception: $it")
+        ServerResponse.sendInternalError("registration code hashing error", state.conn)
+        return
+    }
 
-    // TODO: Finish commandPreregister
+    try { preregWorkspace(outWID, outUID, outDom, reghash) }
+    catch (e: Exception) {
+        logError("commandPreregister.preregWorkspace exception: $e")
+        ServerResponse.sendInternalError("preregistration error", state.conn)
+    }
+
+    // TODO: commandPreregister(): create workspace directory if it doesn't exist.
+    // Depends on FSProvider class implementation
+
+    val resp = ServerResponse(200, "OK", "", mutableMapOf(
+        "Workspace-ID" to outWID.toString(),
+        "Domain" to outDom.toString(),
+        "Reg-Code" to regcode,
+    ))
+    if (outUID != null) resp.data["User-ID"] = outUID.toString()
+    resp.send(state.conn)
 }

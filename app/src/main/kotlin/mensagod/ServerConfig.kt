@@ -12,6 +12,7 @@ import java.util.*
 import kotlin.io.path.exists
 
 val platformIsWindows = System.getProperty("os.name").startsWith("windows", true)
+var serverConfigSingleton = ServerConfig()
 
 fun getDefaultServerConfig(): MutableMap<String, Any> {
     return mutableMapOf(
@@ -43,14 +44,13 @@ fun getDefaultServerConfig(): MutableMap<String, Any> {
         "performance.max_client_threads" to 10000,
         "performance.keycard_cache_size" to 5000,
 
-        "security.diceware_wordlist" to "eff_short_prefix",
+        // TODO: Remove rename diceware wordcount
         "security.diceware_wordcount" to 6,
         "security.failure_delay_sec" to 3,
         "security.max_failures" to 5,
         "security.lockout_delay_min" to 15,
         "security.registration_delay_min" to 15,
         "security.password_reset_min" to 60,
-        "security.certified_algorithms" to false,
     )
 }
 
@@ -183,7 +183,7 @@ class ServerConfig {
     companion object {
 
         /**
-         * Loads the server config from a file. If not specified, it will load the file
+         * Loads the global server config from a file. If not specified, it will load the file
          * C:\ProgramData\mensagod\serverconfig.toml on Windows and /etc/mensagod/serverconfig.toml
          * on other platforms.
          *
@@ -214,7 +214,14 @@ class ServerConfig {
                 }
             }
 
+            serverConfigSingleton = out
             return out
        }
+
+        /**
+         * Returns the global server config object. Note that if load() is not called beforehand,
+         * the ServerConfig will only contain default values.
+         */
+        fun get(): ServerConfig { return serverConfigSingleton }
     }
 }
