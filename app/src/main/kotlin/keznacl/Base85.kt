@@ -167,7 +167,7 @@ open class Decoder {
                 i++
             }
         } catch (ex: ArrayIndexOutOfBoundsException) {
-            return throw IllegalArgumentException("Malformed Base85/$name data", ex)
+            throw IllegalArgumentException("Malformed Base85/$name data", ex)
         }
 
         return sum.toByteArray()
