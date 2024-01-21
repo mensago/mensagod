@@ -1,9 +1,10 @@
 package mensagod
 
-import libkeycard.*
+import libkeycard.Domain
+import libkeycard.RandomID
+import libkeycard.UserID
 import mensagod.commands.ClientRequest
 import mensagod.commands.ServerResponse
-import mensagod.dbcmds.resolveAddress
 import java.net.Socket
 
 /** The LoginState class denotes where in the login process a client session is */
@@ -110,34 +111,4 @@ class ClientSession(val conn: Socket) {
 
         return true
     }
-
-    /**
-     * requireAdminLogin() checks if the client is logged in with an account that has administrator
-     * permissions and notifies the client if the session isn't.
-     *
-     * @throws DatabaseCorruptionException if the admin WID couldn't be found
-     */
-    fun requireAdminLogin(): Boolean {
-        if (!requireLogin()) return false
-
-        val admin = getAdmin()
-        if (wid != admin.id) {
-            ServerResponse(403, "FORBIDDEN", "Only admin can use this command")
-                .send(conn)
-            return false
-        }
-        return true
-    }
-}
-
-/**
- * Returns the WID of the administrator account.
- *
- * @throws DatabaseCorruptionException if the admin WID couldn't be found
- */
-fun getAdmin(): WAddress {
-    val addr = MAddress.fromParts(UserID.fromString("admin")!!, gServerDomain)
-    val wid = resolveAddress(addr)
-        ?: throw DatabaseCorruptionException("Administrator WID missing from database")
-    return WAddress.fromParts(wid, gServerDomain)
 }
