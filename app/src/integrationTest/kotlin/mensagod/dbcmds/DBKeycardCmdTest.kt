@@ -4,8 +4,8 @@ import libkeycard.MAddress
 import libkeycard.RandomID
 import mensagod.DBConn
 import mensagod.ServerConfig
-import mensagod.initServer
-import mensagod.setupTest
+import mensagod.initDB
+import mensagod.resetDB
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
@@ -13,10 +13,10 @@ class DBKeycardCmdTest {
     @Test
     fun resolveWIDAddress() {
         val config = ServerConfig.load()
-        setupTest(config)
+        resetDB(config)
         DBConn.initialize(config)
         val db = DBConn().connect()
-        val setupData = initServer(db.getConnection()!!)
+        val setupData = initDB(db.getConnection()!!)
 
         // Using support instead of admin because we don't have to go through the registration
         // process for admin this way.

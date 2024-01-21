@@ -23,10 +23,10 @@ class DBDeviceCmdTest {
         // removeDevice
 
         val config = ServerConfig.load()
-        setupTest(config)
+        resetDB(config)
         DBConn.initialize(config)
         val db = DBConn().connect()
-        initServer(db.getConnection()!!)
+        initDB(db.getConnection()!!)
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         val devid = RandomID.fromString("c41cb142-9742-4b38-b250-7d61b22beb31")!!
@@ -63,10 +63,10 @@ class DBDeviceCmdTest {
         // This one tests all the methods that the first case didn't get, mostly device info stuff.
 
         val config = ServerConfig.load()
-        setupTest(config)
+        resetDB(config)
         DBConn.initialize(config)
         val db = DBConn().connect()
-        initServer(db.getConnection()!!)
+        initDB(db.getConnection()!!)
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         val devid = RandomID.fromString("1e9538b4-880a-4792-a8b9-efe0382d1cd5")!!

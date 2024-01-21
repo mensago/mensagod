@@ -11,9 +11,9 @@ class MiscCmdTest {
     @Test
     fun getWIDTest() {
         val config = ServerConfig.load()
-        setupTest(config)
+        resetDB(config)
         DBConn.initialize(config)
-        val serverData = initServer(DBConn().connect().getConnection()!!)
+        val serverData = initDB(DBConn().connect().getConnection()!!)
 
         val state = SessionState(
             message = ClientRequest("GETWID", mutableMapOf("User-ID" to "support")))

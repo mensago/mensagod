@@ -6,6 +6,7 @@ import keznacl.SigningPair
 import libkeycard.*
 import mensagod.commands.DeviceStatus
 import mensagod.dbcmds.*
+import mensagod.fs.LocalFS
 import org.apache.commons.io.FileUtils
 import java.io.File
 import java.nio.file.Paths
@@ -98,18 +99,16 @@ fun makeTestFolder(name: String): String {
     else
         dir.mkdirs()
 
-    return dir.toString()
-}
+    LocalFS.initialize(dir.toString())
 
-fun setupTest(config: ServerConfig): Connection {
-    return resetDB(config)
+    return dir.toString()
 }
 
 /**
  * Adds basic data to the database as if setup had been run. It also rotates the org keycard so that
  * there are two entries. Returns data needed for tests, such as the keys
  */
-fun initServer(db: Connection): Map<String, String> {
+fun initDB(db: Connection): Map<String, String> {
     val initialOSPair = SigningPair.fromStrings(
         "ED25519:r#r*RiXIN-0n)BzP3bv`LA&t4LFEQNF0Q@\$N~RF*",
         "ED25519:{UNQmjYhz<(-ikOBYoEQpXPt<irxUF*nq25PoW=_"

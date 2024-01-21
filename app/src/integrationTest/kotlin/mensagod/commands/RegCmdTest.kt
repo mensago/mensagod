@@ -11,9 +11,11 @@ class RegCmdTest {
     @Test
     fun preregTest() {
         val config = ServerConfig.load()
-        setupTest(config)
+        resetDB(config)
         DBConn.initialize(config)
-        initServer(DBConn().connect().getConnection()!!)
+        val db = DBConn().connect()
+        initDB(db.getConnection()!!)
+        setupAdmin(db)
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 

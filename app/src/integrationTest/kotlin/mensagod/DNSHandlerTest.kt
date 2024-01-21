@@ -29,8 +29,8 @@ class DNSHandlerTest {
     @Test
     fun fakeLookupTests() {
         val config = ServerConfig.load()
-        val db = setupTest(config)
-        initServer(db)
+        val db = resetDB(config)
+        initDB(db)
 
         val dns = FakeDNSHandler()
         var results = dns.lookupA("example.com")

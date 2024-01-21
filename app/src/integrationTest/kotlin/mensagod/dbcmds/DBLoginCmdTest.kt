@@ -13,10 +13,10 @@ class DBLoginCmdTest {
     @Test
     fun preregWorkspaceTest() {
         val config = ServerConfig.load()
-        setupTest(config)
+        resetDB(config)
         DBConn.initialize(config)
         val db = DBConn().connect()
-        val serverData = initServer(db.getConnection()!!)
+        val serverData = initDB(db.getConnection()!!)
 
         val newWID = RandomID.fromString("94fd481f-6b1c-459b-ada7-5f32b3a1bbf3")!!
         val newWID2 = RandomID.fromString("793e9e33-5c6b-4b6a-8f56-ef64e7db2c21")!!

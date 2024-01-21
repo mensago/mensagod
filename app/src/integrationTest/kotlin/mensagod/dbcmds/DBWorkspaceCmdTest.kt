@@ -12,10 +12,10 @@ class DBWorkspaceCmdTest {
     @Test
     fun addWorkspaceSetStatusTest() {
         val config = ServerConfig.load()
-        setupTest(config)
+        resetDB(config)
         DBConn.initialize(config)
         val db = DBConn().connect()
-        initServer(db.getConnection()!!)
+        initDB(db.getConnection()!!)
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         val adminUID = UserID.fromString("admin")!!
@@ -46,10 +46,10 @@ class DBWorkspaceCmdTest {
     @Test
     fun checkWorkspaceUserIDTest() {
         val config = ServerConfig.load()
-        setupTest(config)
+        resetDB(config)
         DBConn.initialize(config)
         val db = DBConn().connect()
-        val serverData = initServer(db.getConnection()!!)
+        val serverData = initDB(db.getConnection()!!)
 
         assertEquals(
             WorkspaceStatus.Active,
