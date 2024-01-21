@@ -5,12 +5,16 @@ import libkeycard.RandomID
 import libkeycard.Timestamp
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
+import mensagod.NotConnectedException
 import mensagod.commands.DeviceStatus
 
 /**
  * Adds a device to a workspcae. The device's initial last login is set to when this method is
  * called because a new device is added only at certain times, such as at registration or when a
  * user logs into a workspace on a new device.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun addDevice(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString,
               devInfo: CryptoString, status: DeviceStatus) {
@@ -21,6 +25,9 @@ fun addDevice(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString,
 
 /**
  * Returns the number of devices assigned to a workspace.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun countDevices(db: DBConn, wid: RandomID): Int {
     val rs = db.query("""SELECT COUNT(*) FROM iwkspc_devices WHERE wid=?""", wid)
@@ -33,6 +40,9 @@ fun countDevices(db: DBConn, wid: RandomID): Int {
  * only the info for the specified device is returned or an empty list if not found. If the null is
  * passed for the device ID, the device information for all devices registered to the workspace is
  * returned.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun getDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID?): List<Pair<RandomID,CryptoString>> {
     val rs = if (devid == null) {
@@ -56,6 +66,9 @@ fun getDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID?): List<Pair<Random
 /**
  * Checks if a particular device ID has been added to a workspace and returns its status if it
  * exists or null if it does not.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun getDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID): DeviceStatus? {
     val rs = db.query("""SELECT status FROM iwkspc_devices WHERE wid=? AND devid=?""",
@@ -71,6 +84,9 @@ fun getDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID): DeviceStatus? {
 
 /**
  * Returns the time of the specified device's last login or null if it was not found.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun getLastDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID): Timestamp? {
     val rs = db.query("""SELECT lastlogin FROM iwkspc_devices WHERE wid=? AND devid=?""",
@@ -86,6 +102,9 @@ fun getLastDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID): Timestamp? {
 
 /**
  * Removes a device from a workspace.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun removeDevice(db: DBConn, wid: RandomID, devid: RandomID) {
     db.execute("""DELETE FROM iwkspc_devices WHERE wid=? AND devid=?""", wid, devid)
@@ -94,6 +113,9 @@ fun removeDevice(db: DBConn, wid: RandomID, devid: RandomID) {
 /**
  * Updates a device's encrypted client info. If the device ID specified doesn't exist, this call
  * does nothing.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun updateDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID, devInfo: CryptoString) {
     db.execute("""UDPATE SET devinfo=? FROM iwkspc_devices WHERE wid=? AND devid=?""",
@@ -102,6 +124,9 @@ fun updateDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID, devInfo: Crypto
 
 /**
  * Updates a device's status. If the device ID specified doesn't exist, this call does nothing.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun updateDeviceKey(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString) {
     db.execute("""UDPATE SET devkey=? FROM iwkspc_devices WHERE wid=? AND devid=?""",
@@ -111,6 +136,9 @@ fun updateDeviceKey(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoSt
 /**
  * Updates a device's login timestamp. If the device ID specified doesn't exist, this call does
  * nothing.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun updateDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID) {
     db.execute("""UDPATE SET lastlogin=? FROM iwkspc_devices WHERE wid=? AND devid=?""",
@@ -119,6 +147,9 @@ fun updateDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID) {
 
 /**
  * Updates a device's status. If the device ID specified doesn't exist, this call does nothing.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun updateDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID, status: DeviceStatus) {
     db.execute("""UDPATE SET status=? FROM iwkspc_devices WHERE wid=? AND devid=?""",
