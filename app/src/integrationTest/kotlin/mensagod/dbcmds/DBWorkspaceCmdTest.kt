@@ -29,8 +29,8 @@ class DBWorkspaceCmdTest {
             )
         )
 
-        assertNotNull(resolveUserID(UserID.fromString("support")!!))
-        assertNull(resolveUserID(
+        assertNotNull(resolveUserID(db, UserID.fromString("support")!!))
+        assertNull(resolveUserID(db,
                 UserID.fromString("00000000-0000-0000-0000-000000000000")!!
         ))
     }

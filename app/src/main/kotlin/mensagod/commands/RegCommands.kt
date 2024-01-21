@@ -24,8 +24,9 @@ fun commandPreregister(state: ClientSession) {
     val wid = state.getRandomID("Workspace-ID", false)
     val domain = state.getDomain("Domain", false)
 
+    val db = DBConn()
     val outUID = if (uid != null) {
-        try { resolveUserID(uid) }
+        try { resolveUserID(db, uid) }
         catch (e: Exception) {
             logError("commandPreregister.resolveUserID exception: $e")
             ServerResponse.sendInternalError("uid lookup error", state.conn)
@@ -41,7 +42,6 @@ fun commandPreregister(state: ClientSession) {
         uid
     } else null
 
-    val db = DBConn()
     val outWID = if (wid != null) {
         try { checkWorkspace(db, wid) }
         catch (e: Exception) {

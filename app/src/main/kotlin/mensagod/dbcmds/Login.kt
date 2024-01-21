@@ -21,7 +21,7 @@ fun preregWorkspace(wid: RandomID, userID: UserID?, domain: Domain, reghash: Str
     val db = DBConn()
 
     if (userID != null) {
-        if (resolveUserID(userID) != null)
+        if (resolveUserID(db, userID) != null)
             throw ResourceExistsException("User-ID $userID already exists")
         if (resolveWID(wid) != null)
             throw ResourceExistsException("Workspcae-ID $wid already exists")
