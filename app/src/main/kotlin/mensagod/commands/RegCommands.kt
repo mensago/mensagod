@@ -41,8 +41,9 @@ fun commandPreregister(state: ClientSession) {
         uid
     } else null
 
+    val db = DBConn()
     val outWID = if (wid != null) {
-        try { checkWorkspace(wid) }
+        try { checkWorkspace(db, wid) }
         catch (e: Exception) {
             logError("commandPreregister.checkWorkspace exception: $e")
             ServerResponse.sendInternalError("wid lookup error", state.conn)
@@ -57,11 +58,11 @@ fun commandPreregister(state: ClientSession) {
         }
         wid
     } else {
-        var newWID: RandomID? = null
+        var newWID: RandomID?
         do {
             newWID = try {
                 val tempWID = RandomID.generate()
-                if (checkWorkspace(tempWID) == null)
+                if (checkWorkspace(db, tempWID) == null)
                     tempWID
                 else
                     null

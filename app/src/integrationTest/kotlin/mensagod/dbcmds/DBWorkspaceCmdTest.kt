@@ -16,15 +16,15 @@ class DBWorkspaceCmdTest {
         val config = ServerConfig.load()
         setupTest(config)
         DBConn.initialize(config)
-        val dbConn = DBConn().connect().getConnection()!!
-        val serverData = initServer(dbConn)
+        val db = DBConn().connect()
+        val serverData = initServer(db.getConnection()!!)
 
         assertEquals(
             WorkspaceStatus.Active,
-            checkWorkspace(RandomID.fromString(serverData["support_wid"])!!)
+            checkWorkspace(db, RandomID.fromString(serverData["support_wid"])!!)
         )
         assertNull(
-            checkWorkspace(
+            checkWorkspace(db,
                 RandomID.fromString("00000000-0000-0000-0000-000000000000")!!
             )
         )

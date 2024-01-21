@@ -6,6 +6,7 @@ import libkeycard.UserID
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
 import mensagod.NotConnectedException
+import mensagod.ResourceExistsException
 
 enum class WorkspaceStatus {
     Active,
@@ -13,7 +14,8 @@ enum class WorkspaceStatus {
     Blocked,
     Archived,
     Approved,
-    Disabled;
+    Disabled,
+    Preregistered;
 
     override fun toString(): String {
         return when (this) {
@@ -23,6 +25,7 @@ enum class WorkspaceStatus {
             Archived -> "archived"
             Approved -> "approved"
             Disabled -> "disabled"
+            Preregistered -> "preregistered"
         }
     }
 
@@ -36,6 +39,7 @@ enum class WorkspaceStatus {
                 "archived" -> Archived
                 "approved" -> Approved
                 "disabled" -> Disabled
+                "preregistered" -> Preregistered
                 else -> null
             }
         }
@@ -43,9 +47,25 @@ enum class WorkspaceStatus {
     }
 }
 
-fun addWorkspace(wid: RandomID, uid: UserID?, domain: Domain, passhash: String, salt: String,
-                 passParams: String, status: WorkspaceStatus, wtype: String) {
-    TODO("Implement dbcmds::addWorkspace($wid,$uid,$domain,$passhash,$salt,$passParams,$status,$wtype")
+/**
+ * addWorkspace is used for adding a workspace to the database. Other tasks related to provisioning
+ * a workspace are not handled here.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ * @throws ResourceExistsException if the workspace ID already exists in the database
+ */
+fun addWorkspace(db: DBConn, wid: RandomID, uid: UserID?, domain: Domain, passhash: String,
+                 algorithm: String, salt: String, passParams: String, status: WorkspaceStatus,
+                 wtype: String) {
+
+    val wStatus = checkWorkspace(db, wid)
+
+    if (wStatus != null && wStatus != WorkspaceStatus.Preregistered)
+        throw ResourceExistsException("$wid exists")
+    db.execute("""INSERT INTO workspaces(wid, uid, domain, password, passtype, salt, passparams,
+        status, wtype) VALUES(?,?,?,?,?,?,?,?,?)""",
+        wid, uid ?: "", domain, passhash, algorithm, salt, passParams, status, wtype)
 }
 
 /**
@@ -55,8 +75,7 @@ fun addWorkspace(wid: RandomID, uid: UserID?, domain: Domain, passhash: String, 
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun checkWorkspace(wid: RandomID): WorkspaceStatus? {
-    val db = DBConn()
+fun checkWorkspace(db: DBConn, wid: RandomID): WorkspaceStatus? {
     var rs = db.query("""SELECT status FROM workspaces WHERE wid=?""", wid)
     if (rs.next()) {
         val stat = rs.getString("status")
@@ -65,7 +84,7 @@ fun checkWorkspace(wid: RandomID): WorkspaceStatus? {
     }
     rs = db.query("""SELECT wid FROM prereg WHERE wid=?""", wid)
     if (rs.next())
-        return WorkspaceStatus.Approved
+        return WorkspaceStatus.Preregistered
 
     return null
 }
