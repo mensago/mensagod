@@ -12,7 +12,7 @@ import java.util.*
 import kotlin.io.path.exists
 
 val platformIsWindows = System.getProperty("os.name").startsWith("windows", true)
-var serverConfigSingleton = ServerConfig()
+private var serverConfigSingleton = ServerConfig()
 
 fun getDefaultServerConfig(): MutableMap<String, Any> {
     return mutableMapOf(
