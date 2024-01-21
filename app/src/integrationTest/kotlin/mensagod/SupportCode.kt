@@ -224,3 +224,10 @@ fun initServer(db: Connection): Map<String, String> {
         "support_wid" to supportWID.toString(),
     )
 }
+
+/**
+ * Registers the administrator account and populates its workspace with test data.
+ */
+fun registerAdmin() {
+    // TODO: Implement support code registerAdmin()
+}
