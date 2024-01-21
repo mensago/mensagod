@@ -1,5 +1,6 @@
 package mensagod.dbcmds
 
+import libkeycard.Domain
 import libkeycard.RandomID
 import libkeycard.UserID
 import mensagod.DBConn
@@ -40,6 +41,11 @@ enum class WorkspaceStatus {
         }
 
     }
+}
+
+fun addWorkspace(wid: RandomID, uid: UserID?, domain: Domain, passhash: String, salt: String,
+                 passParams: String, status: WorkspaceStatus, wtype: String) {
+    TODO("Implement dbcmds::addWorkspace($wid,$uid,$domain,$passhash,$salt,$passParams,$status,$wtype")
 }
 
 /**
@@ -84,4 +90,8 @@ fun resolveUserID(uid: UserID): RandomID? {
     }
 
     return null
+}
+
+fun setWorkspaceStatus(wid: RandomID, status: WorkspaceStatus) {
+    TODO("setWorkspaceStatus($wid,$status)")
 }
