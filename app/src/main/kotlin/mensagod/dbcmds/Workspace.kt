@@ -8,6 +8,26 @@ import mensagod.DatabaseCorruptionException
 import mensagod.NotConnectedException
 import mensagod.ResourceExistsException
 
+enum class WorkspaceType {
+    Individual;
+
+    override fun toString(): String {
+        return when (this) {
+            Individual -> "individual"
+        }
+    }
+
+    companion object {
+
+        fun fromString(s: String): WorkspaceType? {
+            return when (s.lowercase()) {
+                "individual" -> Individual
+                else -> null
+            }
+        }
+    }
+}
+
 enum class WorkspaceStatus {
     Active,
     Pending,
@@ -57,7 +77,7 @@ enum class WorkspaceStatus {
  */
 fun addWorkspace(db: DBConn, wid: RandomID, uid: UserID?, domain: Domain, passhash: String,
                  algorithm: String, salt: String, passParams: String, status: WorkspaceStatus,
-                 wtype: String) {
+                 wtype: WorkspaceType) {
 
     val wStatus = checkWorkspace(db, wid)
 
@@ -109,6 +129,12 @@ fun resolveUserID(db: DBConn, uid: UserID): RandomID? {
     return null
 }
 
+/**
+ * Sets the status of a workspace.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ */
 fun setWorkspaceStatus(db: DBConn, wid: RandomID, status: WorkspaceStatus) {
-    TODO("setWorkspaceStatus($db, $wid,$status)")
+    db.execute("""UPDATE workspaces SET status=? WHERE wid=?""", status, wid)
 }
