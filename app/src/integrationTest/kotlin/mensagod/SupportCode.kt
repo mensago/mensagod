@@ -1,10 +1,11 @@
 package mensagod
 
+import keznacl.CryptoString
 import keznacl.EncryptionPair
 import keznacl.SigningPair
-import libkeycard.Keycard
-import libkeycard.OrgEntry
-import libkeycard.RandomID
+import libkeycard.*
+import mensagod.commands.DeviceStatus
+import mensagod.dbcmds.*
 import org.apache.commons.io.FileUtils
 import java.io.File
 import java.nio.file.Paths
@@ -33,6 +34,24 @@ import java.sql.Connection
 // THESE KEYS ARE STORED ON GITLAB! DO NOT USE THESE FOR ANYTHING EXCEPT TESTS!!
 
 // Test profile data for the administrator account used in integration tests
+private const val adminKeycard = "Type:User\r\n" +
+        "Index:1\r\n" +
+        "Name:Administrator\r\n" +
+        "User-ID:admin\r\n" +
+        "Workspace-ID:ae406c5e-2673-4d3e-af20-91325d9623ca\r\n" +
+        "Domain:example.com\r\n" +
+        "Contact-Request-Verification-Key:ED25519:E?_z~5@+tkQz!iXK?oV<Zx(ec;=27C8Pjm((kRc|\r\n" +
+        "Contact-Request-Encryption-Key:CURVE25519:mO?WWA-k2B2O|Z%fA`~s3^\$iiN{5R->#jxO@cy6{\r\n" +
+        "Encryption-Key:CURVE25519:Umbw0Y<^cf1DN|>X38HCZO@Je(zSe6crC6X_C_0F\r\n" +
+        "Verification-Key:ED25519:6|HBWrxMY6-?r&Sm)_^PLPerpqOj#b&x#N_#C3}p\r\n" +
+        "Time-To-Live:14\r\n" +
+        "Expires:2024-02-20\r\n" +
+        "Timestamp:2024-01-21T20:02:41Z\r\n" +
+        "Organization-Signature:ED25519:oC9NsUC-PNW\$G9N^7fZZknug=@KF(u>k4aj8W;=47{jxnrbGPki>YbG65!32y6@jX)Fq>*Uks<ZF-_(H\r\n" +
+        "Previous-Hash:BLAKE2B-256:p*{~#L}xycY{Ge3!vY))g&<!{^;Ef\$zd8s@)(Cb6\r\n" +
+        "Hash:BLAKE2B-256:aOXSB=4*;RdV;e)^39NR;`9L}^dFxN9rpW)hzNb!\r\n" +
+        "User-Signature:ED25519:Ge+1#zpzg|<Dj;p?<BTkARlq~&3ngMFc4?cWbqR-Y){b?h@1+4`b@B#^J-P!B)0E103}=-=oeoRKDNpY\r\n"
+
 val ADMIN_PROFILE_DATA = mutableMapOf(
     "name" to "Administrator",
     "uid" to "admin",
@@ -60,6 +79,8 @@ val ADMIN_PROFILE_DATA = mutableMapOf(
     "name.formatted" to "Mensago Administrator",
     "name.given" to "Mensago",
     "name.family" to "Administrator",
+    "keycard" to adminKeycard,
+    "keycard.fingerprint" to "BLAKE2B-256:`-l^-<lxieg9Or0o|8sAl4owSwG(_^yN3TNc5%o(",
 )
 
 /** Returns the canonical version of the path specified. */
@@ -228,6 +249,16 @@ fun initServer(db: Connection): Map<String, String> {
 /**
  * Registers the administrator account and populates its workspace with test data.
  */
-fun registerAdmin() {
-    // TODO: Implement support code registerAdmin()
+fun setupAdmin(db: DBConn) {
+    val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+    val adminUID = UserID.fromString("admin")!!
+    val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+    val devkey = CryptoString.fromString(ADMIN_PROFILE_DATA["device.public"]!!)!!
+    val fakeInfo = CryptoString.fromString("XSALSA20:ABCDEFG1234567890")!!
+    addWorkspace(db, adminWID, adminUID, gServerDomain, ADMIN_PROFILE_DATA["passhash"]!!,
+        "argon2id", "anXvadxtNJAYa2cUQFqKSQ", "m=65536,t=2,p=1",
+        WorkspaceStatus.Active,WorkspaceType.Individual)
+    addDevice(db, adminWID, devid, devkey, fakeInfo, DeviceStatus.Active)
+    deletePrereg(db, MAddress.fromParts(adminUID, gServerDomain))
+
 }
