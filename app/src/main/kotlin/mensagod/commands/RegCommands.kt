@@ -6,6 +6,7 @@ import mensagod.*
 import mensagod.dbcmds.checkWorkspace
 import mensagod.dbcmds.preregWorkspace
 import mensagod.dbcmds.resolveUserID
+import mensagod.fs.LocalFS
 
 // PREREG(User-ID="", Workspace-ID="",Domain="")
 fun commandPreregister(state: ClientSession) {
@@ -85,8 +86,14 @@ fun commandPreregister(state: ClientSession) {
         ServerResponse.sendInternalError("preregistration error", state.conn)
     }
 
-    // TODO: commandPreregister(): create workspace directory if it doesn't exist.
-    // Depends on FSProvider class implementation
+    val lfs = LocalFS.get()
+    try { lfs.makeDirectory(MServerPath("/ wsp $wid")) }
+    catch (e: Exception) {
+        logError("commandPreregister.makeWorkspace exception: $e")
+        ServerResponse.sendInternalError("preregistration workspace creation failure",
+            state.conn)
+        return
+    }
 
     val resp = ServerResponse(200, "OK", "", mutableMapOf(
         "Workspace-ID" to outWID.toString(),
