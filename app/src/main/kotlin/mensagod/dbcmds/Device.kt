@@ -19,8 +19,8 @@ import mensagod.commands.DeviceStatus
 fun addDevice(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString,
               devInfo: CryptoString, status: DeviceStatus) {
     val now = Timestamp()
-    db.execute("""INSERT INTO iwkspc_devices(wid, devid, devkey, lastlogin, devinfo, status
-        VALUES(?,?,?,?,?,?""", wid, devid, devkey, now, devInfo, status)
+    db.execute("""INSERT INTO iwkspc_devices(wid, devid, devkey, lastlogin, devinfo, status)
+        VALUES(?,?,?,?,?,?)""", wid, devid, devkey, now, devInfo, status)
 }
 
 /**
@@ -36,19 +36,37 @@ fun countDevices(db: DBConn, wid: RandomID): Int {
 }
 
 /**
+ * Gets the encryption key for the specified device or null if not found.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ */
+fun getDeviceKey(db: DBConn, wid: RandomID, devid: RandomID): CryptoString? {
+    val rs = db.query("""SELECT devkey FROM iwkspc_devices WHERE wid=? AND devid=?""",
+        wid, devid)
+    if (rs.next()) {
+        val key = rs.getString("devkey")
+        return CryptoString.fromString(key)
+            ?: throw DatabaseCorruptionException(
+                "Bad device key '$key' for device $devid in workspace $wid")
+    }
+    return null
+}
+
+/**
  * Returns the encrypted client information for one or more devices. If the device ID is specified,
  * only the info for the specified device is returned or an empty list if not found. If the null is
  * passed for the device ID, the device information for all devices registered to the workspace is
- * returned.
+ * returned. When information for multiple devices is returned, it is sorted by device ID.
  *
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun getDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID?): List<Pair<RandomID,CryptoString>> {
     val rs = if (devid == null) {
-        db.query("""SELECT devid,devinfo FROM iwkspace_devices WHERE wid=?""", wid)
+        db.query("""SELECT devid,devinfo FROM iwkspc_devices WHERE wid=? ORDER BY devid""", wid)
     } else {
-        db.query("""SELECT devid,devinfo FROM iwkspace_devices WHERE wid=? AND devid=?""",
+        db.query("""SELECT devid,devinfo FROM iwkspc_devices WHERE wid=? AND devid=?""",
             wid, devid)
     }
 
@@ -118,7 +136,7 @@ fun removeDevice(db: DBConn, wid: RandomID, devid: RandomID) {
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun updateDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID, devInfo: CryptoString) {
-    db.execute("""UDPATE SET devinfo=? FROM iwkspc_devices WHERE wid=? AND devid=?""",
+    db.execute("""UPDATE iwkspc_devices SET devinfo=? WHERE wid=? AND devid=?""",
         devInfo, wid, devid)
 }
 
@@ -129,7 +147,7 @@ fun updateDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID, devInfo: Crypto
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun updateDeviceKey(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString) {
-    db.execute("""UDPATE SET devkey=? FROM iwkspc_devices WHERE wid=? AND devid=?""",
+    db.execute("""UPDATE iwkspc_devices SET devkey=? WHERE wid=? AND devid=?""",
         devkey, wid, devid)
 }
 
@@ -141,7 +159,7 @@ fun updateDeviceKey(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoSt
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun updateDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID) {
-    db.execute("""UDPATE SET lastlogin=? FROM iwkspc_devices WHERE wid=? AND devid=?""",
+    db.execute("""UPDATE iwkspc_devices SET lastlogin=? WHERE wid=? AND devid=?""",
         Timestamp(), wid, devid)
 }
 
@@ -152,6 +170,6 @@ fun updateDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID) {
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun updateDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID, status: DeviceStatus) {
-    db.execute("""UDPATE SET status=? FROM iwkspc_devices WHERE wid=? AND devid=?""",
+    db.execute("""UPDATE iwkspc_devices SET status=? WHERE wid=? AND devid=?""",
         status, wid, devid)
 }
