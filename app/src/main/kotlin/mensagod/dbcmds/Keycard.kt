@@ -37,8 +37,7 @@ fun resolveAddress(addr: MAddress): RandomID? {
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun resolveWID(wid: RandomID): WAddress? {
-    val db = DBConn()
+fun resolveWID(db: DBConn, wid: RandomID): WAddress? {
     val rs = db.query("""SELECT domain FROM workspaces WHERE wid=?""", wid)
     if (!rs.next()) return null
 

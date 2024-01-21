@@ -15,8 +15,8 @@ class DBKeycardCmdTest {
         val config = ServerConfig.load()
         setupTest(config)
         DBConn.initialize(config)
-        val dbConn = DBConn().connect().getConnection()!!
-        val setupData = initServer(dbConn)
+        val db = DBConn().connect()
+        val setupData = initServer(db.getConnection()!!)
 
         // Using support instead of admin because we don't have to go through the registration
         // process for admin this way.
@@ -26,7 +26,8 @@ class DBKeycardCmdTest {
         assertNull(resolveAddress(MAddress.fromString("admin/example.com")!!))
 
         val supportWID = RandomID.fromString(setupData["support_wid"])!!
-        assertEquals("example.com", resolveWID(supportWID)?.domain.toString())
-        assertNull(resolveWID(RandomID.fromString("00000000-0000-0000-0000-000000000000")!!))
+        assertEquals("example.com", resolveWID(db, supportWID)?.domain.toString())
+        assertNull(resolveWID(db,
+            RandomID.fromString("00000000-0000-0000-0000-000000000000")!!))
     }
 }
