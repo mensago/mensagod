@@ -2,17 +2,24 @@ package mensagod.auth
 
 import libkeycard.RandomID
 
+enum class AuthActorType {
+    WID
+}
+
 /**
- * The AuthActor class represents an actor for the permissions subsystem. It is intended to be
- * subclassed for specific actor types.
+ * The AuthActor interface represents an actor for the permissions subsystem. This has not been
+ * defined as a class for performance reasons.
  */
-open class AuthActor
+interface AuthActor {
+    fun getType(): AuthActorType
+}
 
 /**
  * The WIDActor class represents a local user identified by its workspace ID. This actor is
  * typically used when the actor is either logging in or is already logged in.
  */
-class WIDActor(val wid: RandomID): AuthActor() {
+class WIDActor(val wid: RandomID): AuthActor {
+    override fun getType(): AuthActorType { return AuthActorType.WID }
     override fun toString(): String { return wid.toString() }
 }
 
@@ -31,11 +38,6 @@ enum class AuthAction {
  * The AuthTarget class represents a resource to be acted upon by an AuthActor. It, too, is also
  * intended to be subclassed to represent specific types of targets.
  */
-open class AuthTarget
-
-/**
- * The WorkspaceTarget class represents a workspace identified by its workspace ID. It is used for
- * situations where an actor wants to perform an action on the workspace itself, such as changing
- * its status.
- */
-class WorkspaceTarget(val wid: RandomID): AuthTarget()
+interface AuthTarget {
+    fun isAuthorized(actor: AuthActor, action: AuthAction): Boolean
+}
