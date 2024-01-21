@@ -15,17 +15,19 @@ enum class LoginState {
     LoggedIn,
 }
 
+open class SessionState(
+    var message: ClientRequest = ClientRequest(""),
+    var wid: RandomID? = null,
+    var loginState: LoginState = LoginState.NoSession,
+    var devid: RandomID? = null,
+    var isTerminating: Boolean = false,
+)
+
 /**
  * The ClientSession class encapsulates all the state needed for responding to requests during a
  * client-server connection session.
  */
-class ClientSession(val conn: Socket) {
-    var passwordFailures = 0
-    var loginState = LoginState.NoSession
-    var isTerminating = false
-    var wid: RandomID? = null
-    var devid: RandomID? = null
-    var message = ClientRequest("")
+class ClientSession(val conn: Socket): SessionState() {
 
     /**
      * Validator function which gets a domain from the specified field. All error states for the
