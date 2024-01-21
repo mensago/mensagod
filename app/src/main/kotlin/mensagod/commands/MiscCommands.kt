@@ -2,6 +2,7 @@ package mensagod.commands
 
 import libkeycard.MAddress
 import mensagod.ClientSession
+import mensagod.DBConn
 import mensagod.dbcmds.resolveAddress
 import mensagod.gServerDomain
 import mensagod.logError
@@ -13,11 +14,12 @@ fun commandGetWID(state: ClientSession) {
             .send(state.conn)
     }
 
+    val db = DBConn()
     val uid = state.getUserID("User-ID", true) ?: return
     val domain = state.getDomain("Domain", false, gServerDomain) ?: return
     val address = MAddress.fromParts(uid, domain)
 
-    val wid = try { resolveAddress(address) }
+    val wid = try { resolveAddress(db, address) }
     catch (e: Exception) {
         logError("commandGetWID::resolveAddress error: $e")
         ServerResponse.sendInternalError("", state.conn)

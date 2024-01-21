@@ -25,13 +25,13 @@ class DBLoginCmdTest {
         val supportUID = UserID.fromString("support")
         val domain = gServerDomain
         assertThrows<ResourceExistsException> {
-            preregWorkspace(supportWID, null, domain, "foo")
+            preregWorkspace(db, supportWID, null, domain, "foo")
         }
         assertThrows<ResourceExistsException> {
-            preregWorkspace(supportWID, supportUID, domain, "bar")
+            preregWorkspace(db, supportWID, supportUID, domain, "bar")
         }
 
-        preregWorkspace(newWID, newUID, domain, "baz")
+        preregWorkspace(db, newWID, newUID, domain, "baz")
         var rs = db.query("SELECT wid,uid,domain,regcode FROM prereg WHERE wid=?", newWID)
         assert(rs.next())
         assertEquals(newWID.toString(), rs.getString("wid"))
@@ -40,13 +40,13 @@ class DBLoginCmdTest {
         assertEquals("baz", rs.getString("regcode"))
 
         assertThrows<ResourceExistsException> {
-            preregWorkspace(newWID, newUID, domain, "spam")
+            preregWorkspace(db, newWID, newUID, domain, "spam")
         }
 
-        deletePrereg(MAddress.fromParts(newUID, domain))
-        preregWorkspace(newWID, newUID, domain, "baz")
+        deletePrereg(db, MAddress.fromParts(newUID, domain))
+        preregWorkspace(db, newWID, newUID, domain, "baz")
 
-        preregWorkspace(newWID2, null, domain, "eggs")
+        preregWorkspace(db, newWID2, null, domain, "eggs")
         rs = db.query("SELECT wid,uid,domain,regcode FROM prereg WHERE wid=?", newWID2)
         assert(rs.next())
         assertEquals(newWID2.toString(), rs.getString("wid"))

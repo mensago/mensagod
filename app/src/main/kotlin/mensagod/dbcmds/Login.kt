@@ -14,11 +14,9 @@ import mensagod.ResourceExistsException
  * @throws ResourceExistsException if the user ID or workspace ID given already exist.
  * @throws EmptyDataException if the registration code hash string is empty
  */
-fun preregWorkspace(wid: RandomID, userID: UserID?, domain: Domain, reghash: String) {
+fun preregWorkspace(db: DBConn, wid: RandomID, userID: UserID?, domain: Domain, reghash: String) {
     if (reghash.isEmpty())
         throw EmptyDataException("registration code hash may not be empty")
-
-    val db = DBConn()
 
     if (userID != null) {
         if (resolveUserID(db, userID) != null)
@@ -43,8 +41,7 @@ fun preregWorkspace(wid: RandomID, userID: UserID?, domain: Domain, reghash: Str
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun deletePrereg(addr: MAddress) {
-    val db = DBConn()
+fun deletePrereg(db: DBConn, addr: MAddress) {
     if (addr.userid.type == IDType.WorkspaceID)
         db.execute("DELETE FROM prereg WHERE wid=? AND domain=?", addr.userid, addr.domain)
     else

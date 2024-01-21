@@ -11,9 +11,7 @@ import mensagod.NotConnectedException
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun resolveAddress(addr: MAddress): RandomID? {
-
-    val db = DBConn()
+fun resolveAddress(db: DBConn, addr: MAddress): RandomID? {
 
     // If the address is a workspace address, all we have to do is confirm the workspace exists --
     // workspace IDs are unique across an organization, not just a domain.

@@ -2,6 +2,7 @@ package mensagod.auth
 
 import libkeycard.MAddress
 import libkeycard.UserID
+import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
 import mensagod.dbcmds.resolveAddress
 import mensagod.gServerDomain
@@ -21,7 +22,7 @@ class ServerTarget: AuthTarget {
 
                 // For the moment, only the administrator can preregister workspaces
                 val addr = MAddress.fromParts(UserID.fromString("admin")!!, gServerDomain)
-                val adminWID = resolveAddress(addr)
+                val adminWID = resolveAddress(DBConn().connect(), addr)
                     ?: throw DatabaseCorruptionException("Administrator WID missing from database")
 
                 return actor.wid == adminWID
