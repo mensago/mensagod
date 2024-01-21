@@ -3,6 +3,9 @@ package mensagod.commands
 import keznacl.Argon2idPassword
 import libkeycard.RandomID
 import mensagod.*
+import mensagod.auth.AuthAction
+import mensagod.auth.ServerTarget
+import mensagod.auth.WIDActor
 import mensagod.dbcmds.checkWorkspace
 import mensagod.dbcmds.preregWorkspace
 import mensagod.dbcmds.resolveUserID
@@ -11,7 +14,11 @@ import mensagod.fs.LocalFS
 // PREREG(User-ID="", Workspace-ID="",Domain="")
 fun commandPreregister(state: ClientSession) {
 
-    if (!state.requireAdminLogin()) return
+    if (!state.requireLogin()) return
+    if (!ServerTarget().isAuthorized(WIDActor(state.wid!!), AuthAction.Preregister)) {
+        ServerResponse.sendForbidden("Only admins can preregister accounts", state.conn)
+        return
+    }
 
     val uid = state.getUserID("User-ID", false)
     val wid = state.getRandomID("Workspace-ID", false)
