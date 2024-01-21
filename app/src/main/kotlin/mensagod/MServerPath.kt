@@ -9,9 +9,15 @@ import java.util.regex.Pattern
  * top-level specifier ('wsp', 'tmp', or 'out') and a series of lowercase UUIDs. This is to ensure
  * maximum privacy for users.
  */
-class MServerPath {
+class MServerPath(path: String? = null) {
     private var value = "/"
     private var parts = value.split(" ").toMutableList()
+
+    init {
+        if (path != null) {
+            if (set(path) == null) throw BadValueException()
+        }
+    }
 
     /** Returns the name of the item specified, regardless of if it's a folder or file. */
     fun basename(): String {
@@ -48,7 +54,7 @@ class MServerPath {
      * @throws InvalidPathException If the path currently points to a file
      * @throws BadValueException If given an invalid path argument
      */
-    fun push(s: String) {
+    fun push(s: String): MServerPath {
         if (fileRE.matches(parts.last())) throw InvalidPathException()
 
         val trimmed = s.trim().trim('/')
@@ -56,14 +62,18 @@ class MServerPath {
         if (!serverPathRE.matches(newPath)) throw BadValueException()
         value = newPath
         parts = value.split("/").toMutableList()
+
+        return this
     }
 
-    /** Sets the value of the object or returns an error if given an invalid path */
-    fun set(s: String): Throwable? {
-        if (!serverPathRE.matches(s)) return BadValueException()
+    /**
+     * Sets the value of the object and returns its reference or null if given an invalid path
+     */
+    fun set(s: String): MServerPath? {
+        if (!serverPathRE.matches(s)) return null
         value = s
         parts = value.split(" ").toMutableList()
-        return null
+        return this
     }
 
     override fun toString(): String { return value }
