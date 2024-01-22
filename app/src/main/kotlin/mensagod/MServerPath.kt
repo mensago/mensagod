@@ -24,6 +24,24 @@ class MServerPath(path: String? = null) {
         return parts.last()
     }
 
+    /**
+     * Converts the server path to a local filesystem path format. The output path is relative to
+     * the local path provided, e.g '/ wsp foo' relative to '/var/mensagod' would become
+     * '/var/mensago/wsp/foo'.
+     */
+//    fun convertToLocal(topdir: Path?): Path? {
+//        if (isRoot()) {
+//            return topdir
+//                ?: if (platformIsWindows) {
+//                    Paths.get("\\")
+//                } else {
+//                    Paths.get("/")
+//                }
+//        }
+//        Path
+//    }
+    // TODO: Finish convertToLocal()
+
     /** Returns the object's path */
     fun get(): String { return value }
 
