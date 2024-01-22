@@ -9,7 +9,7 @@ import kotlin.io.path.exists
 
 var localFSSingleton: LocalFS? = null
 
-class LocalFSHandle(path: String, file: File)
+class LocalFSHandle(val path: String, val file: File)
 
 /**
  * The LocalFS class is an intermediary between the server and the filesystem for workspace access.
@@ -18,7 +18,7 @@ class LocalFSHandle(path: String, file: File)
  * filesystem permissions subsystem and, thus, maintains a connection to the database for such.
  */
 class LocalFS private constructor(private val basePath: String) {
-    private val files = mutableMapOf<String, LocalFSHandle>()
+    private val files = mutableSetOf<LocalFSHandle>()
     private val pathSep = System.lineSeparator()
 
     /**
@@ -33,7 +33,7 @@ class LocalFS private constructor(private val basePath: String) {
      * Closes the specified file handle. It is not normally needed unless read() returns an error
      * or the caller must abort reading the file.
      */
-    fun closeFile(handle: LocalFSHandle) {
+    fun closeFile(handle: LocalFSHandle): Boolean {
         TODO("Implement LocalFS::closeFile($handle)")
     }
 
