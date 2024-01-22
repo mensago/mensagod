@@ -1,5 +1,6 @@
 package mensagod.fs
 
+import keznacl.BadValueException
 import libkeycard.RandomID
 import mensagod.MServerPath
 import mensagod.ResourceNotFoundException
@@ -78,9 +79,15 @@ class LocalFS private constructor(private val basePath: String) {
 
     /**
      * Creates a directory in the local filesystem within the top-level Mensago directory.
+     *
+     * @throws BadValueException If given a bad path
+     * @throws SecurityException If a security manager exists and won't let the directory be created.
      */
     fun makeDirectory(path: MServerPath) {
-        TODO("Implement LocalFS::makeDirectory($path)")
+        val localpath = path.convertToLocal(Paths.get(basePath))
+            ?: throw BadValueException("Couldn't create $path")
+        val file = File(localpath.toString())
+        file.mkdir()
     }
 
     /**

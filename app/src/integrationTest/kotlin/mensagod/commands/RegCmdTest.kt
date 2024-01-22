@@ -2,14 +2,20 @@ package mensagod.commands
 
 import libkeycard.RandomID
 import mensagod.*
+import mensagod.fs.LocalFS
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import java.net.InetAddress
 import java.net.Socket
+import java.nio.file.Paths
 
 class RegCmdTest {
     @Test
     fun preregTest() {
+        val testpath = makeTestFolder("commands.preregTest")
+        initLogging(Paths.get(testpath), true)
+        LocalFS.initialize(testpath)
+
         val config = ServerConfig.load()
         resetDB(config)
         DBConn.initialize(config)
