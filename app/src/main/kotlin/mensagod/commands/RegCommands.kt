@@ -89,6 +89,10 @@ fun commandPreregister(state: ClientSession) {
     }
 
     try { preregWorkspace(db, outWID, outUID, outDom, reghash) }
+    catch (e: ResourceExistsException) {
+        ServerResponse(408, "RESOURCE EXISTS")
+        return
+    }
     catch (e: Exception) {
         logError("commandPreregister.preregWorkspace exception: $e")
         ServerResponse.sendInternalError("preregistration error", state.conn)
