@@ -3,6 +3,7 @@ package mensagod
 class BadFrameException(message: String = ""): Exception(message)
 class BadSessionException(message: String = ""): Exception(message)
 class DatabaseCorruptionException(message: String = ""): Exception(message)
+class FSFailureException(message: String = ""): Exception(message)
 class FrameTypeException(message: String = ""): Exception(message)
 class InvalidPathException(message: String = ""): Exception(message)
 class NotConnectedException(message: String = ""): Exception(message)

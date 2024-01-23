@@ -2,6 +2,7 @@ package mensagod.fs
 
 import keznacl.BadValueException
 import libkeycard.RandomID
+import mensagod.FSFailureException
 import mensagod.MServerPath
 import mensagod.ResourceNotFoundException
 import java.io.File
@@ -82,12 +83,14 @@ class LocalFS private constructor(private val basePath: String) {
      *
      * @throws BadValueException If given a bad path
      * @throws SecurityException If a security manager exists and won't let the directory be created.
+     * @throws FSFailureException For other reasons the system couldn't create a directory, such as a nonexistent parent directory.
      */
     fun makeDirectory(path: MServerPath) {
         val localpath = path.convertToLocal(Paths.get(basePath))
             ?: throw BadValueException("Couldn't create $path")
         val file = File(localpath.toString())
-        file.mkdir()
+        if (file.exists()) return
+        if (!file.mkdir()) throw FSFailureException()
     }
 
     /**
