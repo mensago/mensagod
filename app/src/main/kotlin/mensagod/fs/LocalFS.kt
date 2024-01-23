@@ -41,9 +41,17 @@ class LocalFS private constructor(private val basePath: String) {
 
     /**
      * Deletes the file at the specified path.
+     *
+     * @throws BadValueException If given a bad path
+     * @throws SecurityException If a security manager exists and won't let the directory be created.
+     * @throws FSFailureException For other reasons the system couldn't delete the file
      */
     fun deleteFile(path: MServerPath) {
-        TODO("Implement LocalFS::deleteFile($path)")
+        val localpath = path.convertToLocal(Paths.get(basePath))
+            ?: throw BadValueException("Couldn't create $path")
+        val file = File(localpath.toString())
+        if (!file.exists()) return
+        if (!file.delete()) throw FSFailureException()
     }
 
     /** Checks to see if the specified path exists */

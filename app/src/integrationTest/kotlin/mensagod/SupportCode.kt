@@ -10,7 +10,10 @@ import mensagod.fs.LocalFS
 import org.apache.commons.io.FileUtils
 import java.io.File
 import java.nio.file.Paths
+import java.security.SecureRandom
 import java.sql.Connection
+import java.time.Instant
+import java.util.*
 
 //! This file contains setup functions needed by the integration tests
 
@@ -283,4 +286,24 @@ fun setupTest(name: String): String {
     setupAdmin(db)
 
     return testpath
+}
+
+/**
+ * Generate a test file containing nothing but zeroes. If the filename is not specified, a random
+ * name will be generated. If the file size is not specified, the file will be between 1 and 10KB
+ */
+fun makeTestFile(fileDir: String, fileName: String? = null,
+                 fileSize: Int? = null): Pair<String,Int> {
+
+    val rng = SecureRandom()
+    val realSize = fileSize ?: ((rng.nextInt(10) + 1) * 1024)
+
+    val realName = if (fileName.isNullOrEmpty()) {
+        "${Instant.now().epochSecond}.$realSize.${UUID.randomUUID().toString().lowercase()}"
+    } else { fileName }
+
+    val fHandle = File(Paths.get(fileDir, realName).toString())
+    fHandle.writeBytes("0".repeat(realSize).toByteArray())
+
+    return Pair(realName, realSize)
 }

@@ -2,6 +2,7 @@ package mensagod.fs
 
 import mensagod.FSFailureException
 import mensagod.MServerPath
+import mensagod.makeTestFile
 import mensagod.setupTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -9,6 +10,16 @@ import java.io.File
 import java.nio.file.Paths
 
 class LocalFSTest {
+
+    @Test
+    fun deleteFileTest() {
+        val testdir = setupTest("fs.deleteFile")
+        val lfs = LocalFS.get()
+
+        val topdir = Paths.get(testdir, "topdir").toString()
+        val testFileInfo = makeTestFile(topdir)
+        lfs.deleteFile(MServerPath("/ ${testFileInfo.first}"))
+    }
 
     @Test
     fun makeDirTest() {
