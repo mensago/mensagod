@@ -21,11 +21,7 @@ class CommandTest(private val testName: String,
 
             val clientThread = Thread.ofVirtual().let{
                 it.name("$testName: Client")
-                it.start {
-                    println("Start client worker")
-                    clientCode(srvSocket.localPort)
-                    println("Exit client worker")
-                }
+                it.start { clientCode(srvSocket.localPort) }
             }
             serverThread.join()
             clientThread.join()
