@@ -93,15 +93,19 @@ fun getPathForTest(testName: String): String? {
 
 /** Creates a new test folder for file-based tests and returns the top-level path created. */
 fun makeTestFolder(name: String): String {
-    val dir = File(getPathForTest(name)!!)
-    if (dir.exists())
-        FileUtils.cleanDirectory(dir)
+
+    val testdirStr = getPathForTest(name)!!
+    val topdirStr = Paths.get(testdirStr,"topdir").toString()
+    val topdir = File(testdirStr)
+    if (topdir.exists())
+        FileUtils.cleanDirectory(topdir)
     else
-        dir.mkdirs()
+        topdir.mkdirs()
+    File(topdirStr).mkdirs()
 
-    LocalFS.initialize(dir.toString())
+    LocalFS.initialize(topdir.toString())
 
-    return dir.toString()
+    return topdir.toString()
 }
 
 /**
@@ -260,4 +264,23 @@ fun setupAdmin(db: DBConn) {
     addDevice(db, adminWID, devid, devkey, fakeInfo, DeviceStatus.Active)
     deletePrereg(db, MAddress.fromParts(adminUID, gServerDomain))
 
+}
+
+/**
+ * Performs all the setup that most server tests will need and returns the path to the test
+ * directory.
+ */
+fun setupTest(name: String): String {
+    val testpath = makeTestFolder(name)
+    initLogging(Paths.get(testpath, "log.txt"), true)
+    LocalFS.initialize(Paths.get(testpath, "topdir").toString())
+
+    val config = ServerConfig.load()
+    resetDB(config)
+    DBConn.initialize(config)
+    val db = DBConn().connect()
+    initDB(db.getConnection()!!)
+    setupAdmin(db)
+
+    return testpath
 }

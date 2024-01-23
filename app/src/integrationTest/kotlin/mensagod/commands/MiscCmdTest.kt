@@ -18,7 +18,7 @@ class MiscCmdTest {
         val state = SessionState(
             message = ClientRequest("GETWID", mutableMapOf("User-ID" to "support")))
 
-        CommandTest(state, ::commandGetWID) { port ->
+        CommandTest("getWID", state, ::commandGetWID) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             assertEquals(200, response.code)

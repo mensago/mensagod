@@ -2,31 +2,21 @@ package mensagod.commands
 
 import libkeycard.RandomID
 import mensagod.*
-import mensagod.fs.LocalFS
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import java.net.InetAddress
 import java.net.Socket
-import java.nio.file.Paths
 
 class RegCmdTest {
     @Test
     fun preregTest() {
-        val testpath = makeTestFolder("commands.preregTest")
-        initLogging(Paths.get(testpath), true)
-        LocalFS.initialize(testpath)
-
+        setupTest("commands.preregTest")
         val config = ServerConfig.load()
-        resetDB(config)
-        DBConn.initialize(config)
-        val db = DBConn().connect()
-        initDB(db.getConnection()!!)
-        setupAdmin(db)
-
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
         // Test Case #1: Supply no data. Expect WID, Domain, and reg code
-        CommandTest(SessionState(ClientRequest("PREREG", mutableMapOf()), adminWID,
+        CommandTest("prereg",
+            SessionState(ClientRequest("PREREG", mutableMapOf()), adminWID,
                 LoginState.LoggedIn), ::commandPreregister) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
