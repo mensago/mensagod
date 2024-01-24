@@ -12,6 +12,7 @@ package libkeycard
 class MAddress private constructor(val userid: UserID, val domain: Domain) {
 
     val address = "$userid/$domain"
+    val isWorkspace = (userid.type == IDType.WorkspaceID)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
