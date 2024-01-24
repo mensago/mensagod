@@ -2,15 +2,15 @@ package mensagod.commands
 
 import keznacl.Argon2idPassword
 import keznacl.getSupportedAsymmetricAlgorithms
+import libkeycard.MAddress
 import libkeycard.RandomID
 import libkeycard.UserID
+import libkeycard.WAddress
 import mensagod.*
 import mensagod.auth.AuthAction
 import mensagod.auth.ServerTarget
 import mensagod.auth.WIDActor
-import mensagod.dbcmds.checkWorkspace
-import mensagod.dbcmds.preregWorkspace
-import mensagod.dbcmds.resolveUserID
+import mensagod.dbcmds.*
 import mensagod.fs.LocalFS
 
 // PREREG(User-ID="", Workspace-ID="",Domain="")
@@ -37,7 +37,7 @@ fun commandPreregister(state: ClientSession) {
             try { ServerResponse(408, "RESOURCE EXISTS", "user ID exists")
                 .send(state.conn) }
             catch (e: Exception) {
-                logError("commandPreregister.resolveUserID exists send error: $e")
+                logDebug("commandPreregister.resolveUserID exists send error: $e")
             }
             return
         }
@@ -54,7 +54,7 @@ fun commandPreregister(state: ClientSession) {
             try { ServerResponse(408, "RESOURCE EXISTS", "workspace ID exists")
                 .send(state.conn) }
             catch (e: Exception) {
-                logError("commandPreregister.checkWorkspace exists send error: $e")
+                logDebug("commandPreregister.checkWorkspace exists send error: $e")
             }
             return
         }
@@ -162,5 +162,53 @@ fun commandRegCode(state: ClientSession) {
         return
     }
 
-    TODO("Finish implementing commandRegCode()")
+    val db = DBConn()
+    val regInfo = try {
+        checkRegCode(db, MAddress.fromParts(uid,domain), state.message.data["Reg-Code"]!!)
+    } catch (e: Exception) {
+        logError("Internal error commandRegCode.checkRegCode: $e")
+        ServerResponse.sendInternalError("commandRegCode.1", state.conn)
+        return
+    }
+
+    if (regInfo == null) {
+        ServerResponse(401, "UNAUTHORIZED").send(state.conn)
+        return
+    }
+
+    try {
+        addWorkspace(db, regInfo.first, regInfo.second, domain,
+            state.message.data["Password-Hash"]!!, state.message.data["Password-Algorithm"]!!,
+                state.message.data["Salt"] ?: "",
+                state.message.data["Password-Parameters"] ?: "", WorkspaceStatus.Active,
+                WorkspaceType.Individual)
+    } catch (e: Exception) {
+        logError("Internal error commandRegCode.addWorkspace: $e")
+        ServerResponse.sendInternalError("commandRegCode.2", state.conn)
+        return
+    }
+
+    try { addDevice(db, regInfo.first, devid, devkey, devinfo, DeviceStatus.Active) }
+    catch (e: Exception) {
+        logError("commandRegCode.addDevice: $e")
+        ServerResponse.sendInternalError("commandRegCode.3", state.conn)
+        return
+    }
+
+    try { deletePrereg(db, WAddress.fromParts(regInfo.first, domain)) }
+    catch (e: Exception) {
+        logError("commandRegCode.deletePrereg: $e")
+        ServerResponse.sendInternalError("commandRegCode.4", state.conn)
+        return
+    }
+
+    try {
+        ServerResponse(201, "REGISTERED", "", mutableMapOf(
+            "Workspace-ID" to regInfo.first.toString(),
+            "User-ID" to uid.toString(),
+            "Domain" to domain.toString(),
+        )).send(state.conn)
+    } catch (e: Exception) {
+        logDebug("commandRegCode success message send error: $e")
+    }
 }

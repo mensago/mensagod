@@ -62,4 +62,9 @@ class RegCmdTest {
                 assertEquals(408, response.code)
         }.run()
     }
+
+    @Test
+    fun regCodeTest() {
+        // TODO: Implement regCodeTest()
+    }
 }

@@ -3,6 +3,7 @@ package mensagod.dbcmds
 import libkeycard.MAddress
 import libkeycard.RandomID
 import libkeycard.UserID
+import libkeycard.WAddress
 import mensagod.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -45,7 +46,7 @@ class DBLoginCmdTest {
             preregWorkspace(db, newWID, newUID, domain, "spam")
         }
 
-        deletePrereg(db, MAddress.fromParts(newUID, domain))
+        deletePrereg(db, WAddress.fromParts(newWID, domain))
         preregWorkspace(db, newWID, newUID, domain, "baz")
 
         preregWorkspace(db, newWID2, null, domain, "eggs")

@@ -42,11 +42,8 @@ fun checkRegCode(db: DBConn, addr: MAddress, regcode: String): Pair<RandomID, Us
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun deletePrereg(db: DBConn, addr: MAddress) {
-    if (addr.userid.type == IDType.WorkspaceID)
-        db.execute("DELETE FROM prereg WHERE wid=? AND domain=?", addr.userid, addr.domain)
-    else
-        db.execute("DELETE FROM prereg WHERE uid=? AND domain=?", addr.userid, addr.domain)
+fun deletePrereg(db: DBConn, addr: WAddress) {
+    db.execute("DELETE FROM prereg WHERE wid=? AND domain=?", addr.id, addr.domain)
 }
 
 /**
