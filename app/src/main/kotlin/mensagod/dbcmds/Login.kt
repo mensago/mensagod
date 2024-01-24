@@ -19,7 +19,7 @@ import mensagod.ResourceExistsException
 fun checkRegCode(db: DBConn, addr: MAddress, regcode: String): Pair<RandomID, UserID?>? {
     if (addr.isWorkspace) {
         val rs = db.query("""SELECT uid FROM prereg WHERE regcode=? AND wid=? AND domain=?""",
-            regcode, addr.domain)
+            regcode, addr.userid, addr.domain)
         if (!rs.next()) return null
 
         val outUID = UserID.fromString(rs.getString("uid"))
@@ -27,7 +27,7 @@ fun checkRegCode(db: DBConn, addr: MAddress, regcode: String): Pair<RandomID, Us
     }
 
     val rs = db.query("""SELECT wid FROM prereg WHERE regcode=? AND uid=? AND domain=?""",
-        regcode, addr.domain)
+        regcode, addr.userid, addr.domain)
     if (!rs.next()) return null
 
     val outWID = RandomID.fromString(rs.getString("wid"))
