@@ -1,5 +1,6 @@
 package mensagod
 
+import keznacl.CryptoString
 import libkeycard.Domain
 import libkeycard.RandomID
 import libkeycard.UserID
@@ -28,6 +29,31 @@ open class SessionState(
  * client-server connection session.
  */
 class ClientSession(val conn: Socket): SessionState() {
+
+    /**
+     * Validator function which gets a CryptoString from the specified field. All error states for
+     * the field are handled internally, so if null is returned, the caller need not do anything
+     * else. If the value is not required to be present, a default value may be specified, as well.
+     */
+    fun getCryptoString(field: String, required: Boolean, default: CryptoString? = null):
+            CryptoString? {
+        if (!message.hasField(field)) {
+            return if (required) {
+                ServerResponse(400, "BAD REQUEST",
+                    "Required field missing: $field").send(conn)
+                return null
+            } else {
+                default
+            }
+        }
+
+        val cs = CryptoString.fromString(message.data[field]!!)
+        if (cs == null) {
+            ServerResponse(400, "BAD REQUEST", "Bad $field").send(conn)
+            return null
+        }
+        return cs
+    }
 
     /**
      * Validator function which gets a domain from the specified field. All error states for the
