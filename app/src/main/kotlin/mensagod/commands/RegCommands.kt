@@ -1,7 +1,9 @@
 package mensagod.commands
 
 import keznacl.Argon2idPassword
+import keznacl.getSupportedAsymmetricAlgorithms
 import libkeycard.RandomID
+import libkeycard.UserID
 import mensagod.*
 import mensagod.auth.AuthAction
 import mensagod.auth.ServerTarget
@@ -114,4 +116,51 @@ fun commandPreregister(state: ClientSession) {
     ))
     if (outUID != null) resp.data["User-ID"] = outUID.toString()
     resp.send(state.conn)
+}
+
+// REGCODE(User-ID, Reg-Code, Password-Hash, Password-Algorithm, Device-ID, Device-Key,
+//     Device-Info, Password-Salt="", Password-Parameters="", Domain="")
+// REGCODE(Workspace-ID, Reg-Code, Password-Hash, Password-Algorithm, Device-ID, Device-Key,
+//     Device-Info, Password-Salt="", Password-Parameters="", Domain="")
+fun commandRegCode(state: ClientSession) {
+
+    state.message.validate(setOf("Reg-Code", "Password-Hash", "Password-Algorithm"))?.let {
+        ServerResponse.sendBadRequest("Missing required field $it", state.conn)
+        return
+    }
+
+    val devid = state.getRandomID("Device-ID", true) ?: return
+    val devkey = state.getCryptoString("Device-Key", true) ?: return
+    val devinfo = state.getCryptoString("Device-Info", true) ?: return
+    val domain = state.getDomain("Domain", false, gServerDomain)!!
+
+    val regCodeLen = state.message.data["Reg-Code"]!!.codePoints().count()
+    if (regCodeLen > 128 || regCodeLen < 16) {
+        ServerResponse.sendBadRequest("Invalid registration code", state.conn)
+        return
+    }
+
+    // The password field must pass some basic checks for length, but because we will be hashing
+    // the thing with Argon2id, even if the client does a dumb thing and submit a cleartext
+    // password, there will be a pretty decent baseline of security in place.
+    val passLen = state.message.data["Password-Hash"]!!.codePoints().count()
+    if (passLen > 128 || passLen < 16) {
+        ServerResponse.sendBadRequest("Invalid password hash", state.conn)
+        return
+    }
+
+    var uid = state.getUserID("User-ID", false)
+    if (uid == null) {
+        val wid = state.getRandomID("Workspace-ID", true) ?: return
+        uid = UserID.fromWID(wid)
+    }
+
+    if (!getSupportedAsymmetricAlgorithms().contains(devkey.prefix)) {
+        ServerResponse(309, "ENCRYPTION TYPE NOT SUPPORTED",
+            "Supported: "+ getSupportedAsymmetricAlgorithms().joinToString(","))
+                .send(state.conn)
+        return
+    }
+
+    TODO("Finish implementing commandRegCode()")
 }
