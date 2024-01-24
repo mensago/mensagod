@@ -1,5 +1,6 @@
 package mensagod.commands
 
+import keznacl.CryptoString
 import libkeycard.RandomID
 import mensagod.*
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -65,6 +66,34 @@ class RegCmdTest {
 
     @Test
     fun regCodeTest() {
+        val setupData = setupTest("commands.regCodeTest")
+
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+        val devkey = CryptoString.fromString(ADMIN_PROFILE_DATA["device.public"]!!)
+
+        // Test Case #1: Regcode the administrator account
+        CommandTest("regcode.1",
+            SessionState(ClientRequest("REGCODE", mutableMapOf(
+                "Reg-Code" to setupData.serverSetupData["admin_regcode"]!!,
+                "User-ID" to adminWID.toString(),
+                "Password-Hash" to "this is a pretty terrible password",
+                "Password-Algorithm" to "cleartext",
+                "Device-ID" to devid.toString(),
+                "Device-Key" to devkey.toString(),
+                "Device-Info" to "XSALSA20:SomethingIDontCare"
+            )), null, LoginState.NoSession), ::commandRegCode) { port ->
+                val socket = Socket(InetAddress.getByName("localhost"), port)
+                val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+                assertEquals(201, response.code)
+                assertEquals("admin", response.data["User-ID"])
+                assertEquals(adminWID.toString(), response.data["Workspace-ID"])
+                assertEquals(gServerDomain.toString(), response.data["Domain"])
+        }.run()
+
+
+
         // TODO: Implement regCodeTest()
     }
 }

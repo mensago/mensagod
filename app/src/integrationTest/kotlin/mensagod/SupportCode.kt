@@ -265,15 +265,18 @@ fun setupAdmin(db: DBConn) {
         "argon2id", "anXvadxtNJAYa2cUQFqKSQ", "m=65536,t=2,p=1",
         WorkspaceStatus.Active,WorkspaceType.Individual)
     addDevice(db, adminWID, devid, devkey, fakeInfo, DeviceStatus.Active)
-    deletePrereg(db, MAddress.fromParts(adminUID, gServerDomain))
+    deletePrereg(db, WAddress.fromParts(adminWID, gServerDomain))
 
 }
+
+class SetupData(val config: ServerConfig, val serverSetupData: Map<String, String>,
+    val testPath: String)
 
 /**
  * Performs all the setup that most server tests will need and returns the path to the test
  * directory.
  */
-fun setupTest(name: String): String {
+fun setupTest(name: String): SetupData {
     val testpath = makeTestFolder(name)
     initLogging(Paths.get(testpath, "log.txt"), true)
     LocalFS.initialize(Paths.get(testpath, "topdir").toString())
@@ -282,10 +285,10 @@ fun setupTest(name: String): String {
     resetDB(config)
     DBConn.initialize(config)
     val db = DBConn().connect()
-    initDB(db.getConnection()!!)
+    val serverData = initDB(db.getConnection()!!)
     setupAdmin(db)
 
-    return testpath
+    return SetupData(config, serverData, testpath)
 }
 
 /**
