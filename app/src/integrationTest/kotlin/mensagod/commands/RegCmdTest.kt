@@ -66,19 +66,18 @@ class RegCmdTest {
 
     @Test
     fun regCodeTest() {
-        val setupData = setupTest("commands.regCodeTest")
+        setupTest("commands.regCodeTest")
 
-        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
         val devkey = CryptoString.fromString(ADMIN_PROFILE_DATA["device.public"]!!)
 
         // Test Case #1: Regcode a user
         val db = DBConn()
         val regInfo = preregUser(db, "csimons")
-        CommandTest("regcode.2",
+        CommandTest("regcode.1",
             SessionState(ClientRequest("REGCODE", mutableMapOf(
                 "Reg-Code" to regInfo["Reg-Code"]!!,
-                "User-ID" to adminWID.toString(),
+                "User-ID" to "csimons",
                 "Password-Hash" to "this is a pretty terrible password",
                 "Password-Algorithm" to "cleartext",
                 "Device-ID" to devid.toString(),
@@ -89,8 +88,7 @@ class RegCmdTest {
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
             assertReturnCode(201, response)
-            assertEquals("admin", response.data["User-ID"])
-            assertEquals(adminWID.toString(), response.data["Workspace-ID"])
+            assertEquals("csimons", response.data["User-ID"])
             assertEquals(gServerDomain.toString(), response.data["Domain"])
         }.run()
     }
