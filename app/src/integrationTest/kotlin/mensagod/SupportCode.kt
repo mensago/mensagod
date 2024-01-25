@@ -82,6 +82,8 @@ val ADMIN_PROFILE_DATA = mutableMapOf(
     "device.public" to "CURVE25519:mO?WWA-k2B2O|Z%fA`~s3^\$iiN{5R->#jxO@cy6{",
     "device.private" to "CURVE25519:2bLf2vMA?GA2?L~tv<PA9XOw6e}V~ObNi7C&qek>",
     "devid" to "3abaa743-40d9-4897-ac77-6a7783083f30",
+    "regcode" to "Undamaged Shining Amaretto Improve Scuttle Uptake",
+    "reghash" to "\$argon2id\$v=19\$m=1048576,t=10,p=4\$0QufQhLAVhgDqbr//8/hTA\$ocFjWRDrqEhLcedJG95CAt2CKQgkyDak7VMpfjwvveY",
 
     "name.formatted" to "Mensago Administrator",
     "name.given" to "Mensago",
@@ -212,11 +214,10 @@ fun initDB(db: Connection): Map<String, String> {
     // Preregister the admin account
 
     val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"]!!)!!
-    val regCode = "Undamaged Shining Amaretto Improve Scuttle Uptake"
     stmt = db.prepareStatement("""INSERT INTO prereg(wid,uid,domain,regcode) 
         VALUES(?,'admin','example.com',?);""")
     stmt.setString(1, adminWID.toString())
-    stmt.setString(2, regCode)
+    stmt.setString(2, ADMIN_PROFILE_DATA["reghash"]!!)
     stmt.execute()
 
     // Set up abuse/support forwarding to admin
@@ -249,7 +250,7 @@ fun initDB(db: Connection): Map<String, String> {
         "oekey" to keys["encryption.public"].toString(),
         "odkey" to keys["encryption.private"].toString(),
         "admin_wid" to adminWID.toString(),
-        "admin_regcode" to regCode,
+        "admin_regcode" to ADMIN_PROFILE_DATA["regcode"]!!,
         "abuse_wid" to abuseWID.toString(),
         "support_wid" to supportWID.toString(),
     )
@@ -262,6 +263,9 @@ fun preregUser(db: DBConn, uid: String? = null, regcode: String? = null, reghash
     val rcode = regcode ?: gRegCodeGenerator.getPassphrase(
         ServerConfig.get().getInteger("security.diceware_wordcount"))
     val rhash = reghash ?: Argon2idPassword().updateHash(rcode).getOrThrow()
+    val hasher = Argon2idPassword()
+    hasher.setFromHash(rhash)?.let{ throw it }
+    assert(hasher.verify(rhash))
 
     val outWID = RandomID.fromString(wid) ?: RandomID.generate()
     val outUID = UserID.fromString(uid)

@@ -111,7 +111,6 @@ class RegCmdTest {
             assertEquals(gServerDomain.toString(), response.data["Domain"])
         }.run()
 
-
         // TODO: Implement regCodeTest()
     }
 }

@@ -1,5 +1,6 @@
 package mensagod.dbcmds
 
+import keznacl.Argon2idPassword
 import keznacl.EmptyDataException
 import libkeycard.*
 import mensagod.DBConn
@@ -17,18 +18,33 @@ import mensagod.ResourceExistsException
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun checkRegCode(db: DBConn, addr: MAddress, regcode: String): Pair<RandomID, UserID?>? {
-    if (addr.isWorkspace) {
-        val rs = db.query("""SELECT uid,wid FROM prereg WHERE regcode=? AND wid=? AND domain=?""",
-            regcode, addr.userid, addr.domain)
-        if (!rs.next()) return null
+    val rs = if (addr.isWorkspace) {
+        db.query(
+            """SELECT uid,regcode FROM prereg WHERE wid=? AND domain=?""",
+            addr.userid, addr.domain
+        )
+    } else {
+        db.query("""SELECT wid,regcode FROM prereg WHERE uid=? AND domain=?""",
+            addr.userid, addr.domain)
+    }
+    if (!rs.next()) return null
 
+    val rawHash = rs.getString("regcode")
+    if (rawHash.isEmpty()) {
+        throw DatabaseCorruptionException(
+            "Prereg entry missing regcode for workspace $addr")
+    }
+    val regHash = Argon2idPassword()
+    regHash.setFromHash(rawHash)?.let {
+        throw DatabaseCorruptionException(
+            "Prereg entry has bad regcode for workspace $addr")
+    }
+    if (!regHash.verify(regcode)) return null
+
+    if (addr.isWorkspace) {
         val outUID = UserID.fromString(rs.getString("uid"))
         return Pair(addr.userid.toWID()!!, outUID)
     }
-
-    val rs = db.query("""SELECT wid FROM prereg WHERE regcode=? AND uid=? AND domain=?""",
-        regcode, addr.userid, addr.domain)
-    if (!rs.next()) return null
 
     val outWID = RandomID.fromString(rs.getString("wid"))
         ?: throw DatabaseCorruptionException(
