@@ -104,7 +104,7 @@ class MServerPath(path: String? = null) {
             """^[0-9]+.[0-9]+.[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$"""
         ).toRegex()
         private val serverPathRE = Pattern.compile(
-                """^/( wsp| out| tmp)?""" +
+                """^/( wsp| out| tmp| keys)?""" +
                 """( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*""" +
                 """( new)?( [0-9]+.[0-9]+.""" +
                 """[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*"""

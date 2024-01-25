@@ -29,17 +29,15 @@ class CommandTest(private val testName: String,
     }
 
     private fun serverWorker(listener: ServerSocket, state: SessionState) {
-        try {
-            val socket = listener.accept()
-            val serverState = ClientSession(socket).also {
-                it.loginState = state.loginState
-                it.isTerminating = state.isTerminating
-                it.wid = state.wid
-                it.devid = state.devid
-                it.message = state.message
-            }
-            command(serverState)
-        } catch (e: Exception) { exitProcess(-1) }
+        val socket = listener.accept()
+        val serverState = ClientSession(socket).also {
+            it.loginState = state.loginState
+            it.isTerminating = state.isTerminating
+            it.wid = state.wid
+            it.devid = state.devid
+            it.message = state.message
+        }
+        command(serverState)
     }
 
     // TODO: make exceptions thrown by CommandTest cause the test to fail

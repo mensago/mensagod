@@ -84,7 +84,7 @@ fun commandPreregister(state: ClientSession) {
     // ones that actually exist, preregister the account.
     val regcode = gRegCodeGenerator.getPassphrase(
         ServerConfig.get().getInteger("security.diceware_wordcount"))
-    val reghash = Argon2idPassword().updateHash("regcode").getOrElse {
+    val reghash = Argon2idPassword().updateHash(regcode).getOrElse {
         logError("commandPreregister.hashRegCode exception: $it")
         ServerResponse.sendInternalError("registration code hashing error", state.conn)
         return
@@ -182,7 +182,12 @@ fun commandRegCode(state: ClientSession) {
                 state.message.data["Salt"] ?: "",
                 state.message.data["Password-Parameters"] ?: "", WorkspaceStatus.Active,
                 WorkspaceType.Individual)
-    } catch (e: Exception) {
+    }
+    catch (e: ResourceExistsException) {
+        ServerResponse(408, "RESOURCE EXISTS", "workspace is already registered")
+        return
+    }
+    catch (e: Exception) {
         logError("Internal error commandRegCode.addWorkspace: $e")
         ServerResponse.sendInternalError("commandRegCode.2", state.conn)
         return

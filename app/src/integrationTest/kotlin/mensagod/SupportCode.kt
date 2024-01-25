@@ -1,5 +1,6 @@
 package mensagod
 
+import keznacl.Argon2idPassword
 import keznacl.CryptoString
 import keznacl.EncryptionPair
 import keznacl.SigningPair
@@ -254,6 +255,28 @@ fun initDB(db: Connection): Map<String, String> {
     )
 }
 
+/** Test setup command to preregister a user */
+fun preregUser(db: DBConn, uid: String? = null, regcode: String? = null, reghash: String? = null,
+               wid: String? = null): Map<String,String> {
+
+    val rcode = regcode ?: gRegCodeGenerator.getPassphrase(
+        ServerConfig.get().getInteger("security.diceware_wordcount"))
+    val rhash = reghash ?: Argon2idPassword().updateHash(rcode).getOrThrow()
+
+    val outWID = RandomID.fromString(wid) ?: RandomID.generate()
+    val outUID = UserID.fromString(uid)
+    preregWorkspace(db, outWID, outUID, gServerDomain, rhash)
+    LocalFS.get().makeDirectory(MServerPath("/ wsp $outWID"))
+
+    return mapOf(
+        "Workspace-ID" to outWID.toString(),
+        "Domain" to gServerDomain.toString(),
+        "User-ID" to (outUID?.toString() ?: ""),
+        "Reg-Code" to rcode,
+        "Reg-Hash" to rhash,
+    )
+}
+
 /**
  * Registers the administrator account and populates its workspace with test data.
  */
@@ -282,6 +305,8 @@ fun setupTest(name: String): SetupData {
     val testpath = makeTestFolder(name)
     initLogging(Paths.get(testpath, "log.txt"), true)
     LocalFS.initialize(Paths.get(testpath, "topdir").toString())
+    val lfs = LocalFS.get()
+    listOf("wsp","out","tmp","keys").forEach { lfs.makeDirectory(MServerPath("/ $it")) }
 
     val config = ServerConfig.load()
     resetDB(config)
