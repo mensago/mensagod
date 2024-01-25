@@ -72,24 +72,7 @@ class RegCmdTest {
         val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
         val devkey = CryptoString.fromString(ADMIN_PROFILE_DATA["device.public"]!!)
 
-        // Test Case #1: Try to regcode the administrator account
-//        CommandTest("regcode.1",
-//            SessionState(ClientRequest("REGCODE", mutableMapOf(
-//                "Reg-Code" to setupData.serverSetupData["admin_regcode"]!!,
-//                "User-ID" to adminWID.toString(),
-//                "Password-Hash" to "this is a pretty terrible password",
-//                "Password-Algorithm" to "cleartext",
-//                "Device-ID" to devid.toString(),
-//                "Device-Key" to devkey.toString(),
-//                "Device-Info" to "XSALSA20:SomethingIDontCare"
-//            )), null, LoginState.NoSession), ::commandRegCode) { port ->
-//                val socket = Socket(InetAddress.getByName("localhost"), port)
-//                val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
-//
-//                assertReturnCode(408, response)
-//        }.run()
-
-        // Test Case #2: Regcode a user
+        // Test Case #1: Regcode a user
         val db = DBConn()
         val regInfo = preregUser(db, "csimons")
         CommandTest("regcode.2",
@@ -110,7 +93,5 @@ class RegCmdTest {
             assertEquals(adminWID.toString(), response.data["Workspace-ID"])
             assertEquals(gServerDomain.toString(), response.data["Domain"])
         }.run()
-
-        // TODO: Implement regCodeTest()
     }
 }

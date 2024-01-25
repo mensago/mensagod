@@ -263,9 +263,6 @@ fun preregUser(db: DBConn, uid: String? = null, regcode: String? = null, reghash
     val rcode = regcode ?: gRegCodeGenerator.getPassphrase(
         ServerConfig.get().getInteger("security.diceware_wordcount"))
     val rhash = reghash ?: Argon2idPassword().updateHash(rcode).getOrThrow()
-    val hasher = Argon2idPassword()
-    hasher.setFromHash(rhash)?.let{ throw it }
-    assert(hasher.verify(rhash))
 
     val outWID = RandomID.fromString(wid) ?: RandomID.generate()
     val outUID = UserID.fromString(uid)
