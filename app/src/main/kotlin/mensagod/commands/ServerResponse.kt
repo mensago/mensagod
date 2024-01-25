@@ -37,6 +37,11 @@ class ServerResponse(@Required @SerialName("Code") var code: Int = 0,
     /** Returns a CmdStatus object based on the contents of the server response */
     fun toStatus(): CmdStatus { return CmdStatus(code, status, info) }
 
+    override fun toString(): String {
+        return if (info.isNotEmpty()) "ServerResponse -> $code: $status ($info)"
+        else "ServerResponse -> $code: $status"
+    }
+
     companion object {
         /** Reads a ServerResponse from a connection */
         fun receive(conn: InputStream): Result<ServerResponse> {

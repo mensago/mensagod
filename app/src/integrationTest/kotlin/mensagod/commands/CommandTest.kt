@@ -41,4 +41,6 @@ class CommandTest(private val testName: String,
             command(serverState)
         } catch (e: Exception) { exitProcess(-1) }
     }
+
+    // TODO: make exceptions thrown by CommandTest cause the test to fail
 }

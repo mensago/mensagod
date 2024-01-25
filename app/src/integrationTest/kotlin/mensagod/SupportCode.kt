@@ -5,10 +5,12 @@ import keznacl.EncryptionPair
 import keznacl.SigningPair
 import libkeycard.*
 import mensagod.commands.DeviceStatus
+import mensagod.commands.ServerResponse
 import mensagod.dbcmds.*
 import mensagod.fs.LocalFS
 import org.apache.commons.io.FileUtils
 import java.io.File
+import java.net.ProtocolException
 import java.nio.file.Paths
 import java.security.SecureRandom
 import java.sql.Connection
@@ -287,6 +289,8 @@ fun setupTest(name: String): SetupData {
     val db = DBConn().connect()
     val serverData = initDB(db.getConnection()!!)
     setupAdmin(db)
+    gServerDomain = Domain.fromString(config.getString("global.domain"))!!
+
 
     return SetupData(config, serverData, testpath)
 }
@@ -309,4 +313,9 @@ fun makeTestFile(fileDir: String, fileName: String? = null,
     fHandle.writeBytes("0".repeat(realSize).toByteArray())
 
     return Pair(realName, realSize)
+}
+
+fun assertReturnCode(code: Int, response: ServerResponse) {
+    if (response.code != code)
+        throw ProtocolException(response.toString())
 }
