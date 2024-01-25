@@ -121,6 +121,15 @@ class Argon2PasswordTest {
     }
 
     @Test
+    fun compatibility() {
+        val hasher = Argon2idPassword()
+        val hash = hasher.updateHash("this is a test").getOrThrow()
+        val hasher2 = Argon2idPassword()
+        hasher2.setFromHash(hash)
+        assert(hasher2.verify("this is a test"))
+    }
+
+    @Test
     fun lintRemoval() {
         val ihasher = Argon2iPassword()
         ihasher.run {

@@ -211,7 +211,7 @@ class Argon2idPassword: Argon2Password() {
 
     init {
         rawSalt = hasher.generateSalt()
-        salt = Base64.getEncoder().encodeToString(rawSalt)
+        salt = Base64.getEncoder().withoutPadding().encodeToString(rawSalt)
     }
 }
 
@@ -226,7 +226,7 @@ class Argon2dPassword: Argon2Password() {
 
     init {
         rawSalt = hasher.generateSalt()
-        salt = Base64.getEncoder().encodeToString(rawSalt)
+        salt = Base64.getEncoder().withoutPadding().encodeToString(rawSalt)
     }
 }
 
@@ -238,7 +238,7 @@ class Argon2iPassword: Argon2Password() {
 
     init {
         rawSalt = hasher.generateSalt()
-        salt = Base64.getEncoder().encodeToString(rawSalt)
+        salt = Base64.getEncoder().withoutPadding().encodeToString(rawSalt)
     }
 }
 
