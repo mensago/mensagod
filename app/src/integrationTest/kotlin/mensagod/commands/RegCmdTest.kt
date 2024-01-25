@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test
 import java.net.InetAddress
 import java.net.Socket
 
-class LoginCmdTest {
+class RegCmdTest {
     @Test
     fun preregTest() {
         setupTest("commands.preregTest")
