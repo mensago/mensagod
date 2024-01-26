@@ -122,3 +122,8 @@ fun commandLogout(state: ClientSession) {
         ServerResponse(200, "OK").send(state.conn)
     } catch (e: Exception) { logDebug("commandLogout success message send error: $e") }
 }
+
+// PASSWORD(Password-Hash)
+fun commandPassword(state: ClientSession) {
+    TODO("Implement commandPassword($state)")
+}

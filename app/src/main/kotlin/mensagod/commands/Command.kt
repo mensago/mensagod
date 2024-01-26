@@ -12,6 +12,7 @@ fun processCommand(state: ClientSession) {
         "GETWID" -> commandGetWID(state)
         "LOGIN" -> commandLogin(state)
         "LOGOUT" -> commandLogout(state)
+        "PASSWORD" -> commandPassword(state)
         "PREREG" -> commandPreregister(state)
         "REGCODE" -> commandRegCode(state)
         else -> commandUnrecognized(state)

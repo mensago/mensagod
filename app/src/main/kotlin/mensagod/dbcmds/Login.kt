@@ -10,6 +10,17 @@ import mensagod.NotConnectedException
 import mensagod.ResourceExistsException
 
 /**
+ * checkPassword checks a password against the one stored in the database. It returns true if the
+ * database's hash validates the password passed to the function.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ */
+fun checkPassword(db: DBConn, wid: RandomID, password: String): Boolean {
+    TODO("Implement dbcmds.checkPassword($db, $wid, $password)")
+}
+
+/**
  * checkRegCode handles authenticating a host using a userID/workspaceID and registration code
  * provided by preregWorkspace(). Based on authentication, it either returns a Pair containing the
  * workspace ID and the user ID (if it exists) or null on failure. This call is responsible for
