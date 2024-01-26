@@ -32,12 +32,14 @@ class LocalFSTest {
         val lfs = LocalFS.get()
 
         assertThrows<FSFailureException> {
-            lfs.makeDirectory(MServerPath("/ wsp 6e99f804-7bb6-435a-9dce-53d9c6d33816"))
+            lfs.makeDirectory(MServerPath(
+                "/ wsp 6e99f804-7bb6-435a-9dce-53d9c6d33816 5769bf90-aeb2-46b1-9bc5-4809d55991df"))
         }
 
-        val wspdir = File(Paths.get(setupData.testPath, "topdir", "wsp").toString())
+        val wspdir = File(Paths.get(setupData.testPath, "topdir", "wsp",
+            "6e99f804-7bb6-435a-9dce-53d9c6d33816").toString())
         assert(!wspdir.exists())
-        lfs.makeDirectory(MServerPath("/ wsp"))
+        lfs.makeDirectory(MServerPath("/ wsp 6e99f804-7bb6-435a-9dce-53d9c6d33816"))
         assert(wspdir.exists())
     }
 }
