@@ -25,6 +25,4 @@ class MiscCmdTest {
             assertEquals(serverData["support_wid"]!!, response.data["Workspace-ID"])
         }.run()
     }
-
-    // TODO: Implement other command tests
 }
