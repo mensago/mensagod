@@ -90,4 +90,18 @@ class LoginCmdTest {
             assertReturnCode(400, response)
         }.run()
     }
+
+    @Test
+    fun logoutTest() {
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        CommandTest("logout.1",
+            SessionState(ClientRequest("LOGOUT"), adminWID,
+                LoginState.LoggedIn), ::commandLogout) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            assertReturnCode(200, response)
+        }.run()
+
+    }
 }
