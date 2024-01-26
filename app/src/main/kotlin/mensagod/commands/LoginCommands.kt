@@ -1,10 +1,7 @@
 package mensagod.commands
 
 import mensagod.*
-import mensagod.dbcmds.WorkspaceStatus
-import mensagod.dbcmds.checkWorkspace
-import mensagod.dbcmds.getEncryptionPair
-import mensagod.dbcmds.getPasswordInfo
+import mensagod.dbcmds.*
 
 // LOGIN(Login-Type,Workspace-ID, Challenge)
 fun commandLogin(state: ClientSession) {
@@ -103,9 +100,10 @@ fun commandLogin(state: ClientSession) {
         return
     }
 
+    state.wid = wid
     try {
         ServerResponse(100, "CONTINUE", "", mutableMapOf(
-            "Response" to decrypted.toString(),
+            "Response" to decrypted,
             "Password-Algorithm" to passInfo.algorithm,
             "Password-Salt" to passInfo.salt,
             "Password-Parameters" to passInfo.parameters,
@@ -125,5 +123,32 @@ fun commandLogout(state: ClientSession) {
 
 // PASSWORD(Password-Hash)
 fun commandPassword(state: ClientSession) {
-    TODO("Implement commandPassword($state)")
+    if (!state.message.hasField("Password-Hash")) {
+        ServerResponse.sendBadRequest("Missing required field Password-Hash", state.conn)
+        return
+    }
+    if (state.loginState != LoginState.AwaitingPassword) {
+        ServerResponse.sendBadRequest("Session state mismatch", state.conn)
+        return
+    }
+
+    val db = DBConn()
+    val match = try { checkPassword(db, state.wid!!, state.message.data["Password-Hash"]!!) }
+    catch (e: Exception) {
+        logError("commandPassword.checkPassword error: $e")
+        ServerResponse.sendInternalError("Internal error checking password", state.conn)
+        return
+    }
+
+    if (!match) {
+        val delay = ServerConfig.get().getInteger("security.failure_delay_sec")
+        Thread.sleep(delay * 1000L)
+        try {
+            ServerResponse(402, "AUTHENTICATION FAILURE").send(state.conn)
+        } catch (e: Exception) { logDebug("commandPassword auth fail message send error: $e") }
+        return
+    }
+
+    state.loginState = LoginState.AwaitingDeviceID
+    ServerResponse(100, "CONTINUE").send(state.conn)
 }
