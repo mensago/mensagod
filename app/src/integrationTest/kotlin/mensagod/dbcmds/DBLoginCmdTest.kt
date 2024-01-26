@@ -27,16 +27,15 @@ class DBLoginCmdTest {
     fun preregWorkspaceTest() {
         // This test also covers deletePrereg() and checkRegCode()
 
-        val config = ServerConfig.load()
-        resetDB(config)
-        DBConn.initialize(config)
-        val db = DBConn().connect()
-        val serverData = initDB(db.getConnection()!!)
+        val setupData = setupTest("dbcmds.checkPassword")
+        val db = DBConn()
 
+        val testHash = ADMIN_PROFILE_DATA["reghash"]!!
+        val testCode = ADMIN_PROFILE_DATA["regcode"]!!
         val newWID = RandomID.fromString("94fd481f-6b1c-459b-ada7-5f32b3a1bbf3")!!
         val newWID2 = RandomID.fromString("793e9e33-5c6b-4b6a-8f56-ef64e7db2c21")!!
         val newUID = UserID.fromString("csimons")!!
-        val supportWID = RandomID.fromString(serverData["support_wid"])!!
+        val supportWID = RandomID.fromString(setupData.serverSetupData["support_wid"])!!
         val supportUID = UserID.fromString("support")
         val domain = gServerDomain
         assertThrows<ResourceExistsException> {
@@ -46,37 +45,36 @@ class DBLoginCmdTest {
             preregWorkspace(db, supportWID, supportUID, domain, "bar")
         }
 
-        preregWorkspace(db, newWID, newUID, domain, "baz")
+        preregWorkspace(db, newWID, newUID, domain, testHash)
         var rs = db.query("SELECT wid,uid,domain,regcode FROM prereg WHERE wid=?", newWID)
         assert(rs.next())
         assertEquals(newWID.toString(), rs.getString("wid"))
         assertEquals(newUID.toString(), rs.getString("uid"))
         assertEquals(domain.toString(), rs.getString("domain"))
-        assertEquals("baz", rs.getString("regcode"))
+        assertEquals(testHash, rs.getString("regcode"))
 
         assertThrows<ResourceExistsException> {
-            preregWorkspace(db, newWID, newUID, domain, "spam")
+            preregWorkspace(db, newWID, newUID, domain, testHash)
         }
 
         deletePrereg(db, WAddress.fromParts(newWID, domain))
-        preregWorkspace(db, newWID, newUID, domain, "baz")
+        preregWorkspace(db, newWID, newUID, domain, testHash)
 
-        preregWorkspace(db, newWID2, null, domain, "eggs")
+        preregWorkspace(db, newWID2, null, domain, testHash)
         rs = db.query("SELECT wid,uid,domain,regcode FROM prereg WHERE wid=?", newWID2)
         assert(rs.next())
         assertEquals(newWID2.toString(), rs.getString("wid"))
         assertNull(rs.getString("uid"))
         assertEquals(domain.toString(), rs.getString("domain"))
-        assertEquals("eggs", rs.getString("regcode"))
 
-        var regInfo = checkRegCode(db, MAddress.fromParts(newUID, domain), "baz")!!
+        var regInfo = checkRegCode(db, MAddress.fromParts(newUID, domain), testCode)!!
         assertEquals(newWID, regInfo.first)
         assertEquals(newUID, regInfo.second)
 
-        regInfo = checkRegCode(db, MAddress.fromParts(UserID.fromWID(newWID), domain), "baz")!!
+        regInfo = checkRegCode(db, MAddress.fromParts(UserID.fromWID(newWID), domain), testCode)!!
         assertEquals(newWID, regInfo.first)
         assertEquals(newUID, regInfo.second)
 
-        assertNull(checkRegCode(db, MAddress.fromParts(newUID, domain), "foo"))
+        assertNull(checkRegCode(db, MAddress.fromParts(newUID, domain), "baz"))
     }
 }
