@@ -2,6 +2,7 @@ package mensagod.dbcmds
 
 import keznacl.Argon2idPassword
 import keznacl.EmptyDataException
+import keznacl.PasswordInfo
 import libkeycard.*
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
@@ -60,6 +61,23 @@ fun checkRegCode(db: DBConn, addr: MAddress, regcode: String): Pair<RandomID, Us
  */
 fun deletePrereg(db: DBConn, addr: WAddress) {
     db.execute("DELETE FROM prereg WHERE wid=? AND domain=?", addr.id, addr.domain)
+}
+
+/**
+ * Gets the password metadata for the specified workspace or null if not found.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ */
+fun getPasswordInfo(db: DBConn, wid: RandomID): PasswordInfo? {
+    val rs = db.query("""SELECT passtype,salt,passparams FROM workspaces WHERE wid=?""", wid)
+    if (rs.next()) {
+        val type = rs.getString("passtype")
+        val salt = rs.getString("salt")
+        val params = rs.getString("params")
+        return PasswordInfo(type, salt, params)
+    }
+    return null
 }
 
 /**

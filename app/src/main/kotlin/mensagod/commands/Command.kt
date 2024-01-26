@@ -10,6 +10,8 @@ import mensagod.ClientSession
 fun processCommand(state: ClientSession) {
     when (state.message.action) {
         "GETWID" -> commandGetWID(state)
+        "LOGIN" -> commandLogin(state)
+        "LOGOUT" -> commandLogout(state)
         "PREREG" -> commandPreregister(state)
         "REGCODE" -> commandRegCode(state)
         else -> commandUnrecognized(state)
