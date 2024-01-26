@@ -115,7 +115,8 @@ fun commandPreregister(state: ClientSession) {
         "Reg-Code" to regcode,
     ))
     if (outUID != null) resp.data["User-ID"] = outUID.toString()
-    resp.send(state.conn)
+    try { resp.send(state.conn) }
+    catch (e: Exception) { logDebug("commandRegCode success message send error: $e") }
 }
 
 // REGCODE(User-ID, Reg-Code, Password-Hash, Password-Algorithm, Device-ID, Device-Key,
@@ -213,7 +214,5 @@ fun commandRegCode(state: ClientSession) {
             "User-ID" to uid.toString(),
             "Domain" to domain.toString(),
         )).send(state.conn)
-    } catch (e: Exception) {
-        logDebug("commandRegCode success message send error: $e")
-    }
+    } catch (e: Exception) { logDebug("commandRegCode success message send error: $e") }
 }
