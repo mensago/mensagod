@@ -4,20 +4,26 @@ import keznacl.Argon2idPassword
 import keznacl.EmptyDataException
 import keznacl.PasswordInfo
 import libkeycard.*
-import mensagod.DBConn
-import mensagod.DatabaseCorruptionException
-import mensagod.NotConnectedException
-import mensagod.ResourceExistsException
+import mensagod.*
 
 /**
  * checkPassword checks a password against the one stored in the database. It returns true if the
  * database's hash validates the password passed to the function.
  *
+ * @throws ResourceNotFoundException if the workspace isn't found
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun checkPassword(db: DBConn, wid: RandomID, password: String): Boolean {
-    TODO("Implement dbcmds.checkPassword($db, $wid, $password)")
+    val rs = db.query("""SELECT password FROM workspaces WHERE wid=?""", wid)
+    if (!rs.next()) throw ResourceNotFoundException()
+
+    val hasher = Argon2idPassword()
+    hasher.setFromHash(rs.getString("password"))?.let {
+        throw DatabaseCorruptionException("Bad argon2id hash for $wid")
+    }
+
+    return hasher.verify(password)
 }
 
 /**
