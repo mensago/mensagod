@@ -104,4 +104,36 @@ class LoginCmdTest {
         }.run()
 
     }
+
+    @Test
+    fun passwordTest() {
+        setupTest("commands.passwordTest")
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+
+        // Test Case #1: Successful password auth as admin
+        CommandTest("password.1",
+            SessionState(ClientRequest("PASSWORD", mutableMapOf(
+                "Password-Hash" to ADMIN_PROFILE_DATA["password"]!!,
+            )), adminWID,
+                LoginState.AwaitingPassword), ::commandPassword) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            assertReturnCode(100, response)
+            assert(response.data.isEmpty())
+        }.run()
+
+        // Test Case #2: Password auth failure as admin
+        CommandTest("password.2",
+            SessionState(ClientRequest("PASSWORD", mutableMapOf(
+                "Password-Hash" to "foobar",
+            )), adminWID,
+                LoginState.AwaitingPassword), ::commandPassword) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            assertReturnCode(402, response)
+            assert(response.data.isEmpty())
+        }.run()
+    }
 }
