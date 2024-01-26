@@ -30,22 +30,24 @@ enum class WorkspaceType {
 
 enum class WorkspaceStatus {
     Active,
-    Pending,
-    Blocked,
-    Archived,
     Approved,
+    Archived,
     Disabled,
-    Preregistered;
+    Pending,
+    Preregistered,
+    Suspended,
+    Unpaid;
 
     override fun toString(): String {
         return when (this) {
             Active -> "active"
-            Pending -> "pending"
-            Blocked -> "blocked"
-            Archived -> "archived"
             Approved -> "approved"
+            Archived -> "archived"
             Disabled -> "disabled"
+            Pending -> "pending"
             Preregistered -> "preregistered"
+            Suspended -> "suspended"
+            Unpaid -> "unpaid"
         }
     }
 
@@ -54,12 +56,13 @@ enum class WorkspaceStatus {
         fun fromString(s: String): WorkspaceStatus? {
             return when (s.lowercase()) {
                 "active" -> Active
-                "pending" -> Pending
-                "blocked" -> Blocked
-                "archived" -> Archived
                 "approved" -> Approved
+                "archived" -> Archived
                 "disabled" -> Disabled
+                "pending" -> Pending
                 "preregistered" -> Preregistered
+                "suspended" -> Suspended
+                "unpaid" -> Unpaid
                 else -> null
             }
         }
