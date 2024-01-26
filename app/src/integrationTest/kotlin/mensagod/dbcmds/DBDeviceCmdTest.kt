@@ -40,11 +40,11 @@ class DBDeviceCmdTest {
         assertEquals(1, countDevices(db, adminWID))
 
         val devid2 = RandomID.fromString("557688c4-8324-4577-ad8b-2dc6fed79567")!!
-        addDevice(db, adminWID, devid2, devKey, fakeInfo, DeviceStatus.Active)
+        addDevice(db, adminWID, devid2, devKey, fakeInfo, DeviceStatus.Registered)
         assertEquals(2, countDevices(db, adminWID))
 
         assertEquals(DeviceStatus.Pending, getDeviceStatus(db, adminWID, devid))
-        assertNull(getDeviceStatus(db, adminWID, badID))
+        assertEquals(DeviceStatus.NotRegistered, getDeviceStatus(db, adminWID, badID))
 
         assertNotNull(getLastDeviceLogin(db, adminWID, devid))
         assertNull(getLastDeviceLogin(db, adminWID, badID))
@@ -81,7 +81,7 @@ class DBDeviceCmdTest {
 
         val devid2 = RandomID.fromString("557688c4-8324-4577-ad8b-2dc6fed79567")!!
         val fakeInfo2 = CryptoString.fromString("XSALSA20:ABCDEFG123456789")!!
-        addDevice(db, adminWID, devid2, devKey, fakeInfo2, DeviceStatus.Active)
+        addDevice(db, adminWID, devid2, devKey, fakeInfo2, DeviceStatus.Registered)
 
         val infoList = getDeviceInfo(db, adminWID, devid)
         assertEquals(1, infoList.size)
@@ -104,8 +104,8 @@ class DBDeviceCmdTest {
         assertEquals(devKey2, getDeviceKey(db, adminWID, devid))
         assertNull(getDeviceKey(db, adminWID, badID))
 
-        updateDeviceStatus(db, adminWID, devid, DeviceStatus.Active)
-        assertEquals(DeviceStatus.Active, getDeviceStatus(db, adminWID, devid))
-        assertNull(getDeviceStatus(db, adminWID, badID))
+        updateDeviceStatus(db, adminWID, devid, DeviceStatus.Registered)
+        assertEquals(DeviceStatus.Registered, getDeviceStatus(db, adminWID, devid))
+        assertEquals(DeviceStatus.NotRegistered, getDeviceStatus(db, adminWID, badID))
     }
 }

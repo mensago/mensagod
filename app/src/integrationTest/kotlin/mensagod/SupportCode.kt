@@ -290,7 +290,7 @@ fun setupAdmin(db: DBConn) {
     addWorkspace(db, adminWID, adminUID, gServerDomain, ADMIN_PROFILE_DATA["passhash"]!!,
         "argon2id", "anXvadxtNJAYa2cUQFqKSQ", "m=65536,t=2,p=1",
         WorkspaceStatus.Active,WorkspaceType.Individual)
-    addDevice(db, adminWID, devid, devkey, fakeInfo, DeviceStatus.Active)
+    addDevice(db, adminWID, devid, devkey, fakeInfo, DeviceStatus.Registered)
     deletePrereg(db, WAddress.fromParts(adminWID, gServerDomain))
 
 }

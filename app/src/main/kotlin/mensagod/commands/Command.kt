@@ -9,6 +9,7 @@ import mensagod.ClientSession
  */
 fun processCommand(state: ClientSession) {
     when (state.message.action) {
+        "DEVICE" -> commandDevice(state)
         "GETWID" -> commandGetWID(state)
         "LOGIN" -> commandLogin(state)
         "LOGOUT" -> commandLogout(state)

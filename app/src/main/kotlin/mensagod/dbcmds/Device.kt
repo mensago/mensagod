@@ -83,12 +83,12 @@ fun getDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID?): List<Pair<Random
 
 /**
  * Checks if a particular device ID has been added to a workspace and returns its status if it
- * exists or null if it does not.
+ * exists or DeviceStatus.NotRegistered if it does not.
  *
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun getDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID): DeviceStatus? {
+fun getDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID): DeviceStatus {
     val rs = db.query("""SELECT status FROM iwkspc_devices WHERE wid=? AND devid=?""",
         wid, devid)
     if (rs.next()) {
@@ -97,7 +97,7 @@ fun getDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID): DeviceStatus? {
             ?: throw DatabaseCorruptionException(
                 "Bad device status '$stat' for device $devid in workspace $wid")
     }
-    return null
+    return DeviceStatus.NotRegistered
 }
 
 /**

@@ -1,15 +1,19 @@
 package mensagod.commands
 
 enum class DeviceStatus {
-    Active,
+    Approved,
+    Blocked,
+    NotRegistered,
     Pending,
-    Blocked;
+    Registered;
 
     override fun toString(): String {
         return when (this) {
-            Active -> "active"
-            Pending -> "pending"
+            Approved -> "approved"
             Blocked -> "blocked"
+            NotRegistered -> "notregistered"
+            Pending -> "pending"
+            Registered -> "registered"
         }
     }
 
@@ -17,9 +21,11 @@ enum class DeviceStatus {
 
         fun fromString(s: String): DeviceStatus? {
             return when (s.lowercase()) {
-                "active" -> Active
-                "pending" -> Pending
+                "approved" -> Approved
                 "blocked" -> Blocked
+                "notregistered" -> NotRegistered
+                "pending" -> Pending
+                "registered" -> Registered
                 else -> null
             }
         }

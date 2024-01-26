@@ -1,7 +1,95 @@
 package mensagod.commands
 
+import keznacl.CryptoString
 import mensagod.*
 import mensagod.dbcmds.*
+
+
+// DEVICE(Deice-ID, Device-Key, Client-Info)
+fun commandDevice(state: ClientSession) {
+    if (state.loginState != LoginState.AwaitingDeviceID) {
+        ServerResponse.sendBadRequest("Session mismatch error", state.conn)
+        return
+    }
+
+    val devid = state.getRandomID("Device-ID", true) ?: return
+    val devkey = state.getCryptoString("Device-Key", true) ?: return
+    val devinfo = state.getCryptoString("Device-Info", false)
+
+    val db = DBConn()
+    val devstatus = try { getDeviceStatus(db, state.wid!!, devid) }
+    catch (e: Exception) {
+        logError("commandDevice.getDeviceStatus exception: $e")
+        ServerResponse.sendInternalError("Server can't get device status", state.conn)
+        return
+    }
+
+    when (devstatus) {
+        DeviceStatus.Blocked -> {
+            if (!ServerResponse(403, "FORBIDDEN")
+                    .sendCatching(state.conn, "commandDevice.1"))
+                return
+        }
+        DeviceStatus.Pending -> {
+            if (!ServerResponse(101, "PENDING", "Awaiting device approval")
+                    .sendCatching(state.conn, "commandDevice.2"))
+                return
+        }
+        DeviceStatus.Registered, DeviceStatus.Approved -> {
+            // The device is part of the workspace, so now we issue undergo a challenge-response
+            // to ensure that the device really is authorized and the key wasn't stolen by an
+            // impostor
+            val success = try { challengeDevice(state, devkey) }
+            catch (e: Exception) {
+                logError("commandDevice.challengeDevice exception: $e")
+                ServerResponse.sendInternalError("Error authenticating client device",
+                    state.conn)
+                return
+            }
+
+            if (devinfo != null) {
+                try { updateDeviceInfo(db, state.wid!!, devid, devinfo) }
+                catch (e: Exception) {
+                    logError("commandDevice.challengeDevice exception: $e")
+                    ServerResponse.sendInternalError("Error updating device info",
+                        state.conn)
+                    return
+                }
+            }
+
+            if (!success) return
+        }
+        DeviceStatus.NotRegistered -> {
+            if (devinfo == null) {
+                ServerResponse.sendBadRequest("Device-Info field required for new devices",
+                    state.conn)
+                return
+            }
+
+            // 1) Check to see if the workspace has any devices registered.
+            val devCount = try { countDevices(db, state.wid!!) }
+            catch (e: Exception) {
+                logError("commandDevice.countDevices exception: $e")
+                ServerResponse.sendInternalError("Error checking device count",
+                    state.conn)
+                return
+            }
+
+            // 2) If there are multiple devices, push out an approval request and return
+            if (devCount > 0) {
+                // TODO: Implement device handling
+                println("New device handling state encountered")
+            }
+            addDevice(db, state.wid!!, devid, devkey, devinfo, DeviceStatus.Registered)
+        }
+    }
+
+    // If we've gotten this far, the device is approved and we just need to finish setting up
+    // connection state and give the device a success response
+
+
+    // TODO: Finish implementing commandDevice()
+}
 
 // LOGIN(Login-Type,Workspace-ID, Challenge)
 fun commandLogin(state: ClientSession) {
@@ -151,4 +239,11 @@ fun commandPassword(state: ClientSession) {
 
     state.loginState = LoginState.AwaitingDeviceID
     ServerResponse(100, "CONTINUE").send(state.conn)
+}
+
+/**
+ * Performs a challenge sequence for a client device.
+ */
+fun challengeDevice(state: ClientSession, devkey: CryptoString): Boolean {
+    TODO("Implement challengeDevice($state, $devkey)")
 }
