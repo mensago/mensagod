@@ -3,7 +3,6 @@ package mensagod.commands
 import mensagod.ClientSession
 import mensagod.SessionState
 import java.net.ServerSocket
-import kotlin.system.exitProcess
 
 class CommandTest(private val testName: String,
                   private val state: SessionState,
@@ -12,20 +11,25 @@ class CommandTest(private val testName: String,
     private val srvSocket = ServerSocket(0)
 
     fun run() {
-        try {
-            val serverThread = Thread.ofVirtual().let {
-                it.name("$testName: Server")
-                it.start { serverWorker(srvSocket, state) }
-            }
-            Thread.sleep(100)
+        var serverException: Throwable? = null
+        var clientException: Throwable? = null
 
-            val clientThread = Thread.ofVirtual().let{
-                it.name("$testName: Client")
-                it.start { clientCode(srvSocket.localPort) }
-            }
-            serverThread.join()
-            clientThread.join()
-        } catch (e: Exception) { exitProcess(-1) }
+        val serverThread = Thread.ofVirtual().let {
+            it.name("$testName: Server")
+            it.uncaughtExceptionHandler { _, throwable ->  serverException = throwable }
+            it.start { serverWorker(srvSocket, state) }
+        }
+        Thread.sleep(100)
+
+        val clientThread = Thread.ofVirtual().let{
+            it.name("$testName: Client")
+            it.uncaughtExceptionHandler { _, throwable -> clientException = throwable }
+            it.start { clientCode(srvSocket.localPort) }
+        }
+        serverThread.join()
+        serverException?.let { throw it }
+        clientThread.join()
+        clientException?.let { throw it }
     }
 
     private fun serverWorker(listener: ServerSocket, state: SessionState) {
@@ -39,6 +43,4 @@ class CommandTest(private val testName: String,
         }
         command(serverState)
     }
-
-    // TODO: make exceptions thrown by CommandTest cause the test to fail
 }
