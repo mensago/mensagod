@@ -100,6 +100,10 @@ fun getDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID): DeviceStatus {
     return DeviceStatus.NotRegistered
 }
 
+fun getKeyInfo(wid: RandomID, devid: RandomID): String {
+    TODO("Implement getKeyInfo($wid, $devid)")
+}
+
 /**
  * Returns the time of the specified device's last login or null if it was not found.
  *

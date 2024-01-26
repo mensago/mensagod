@@ -3,6 +3,7 @@ package mensagod.commands
 import keznacl.CryptoString
 import mensagod.*
 import mensagod.dbcmds.*
+import mensagod.fs.LocalFS
 
 
 // DEVICE(Deice-ID, Device-Key, Client-Info)
@@ -86,6 +87,35 @@ fun commandDevice(state: ClientSession) {
 
     // If we've gotten this far, the device is approved and we just need to finish setting up
     // connection state and give the device a success response
+    val lfs = LocalFS.get()
+    val widPath = MServerPath("/ wsp ${state.wid!!}")
+    val exists = try { lfs.exists(MServerPath("/ wsp ${state.wid!!}")) }
+    catch (e: Exception) {
+        logError("commandDevice.exists exception for $widPath: $e")
+        ServerResponse.sendInternalError("Error checking for workspace root directory",
+            state.conn)
+        return
+    }
+    if (!exists) {
+        try { lfs.makeDirectory(widPath) }
+        catch (e: Exception) {
+            logError("commandDevice.makeDirectory exception for $widPath: $e")
+            ServerResponse.sendInternalError("Error creating workspace root directory",
+                state.conn)
+            return
+        }
+    }
+    state.currentPath = widPath
+    state.loginState = LoginState.LoggedIn
+
+    // TODO: commandDevice: register workspace with message delivery subsystem
+    state.devid = devid
+
+    val response = ServerResponse(200, "OK")
+
+    if (devstatus == DeviceStatus.Approved) {
+
+    }
 
 
     // TODO: Finish implementing commandDevice()

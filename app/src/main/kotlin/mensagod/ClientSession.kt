@@ -22,6 +22,7 @@ open class SessionState(
     var loginState: LoginState = LoginState.NoSession,
     var devid: RandomID? = null,
     var isTerminating: Boolean = false,
+    var currentPath: MServerPath = MServerPath("/ wsp"),
 )
 
 /**
