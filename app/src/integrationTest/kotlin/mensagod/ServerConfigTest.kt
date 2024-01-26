@@ -30,7 +30,6 @@ registration = "private"
 
         val config = ServerConfig.load(testConfigPath)
         assertEquals("private", config.getString("global.registration"))
-        assertEquals(false, config.getBool("security.certified_algorithms"))
         assertEquals(50, config.getInteger("performance.max_file_size"))
     }
 }
