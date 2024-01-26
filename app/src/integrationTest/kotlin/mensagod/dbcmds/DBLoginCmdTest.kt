@@ -5,12 +5,24 @@ import libkeycard.RandomID
 import libkeycard.UserID
 import libkeycard.WAddress
 import mensagod.*
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
 class DBLoginCmdTest {
+
+    @Test
+    fun checkPasswordTest() {
+        setupTest("dbcmds.checkPassword")
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        assert(checkPassword(DBConn(), adminWID, ADMIN_PROFILE_DATA["password"]!!))
+        assertFalse(checkPassword(DBConn(), adminWID, "foobar"))
+        assertThrows<ResourceNotFoundException> {
+            val badWID = RandomID.fromString("be8e1ae7-1915-4d82-bb21-fa5565788cef")!!
+            checkPassword(DBConn(), badWID, "foobar")
+        }
+    }
+
     @Test
     fun preregWorkspaceTest() {
         // This test also covers deletePrereg() and checkRegCode()
