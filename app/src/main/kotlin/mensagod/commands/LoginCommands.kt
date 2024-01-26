@@ -93,7 +93,7 @@ fun commandLogin(state: ClientSession) {
         ServerResponse(306, "KEY FAILURE", "Client challenge decryption failure")
             .send(state.conn)
         return
-    }
+    }.decodeToString()
 
     val passInfo = getPasswordInfo(db, wid)
     if (passInfo == null) {
@@ -105,7 +105,7 @@ fun commandLogin(state: ClientSession) {
 
     try {
         ServerResponse(100, "CONTINUE", "", mutableMapOf(
-            "Reponse" to decrypted.toString(),
+            "Response" to decrypted.toString(),
             "Password-Algorithm" to passInfo.algorithm,
             "Password-Salt" to passInfo.salt,
             "Password-Parameters" to passInfo.parameters,

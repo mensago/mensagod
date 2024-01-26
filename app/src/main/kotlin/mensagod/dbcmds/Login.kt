@@ -74,7 +74,7 @@ fun getPasswordInfo(db: DBConn, wid: RandomID): PasswordInfo? {
     if (rs.next()) {
         val type = rs.getString("passtype")
         val salt = rs.getString("salt")
-        val params = rs.getString("params")
+        val params = rs.getString("passparams")
         return PasswordInfo(type, salt, params)
     }
     return null
