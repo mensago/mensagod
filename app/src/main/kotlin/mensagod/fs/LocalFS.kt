@@ -1,17 +1,81 @@
 package mensagod.fs
 
 import keznacl.BadValueException
-import libkeycard.RandomID
 import mensagod.FSFailureException
 import mensagod.MServerPath
 import mensagod.ResourceNotFoundException
 import java.io.File
+import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.io.path.exists
 
 var localFSSingleton: LocalFS? = null
 
-class LocalFSHandle(val path: String, val file: File)
+/**
+ * The LocalFSHandle class provides an API which could be easily abstracted to an interface for
+ * interacting with a filesystem in a generic way, enabling potential usage of S3, SANs, or other
+ * non-local storage media.
+ */
+class LocalFSHandle(val path: MServerPath, private val file: File) {
+
+    /**
+     * Creates a duplicate of the file in another directory. The destination path MUST point to a
+     * directory.
+     *
+     * @return The full path of the new file created
+     */
+    fun copyTo(dest: MServerPath): MServerPath {
+        TODO("Implement LocalFSHandler::copyTo($dest)")
+    }
+
+    /**
+     * Deletes the file pointed to by the handle. If the handle points to a directory, it will be
+     * removed so long as it is empty.
+     */
+    fun delete() { if (file.exists()) file.delete() }
+
+    /**
+     * Checks to see if the specified path exists
+     *
+     * @throws BadValueException If given a bad path
+     * @throws SecurityException If a security manager exists and denies read access to the file or directory
+     */
+    fun exists(): Boolean { return file.exists() }
+
+    /**
+     * Moves the file to the specified directory. Note that the destination MUST point to
+     * a directory. The path must also point to a file; moving directories is not supported.
+     */
+    fun move(dest: MServerPath) {
+        TODO("Implement LocalFS::moveFile($dest)")
+    }
+
+    /**
+     * ReadFile reads data from a file opened with openFile().
+     *
+     * @throws SecurityException - if a security manager exists and denies read access to the file
+     */
+    fun read(): ByteArray {
+        TODO("Implement LocalFSHandle::read()")
+    }
+
+    /**
+     * Performs a file pointer seek from the file's beginning or, if the offset is negative, from
+     * the end of the file.
+     */
+    fun seek(offset: Int) {
+        TODO("Implement LocalFS::seekFile($offset")
+    }
+
+    /**
+     * Writes data to the file. If you want to append to a file, call seek(-1) first.
+     *
+     * @return The number of bytes written
+     */
+    fun write(data: ByteArray): Int {
+        TODO("Implement LocalFSHandle::write($data)")
+    }
+}
 
 /**
  * The LocalFS class is an intermediary between the server and the filesystem for workspace access.
@@ -19,9 +83,21 @@ class LocalFSHandle(val path: String, val file: File)
  * access areas of the filesystem outside the specified workspace directory. It also maintains the
  * filesystem permissions subsystem and, thus, maintains a connection to the database for such.
  */
-class LocalFS private constructor(private val basePath: String) {
-    private val files = mutableSetOf<LocalFSHandle>()
+class LocalFS private constructor(val basePath: Path) {
     private val pathSep = System.lineSeparator()
+
+    /**
+     * Converts the server path to a local filesystem path format. The output path is relative to
+     * the local path provided, e.g '/ wsp foo' relative to '/var/mensagod' would become
+     * '/var/mensago/wsp/foo'.
+     */
+    fun convertToLocal(path: MServerPath): Path {
+        if (path.isRoot())
+            return basePath
+
+        val joined = path.parts.subList(1, path.parts.size).joinToString(File.separator)
+        return Paths.get(basePath.toString(), joined)
+    }
 
     /**
      * CopyFile creates a duplicate of the specified source file in the specified destination
@@ -32,14 +108,6 @@ class LocalFS private constructor(private val basePath: String) {
     }
 
     /**
-     * Closes the specified file handle. It is not normally needed unless read() returns an error
-     * or the caller must abort reading the file.
-     */
-    fun closeFile(handle: LocalFSHandle): Boolean {
-        TODO("Implement LocalFS::closeFile($handle)")
-    }
-
-    /**
      * Deletes the file at the specified path.
      *
      * @throws BadValueException If given a bad path
@@ -47,8 +115,7 @@ class LocalFS private constructor(private val basePath: String) {
      * @throws FSFailureException For other reasons the system couldn't delete the file
      */
     fun deleteFile(path: MServerPath) {
-        val localpath = path.convertToLocal(Paths.get(basePath))
-            ?: throw BadValueException("Bad path $path")
+        val localpath = convertToLocal(path)
         val file = File(localpath.toString())
         if (!file.exists()) return
         if (!file.delete()) throw FSFailureException()
@@ -61,8 +128,7 @@ class LocalFS private constructor(private val basePath: String) {
      * @throws SecurityException If a security manager exists and denies read access to the file or directory
      */
     fun exists(path: MServerPath): Boolean {
-        val localpath = path.convertToLocal(Paths.get(basePath))
-            ?: throw BadValueException("Bad path $path")
+        val localpath = convertToLocal(path)
         return File(localpath.toString()).exists()
     }
 
@@ -75,14 +141,20 @@ class LocalFS private constructor(private val basePath: String) {
         TODO("Implement LocalFS::getDiskUsage($path)")
     }
 
-    /** Moves a file from the temporary file area to a workspace and returns its new name. */
-    fun installTempFile(wid: RandomID, name: String, dest: MServerPath): String {
-        TODO("Implementnt LocalFS::installTempFile($wid, $name, $dest")
+    /**
+     * Gets a handle in the local filesystem for the path specified.
+     *
+     * @throws SecurityException - if a security manager exists and denies read access to the file
+     */
+    fun getFile(path: MServerPath): LocalFSHandle? {
+        val localpath = convertToLocal(path)
+        if (!localpath.exists()) return null
+        return LocalFSHandle(path, File(localpath.toString()))
     }
 
-    /** Returns the names of all subdirectories of the specified path */
+    /** Returns the names of all immediate subdirectories of the specified path */
     fun listDirectories(path: MServerPath): List<MServerPath> {
-        TODO("Implementnt LocalFS::listDirectories($path)")
+        TODO("Implement LocalFS::listDirectories($path)")
     }
 
     /**
@@ -90,7 +162,7 @@ class LocalFS private constructor(private val basePath: String) {
      * seconds since the epoch. To return all files, use a 0 for the time.
      */
     fun listFiles(path: MServerPath, afterTime: Int): List<MServerPath> {
-        TODO("Implementnt LocalFS::listDirectories($path)")
+        TODO("Implementnt LocalFS::listFiles($path, $afterTime)")
     }
 
     /**
@@ -101,19 +173,10 @@ class LocalFS private constructor(private val basePath: String) {
      * @throws FSFailureException For other reasons the system couldn't create a directory, such as a nonexistent parent directory.
      */
     fun makeDirectory(path: MServerPath) {
-        val localpath = path.convertToLocal(Paths.get(basePath))
-            ?: throw BadValueException("Bad path $path")
+        val localpath = convertToLocal(path)
         val file = File(localpath.toString())
         if (file.exists()) return
         if (!file.mkdir()) throw FSFailureException()
-    }
-
-    /**
-     * Creates a file in the temporary file area and returns a handle. The caller is responsible for
-     * closing the handle when finished.
-     */
-    fun makeTempFile(wid: RandomID): LocalFSHandle {
-        TODO("Implement LocalFS::makeTempFile($wid)")
     }
 
     /**
@@ -125,30 +188,6 @@ class LocalFS private constructor(private val basePath: String) {
     }
 
     /**
-     * Opens the specified file for reading data and returns a file handle or null if not found.
-     */
-    fun openFile(path: MServerPath): LocalFSHandle? {
-        TODO("Implement LocalFS::openFile($path")
-    }
-
-    /**
-     * Opens the specified temp file for reading or writing. If the offset is >= 0, the read/write
-     * pointer is moved to the specified offset. A negative offset moves the read/write pointer from
-     * the end of the file. Attempting to open a nonexistent temp file will cause an exception to be
-     * thrown.
-     */
-    fun openTempFile(wid: RandomID, name: String, offset: Int): File {
-        TODO("Implement LocalFS::openTempFile($wid, $name, $offset)")
-    }
-
-    /**
-     * ReadFile reads data from a file opened with openFile().
-     */
-    fun readFile(handle: LocalFSHandle): ByteArray {
-        TODO("Implement LocalFS::readFile($handle)")
-    }
-
-    /**
      * Removes a directory in the local filesystem. It operates just like the POSIX rmdir command,
      * and will only remove empty directories. This command can remove hierarchies of empty
      * directories, but if any non-empty directories are found, an exception is immediately thrown.
@@ -157,19 +196,10 @@ class LocalFS private constructor(private val basePath: String) {
         TODO("Implement LocalFS::removeDirectory($path, $recursive")
     }
 
-
-    /**
-     * Performs a file pointer seek from the file's beginning or, if the offset is negative, from
-     * the end of the file.
-     */
-    fun seekFile(handle: LocalFSHandle, offset: Int) {
-        TODO("Implement LocalFS::seekFile($handle, $offset")
-    }
-
     /**
      * Confirms that the given path is a valid working directory for the user.
      */
-    fun select(path: MServerPath) {
+    fun select(path: MServerPath): Boolean {
         TODO("Implement LocalFS:select($path)")
     }
 
@@ -177,7 +207,7 @@ class LocalFS private constructor(private val basePath: String) {
         fun initialize(basePath: String) {
             val p = Paths.get(basePath)
             if (!p.exists()) throw ResourceNotFoundException("Directory $basePath does not exist")
-            localFSSingleton = LocalFS(basePath)
+            localFSSingleton = LocalFS(p)
         }
 
         fun get(): LocalFS { return localFSSingleton!! }

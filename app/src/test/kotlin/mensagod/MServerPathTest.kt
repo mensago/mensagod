@@ -3,7 +3,6 @@ package mensagod
 import keznacl.BadValueException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import java.nio.file.Paths
 
 class MServerPathTest {
 
@@ -94,18 +93,6 @@ class MServerPathTest {
             "/ wsp fa0423e9-da5c-4927-a8f2-0274b38045bf " +
                     "12345.1000.d665a6c9-6248-478c-89a8-0d5953c3c077"
         )!!.isDir())
-    }
-
-    @Test
-    fun convertTest() {
-        val converted = if (platformIsWindows)
-            """\var\mensagod\wsp\d8b6d06b-7728-4c43-bc08-85a0c645d260"""
-        else
-            "/var/mensagod/wsp/d8b6d06b-7728-4c43-bc08-85a0c645d260"
-
-        assertEquals(converted,
-            MServerPath("/ wsp d8b6d06b-7728-4c43-bc08-85a0c645d260")
-                .convertToLocal(Paths.get("/var/mensagod"))?.toString())
     }
 
     @Test

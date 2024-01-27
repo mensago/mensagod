@@ -1,9 +1,6 @@
 package mensagod
 
 import keznacl.BadValueException
-import java.io.File
-import java.nio.file.Path
-import java.nio.file.Paths
 import java.util.regex.Pattern
 
 /**
@@ -13,8 +10,10 @@ import java.util.regex.Pattern
  * maximum privacy for users.
  */
 class MServerPath(path: String? = null) {
-    private var value = "/"
-    private var parts = value.split(" ").toMutableList()
+    var value = "/"
+        private set
+    var parts = value.split(" ").toMutableList()
+        private set
 
     init {
         if (path != null) {
@@ -25,24 +24,6 @@ class MServerPath(path: String? = null) {
     /** Returns the name of the item specified, regardless of if it's a folder or file. */
     fun basename(): String {
         return parts.last()
-    }
-
-    /**
-     * Converts the server path to a local filesystem path format. The output path is relative to
-     * the local path provided, e.g '/ wsp foo' relative to '/var/mensagod' would become
-     * '/var/mensago/wsp/foo'.
-     */
-    fun convertToLocal(topdir: Path?): Path? {
-        if (isRoot()) {
-            return topdir
-                ?: if (platformIsWindows) {
-                    Paths.get("\\")
-                } else {
-                    Paths.get("/")
-                }
-        }
-        val joined = parts.subList(1, parts.size).joinToString(File.separator)
-        return Paths.get(topdir?.toString() ?: File.separator, joined)
     }
 
     /** Returns the object's path */
