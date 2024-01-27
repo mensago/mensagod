@@ -6,7 +6,8 @@ import mensagod.DatabaseCorruptionException
 import mensagod.NotConnectedException
 
 /**
- * resolveAddress returns the workspace ID corresponding to a Mensago address.
+ * resolveAddress returns the workspace ID corresponding to a Mensago address. It will return null
+ * if the corresponding workspace ID could not be found.
  *
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
