@@ -110,8 +110,8 @@ class MServerPath(path: String? = null) {
                 """[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*"""
         ).toRegex()
 
-        fun validateFilePath(s: String): Boolean { return fileRE.matches(s) }
-        fun validateDirPath(s: String): Boolean { return serverPathRE.matches(s) }
+        fun validateFileName(s: String): Boolean { return fileRE.matches(s) }
+        fun validatePath(s: String): Boolean { return serverPathRE.matches(s) }
 
         fun fromString(path: String): MServerPath? { return MServerPath().set(path) }
     }

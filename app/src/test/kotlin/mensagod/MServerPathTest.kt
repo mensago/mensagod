@@ -107,4 +107,18 @@ class MServerPathTest {
             MServerPath("/ wsp d8b6d06b-7728-4c43-bc08-85a0c645d260")
                 .convertToLocal(Paths.get("/var/mensagod"))?.toString())
     }
+
+    @Test
+    fun validateTest() {
+        val fileName = "123467.1000.4c51a8b2-d8c1-4589-8543-36e038fee403"
+        val filePath = "/ 725cd0ed-1135-46aa-837e-5bdfb809763a 123467.1000.4c51a8b2-d8c1-4589-8543-36e038fee403"
+        val dirPath = "/ 725cd0ed-1135-46aa-837e-5bdfb809763a"
+
+        assert(MServerPath.validateFileName(fileName))
+        assertFalse(MServerPath.validateFileName(dirPath))
+
+        assert(MServerPath.validatePath(dirPath))
+        assert(MServerPath.validatePath(filePath))
+        assertFalse(MServerPath.validatePath(fileName))
+    }
 }
