@@ -125,9 +125,9 @@ class LocalFS private constructor(private val basePath: String) {
     }
 
     /**
-     * Opens the specified file for reading data and returns a file handle.
+     * Opens the specified file for reading data and returns a file handle or null if not found.
      */
-    fun openFile(path: MServerPath): LocalFSHandle {
+    fun openFile(path: MServerPath): LocalFSHandle? {
         TODO("Implement LocalFS::openFile($path")
     }
 
@@ -139,6 +139,13 @@ class LocalFS private constructor(private val basePath: String) {
      */
     fun openTempFile(wid: RandomID, name: String, offset: Int): File {
         TODO("Implement LocalFS::openTempFile($wid, $name, $offset)")
+    }
+
+    /**
+     * ReadFile reads data from a file opened with openFile().
+     */
+    fun readFile(handle: LocalFSHandle): ByteArray {
+        TODO("Implement LocalFS::readFile($handle)")
     }
 
     /**
