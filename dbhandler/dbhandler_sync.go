@@ -167,7 +167,10 @@ func CullOldSyncRecords(wid string, unixtime int64) error {
 
 // AddKeyInfo adds a key information package to the database
 func AddKeyInfo(wid types.RandomID, devid types.RandomID, path string) error {
-	_, err := dbConn.Exec(`INSERT OR REPLACE INTO keyinfo(wid, devid, path) VALUES($1, $2, $3)`,
+	_, _ = dbConn.Exec(`DELETE FROM keyinfo WHERE wid=$1 AND devid=$2`,
+		wid.AsString(), devid.AsString())
+
+	_, err := dbConn.Exec(`INSERT INTO keyinfo(wid, devid, path) VALUES($1, $2, $3)`,
 		wid.AsString(), devid.AsString(), path)
 
 	return err
