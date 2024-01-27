@@ -113,9 +113,6 @@ class MServerPath(path: String? = null) {
         fun validateFilePath(s: String): Boolean { return fileRE.matches(s) }
         fun validateDirPath(s: String): Boolean { return serverPathRE.matches(s) }
 
-        fun fromString(path: String): MServerPath? {
-            val out = MServerPath()
-            return if (out.set(path) == null) out else null
-        }
+        fun fromString(path: String): MServerPath? { return MServerPath().set(path) }
     }
 }

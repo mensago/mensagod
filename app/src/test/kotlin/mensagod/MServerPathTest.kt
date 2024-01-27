@@ -1,5 +1,6 @@
 package mensagod
 
+import keznacl.BadValueException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import java.nio.file.Paths
@@ -9,12 +10,12 @@ class MServerPathTest {
     @Test
     fun basicTest() {
         var path = MServerPath()
-        assertNull(path.set("/"))
+        assertNotNull(path.set("/"))
 
-        assertNull(path.set("/ 725cd0ed-1135-46aa-837e-5bdfb809763a"))
+        assertNotNull(path.set("/ 725cd0ed-1135-46aa-837e-5bdfb809763a"))
         assert(path.isDir())
 
-        assertNull(path.set(
+        assertNotNull(path.set(
             "/ 725cd0ed-1135-46aa-837e-5bdfb809763a 123467.1000.4c51a8b2-d8c1-4589-8543-36e038fee403"))
         assert(path.isFile())
 
@@ -36,14 +37,18 @@ class MServerPathTest {
         listOf(
             "/",
             "/ wsp",
-            "/ tmp",
+            "/ keys",
             "/ out",
+            "/ tmp",
             "/ wsp fa0423e9-da5c-4927-a8f2-0274b38045bf a1b20c58-26fd-4d29-9f76-3408edd9cdb4 " +
                     "d665a6c9-6248-478c-89a8-0d5953c3c077",
             "/ wsp fa0423e9-da5c-4927-a8f2-0274b38045bf a1b20c58-26fd-4d29-9f76-3408edd9cdb4 " +
                     "12345.1000.d665a6c9-6248-478c-89a8-0d5953c3c077",
             "/ fa0423e9-da5c-4927-a8f2-0274b38045bf"
-        ).forEach { assertNotNull(MServerPath.fromString(it)) }
+        ).forEach {
+            if (MServerPath.fromString(it) == null)
+                throw BadValueException("fromString() failure on good value $it")
+        }
 
         // Failure cases
         listOf(
@@ -73,21 +78,32 @@ class MServerPathTest {
         assertEquals("wsp", MServerPath.fromString("/ wsp")!!.basename())
 
         assert(!MServerPath.fromString(
-            "/ wsp fa0423e9-da5c-4927-a8f2-0274b38045bf")!!.isFile())
-        assert(MServerPath.fromString(
-            "/ wsp fa0423e9-da5c-4927-a8f2-0274b38045bf")!!.isDir())
+            "/ wsp fa0423e9-da5c-4927-a8f2-0274b38045bf"
+        )!!.isFile())
+        assert(
+            MServerPath.fromString(
+                "/ wsp fa0423e9-da5c-4927-a8f2-0274b38045bf"
+            )!!.isDir())
 
-        assert(MServerPath.fromString(
-            "/ wsp fa0423e9-da5c-4927-a8f2-0274b38045bf " +
-                    "12345.1000.d665a6c9-6248-478c-89a8-0d5953c3c077")!!.isFile())
+        assert(
+            MServerPath.fromString(
+                "/ wsp fa0423e9-da5c-4927-a8f2-0274b38045bf " +
+                        "12345.1000.d665a6c9-6248-478c-89a8-0d5953c3c077"
+            )!!.isFile())
         assert(!MServerPath.fromString(
             "/ wsp fa0423e9-da5c-4927-a8f2-0274b38045bf " +
-                    "12345.1000.d665a6c9-6248-478c-89a8-0d5953c3c077")!!.isDir())
+                    "12345.1000.d665a6c9-6248-478c-89a8-0d5953c3c077"
+        )!!.isDir())
     }
 
     @Test
     fun convertTest() {
-        assertEquals("/var/mensagod/wsp/d8b6d06b-7728-4c43-bc08-85a0c645d260",
+        val converted = if (platformIsWindows)
+            """\var\mensagod\wsp\d8b6d06b-7728-4c43-bc08-85a0c645d260"""
+        else
+            "/var/mensagod/wsp/d8b6d06b-7728-4c43-bc08-85a0c645d260"
+
+        assertEquals(converted,
             MServerPath("/ wsp d8b6d06b-7728-4c43-bc08-85a0c645d260")
                 .convertToLocal(Paths.get("/var/mensagod"))?.toString())
     }
