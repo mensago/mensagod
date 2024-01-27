@@ -126,7 +126,7 @@ fun commandDevice(state: ClientSession) {
 
         val infoHandle = try { lfs.getFile(infopath)!! }
         catch (e: Exception) {
-            logError("commandDevice.openFile exception for ${state.wid}: $e")
+            logError("commandDevice.getFile exception for ${state.wid}: $e")
             state.loginState = LoginState.NoSession
             state.wid = null
             ServerResponse.sendInternalError("Error opening device key information",
@@ -134,7 +134,15 @@ fun commandDevice(state: ClientSession) {
             return
         }
 
-        val keyInfo = infoHandle.read().decodeToString()
+        val keyInfo = try { infoHandle.read().decodeToString() }
+        catch (e: Exception) {
+            logError("commandDevice.readFile exception for ${state.wid}: $e")
+            state.loginState = LoginState.NoSession
+            state.wid = null
+            ServerResponse.sendInternalError("Error reading device key information",
+                state.conn)
+            return
+        }
         response.code = 203
         response.status = "APPROVED"
         response.data["Key-Info"] = keyInfo
