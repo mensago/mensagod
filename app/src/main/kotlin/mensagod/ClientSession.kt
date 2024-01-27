@@ -2,10 +2,12 @@ package mensagod
 
 import keznacl.CryptoString
 import libkeycard.Domain
+import libkeycard.MAddress
 import libkeycard.RandomID
 import libkeycard.UserID
 import mensagod.commands.ClientRequest
 import mensagod.commands.ServerResponse
+import mensagod.dbcmds.resolveAddress
 import java.net.Socket
 
 /** The LoginState class denotes where in the login process a client session is */
@@ -126,6 +128,18 @@ class ClientSession(val conn: Socket): SessionState() {
             return null
         }
         return tempWID
+    }
+
+    /**
+     * Deprecated method which returns true if the local user has admin privileges.
+     *
+     * @throws NotConnectedException if not connected to the database
+     * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+     */
+    fun isAdmin(): Boolean {
+        val adminWID = resolveAddress(DBConn(), MAddress.fromString("admin/$gServerDomain")!!)
+            ?: throw DatabaseCorruptionException("isAdmin couldn't find the admin's workspace ID")
+        return adminWID == wid
     }
 
     /**
