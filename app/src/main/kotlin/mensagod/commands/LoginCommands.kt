@@ -111,11 +111,10 @@ fun commandDevice(state: ClientSession) {
     // TODO: commandDevice: register workspace with message delivery subsystem
     state.devid = devid
 
-    var infopath: MServerPath? = null
     val response = ServerResponse(200, "OK")
 
     if (devstatus == DeviceStatus.Approved) {
-        infopath = getKeyInfo(db, state.wid!!, devid)
+        val infopath = getKeyInfo(db, state.wid!!, devid)
         if (infopath == null) {
             logError("commandDevice.getKeyInfo missing for ${state.wid}")
             state.loginState = LoginState.NoSession
