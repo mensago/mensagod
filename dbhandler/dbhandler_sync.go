@@ -174,7 +174,7 @@ func AddKeyInfo(wid types.RandomID, devid types.RandomID, path string) error {
 }
 
 func RemoveKeyInfo(wid types.RandomID, devid types.RandomID) error {
-	_, err := dbConn.Exec(`DELETE FROM keyinfo WHERE wid=$1 AND filename=$2`,
+	_, err := dbConn.Exec(`DELETE FROM keyinfo WHERE wid=$1 AND devid=$2`,
 		wid.AsString(), devid.AsString())
 
 	return err
