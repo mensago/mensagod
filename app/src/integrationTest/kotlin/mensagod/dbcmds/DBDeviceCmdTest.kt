@@ -108,4 +108,33 @@ class DBDeviceCmdTest {
         assertEquals(DeviceStatus.Registered, getDeviceStatus(db, adminWID, devid))
         assertEquals(DeviceStatus.NotRegistered, getDeviceStatus(db, adminWID, badID))
     }
+
+    @Test
+    fun keyInfoTest() {
+        val config = ServerConfig.load()
+        resetDB(config)
+        DBConn.initialize(config)
+        val db = DBConn().connect()
+        initDB(db.getConnection()!!)
+
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val devid = RandomID.fromString("c41cb142-9742-4b38-b250-7d61b22beb31")!!
+        val testPath = MServerPath("/ keys $adminWID $devid")
+
+        assertNull(getKeyInfo(db, adminWID, devid))
+        addKeyInfo(db, adminWID, devid, testPath)
+
+        val rs = db.query("""SELECT wid,devid,path FROM keyinfo WHERE wid=? AND devid=?""",
+            adminWID, devid)
+        assert(rs.next())
+        assertEquals(adminWID.toString(), rs.getString("wid"))
+        assertEquals(devid.toString(), rs.getString("devid"))
+        assertEquals(testPath.toString(), rs.getString("path"))
+
+        val infopath = getKeyInfo(db, adminWID, devid)!!
+        assertEquals(testPath.toString(), infopath.toString())
+
+        removeKeyInfo(db, adminWID, devid)
+        assertNull(getKeyInfo(db, adminWID, devid))
+    }
 }

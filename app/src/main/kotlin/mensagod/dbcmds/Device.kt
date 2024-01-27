@@ -5,6 +5,7 @@ import libkeycard.RandomID
 import libkeycard.Timestamp
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
+import mensagod.MServerPath
 import mensagod.NotConnectedException
 import mensagod.commands.DeviceStatus
 
@@ -21,6 +22,18 @@ fun addDevice(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString,
     val now = Timestamp()
     db.execute("""INSERT INTO iwkspc_devices(wid, devid, devkey, lastlogin, devinfo, status)
         VALUES(?,?,?,?,?,?)""", wid, devid, devkey, now, devInfo, status)
+}
+
+/**
+ * addKeyInfo adds to the database an entry for a key information package. Key information packages
+ * are used for key exchange among the devices in an individual workspace.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ */
+fun addKeyInfo(db: DBConn, wid: RandomID, devid: RandomID, path: MServerPath) {
+    db.execute("""DELETE FROM keyinfo WHERE wid=? AND devid=?""", wid, devid)
+    db.execute("""INSERT INTO keyinfo(wid, devid, path) VALUES(?,?,?) """, wid, devid, path)
 }
 
 /**
@@ -100,8 +113,22 @@ fun getDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID): DeviceStatus {
     return DeviceStatus.NotRegistered
 }
 
-fun getKeyInfo(wid: RandomID, devid: RandomID): String {
-    TODO("Implement getKeyInfo($wid, $devid)")
+/**
+ * getKeyInfo returns the path of a key information file needed for the specified device belonging
+ * to the specified workspace. It returns null if the entry is not found.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ */
+fun getKeyInfo(db: DBConn, wid: RandomID, devid: RandomID): MServerPath? {
+    val rs = db.query("""SELECT path FROM keyinfo WHERE wid=? AND devid=?""", wid, devid)
+    if (rs.next()) {
+        val infopath = rs.getString("path")
+        return MServerPath.fromString(infopath)
+            ?: throw DatabaseCorruptionException(
+                "Bad key info path '$infopath' for device $devid in workspace $wid")
+    }
+    return null
 }
 
 /**
@@ -130,6 +157,16 @@ fun getLastDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID): Timestamp? {
  */
 fun removeDevice(db: DBConn, wid: RandomID, devid: RandomID) {
     db.execute("""DELETE FROM iwkspc_devices WHERE wid=? AND devid=?""", wid, devid)
+}
+
+/**
+ * removeKeyInfo deletes a key information entry from the database
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ */
+fun removeKeyInfo(db: DBConn, wid: RandomID, devid: RandomID) {
+    db.execute("""DELETE FROM keyinfo WHERE wid=? AND devid=?""", wid, devid)
 }
 
 /**
