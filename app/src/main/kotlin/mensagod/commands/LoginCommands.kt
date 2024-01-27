@@ -111,14 +111,57 @@ fun commandDevice(state: ClientSession) {
     // TODO: commandDevice: register workspace with message delivery subsystem
     state.devid = devid
 
+    var infopath: MServerPath? = null
     val response = ServerResponse(200, "OK")
 
     if (devstatus == DeviceStatus.Approved) {
+        infopath = getKeyInfo(db, state.wid!!, devid)
+        if (infopath == null) {
+            logError("commandDevice.getKeyInfo missing for ${state.wid}")
+            state.loginState = LoginState.NoSession
+            state.wid = null
+            ServerResponse.sendInternalError("Error finding new device key information",
+                state.conn)
+            return
+        }
 
+        val infoHandle = try { lfs.openFile(infopath)!! }
+        catch (e: Exception) {
+            logError("commandDevice.openFile exception for ${state.wid}: $e")
+            state.loginState = LoginState.NoSession
+            state.wid = null
+            ServerResponse.sendInternalError("Error opening device key information",
+                state.conn)
+            return
+        }
+
+        val keyInfo = lfs.readFile(infoHandle).decodeToString()
+        response.code = 203
+        response.status = "APPROVED"
+        response.data["Key-Info"] = keyInfo
     }
 
+    response.data["Is-Admin"] = if (state.isAdmin()) "True" else "False"
+    try { response.send(state.conn) }
+    catch (e: Exception) {
+        state.loginState = LoginState.NoSession
+        state.wid = null
+        ServerResponse.sendInternalError("Error sending successful login information",
+            state.conn)
+        return
+    }
 
-    // TODO: Finish implementing commandDevice()
+    try { updateDeviceLogin(db, state.wid!!, devid) }
+    catch (e: Exception) {
+        logError("commandDevice.logDeviceLogin exception for ${state.wid}: $e")
+    }
+
+    if (devstatus == DeviceStatus.Approved) {
+        try { removeKeyInfo(db, state.wid!!, devid) }
+        catch (e: Exception) {
+            logError("commandDevice.removeKeyInfo exception for ${state.wid}: $e")
+        }
+    }
 }
 
 // LOGIN(Login-Type,Workspace-ID, Challenge)
