@@ -67,7 +67,7 @@ fun resetDB(config: ServerConfig): Connection {
     // Locations for key information packages needed for key exchange to new devices
     stmt.addBatch(
         """CREATE TABLE keyinfo(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
-        devid CHAR(36) UNIQUE NOT NULL, path VARCHAR(128));"""
+        devid CHAR(36) NOT NULL, path VARCHAR(128));"""
     )
 
     // Keycard information for the organization
