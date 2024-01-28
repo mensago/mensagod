@@ -29,6 +29,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
     implementation("javax.activation:activation:1.1.1")
 
+    // For Apache's awesome FileUtils
+    implementation("commons-io:commons-io:2.13.0")
+
     // For parsing the server's config file
     implementation("io.hotmoka:toml4j:0.7.3")
 

@@ -1,13 +1,17 @@
 package mensagod.fs
 
 import keznacl.BadValueException
+import libkeycard.RandomID
 import mensagod.FSFailureException
 import mensagod.MServerPath
 import mensagod.ResourceNotFoundException
+import mensagod.TypeException
+import org.apache.commons.io.FileUtils
 import java.io.File
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.io.path.exists
+import kotlin.io.path.isDirectory
 
 var localFSSingleton: LocalFS? = null
 
@@ -22,10 +26,22 @@ class LocalFSHandle(val path: MServerPath, private val file: File) {
      * Creates a duplicate of the file in another directory. The destination path MUST point to a
      * directory.
      *
+     * @throws TypeException If given a path which points to a file
+     * @throws ResourceNotFoundException If the destination directory doesn't exist
+     * @throws IOException If there was a problem copying the file
      * @return The full path of the new file created
      */
-    fun copyTo(dest: MServerPath): MServerPath {
-        TODO("Implement LocalFSHandler::copyTo($dest)")
+    fun copyTo(destPath: MServerPath): MServerPath {
+        val lfs = LocalFS.get()
+        val localDest = lfs.convertToLocal(destPath)
+        if (!localDest.exists()) throw ResourceNotFoundException("$destPath doesn't exist")
+        if (!localDest.isDirectory()) throw TypeException("$destPath is not a directory")
+
+        val destName = RandomID.generate().toString()
+        val destFile = File(Paths.get(localDest.toString(), destName).toString())
+        FileUtils.copyFile(file, destFile)
+
+        return MServerPath(destPath.toString()).push(destName)
     }
 
     /**
