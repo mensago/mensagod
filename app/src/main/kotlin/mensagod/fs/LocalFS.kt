@@ -8,6 +8,7 @@ import mensagod.ResourceNotFoundException
 import mensagod.TypeException
 import org.apache.commons.io.FileUtils
 import java.io.File
+import java.io.IOException
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.io.path.exists
@@ -70,10 +71,9 @@ class LocalFSHandle(val path: MServerPath, private val file: File) {
      * ReadFile reads data from a file opened with openFile().
      *
      * @throws SecurityException - if a security manager exists and denies read access to the file
+     * @throws IOException If there was a problem reading the file
      */
-    fun read(): ByteArray {
-        TODO("Implement LocalFSHandle::read()")
-    }
+    fun read(): ByteArray { return FileUtils.readFileToByteArray(file) }
 
     /**
      * Performs a file pointer seek from the file's beginning or, if the offset is negative, from
@@ -205,11 +205,10 @@ class LocalFS private constructor(val basePath: Path) {
 
     /**
      * Removes a directory in the local filesystem. It operates just like the POSIX rmdir command,
-     * and will only remove empty directories. This command can remove hierarchies of empty
-     * directories, but if any non-empty directories are found, an exception is immediately thrown.
+     * and will only remove empty directories.
      */
-    fun removeDirectory(path: MServerPath, recursive: Boolean) {
-        TODO("Implement LocalFS::removeDirectory($path, $recursive")
+    fun removeDirectory(path: MServerPath) {
+        TODO("Implement LocalFS::removeDirectory($path)")
     }
 
     /**
