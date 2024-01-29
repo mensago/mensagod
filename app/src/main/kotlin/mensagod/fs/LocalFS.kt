@@ -21,7 +21,7 @@ var localFSSingleton: LocalFS? = null
  * interacting with a filesystem in a generic way, enabling potential usage of S3, SANs, or other
  * non-local storage media.
  */
-class LocalFSHandle(val path: MServerPath, private val file: File) {
+class LocalFSHandle(val path: MServerPath, private var file: File) {
 
     /**
      * Creates a duplicate of the file in another directory. The destination path MUST point to a
@@ -63,8 +63,15 @@ class LocalFSHandle(val path: MServerPath, private val file: File) {
      * Moves the file to the specified directory. Note that the destination MUST point to
      * a directory. The path must also point to a file; moving directories is not supported.
      */
-    fun move(dest: MServerPath) {
-        TODO("Implement LocalFS::moveFile($dest)")
+    fun move(destPath: MServerPath) {
+        val lfs = LocalFS.get()
+        val localDest = lfs.convertToLocal(destPath)
+        if (!localDest.exists()) throw ResourceNotFoundException("$destPath doesn't exist")
+        if (!localDest.isDirectory()) throw TypeException("$destPath is not a directory")
+
+        val destFile = File(localDest.toString())
+        FileUtils.moveFileToDirectory(file, destFile, false)
+        file = File(destFile, file.name)
     }
 
     /**
