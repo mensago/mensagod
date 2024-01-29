@@ -115,9 +115,24 @@ class LocalFS private constructor(val basePath: Path) {
     /**
      * CopyFile creates a duplicate of the specified source file in the specified destination
      * folder, returning the name of the new file.
+     *
+     * @throws TypeException If given a path which points to a file
+     * @throws ResourceNotFoundException If the destination directory doesn't exist
+     * @throws IOException If there was a problem copying the file
+     * @return The full path of the new file created
      */
-    fun copyFile(source: MServerPath, dest: MServerPath): String {
-        TODO("Implement LocalFS::copyFile($source, $dest)")
+    fun copyFile(sourcePath: MServerPath, destPath: MServerPath): MServerPath {
+        val localSource = convertToLocal(sourcePath)
+        val localDest = convertToLocal(destPath)
+        if (!localDest.exists()) throw ResourceNotFoundException("$destPath doesn't exist")
+        if (!localDest.isDirectory()) throw TypeException("$destPath is not a directory")
+
+        val sourceFile = File(localSource.toString())
+        val destName = RandomID.generate().toString()
+        val destFile = File(Paths.get(localDest.toString(), destName).toString())
+        FileUtils.copyFile(sourceFile, destFile)
+
+        return MServerPath(destPath.toString()).push(destName)
     }
 
     /**
