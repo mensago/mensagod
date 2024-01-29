@@ -80,24 +80,14 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
      * @throws SecurityException - if a security manager exists and denies read access to the file
      * @throws IOException If there was a problem reading the file
      */
-    fun read(): ByteArray { return FileUtils.readFileToByteArray(file) }
+    fun readAll(): ByteArray { return FileUtils.readFileToByteArray(file) }
 
     /**
-     * Performs a file pointer seek from the file's beginning or, if the offset is negative, from
-     * the end of the file.
-     */
-    fun seek(offset: Int) {
-        TODO("Implement LocalFS::seekFile($offset")
-    }
-
-    /**
-     * Writes data to the file. If you want to append to a file, call seek(-1) first.
+     * Writes data to a file
      *
      * @return The number of bytes written
      */
-    fun write(data: ByteArray): Int {
-        TODO("Implement LocalFSHandle::write($data)")
-    }
+    fun writeAll(data: ByteArray) { return FileUtils.writeByteArrayToFile(file, data) }
 }
 
 /**
