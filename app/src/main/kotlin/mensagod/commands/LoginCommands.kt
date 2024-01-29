@@ -89,7 +89,8 @@ fun commandDevice(state: ClientSession) {
     // connection state and give the device a success response
     val lfs = LocalFS.get()
     val widPath = MServerPath("/ wsp ${state.wid!!}")
-    val exists = try { lfs.exists(MServerPath("/ wsp ${state.wid!!}")) }
+    val widHandle = lfs.entry(widPath)
+    val exists = try { widHandle.exists() }
     catch (e: Exception) {
         logError("commandDevice.exists exception for $widPath: $e")
         ServerResponse.sendInternalError("Error checking for workspace root directory",
@@ -97,7 +98,7 @@ fun commandDevice(state: ClientSession) {
         return
     }
     if (!exists) {
-        try { lfs.makeDirectory(widPath) }
+        try { lfs.entry(widPath).makeDirectory() }
         catch (e: Exception) {
             logError("commandDevice.makeDirectory exception for $widPath: $e")
             ServerResponse.sendInternalError("Error creating workspace root directory",
@@ -124,7 +125,7 @@ fun commandDevice(state: ClientSession) {
             return
         }
 
-        val infoHandle = try { lfs.getFile(infopath)!! }
+        val infoHandle = try { lfs.entry(infopath) }
         catch (e: Exception) {
             logError("commandDevice.getFile exception for ${state.wid}: $e")
             state.loginState = LoginState.NoSession
@@ -134,7 +135,7 @@ fun commandDevice(state: ClientSession) {
             return
         }
 
-        val keyInfo = try { infoHandle.read().decodeToString() }
+        val keyInfo = try { infoHandle.readAll().decodeToString() }
         catch (e: Exception) {
             logError("commandDevice.readFile exception for ${state.wid}: $e")
             state.loginState = LoginState.NoSession

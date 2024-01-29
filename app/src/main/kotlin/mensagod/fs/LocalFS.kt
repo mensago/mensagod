@@ -60,6 +60,18 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
     fun exists(): Boolean { return file.exists() }
 
     /**
+     * Creates a directory in the local filesystem within the top-level Mensago directory.
+     *
+     * @throws BadValueException If given a bad path
+     * @throws SecurityException If a security manager exists and won't let the directory be created.
+     * @throws FSFailureException For other reasons the system couldn't create a directory, such as a nonexistent parent directory.
+     */
+    fun makeDirectory() {
+        if (file.exists()) return
+        if (!file.mkdir()) throw FSFailureException()
+    }
+
+    /**
      * Moves the file to the specified directory. Note that the destination MUST point to
      * a directory. The path must also point to a file; moving directories is not supported.
      */
@@ -113,6 +125,17 @@ class LocalFS private constructor(val basePath: Path) {
     }
 
     /**
+     * Gets a handle in the local filesystem for the path specified. Note that getting a handle to
+     * a file or directory necessarily means that said entity actually exists.
+     *
+     * @throws SecurityException - if a security manager exists and denies read access to the file
+     */
+    fun entry(path: MServerPath): LocalFSHandle {
+        val localpath = convertToLocal(path)
+        return LocalFSHandle(path, File(localpath.toString()))
+    }
+
+    /**
      * Calculates the disk space usage of a path. If given a file path, it returns the size of the
      * file, but if given a directory path, it calculates the usage of the folder and all of its
      * subfolders.
@@ -126,17 +149,6 @@ class LocalFS private constructor(val basePath: Path) {
         return FileUtils.sizeOf(pathFile)
     }
 
-    /**
-     * Gets a handle in the local filesystem for the path specified.
-     *
-     * @throws SecurityException - if a security manager exists and denies read access to the file
-     */
-    fun getFile(path: MServerPath): LocalFSHandle? {
-        val localpath = convertToLocal(path)
-        if (!localpath.exists()) return null
-        return LocalFSHandle(path, File(localpath.toString()))
-    }
-
     /** Returns the names of all immediate subdirectories of the specified path */
     fun listDirectories(path: MServerPath): List<MServerPath> {
         TODO("Implement LocalFS::listDirectories($path)")
@@ -147,28 +159,7 @@ class LocalFS private constructor(val basePath: Path) {
      * seconds since the epoch. To return all files, use a 0 for the time.
      */
     fun listFiles(path: MServerPath, afterTime: Int): List<MServerPath> {
-        TODO("Implementnt LocalFS::listFiles($path, $afterTime)")
-    }
-
-    /**
-     * Creates a directory in the local filesystem within the top-level Mensago directory.
-     *
-     * @throws BadValueException If given a bad path
-     * @throws SecurityException If a security manager exists and won't let the directory be created.
-     * @throws FSFailureException For other reasons the system couldn't create a directory, such as a nonexistent parent directory.
-     */
-    fun makeDirectory(path: MServerPath) {
-        val localpath = convertToLocal(path)
-        val file = File(localpath.toString())
-        if (file.exists()) return
-        if (!file.mkdir()) throw FSFailureException()
-    }
-
-    /**
-     * Confirms that the given path is a valid working directory for the user.
-     */
-    fun select(path: MServerPath): Boolean {
-        TODO("Implement LocalFS:select($path)")
+        TODO("Implement LocalFS::listFiles($path, $afterTime)")
     }
 
     companion object {

@@ -267,7 +267,7 @@ fun preregUser(db: DBConn, uid: String? = null, regcode: String? = null, reghash
     val outWID = RandomID.fromString(wid) ?: RandomID.generate()
     val outUID = UserID.fromString(uid)
     preregWorkspace(db, outWID, outUID, gServerDomain, rhash)
-    LocalFS.get().makeDirectory(MServerPath("/ wsp $outWID"))
+    LocalFS.get().entry(MServerPath("/ wsp $outWID")).makeDirectory()
 
     return mapOf(
         "Workspace-ID" to outWID.toString(),
@@ -307,7 +307,7 @@ fun setupTest(name: String): SetupData {
     initLogging(Paths.get(testpath, "log.txt"), true)
     LocalFS.initialize(Paths.get(testpath, "topdir").toString())
     val lfs = LocalFS.get()
-    listOf("wsp","out","tmp","keys").forEach { lfs.makeDirectory(MServerPath("/ $it")) }
+    listOf("wsp","out","tmp","keys").forEach { lfs.entry(MServerPath("/ $it")).makeDirectory() }
 
     val config = ServerConfig.load()
     resetDB(config)
