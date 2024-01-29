@@ -164,9 +164,14 @@ class LocalFS private constructor(val basePath: Path) {
      * Calculates the disk space usage of a path. If given a file path, it returns the size of the
      * file, but if given a directory path, it calculates the usage of the folder and all of its
      * subfolders.
+     *
+     * @throws ResourceNotFoundException If the destination doesn't exist
      */
-    fun getDiskUsage(path: MServerPath): Int {
-        TODO("Implement LocalFS::getDiskUsage($path)")
+    fun getDiskUsage(path: MServerPath): Long {
+        val localPath = convertToLocal(path)
+        val pathFile = File(localPath.toString())
+        if (!pathFile.exists()) throw ResourceNotFoundException()
+        return FileUtils.sizeOf(pathFile)
     }
 
     /**
