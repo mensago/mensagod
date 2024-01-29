@@ -113,54 +113,6 @@ class LocalFS private constructor(val basePath: Path) {
     }
 
     /**
-     * CopyFile creates a duplicate of the specified source file in the specified destination
-     * folder, returning the name of the new file.
-     *
-     * @throws TypeException If given a path which points to a file
-     * @throws ResourceNotFoundException If the destination directory doesn't exist
-     * @throws IOException If there was a problem copying the file
-     * @return The full path of the new file created
-     */
-    fun copyFile(sourcePath: MServerPath, destPath: MServerPath): MServerPath {
-        val localSource = convertToLocal(sourcePath)
-        val localDest = convertToLocal(destPath)
-        if (!localDest.exists()) throw ResourceNotFoundException("$destPath doesn't exist")
-        if (!localDest.isDirectory()) throw TypeException("$destPath is not a directory")
-
-        val sourceFile = File(localSource.toString())
-        val destName = RandomID.generate().toString()
-        val destFile = File(Paths.get(localDest.toString(), destName).toString())
-        FileUtils.copyFile(sourceFile, destFile)
-
-        return MServerPath(destPath.toString()).push(destName)
-    }
-
-    /**
-     * Deletes the file at the specified path.
-     *
-     * @throws BadValueException If given a bad path
-     * @throws SecurityException If a security manager exists and won't let the directory be deleted.
-     * @throws FSFailureException For other reasons the system couldn't delete the file
-     */
-    fun deleteFile(path: MServerPath) {
-        val localpath = convertToLocal(path)
-        val file = File(localpath.toString())
-        if (!file.exists()) return
-        if (!file.delete()) throw FSFailureException()
-    }
-
-    /**
-     * Checks to see if the specified path exists
-     *
-     * @throws BadValueException If given a bad path
-     * @throws SecurityException If a security manager exists and denies read access to the file or directory
-     */
-    fun exists(path: MServerPath): Boolean {
-        val localpath = convertToLocal(path)
-        return File(localpath.toString()).exists()
-    }
-
-    /**
      * Calculates the disk space usage of a path. If given a file path, it returns the size of the
      * file, but if given a directory path, it calculates the usage of the folder and all of its
      * subfolders.
@@ -210,22 +162,6 @@ class LocalFS private constructor(val basePath: Path) {
         val file = File(localpath.toString())
         if (file.exists()) return
         if (!file.mkdir()) throw FSFailureException()
-    }
-
-    /**
-     * Moves the specified file to the specified directory. Note that the destination MUST point to
-     * a directory.
-     */
-    fun moveFile(source: MServerPath, dest: MServerPath) {
-        TODO("Implement LocalFS::moveFile($source, $dest)")
-    }
-
-    /**
-     * Removes a directory in the local filesystem. It operates just like the POSIX rmdir command,
-     * and will only remove empty directories.
-     */
-    fun removeDirectory(path: MServerPath) {
-        TODO("Implement LocalFS::removeDirectory($path)")
     }
 
     /**
