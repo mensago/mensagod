@@ -17,7 +17,7 @@ private var serverConfigSingleton = ServerConfig()
 fun getDefaultServerConfig(): MutableMap<String, Any> {
     return mutableMapOf(
         "database.ip" to "localhost",
-        "database.port" to "5432",
+        "database.port" to 5432,
         "database.name" to "mensagotest",
         "database.user" to "mensago",
         "database.password" to "",
@@ -35,7 +35,7 @@ fun getDefaultServerConfig(): MutableMap<String, Any> {
                             else "/etc/mensagod",
 
         "network.listen_ip" to "127.0.0.1",
-        "network.port" to "2001",
+        "network.port" to 2001,
 
         "performance.max_file_size" to 50,
         "performance.max_message_size" to 50,
@@ -101,7 +101,7 @@ class ServerConfig {
      */
     fun connectToDB(): Connection {
         val sb = StringBuilder("jdbc:postgresql://")
-        sb.append(getString("database.ip") + ":" + getString("database.port"))
+        sb.append(getString("database.ip") + ":" + getInteger("database.port"))
         sb.append("/" + getString("database.name"))
 
         val args = Properties()
@@ -130,6 +130,8 @@ class ServerConfig {
      */
     fun validate(): String? {
         val intKeys = listOf(
+            Triple("network.port", 1, 65535),
+            Triple("database.port", 1, 65535),
             Triple("performance.max_file_size", 1, 1024),
             Triple("performance.max_message_size", 1, 1024),
             Triple("performance.max_sync_age", 1, 365),
@@ -154,10 +156,10 @@ class ServerConfig {
                 return numMsg
         }
 
-        val stringKeys = listOf("database.ip", "database.port", "database.name", "database.user",
+        val stringKeys = listOf("database.ip", "database.name", "database.user",
             "database.password", "global.domain", "global.top_dir", "global.workspace_dir",
             "global.registration", "global.registration_subnet", "global.registration_subnet6",
-            "global.log_dir", "network.listen_ip", "network.port")
+            "global.log_dir", "network.listen_ip")
 
         for (key in stringKeys) {
             if (values[key] !is String)

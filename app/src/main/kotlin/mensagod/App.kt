@@ -41,13 +41,12 @@ class Server private constructor(val config: ServerConfig) {
 
         // Main listener loop
 
-        // TODO: Make port a number in the server config file instead of a string
-        val listener = try { ServerSocket(config.getString("network.port").toInt()) }
+        val listener = try { ServerSocket(config.getInteger("network.port").toInt()) }
         catch (e: IOException) {
             println("Unable to open network connection:\n$e")
             exitProcess(-1)
         }
-        println("Listening on port ${config.getString("network.port")}")
+        println("Listening on port ${config.getInteger("network.port")}")
 
         while (true) {
             val conn = try { listener.accept() }
