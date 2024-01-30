@@ -44,7 +44,6 @@ fun getDefaultServerConfig(): MutableMap<String, Any> {
         "performance.max_client_threads" to 10000,
         "performance.keycard_cache_size" to 5000,
 
-        // TODO: Remove rename diceware wordcount
         "security.diceware_wordcount" to 6,
         "security.failure_delay_sec" to 3,
         "security.max_failures" to 5,
