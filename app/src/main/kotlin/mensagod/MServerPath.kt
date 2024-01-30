@@ -26,6 +26,9 @@ class MServerPath(path: String? = null) {
         return parts.last()
     }
 
+    /** Returns a clone of the current object */
+    fun clone(): MServerPath { return MServerPath(value) }
+
     /** Returns the object's path */
     fun get(): String { return value }
 

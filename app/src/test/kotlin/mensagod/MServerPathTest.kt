@@ -70,7 +70,7 @@ class MServerPathTest {
         assertEquals(
             "/ wsp", MServerPath.fromString(
                 "/ wsp fa0423e9-da5c-4927-a8f2-0274b38045bf"
-            )!!.parent().toString()
+            )!!.clone().parent().toString()
         )
 
         assertEquals("/", MServerPath.fromString("/")!!.basename())
