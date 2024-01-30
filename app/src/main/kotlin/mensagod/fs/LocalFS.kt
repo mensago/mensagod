@@ -38,11 +38,15 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
         if (!localDest.exists()) throw ResourceNotFoundException("$destPath doesn't exist")
         if (!localDest.isDirectory()) throw TypeException("$destPath is not a directory")
 
-        val destName = RandomID.generate().toString()
+        val newID = RandomID.generate().toString()
+        val unixTime = System.currentTimeMillis() / 1000L
+        val fileSize = FileUtils.sizeOf(file)
+        val destName = "$unixTime.$fileSize.$newID"
+
         val destFile = File(Paths.get(localDest.toString(), destName).toString())
         FileUtils.copyFile(file, destFile)
 
-        return MServerPath(destPath.toString()).push(destName)
+        return destPath.clone().push(destName)
     }
 
     /**
@@ -75,7 +79,7 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
      * Moves the file to the specified directory. Note that the destination MUST point to
      * a directory. The path must also point to a file; moving directories is not supported.
      */
-    fun move(destPath: MServerPath) {
+    fun moveTo(destPath: MServerPath) {
         val lfs = LocalFS.get()
         val localDest = lfs.convertToLocal(destPath)
         if (!localDest.exists()) throw ResourceNotFoundException("$destPath doesn't exist")

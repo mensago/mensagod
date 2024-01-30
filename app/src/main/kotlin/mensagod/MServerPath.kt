@@ -12,7 +12,7 @@ import java.util.regex.Pattern
 class MServerPath(path: String? = null) {
     var value = "/"
         private set
-    var parts = value.split(" ").toMutableList()
+    var parts = mutableListOf("/")
         private set
 
     init {
@@ -66,7 +66,7 @@ class MServerPath(path: String? = null) {
         val newPath = "$value $trimmed"
         if (!serverPathRE.matches(newPath)) throw BadValueException()
         value = newPath
-        parts = value.split("/").toMutableList()
+        parts = value.split(" ").toMutableList()
 
         return this
     }

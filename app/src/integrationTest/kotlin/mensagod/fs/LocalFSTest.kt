@@ -56,4 +56,25 @@ class LocalFSTest {
         lfs.entry(MServerPath("/ wsp 6e99f804-7bb6-435a-9dce-53d9c6d33816")).makeDirectory()
         assert(wspdir.exists())
     }
+
+    @Test
+    fun moveCopyTest() {
+        val setupData = setupTest("fs.moveCopy")
+        val lfs = LocalFS.get()
+
+        val widStr = "6e99f804-7bb6-435a-9dce-53d9c6d33816"
+        lfs.entry(MServerPath("/ wsp $widStr")).makeDirectory()
+        val testFileName = makeTestFile(
+            Paths.get(setupData.testPath, "topdir", "wsp", widStr).toString())
+            .first
+
+        lfs.entry(MServerPath("/ wsp $widStr $testFileName")).moveTo(MServerPath("/ wsp"))
+        assert(File(Paths.get(setupData.testPath, "topdir", "wsp", testFileName).toString())
+            .exists())
+
+        val newFilePath = lfs.entry(MServerPath("/ wsp $testFileName"))
+            .copyTo(MServerPath("/ wsp $widStr"))
+        val newFileLocalPath = lfs.convertToLocal(newFilePath)
+        assert(File(newFileLocalPath.toString()).exists())
+    }
 }
