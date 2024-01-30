@@ -113,7 +113,6 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
  * filesystem permissions subsystem and, thus, maintains a connection to the database for such.
  */
 class LocalFS private constructor(val basePath: Path) {
-    private val pathSep = System.lineSeparator()
 
     /**
      * Converts the server path to a local filesystem path format. The output path is relative to
@@ -151,19 +150,6 @@ class LocalFS private constructor(val basePath: Path) {
         val pathFile = File(localPath.toString())
         if (!pathFile.exists()) throw ResourceNotFoundException()
         return FileUtils.sizeOf(pathFile)
-    }
-
-    /** Returns the names of all immediate subdirectories of the specified path */
-    fun listDirectories(path: MServerPath): List<MServerPath> {
-        TODO("Implement LocalFS::listDirectories($path)")
-    }
-
-    /**
-     * Returns the names of all files in the specified path after the time specified, which is in
-     * seconds since the epoch. To return all files, use a 0 for the time.
-     */
-    fun listFiles(path: MServerPath, afterTime: Int): List<MServerPath> {
-        TODO("Implement LocalFS::listFiles($path, $afterTime)")
     }
 
     companion object {

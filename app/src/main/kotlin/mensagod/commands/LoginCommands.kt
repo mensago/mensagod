@@ -1,9 +1,13 @@
 package mensagod.commands
 
+import keznacl.Base85
 import keznacl.CryptoString
+import keznacl.EncryptionKey
+import keznacl.UnsupportedAlgorithmException
 import mensagod.*
 import mensagod.dbcmds.*
 import mensagod.fs.LocalFS
+import java.security.SecureRandom
 
 
 // DEVICE(Deice-ID, Device-Key, Client-Info)
@@ -324,7 +328,50 @@ fun commandPassword(state: ClientSession) {
 
 /**
  * Performs a challenge sequence for a client device.
+ *
+ * @throws UnsupportedAlgorithmException If the server doesn't support the client's device key algorithm
+ * @throws CancelException If the client requested cancellation of the command
+ * @throws GeneralSecurityException If the underlying encryption library encountered an error
+ * @throws kotlinx.serialization.SerializationException message encoding-specific errors
+ * @throws IllegalArgumentException if the encoded input does not comply format's specification
+ * @throws java.io.IOException if there was a network error
  */
 fun challengeDevice(state: ClientSession, devkey: CryptoString): Boolean {
-    TODO("Implement challengeDevice($state, $devkey)")
+    // 1) Generate a 32-byte random string of bytes
+    // 2) Encode string in base85
+    // 3) Encrypt said string, encode in base85, and return it as part of 100 CONTINUE response
+    // 4) Wait for response from client and compare response to original base85 string
+    // 5) If strings don't match, respond to client with 402 Authentication Failure and return false
+    // 6) If strings match respond to client with 200 OK and return true/nil
+
+    val realKey = EncryptionKey.from(devkey).getOrThrow()
+
+    val rng = SecureRandom()
+    val rawBytes = ByteArray(32)
+    rng.nextBytes(rawBytes)
+    val challenge = Base85.rfc1924Encoder.encode(rawBytes)
+    val encrypted = realKey.encrypt(challenge.toByteArray()).getOrThrow()
+    ServerResponse(100, "CONTINUE", "",
+        mutableMapOf("Challenge" to encrypted.toString())).send(state.conn)
+    // We purposely don't try to catch the send error, as that's part of the caller's responsibility
+
+    val req = ClientRequest.receive(state.conn.getInputStream())
+    if (req.action == "CANCEL") throw CancelException()
+
+    if (req.action != "DEVICE") {
+        ServerResponse.sendBadRequest("Session state mismatch", state.conn)
+        return false
+    }
+
+    val missingField = req.validate(setOf("Device-ID", "Device-Key", "Response"))
+    if (missingField != null)  {
+        ServerResponse.sendBadRequest("Missing required field $missingField", state.conn)
+        return false
+    }
+    if (devkey.toString() != req.data["Device-ID"]) {
+        ServerResponse.sendBadRequest("Device key mismatch", state.conn)
+        return false
+    }
+
+    return challenge == req.data["Response"]
 }
