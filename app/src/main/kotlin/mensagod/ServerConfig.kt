@@ -1,6 +1,7 @@
 package mensagod
 
 import com.moandjiezana.toml.Toml
+import keznacl.BadValueException
 import libkeycard.MissingDataException
 import java.io.FileNotFoundException
 import java.nio.file.Files
@@ -68,16 +69,39 @@ class ServerConfig {
     /**
      * Saves the values of object to a file. If the verbose flag is true, then the method also
      * includes helpful information for users to understand the file and its settings.
+     *
+     * @throws BadValueException if a key is not in the format table.fieldname
      */
     fun save(path: Path, verbose: Boolean) {
         if (!verbose) {
-            val sl = mutableMapOf<String,Any>()
-            orderedKeys.forEach { key ->
-                orderedKeyLists[key]!!.forEach { field ->
+            val tree = mutableMapOf<String,MutableMap<String,Any>>()
+            values.keys.forEach { key ->
+                val parts = key.trim().split(".")
+                if (parts.size != 2) throw BadValueException("Bad settings key $key")
 
+                if (tree[parts[0]] == null) tree[parts[0]] = mutableMapOf()
+                tree[parts[0]]!![parts[1]] = values[key]!!
+            }
+
+            val sl = mutableListOf<String>()
+            orderedKeys.forEach { key ->
+                if (tree[key] != null) sl.add(key) else return
+
+                orderedKeyLists[key]!!.forEach { field ->
+                    if (!tree[key]!!.containsKey(field)) return
+
+                    when (val data = tree[key]!![field]!!) {
+                        is Boolean -> {
+                            val boolStr = if (data) "True" else "False"
+                            sl.add("$key = $boolStr")
+                        }
+                        is Int -> sl.add("$key = $data")
+                        else -> sl.add("""$key = "$data" """)
+                    }
                 }
             }
 
+            // Write to file here
         }
 
         TODO("Implement ServerConfig::save()")
