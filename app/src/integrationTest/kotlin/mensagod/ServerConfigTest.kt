@@ -1,7 +1,6 @@
 package mensagod
 
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 import java.io.File
 import java.nio.file.Paths
@@ -30,9 +29,7 @@ registration = "private"
         makeTestConfigFile(testConfigPath.toString())
 
         val config = ServerConfig.load(testConfigPath)
-        config.values["testbool"] = false
         assertEquals("private", config.getString("global.registration"))
         assertEquals(50, config.getInteger("performance.max_file_size"))
-        assertFalse(config.getBool("testbool"))
     }
 }

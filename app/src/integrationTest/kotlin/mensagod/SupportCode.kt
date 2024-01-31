@@ -261,7 +261,7 @@ fun preregUser(db: DBConn, uid: String? = null, regcode: String? = null, reghash
                wid: String? = null): Map<String,String> {
 
     val rcode = regcode ?: gRegCodeGenerator.getPassphrase(
-        ServerConfig.get().getInteger("security.diceware_wordcount"))
+        ServerConfig.get().getInteger("security.diceware_wordcount")!!)
     val rhash = reghash ?: Argon2idPassword().updateHash(rcode).getOrThrow()
 
     val outWID = RandomID.fromString(wid) ?: RandomID.generate()

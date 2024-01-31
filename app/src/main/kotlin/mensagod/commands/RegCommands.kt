@@ -83,7 +83,7 @@ fun commandPreregister(state: ClientSession) {
     // Now that we've gone through the pain of covering for missing arguments and validating the
     // ones that actually exist, preregister the account.
     val regcode = gRegCodeGenerator.getPassphrase(
-        ServerConfig.get().getInteger("security.diceware_wordcount"))
+        ServerConfig.get().getInteger("security.diceware_wordcount")!!)
     val reghash = Argon2idPassword().updateHash(regcode).getOrElse {
         logError("commandPreregister.hashRegCode exception: $it")
         ServerResponse.sendInternalError("registration code hashing error", state.conn)

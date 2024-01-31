@@ -14,46 +14,6 @@ import kotlin.io.path.exists
 val platformIsWindows = System.getProperty("os.name").startsWith("windows", true)
 private var serverConfigSingleton = ServerConfig()
 
-fun getDefaultServerConfig(): MutableMap<String, Any> {
-    return mutableMapOf(
-        "database.ip" to "localhost",
-        "database.port" to 5432,
-        "database.name" to "mensagotest",
-        "database.user" to "mensago",
-        "database.password" to "",
-
-        "global.domain" to "",
-        "global.top_dir" to if (platformIsWindows) "C:\\ProgramData\\mensagodata"
-                            else "/var/mensagod",
-        "global.workspace_dir" to if (platformIsWindows) "C:\\ProgramData\\mensagodata\\wsp"
-                            else "/var/mensagod/wsp",
-        "global.registration" to "private",
-        "global.registration_subnet" to "192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8, 127.0.0.1/8",
-        "global.registration_subnet6" to "fe80::/10",
-        "global.default_quota" to 0,
-        "global.log_dir" to if (platformIsWindows) "C:\\ProgramData\\mensagod"
-                            else "/etc/mensagod",
-
-        "network.listen_ip" to "127.0.0.1",
-        "network.port" to 2001,
-
-        "performance.max_file_size" to 50,
-        "performance.max_message_size" to 50,
-        "performance.max_sync_age" to 7,
-        "performance.max_delivery_threads" to 100,
-        "performance.max_client_threads" to 10000,
-        "performance.keycard_cache_size" to 5000,
-
-        "security.diceware_wordcount" to 6,
-        "security.failure_delay_sec" to 3,
-        "security.max_failures" to 5,
-        "security.lockout_delay_min" to 15,
-        "security.registration_delay_min" to 15,
-        "security.password_reset_min" to 60,
-    )
-}
-
-
 /**
  * A accessor class which loads up configuration information for mensagod on the local system. To
  * use, just instantiate the class itself and start using the info in the 'values' property.
@@ -66,31 +26,7 @@ fun getDefaultServerConfig(): MutableMap<String, Any> {
  * support calls later on.
  */
 class ServerConfig {
-    val values = getDefaultServerConfig()
-
-    /**
-     * Convenience method which returns an integer as a Long. This will throw an exception if the
-     * value contained by the key doesn't match.
-     */
-    fun getInteger(key: String): Int {
-        return values[key] as Int
-    }
-
-    /**
-     * Convenience method which returns a Boolean value. This will throw an exception if the
-     * value contained by the key doesn't match.
-     */
-    fun getBool(key: String): Boolean {
-        return values[key] as Boolean
-    }
-
-    /**
-     * Convenience method which returns a string. This will throw an exception if the
-     * value contained by the key doesn't match.
-     */
-    fun getString(key: String): String {
-        return values[key] as String
-    }
+    private val values = defaults()
 
     /**
      * Connects to the database server with the settings contained in the instance.
@@ -106,7 +42,7 @@ class ServerConfig {
         val args = Properties()
         args["user"] = getString("database.user")
 
-        if (getString("database.password").isEmpty())
+        if (getString("database.password")!!.isEmpty())
             throw MissingDataException("Database password must not be empty")
         args["password"] = getString("database.password")
 
@@ -115,11 +51,35 @@ class ServerConfig {
         return out
     }
 
+    fun getValue(key: String): Any? { return values[key] ?: defaultConfig[key] }
+
+    /**
+     * Convenience method which returns an integer as a Long. This will throw an exception if the
+     * value type contained by the key doesn't match.
+     */
+    fun getInteger(key: String): Int? { return getValue(key) as Int? }
+
+    /**
+     * Convenience method which returns a string. This will throw an exception if the
+     * value type contained by the key doesn't match.
+     */
+    fun getString(key: String): String? { return getValue(key) as String? }
+
     /**
      * Saves the values of object to a file. If the verbose flag is true, then the method also
      * includes helpful information for users to understand the file and its settings.
      */
     fun save(path: Path, verbose: Boolean) {
+        if (!verbose) {
+            val sl = mutableMapOf<String,Any>()
+            orderedKeys.forEach { key ->
+                orderedKeyLists[key]!!.forEach { field ->
+
+                }
+            }
+
+        }
+
         TODO("Implement ServerConfig::save()")
     }
 
@@ -180,6 +140,15 @@ class ServerConfig {
 
     companion object {
 
+        /** Returns a map containing the default values for a config file */
+        fun defaults(): MutableMap<String, Any> { return defaultConfig.toMutableMap() }
+
+        /**
+         * Returns the global server config object. Note that if load() is not called beforehand,
+         * the ServerConfig will only contain default values.
+         */
+        fun get(): ServerConfig { return serverConfigSingleton }
+
         /**
          * Loads the global server config from a file. If not specified, it will load the file
          * C:\ProgramData\mensagod\serverconfig.toml on Windows and /etc/mensagod/serverconfig.toml
@@ -216,10 +185,60 @@ class ServerConfig {
             return out
        }
 
-        /**
-         * Returns the global server config object. Note that if load() is not called beforehand,
-         * the ServerConfig will only contain default values.
-         */
-        fun get(): ServerConfig { return serverConfigSingleton }
+        private val defaultConfig = mutableMapOf<String,Any>(
+            "database.ip" to "localhost",
+            "database.port" to 5432,
+            "database.name" to "mensagotest",
+            "database.user" to "mensago",
+            "database.password" to "",
+
+            "global.domain" to "",
+            "global.top_dir" to if (
+                System.getProperty("os.name").startsWith("windows", true))
+                "C:\\ProgramData\\mensagodata"
+                else "/var/mensagod",
+            "global.workspace_dir" to if (
+                System.getProperty("os.name").startsWith("windows", true))
+                "C:\\ProgramData\\mensagodata\\wsp"
+                else "/var/mensagod/wsp",
+            "global.registration" to "private",
+            "global.registration_subnet" to "192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8, 127.0.0.1/8",
+            "global.registration_subnet6" to "fe80::/10",
+            "global.default_quota" to 0,
+            "global.log_dir" to if (
+                System.getProperty("os.name").startsWith("windows", true))
+                "C:\\ProgramData\\mensagod"
+                else "/etc/mensagod",
+
+            "network.listen_ip" to "127.0.0.1",
+            "network.port" to 2001,
+
+            "performance.max_file_size" to 50,
+            "performance.max_message_size" to 50,
+            "performance.max_sync_age" to 7,
+            "performance.max_delivery_threads" to 100,
+            "performance.max_client_threads" to 10000,
+            "performance.keycard_cache_size" to 5000,
+
+            "security.diceware_wordcount" to 6,
+            "security.failure_delay_sec" to 3,
+            "security.max_failures" to 5,
+            "security.lockout_delay_min" to 15,
+            "security.registration_delay_min" to 15,
+            "security.password_reset_min" to 60,
+        )
     }
 }
+
+// For saving to a file
+private val orderedKeys = listOf("global", "database", "network", "performance", "security")
+private val orderedKeyLists = mapOf(
+    "global" to listOf("domain", "top_dir", "workspace_dir", "registration", "registration_subnet",
+        "registration_subnet6", "default_quota", "log_dir", "listen_ip", "port"),
+    "database" to listOf("ip", "port", "name", "user", "password"),
+    "network" to listOf("listen_ip", "port"),
+    "performance" to listOf("max_file_size", "max_message_size", "max_sync_age",
+        "max_delivery_threads", "max_client_threads", "keycard_cache_size"),
+    "security" to listOf("diceware_wordcount", "failure_delay_sec", "max_failures",
+        "lockout_delay_min", "registration_delay_min", "password_reset_min")
+)

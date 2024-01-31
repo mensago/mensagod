@@ -7,6 +7,7 @@ import keznacl.UnsupportedAlgorithmException
 import mensagod.*
 import mensagod.dbcmds.*
 import mensagod.fs.LocalFS
+import java.security.GeneralSecurityException
 import java.security.SecureRandom
 
 
@@ -314,7 +315,7 @@ fun commandPassword(state: ClientSession) {
     }
 
     if (!match) {
-        val delay = ServerConfig.get().getInteger("security.failure_delay_sec")
+        val delay = ServerConfig.get().getInteger("security.failure_delay_sec")!!
         Thread.sleep(delay * 1000L)
         try {
             ServerResponse(402, "AUTHENTICATION FAILURE").send(state.conn)

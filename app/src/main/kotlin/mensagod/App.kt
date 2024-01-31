@@ -41,7 +41,7 @@ class Server private constructor(val config: ServerConfig) {
 
         // Main listener loop
 
-        val listener = try { ServerSocket(config.getInteger("network.port").toInt()) }
+        val listener = try { ServerSocket(config.getInteger("network.port")!!) }
         catch (e: IOException) {
             println("Unable to open network connection:\n$e")
             exitProcess(-1)
@@ -61,7 +61,7 @@ class Server private constructor(val config: ServerConfig) {
                 continue
             }
 
-            Thread.ofVirtual().start { connectionWorker(conn, id) }
+            Thread.ofVirtual().start { connectionWorker(conn) }
         }
 
         // TODO: implement graceful server shutdown
@@ -75,12 +75,12 @@ class Server private constructor(val config: ServerConfig) {
             val config = ServerConfig.load()
             config.validate()?.let { return Result.failure(BadValueException(it)) }
 
-            val logLocation = Paths.get(config.getString("global.log_dir"), "mensagod.log")
+            val logLocation = Paths.get(config.getString("global.log_dir")!!, "mensagod.log")
             initLogging(logLocation, false)
             DBConn.initialize(config)
 
             val out = Server(config)
-            out.clientPool.capacity = config.getInteger("performance.max_client_threads")
+            out.clientPool.capacity = config.getInteger("performance.max_client_threads")!!
 
             gServerDomain = Domain.fromString(config.getString("global.domain"))!!
 
@@ -121,7 +121,7 @@ fun sendGreeting(conn: Socket, code: Int, status: String): Boolean {
  * connectionWorker() is the service function used by the server's coroutines to handle client
  * connections.
  */
-fun connectionWorker(conn: Socket, workerID: ULong) {
+fun connectionWorker(conn: Socket) {
     val state = ClientSession(conn)
     if (!sendGreeting(conn, 200, "OK")) {
         conn.close()

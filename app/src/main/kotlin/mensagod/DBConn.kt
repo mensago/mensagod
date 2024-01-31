@@ -179,13 +179,14 @@ class DBConn {
          */
         fun initialize(config: ServerConfig) {
             val sb = StringBuilder("jdbc:postgresql://")
-            sb.append(config.getString("database.ip") + ":" + config.getString("database.port"))
+            sb.append(config.getString("database.ip") + ":" +
+                    config.getInteger("database.port").toString())
             sb.append("/" + config.getString("database.name"))
 
             val args = Properties()
             args["user"] = config.getString("database.user")
 
-            if (config.getString("database.password").isEmpty())
+            if (config.getString("database.password")?.isEmpty() == true)
                 throw MissingDataException("Database password must not be empty")
             args["password"] = config.getString("database.password")
 
