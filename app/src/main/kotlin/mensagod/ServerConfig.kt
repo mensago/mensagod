@@ -168,12 +168,43 @@ class ServerConfig {
         sl.add(makeValueString("database.port"))
         sl.add(makeValueString("database.name"))
         sl.add(makeValueString("database.user"))
-        sl.add(makeValueString("database.password"))
+        sl.add("""database.password = "${getString("database.password")}"$sep""")
 
         // Global section
 
-        sl.add("$sep[global]$sep")
-        sl.add(makeValueString("global.domain"))
+        sl.add(
+            """$sep[global]
+            |domain = "${getString("global.domain")}"
+            |
+            |# The location where user data is stored. The default for Windows is 
+            |# "C:\\ProgramData\\mensago", but for other platforms is "/var/mensagod".
+            |# top_dir = "/var/mensagod"
+            |""".trimMargin()
+        )
+        sl.add(makeValueString("global.top_dir"))
+        sl.add(
+            """# The type of registration. 'public' is open to outside registration requests,
+            |# and would be appropriate only for hosting a public free server. 'moderated'
+            |# is open to public registration, but an administrator must approve the request
+            |# before an account can be created. 'network' limits registration to a 
+            |# specified subnet or IP address. 'private' permits account registration only
+            |# by an administrator. For most situations 'private' is the appropriate setting.
+            |# registration = "private"
+            |""".trimMargin()
+        )
+        sl.add(makeValueString("global.registration"))
+
+        sl.add(
+            """# For servers configured to network registration, this variable sets the 
+            |# subnet(s) to which account registration is limited. Subnets are expected to
+            |# be in CIDR notation and comma-separated. The default setting restricts
+            |# registration to the private (non-routable) networks.
+            |# registration_subnet = "192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8, 127.0.0.1/8"
+            |# registration_subnet6 = "fe80::/10"
+            |""".trimIndent()
+        )
+        sl.add(makeValueString("global.registration_subnet"))
+        sl.add(makeValueString("global.registration_subnet6"))
 
         // TODO: Finish toVerboseString()
 
