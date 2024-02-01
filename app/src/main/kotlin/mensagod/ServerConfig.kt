@@ -27,7 +27,7 @@ private var serverConfigSingleton = ServerConfig()
  * support calls later on.
  */
 class ServerConfig {
-    private val values = defaults()
+    private val values = mutableMapOf<String,Any>()
 
     /**
      * Connects to the database server with the settings contained in the instance.
@@ -52,59 +52,79 @@ class ServerConfig {
         return out
     }
 
+    /**
+     * Returns a value in the configuration. If given a key that doesn't exist, null is returned.
+     */
     fun getValue(key: String): Any? { return values[key] ?: defaultConfig[key] }
 
     /**
      * Convenience method which returns an integer as a Long. This will throw an exception if the
-     * value type contained by the key doesn't match.
+     * value type contained by the key doesn't match. Like getValue(), this method will return null
+     * if the key itself doesn't exist.
+     *
+     * @throws ClassCastException If an integer is requested for a non-integer field
      */
     fun getInteger(key: String): Int? { return getValue(key) as Int? }
 
     /**
      * Convenience method which returns a string. This will throw an exception if the
-     * value type contained by the key doesn't match.
+     * value type contained by the key doesn't match. Like getValue(), this method will return null
+     * if the key itself doesn't exist.
+     *
+     * @throws ClassCastException If an string is requested for a non-string field
      */
     fun getString(key: String): String? { return getValue(key) as String? }
 
     /**
-     * Saves the values of object to a file. If the verbose flag is true, then the method also
+     * Sets a value in the configuration. Keys are expected to be in the format tablename.fieldname.
+     *
+     * @throws BadValueException If the key specified is invalid.
+     */
+    fun setValue(key: String, value: Any) {
+        if (!isValidKey(key)) throw BadValueException()
+        values[key] = value
+    }
+
+    /**
+     * Converts the object to a string Saves the values of object to a file. If the verbose flag is true, then the method also
      * includes helpful information for users to understand the file and its settings.
      *
      * @throws BadValueException if a key is not in the format table.fieldname
      */
-    fun save(path: Path, verbose: Boolean) {
-        if (!verbose) {
-            val tree = mutableMapOf<String,MutableMap<String,Any>>()
-            values.keys.forEach { key ->
-                val parts = key.trim().split(".")
-                if (parts.size != 2) throw BadValueException("Bad settings key $key")
+    override fun toString(): String {
+        val tree = mutableMapOf<String,MutableMap<String,Any>>()
+        values.keys.forEach { key ->
+            val parts = key.trim().split(".")
+            if (parts.size != 2) throw BadValueException("Bad settings key $key")
 
-                if (tree[parts[0]] == null) tree[parts[0]] = mutableMapOf()
-                tree[parts[0]]!![parts[1]] = values[key]!!
-            }
-
-            val sl = mutableListOf<String>()
-            orderedKeys.forEach { key ->
-                if (tree[key] != null) sl.add(key) else return
-
-                orderedKeyLists[key]!!.forEach { field ->
-                    if (!tree[key]!!.containsKey(field)) return
-
-                    when (val data = tree[key]!![field]!!) {
-                        is Boolean -> {
-                            val boolStr = if (data) "True" else "False"
-                            sl.add("$key = $boolStr")
-                        }
-                        is Int -> sl.add("$key = $data")
-                        else -> sl.add("""$key = "$data" """)
-                    }
-                }
-            }
-
-            // Write to file here
+            if (tree[parts[0]] == null) tree[parts[0]] = mutableMapOf()
+            tree[parts[0]]!![parts[1]] = values[key]!!
         }
 
-        TODO("Implement ServerConfig::save()")
+        val sl = mutableListOf<String>()
+        for (key in orderedKeys) {
+            if (tree[key] != null) {
+                if (sl.size > 0)
+                    sl.add("")
+                sl.add("[$key]")
+            } else continue
+
+            for (field in orderedKeyLists[key]!!) {
+                if (!tree[key]!!.containsKey(field)) continue
+
+                when (val data = tree[key]!![field]!!) {
+                    is Boolean -> {
+                        val boolStr = if (data) "True" else "False"
+                        sl.add("$field = $boolStr")
+                    }
+                    is Int -> sl.add("$field = $data")
+                    else -> sl.add("""$field = "$data"""")
+                }
+            }
+        }
+        sl.add("")
+
+        return sl.joinToString(System.lineSeparator())
     }
 
     /**
@@ -162,34 +182,21 @@ class ServerConfig {
         return null
     }
 
+    private fun isValidKey(key: String): Boolean {
+        val parts = key.trim().split(".")
+        return (parts.size == 2 && orderedKeys.contains(parts[0]) &&
+            orderedKeyLists[parts[0]]!!.contains(parts[1]) )
+    }
+
     companion object {
 
-        /** Returns a map containing the default values for a config file */
-        fun defaults(): MutableMap<String, Any> { return defaultConfig.toMutableMap() }
-
         /**
-         * Returns the global server config object. Note that if load() is not called beforehand,
-         * the ServerConfig will only contain default values.
-         */
-        fun get(): ServerConfig { return serverConfigSingleton }
-
-        /**
-         * Loads the global server config from a file. If not specified, it will load the file
-         * C:\ProgramData\mensagod\serverconfig.toml on Windows and /etc/mensagod/serverconfig.toml
-         * on other platforms.
+         * Returns a ServerConfig object from the supplied string data.
          *
-         * @throws FileNotFoundException when the specified config file is not found
+         * @throws IllegalStateException If the TOML data is invalid
          */
-        fun load(path: Path? = null): ServerConfig {
-            val configFilePath = path ?: if (platformIsWindows)
-                Paths.get("C:\\ProgramData\\mensagod\\serverconfig.toml")
-            else
-                Paths.get("/etc/mensagod/serverconfig.toml")
-
-            if (!configFilePath.exists())
-                throw FileNotFoundException("Server config file not found")
-
-            val toml = Toml().read(Files.readString(configFilePath))
+        fun fromString(data: String): ServerConfig {
+            val toml = Toml().read(data)
 
             val out = ServerConfig()
             toml.entrySet().forEach { entry ->
@@ -204,7 +211,33 @@ class ServerConfig {
                     }
                 }
             }
+            return out
+        }
 
+        /**
+         * Returns the global server config object. Note that if load() is not called beforehand,
+         * the ServerConfig will only contain default values.
+         */
+        fun get(): ServerConfig { return serverConfigSingleton }
+
+        /**
+         * Loads the global server config from a file. If not specified, it will load the file
+         * C:\ProgramData\mensagod\serverconfig.toml on Windows and /etc/mensagod/serverconfig.toml
+         * on other platforms.
+         *
+         * @throws FileNotFoundException when the specified config file is not found
+         * @throws IllegalStateException If the TOML data is invalid
+         */
+        fun load(path: Path? = null): ServerConfig {
+            val configFilePath = path ?: if (platformIsWindows)
+                Paths.get("C:\\ProgramData\\mensagod\\serverconfig.toml")
+            else
+                Paths.get("/etc/mensagod/serverconfig.toml")
+
+            if (!configFilePath.exists())
+                throw FileNotFoundException("Server config file not found")
+
+            val out = fromString(Files.readString(configFilePath))
             serverConfigSingleton = out
             return out
        }
