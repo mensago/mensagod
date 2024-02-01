@@ -63,8 +63,28 @@ registration = "private"
         val parts = listOf("[global]","""registration = "network"""", "",
             "[network]", "port = 9999", "")
         assertEquals(parts.joinToString(System.lineSeparator()), config.toString())
+    }
 
+    @Test
+    fun toVerboseStringTest1() {
+        val config = ServerConfig()
+        val expected =
+            """# This is a Mensago server config file. Each value listed below is the
+                |# default value. Every effort has been made to set this file to sensible
+                |# defaults to keep things simple. This file is expected to be found in
+                |# /etc/mensagod/serverconfig.toml or C:\ProgramData\mensagod on Windows.
+                |
+                |[database]
+                |# Settings needed for connecting to the database.
+                |#
+                |# ip = "localhost"
+                |# port = "5432"
+                |# name = "mensago"
+                |# user = "mensago"
+                |
+                |[global]
+                |""".trimMargin()
 
-        // TODO: Implement ServerConfigTest::toStringTest()
+        assertEquals(expected, config.toVerboseString())
     }
 }

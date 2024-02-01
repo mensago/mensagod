@@ -86,20 +86,12 @@ class ServerConfig {
     }
 
     /**
-     * Converts the object to a string Saves the values of object to a file. If the verbose flag is true, then the method also
-     * includes helpful information for users to understand the file and its settings.
+     * Converts the object to a string containing only values which are different from the default.
      *
      * @throws BadValueException if a key is not in the format table.fieldname
      */
     override fun toString(): String {
-        val tree = mutableMapOf<String,MutableMap<String,Any>>()
-        values.keys.forEach { key ->
-            val parts = key.trim().split(".")
-            if (parts.size != 2) throw BadValueException("Bad settings key $key")
-
-            if (tree[parts[0]] == null) tree[parts[0]] = mutableMapOf()
-            tree[parts[0]]!![parts[1]] = values[key]!!
-        }
+        val tree = makeValueTree()
 
         val sl = mutableListOf<String>()
         for (key in orderedKeys) {
@@ -125,6 +117,67 @@ class ServerConfig {
         sl.add("")
 
         return sl.joinToString(System.lineSeparator())
+    }
+
+    /**
+     * Converts the object to a heavily-commented string which contains helpful information for
+     * users. This is generally the better choice over toString() when saving the instance's
+     * comments to a file.
+     *
+     * @throws BadValueException if a key is not in the format table.fieldname
+     */
+    fun toVerboseString(): String {
+        val makeValueString = fun (key: String): String {
+            if (!isValidKey(key)) throw BadValueException()
+
+            val value = values[key] ?: return ""
+            val parts = key.split(".")
+
+            when (value) {
+                is Boolean -> {
+                    val boolStr = if (value) "True" else "False"
+                    return "${parts[1]} = $boolStr" + System.lineSeparator()
+                }
+                is Int -> return "${parts[1]} = $value" + System.lineSeparator()
+                else -> return """${parts[1]} = "$value"""" + System.lineSeparator()
+            }
+        }
+
+        val sep = System.lineSeparator()
+
+        val sl = mutableListOf<String>()
+
+        // Database section
+
+        sl.add(
+        """# This is a Mensago server config file. Each value listed below is the
+                |# default value. Every effort has been made to set this file to sensible
+                |# defaults to keep things simple. This file is expected to be found in
+                |# /etc/mensagod/serverconfig.toml or C:\ProgramData\mensagod on Windows.
+                |
+                |[database]
+                |# Settings needed for connecting to the database.
+                |#
+                |# ip = "localhost"
+                |# port = "5432"
+                |# name = "mensago"
+                |# user = "mensago"
+                |""".trimMargin()
+        )
+        sl.add(makeValueString("database.ip"))
+        sl.add(makeValueString("database.port"))
+        sl.add(makeValueString("database.name"))
+        sl.add(makeValueString("database.user"))
+        sl.add(makeValueString("database.password"))
+
+        // Global section
+
+        sl.add("$sep[global]$sep")
+        sl.add(makeValueString("global.domain"))
+
+        // TODO: Finish toVerboseString()
+
+        return sl.joinToString("")
     }
 
     /**
@@ -186,6 +239,24 @@ class ServerConfig {
         val parts = key.trim().split(".")
         return (parts.size == 2 && orderedKeys.contains(parts[0]) &&
             orderedKeyLists[parts[0]]!!.contains(parts[1]) )
+    }
+
+    /**
+     * Converts the internal format of the ServerConfig instance to a format much more suitable for
+     * export.
+     *
+     * @throws BadValueException if a key is not in the format table.fieldname
+     */
+    private fun makeValueTree(): MutableMap<String,MutableMap<String,Any>> {
+        val tree = mutableMapOf<String,MutableMap<String,Any>>()
+        values.keys.forEach { key ->
+            val parts = key.trim().split(".")
+            if (parts.size != 2) throw BadValueException("Bad settings key $key")
+
+            if (tree[parts[0]] == null) tree[parts[0]] = mutableMapOf()
+            tree[parts[0]]!![parts[1]] = values[key]!!
+        }
+        return tree
     }
 
     companion object {
