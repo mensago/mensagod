@@ -236,9 +236,9 @@ class ServerConfig {
 
         for (item in intKeys) {
             val numMsg = "${item.first} must be a number from ${item.second} through ${item.third}"
-            if (values[item.first] !is Int)
+            if (getValue(item.first) !is Int)
                 return numMsg
-            val numValue = values[item.first] as Int
+            val numValue = getInteger(item.first)!!
             if (numValue < item.second || numValue > item.third)
                 return numMsg
         }
@@ -249,10 +249,10 @@ class ServerConfig {
             "global.log_dir", "network.listen_ip")
 
         for (key in stringKeys) {
-            if (values[key] !is String)
+            if (getValue(key) !is String)
                 return "$key must be a string"
 
-            if ((values[key] as String).isEmpty()) {
+            if (getString(key)!!.isEmpty()) {
                 if (key == "global.domain" || key == "database.password")
                     return "$key is missing or empty in the settings file and must be set."
 
