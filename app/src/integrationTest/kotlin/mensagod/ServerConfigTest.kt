@@ -81,6 +81,7 @@ registration = "private"
             |# port = "5432"
             |# name = "mensago"
             |# user = "mensago"
+            |password = ""
             |
             |[global]
             |domain = ""
@@ -103,5 +104,7 @@ registration = "private"
             |# registration_subnet = "192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8, 127.0.0.1/8"
             |# registration_subnet6 = "fe80::/10"
             |""".trimMargin()
+
+        assertEquals(expected, config.toVerboseString())
     }
 }
