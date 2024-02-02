@@ -1,7 +1,6 @@
 package mensagod
 
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.io.File
@@ -354,6 +353,103 @@ registration = "private"
 
     @Test
     fun validateTest() {
-        // TODO: Implement validateTest()
+        val config = ServerConfig()
+
+        // First, test the required values: db password and org's domain
+
+        assertNotNull(config.validate())
+        config.setValue("database.password", "foobar")
+        assertNotNull(config.validate())
+        config.setValue("global.domain", "example/com")
+        assertNotNull(config.validate())
+        config.setValue("global.domain", "example.com")
+        assertNull(config.validate())
+
+        // Test type checking along with other stuff
+
+        config.setValue("database.host", true)
+        assertNotNull(config.validate())
+        config.setValue("database.host", "www.eff.org")
+        assertNull(config.validate())
+        config.setValue("database.host", "192.168.0.1")
+        assertNull(config.validate())
+
+        config.setValue("database.port", true)
+        assertNotNull(config.validate())
+        config.resetValue("database.port")
+
+        // database.name, .user, and .password are freeform fields and don't need validated
+
+        // Technically, it's possible these paths could actually pass, but the chance is remote.
+        if (platformIsWindows)
+            config.setValue("global.top_dir", "C:\\0a8f7b99-1ca7-4b15-9cbf-e962c8f515ca/")
+        else
+            config.setValue("global.top_dir", "/0a8f7b99-1ca7-4b15-9cbf-e962c8f515ca")
+        assertNotNull(config.validate())
+
+        if (platformIsWindows)
+            config.setValue("global.top_dir", "C:\\")
+        else
+            config.setValue("global.top_dir", "/etc")
+        assertNull(config.validate())
+
+        config.setValue("global.registration", "foobar")
+        assertNotNull(config.validate())
+        config.setValue("global.registration", "moderated")
+        assertNull(config.validate())
+
+        config.setValue("global.registration_subnet", "abcdefg")
+        assertNotNull(config.validate())
+        config.setValue("global.registration_subnet", "172.16.0.0/12, 10.0.0.0/8")
+        assertNull(config.validate())
+
+        config.setValue("global.registration_subnet6", "abcdefg")
+        assertNotNull(config.validate())
+        config.setValue("global.registration_subnet6", "fe80::/15")
+        assertNull(config.validate())
+
+        config.setValue("global.default_quota", 2_000_000_000)
+        assertNotNull(config.validate())
+        config.setValue("global.default_quota", 100)
+        assertNull(config.validate())
+
+        if (platformIsWindows)
+            config.setValue("global.log_dir", "C:\\")
+        else
+            config.setValue("global.log_dir", "/etc")
+        assertNull(config.validate())
+
+        config.setValue("network.listen_ip", "abcdefg")
+        assertNotNull(config.validate())
+        config.setValue("network.listen_ip", "172.16.16.16")
+        assertNull(config.validate())
+
+        config.setValue("network.port", 100_000)
+        assertNotNull(config.validate())
+        config.setValue("network.port", 100)
+        assertNull(config.validate())
+
+        listOf("performance.max_file_size", "performance.max_message_size",
+            "performance.max_sync_age", "performance.max_delivery_threads",
+            "performance.max_client_threads", "performance.keycard_cache_size").forEach {
+            config.setValue(it, 100_000_000)
+            assertNotNull(config.validate())
+            config.setValue(it, 30)
+            assertNull(config.validate())
+        }
+
+        config.setValue("security.diceware_wordcount", 100)
+        assertNotNull(config.validate())
+        config.setValue("security.diceware_wordcount", 8)
+        assertNull(config.validate())
+
+        listOf("security.failure_delay_sec", "security.max_failures",
+            "security.lockout_delay_min", "security.registration_delay_min",
+            "security.password_reset_min").forEach {
+            config.setValue(it, 100_000_000)
+            assertNotNull(config.validate())
+            config.setValue(it, 60)
+            assertNull(config.validate())
+        }
     }
 }

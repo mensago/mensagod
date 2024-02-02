@@ -2,8 +2,9 @@ package mensagod
 
 import com.moandjiezana.toml.Toml
 import keznacl.BadValueException
+import libkeycard.BadFieldValueException
+import libkeycard.Domain
 import libkeycard.MissingDataException
-import org.apache.commons.net.util.SubnetUtils
 import java.io.FileNotFoundException
 import java.net.InetAddress
 import java.nio.file.Files
@@ -78,12 +79,24 @@ class ServerConfig {
     fun getString(key: String): String? { return getValue(key) as String? }
 
     /**
-     * Sets a value in the configuration. Keys are expected to be in the format tablename.fieldname.
+     * Reverts a field to its default value.
      *
      * @throws BadValueException If the key specified is invalid.
      */
+    fun resetValue(key: String) {
+        if (!isValidKey(key)) throw BadValueException()
+        values.remove(key)
+    }
+
+    /**
+     * Sets a value in the configuration. Keys are expected to be in the format tablename.fieldname.
+     *
+     * @throws BadValueException If the key specified is invalid.
+     * @throws BadFieldValueException If the value is more than 1K characters
+     */
     fun setValue(key: String, value: Any) {
         if (!isValidKey(key)) throw BadValueException()
+        if (value is String && value.length > 1024) throw BadFieldValueException()
         values[key] = value
     }
 
@@ -330,8 +343,9 @@ class ServerConfig {
      */
     fun validate(): String? {
         val intKeys = listOf(
-            Triple("network.port", 1, 65535),
             Triple("database.port", 1, 65535),
+            Triple("global.default_quota", 0, 1_000_000_000),
+            Triple("network.port", 1, 65535),
             Triple("performance.max_file_size", 1, 1024),
             Triple("performance.max_message_size", 1, 1024),
             Triple("performance.max_sync_age", 1, 365),
@@ -399,9 +413,12 @@ class ServerConfig {
         if (values["database.host"] != null) {
             try { InetAddress.getByName(values["database.host"]!! as String) }
             catch (e: Exception) {
-                return "Invalid host for setting database.host"
+                return "Invalid or unknown host for setting database.host"
             }
         }
+
+        if (Domain.fromString(values["global.domain"] as String?) == null)
+            return "Invalid global.domain value '${values["global.domain"]}'"
 
         listOf("global.registration_subnet", "global.registration_subnet6").forEach { subnetField ->
             if (values[subnetField] != null) {
@@ -410,7 +427,7 @@ class ServerConfig {
                     .map { it.trim() }
                     .filter { it.isNotEmpty() }
                     .forEach {
-                        try { SubnetUtils(it) }
+                        try { CIDRUtils(it) }
                         catch (e: Exception) {
                             return "Invalid subnet '$it' in setting $subnetField"
                         }
