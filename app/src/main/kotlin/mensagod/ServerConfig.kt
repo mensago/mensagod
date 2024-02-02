@@ -136,10 +136,10 @@ class ServerConfig {
             when (value) {
                 is Boolean -> {
                     val boolStr = if (value) "True" else "False"
-                    return "${parts[1]} = $boolStr" + System.lineSeparator()
+                    return "${parts[1]} = $boolStr"
                 }
-                is Int -> return "${parts[1]} = $value" + System.lineSeparator()
-                else -> return """${parts[1]} = "$value"""" + System.lineSeparator()
+                is Int -> return "${parts[1]} = $value"
+                else -> return """${parts[1]} = "$value""""
             }
         }
 
@@ -149,66 +149,77 @@ class ServerConfig {
 
         // Database section
 
-        sl.add(
-        """# This is a Mensago server config file. Each value listed below is the
-                |# default value. Every effort has been made to set this file to sensible
-                |# defaults to keep things simple. This file is expected to be found in
-                |# /etc/mensagod/serverconfig.toml or C:\ProgramData\mensagod on Windows.
-                |
-                |[database]
-                |# Settings needed for connecting to the database.
-                |#
-                |# ip = "localhost"
-                |# port = "5432"
-                |# name = "mensago"
-                |# user = "mensago"
-                |""".trimMargin()
-        )
-        sl.add(makeValueString("database.ip"))
-        sl.add(makeValueString("database.port"))
-        sl.add(makeValueString("database.name"))
-        sl.add(makeValueString("database.user"))
-        sl.add("""database.password = "${getString("database.password")}"$sep""")
+        sl.addAll(listOf(
+            "# This is a Mensago server config file. Each value listed below is the",
+            "# default value. Every effort has been made to set this file to sensible",
+            "# defaults to keep things simple. This file is expected to be found in",
+            "# /etc/mensagod/serverconfig.toml or C:\\ProgramData\\mensagod on Windows.",
+            "",
+            "[database]",
+            "# Settings needed for connecting to the database.",
+            "#",
+            """# ip = "localhost"""",
+            """# port = 5432""",
+            """# name = "mensago"""",
+            """# user = "mensago"""",
+        ))
+        makeValueString("database.ip").let { if (it.isNotEmpty()) sl.add(it) }
+        makeValueString("database.port").let { if (it.isNotEmpty()) sl.add(it) }
+        makeValueString("database.name").let { if (it.isNotEmpty()) sl.add(it) }
+        makeValueString("database.user").let { if (it.isNotEmpty()) sl.add(it) }
+        sl.add("""password = "${getString("database.password")}"""")
 
         // Global section
 
-        sl.add(
-            """$sep[global]
-            |domain = "${getString("global.domain")}"
-            |
-            |# The location where user data is stored. The default for Windows is 
-            |# "C:\\ProgramData\\mensago", but for other platforms is "/var/mensagod".
-            |# top_dir = "/var/mensagod"
-            |""".trimMargin()
-        )
-        sl.add(makeValueString("global.top_dir"))
-        sl.add(
-            """# The type of registration. 'public' is open to outside registration requests,
-            |# and would be appropriate only for hosting a public free server. 'moderated'
-            |# is open to public registration, but an administrator must approve the request
-            |# before an account can be created. 'network' limits registration to a 
-            |# specified subnet or IP address. 'private' permits account registration only
-            |# by an administrator. For most situations 'private' is the appropriate setting.
-            |# registration = "private"
-            |""".trimMargin()
-        )
-        sl.add(makeValueString("global.registration"))
+        sl.addAll(listOf(
+            "$sep[global]",
+            """domain = "${getString("global.domain")}"""",
+            "",
+            "# The location where user data is stored. The default for Windows is",
+            """# "C:\\ProgramData\\mensago", but for other platforms is "/var/mensagod".""",
+            """# top_dir = "/var/mensagod""""
+        ))
+        makeValueString("global.top_dir").let { if (it.isNotEmpty()) sl.add(it) }
 
-        sl.add(
-            """# For servers configured to network registration, this variable sets the 
-            |# subnet(s) to which account registration is limited. Subnets are expected to
-            |# be in CIDR notation and comma-separated. The default setting restricts
-            |# registration to the private (non-routable) networks.
-            |# registration_subnet = "192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8, 127.0.0.1/8"
-            |# registration_subnet6 = "fe80::/10"
-            |""".trimIndent()
-        )
-        sl.add(makeValueString("global.registration_subnet"))
-        sl.add(makeValueString("global.registration_subnet6"))
+        sl.addAll(listOf(
+            "$sep# The type of registration. 'public' is open to outside registration requests,",
+            "# and would be appropriate only for hosting a public free server. 'moderated'",
+            "# is open to public registration, but an administrator must approve the request",
+            "# before an account can be created. 'network' limits registration to a",
+            "# specified subnet or IP address. 'private' permits account registration only",
+            "# by an administrator. For most situations 'private' is the appropriate setting.",
+            """# registration = "private"""",
+        ))
+        makeValueString("global.registration").let { if (it.isNotEmpty()) sl.add(it) }
+
+        sl.addAll(listOf(
+            "$sep# For servers configured to network registration, this variable sets the",
+            "# subnet(s) to which account registration is limited. Subnets are expected to",
+            "# be in CIDR notation and comma-separated. The default setting restricts",
+            "# registration to the private (non-routable) networks.",
+            """# registration_subnet = "192.168.0.0/16, 172.16.0.0/12, 10.0.0.0/8, 127.0.0.1/8"""",
+            """# registration_subnet6 = "fe80::/10"""",
+        ))
+        makeValueString("global.registration_subnet").let { if (it.isNotEmpty()) sl.add(it) }
+        makeValueString("global.registration_subnet6").let { if (it.isNotEmpty()) sl.add(it) }
+
+        sl.add("$sep# The default storage quota for a workspace, measured in MiB. 0 means no limit.")
+        sl.add("# default_quota = 0")
+        makeValueString("global.default_quota").let { if (it.isNotEmpty()) sl.add(it) }
+
+        sl.addAll(listOf(
+            "$sep# Location for log files. This directory requires full permissions for the",
+            "# user mensagod runs as. On Windows, this defaults to the same location as the",
+            "# server config file, i.e. C:\\ProgramData\\mensagod",
+            """# top_dir = "/var/mensagod"""",
+        ))
+        makeValueString("global.top_dir").let { if (it.isNotEmpty()) sl.add(it) }
+
+        sl.add("")
 
         // TODO: Finish toVerboseString()
 
-        return sl.joinToString("")
+        return sl.joinToString(System.lineSeparator())
     }
 
     /**
