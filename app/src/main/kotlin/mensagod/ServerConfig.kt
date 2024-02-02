@@ -211,9 +211,9 @@ class ServerConfig {
             "$sep# Location for log files. This directory requires full permissions for the",
             "# user mensagod runs as. On Windows, this defaults to the same location as the",
             "# server config file, i.e. C:\\ProgramData\\mensagod",
-            """# top_dir = "/var/mensagod"""",
+            """# log_dir = "/var/mensagod"""",
         ))
-        makeValueString("global.top_dir").let { if (it.isNotEmpty()) sl.add(it) }
+        makeValueString("global.log_dir").let { if (it.isNotEmpty()) sl.add(it) }
 
         sl.addAll(listOf(
             "$sep[network]",
@@ -247,14 +247,14 @@ class ServerConfig {
             "$sep# Max age of sync records in days. Any records older than the oldest device",
             "# login timestamp minus this number of days are purged. Defaults to 1 week,",
             "# which should be plenty.",
-            "# performance.max_sync_age = 7",
+            "# max_sync_age = 7",
         ))
         makeValueString("performance.max_sync_age").let { if (it.isNotEmpty()) sl.add(it) }
 
         sl.addAll(listOf(
             "$sep# The maximum number of worker threads created handle delivering messages,",
             "# both internally and externally",
-            "# performance.max_delivery_threads = 100",
+            "# max_delivery_threads = 100",
         ))
         makeValueString("performance.max_delivery_threads").let { if (it.isNotEmpty()) sl.add(it) }
 
@@ -263,14 +263,14 @@ class ServerConfig {
             "# number -- if it is too low, client devices many not be able to connect",
             "# and messages may not be delivered from outside the organization, and if it",
             "# is set too high, client demand may overwhelm the server.",
-            "# performance.max_client_threads = 10000",
+            "# max_client_threads = 10000",
         ))
         makeValueString("performance.max_client_threads").let { if (it.isNotEmpty()) sl.add(it) }
 
         sl.addAll(listOf(
             "$sep# The maximum number of keycards to keep in the in-memory cache. This number",
             "# has a direct effect on the server's memory usage, so adjust this with care.",
-            "# performance.keycard_cache_size = 5000",
+            "# keycard_cache_size = 5000",
         ))
         makeValueString("performance.keycard_cache_size").let { if (it.isNotEmpty()) sl.add(it) }
 
