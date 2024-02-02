@@ -3,7 +3,9 @@ package mensagod
 import com.moandjiezana.toml.Toml
 import keznacl.BadValueException
 import libkeycard.MissingDataException
+import org.apache.commons.net.util.SubnetUtils
 import java.io.FileNotFoundException
+import java.net.InetAddress
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -37,7 +39,7 @@ class ServerConfig {
      */
     fun connectToDB(): Connection {
         val sb = StringBuilder("jdbc:postgresql://")
-        sb.append(getString("database.ip") + ":" + getInteger("database.port"))
+        sb.append(getString("database.host") + ":" + getInteger("database.port"))
         sb.append("/" + getString("database.name"))
 
         val args = Properties()
@@ -158,12 +160,12 @@ class ServerConfig {
             "[database]",
             "# Settings needed for connecting to the database.",
             "#",
-            """# ip = "localhost"""",
+            """# host = "localhost"""",
             """# port = 5432""",
             """# name = "mensago"""",
             """# user = "mensago"""",
         ))
-        makeValueString("database.ip").let { if (it.isNotEmpty()) sl.add(it) }
+        makeValueString("database.host").let { if (it.isNotEmpty()) sl.add(it) }
         makeValueString("database.port").let { if (it.isNotEmpty()) sl.add(it) }
         makeValueString("database.name").let { if (it.isNotEmpty()) sl.add(it) }
         makeValueString("database.user").let { if (it.isNotEmpty()) sl.add(it) }
@@ -354,7 +356,7 @@ class ServerConfig {
                 return numMsg
         }
 
-        val stringKeys = listOf("database.ip", "database.name", "database.user",
+        val stringKeys = listOf("database.host", "database.name", "database.user",
             "database.password", "global.domain", "global.top_dir", "global.workspace_dir",
             "global.registration", "global.registration_subnet", "global.registration_subnet6",
             "global.log_dir", "network.listen_ip")
@@ -372,7 +374,60 @@ class ServerConfig {
             }
         }
 
-        // TODO: Validate string keys in ServerConfig::validate()
+        // String fields which are locations
+        listOf("global.top_dir", "global.workspace_dir", "global.log_dir").forEach {
+            if (values[it] != null) {
+                val path = try { Paths.get(values[it]!! as String) }
+                catch (e: InvalidPathException) {
+                    return "Invalid path '${values[it]}' for setting $it."
+                }
+
+                if (!path.exists())
+                    return "Path '${values[it]}' for setting $it doesn't exist."
+            }
+        }
+
+        // One-off string fields
+
+        if (values["network.listen_ip"] != null) {
+            try { InetAddress.getByName(values["network.listen_ip"]!! as String) }
+            catch (e: Exception) {
+                return "Invalid address for setting network.listen_ip"
+            }
+        }
+
+        if (values["database.host"] != null) {
+            try { InetAddress.getByName(values["database.host"]!! as String) }
+            catch (e: Exception) {
+                return "Invalid host for setting database.host"
+            }
+        }
+
+        listOf("global.registration_subnet", "global.registration_subnet6").forEach { subnetField ->
+            if (values[subnetField] != null) {
+                (values[subnetField]!! as String)
+                    .split(",")
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+                    .forEach {
+                        try { SubnetUtils(it) }
+                        catch (e: Exception) {
+                            return "Invalid subnet '$it' in setting $subnetField"
+                        }
+                    }
+            }
+        }
+
+        if (values["global.registration"] != null &&
+            !listOf("private","network","moderated","public")
+                .contains(values["global.registration"]))
+            return "Registration mode must be 'private', 'network', 'moderated', or 'public'."
+
+        // Free-form fields which are skipped
+        //
+        // database.name
+        // database.user
+        // database.password
 
         return null
     }
@@ -456,7 +511,7 @@ class ServerConfig {
        }
 
         private val defaultConfig = mutableMapOf<String,Any>(
-            "database.ip" to "localhost",
+            "database.host" to "localhost",
             "database.port" to 5432,
             "database.name" to "mensagotest",
             "database.user" to "mensago",
@@ -505,7 +560,7 @@ private val orderedKeys = listOf("global", "database", "network", "performance",
 private val orderedKeyLists = mapOf(
     "global" to listOf("domain", "top_dir", "workspace_dir", "registration", "registration_subnet",
         "registration_subnet6", "default_quota", "log_dir", "listen_ip", "port"),
-    "database" to listOf("ip", "port", "name", "user", "password"),
+    "database" to listOf("host", "port", "name", "user", "password"),
     "network" to listOf("listen_ip", "port"),
     "performance" to listOf("max_file_size", "max_message_size", "max_sync_age",
         "max_delivery_threads", "max_client_threads", "keycard_cache_size"),

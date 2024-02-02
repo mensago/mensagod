@@ -78,7 +78,7 @@ registration = "private"
             |[database]
             |# Settings needed for connecting to the database.
             |#
-            |# ip = "localhost"
+            |# host = "localhost"
             |# port = 5432
             |# name = "mensago"
             |# user = "mensago"
@@ -185,7 +185,7 @@ registration = "private"
         // This test is for the output of a ServerConfig where every value has been changed
         val config = ServerConfig()
         config.run {
-            setValue("database.ip", "localhost2")
+            setValue("database.host", "localhost2")
             setValue("database.port", 1234)
             setValue("database.name", "mensago2")
             setValue("database.user", "mensago2")
@@ -226,11 +226,11 @@ registration = "private"
             |[database]
             |# Settings needed for connecting to the database.
             |#
-            |# ip = "localhost"
+            |# host = "localhost"
             |# port = 5432
             |# name = "mensago"
             |# user = "mensago"
-            |ip = "localhost2"
+            |host = "localhost2"
             |port = 1234
             |name = "mensago2"
             |user = "mensago2"

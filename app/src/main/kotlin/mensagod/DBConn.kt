@@ -179,7 +179,7 @@ class DBConn {
          */
         fun initialize(config: ServerConfig) {
             val sb = StringBuilder("jdbc:postgresql://")
-            sb.append(config.getString("database.ip") + ":" +
+            sb.append(config.getString("database.host") + ":" +
                     config.getInteger("database.port").toString())
             sb.append("/" + config.getString("database.name"))
 
