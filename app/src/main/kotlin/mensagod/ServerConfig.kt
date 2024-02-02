@@ -215,9 +215,109 @@ class ServerConfig {
         ))
         makeValueString("global.top_dir").let { if (it.isNotEmpty()) sl.add(it) }
 
-        sl.add("")
+        sl.addAll(listOf(
+            "$sep[network]",
+            "# The interface and port to listen on",
+            """# listen_ip = "127.0.0.1"""",
+            "# port = 2001",
+        ))
+        makeValueString("network.listen_ip").let { if (it.isNotEmpty()) sl.add(it) }
+        makeValueString("network.port").let { if (it.isNotEmpty()) sl.add(it) }
 
-        // TODO: Finish toVerboseString()
+        sl.addAll(listOf(
+            "$sep[performance]",
+            "# Items in this section are for performance tuning. They are set to defaults",
+            "# which should work for most environments. Care should be used when changing",
+            "# any of these values.",
+            "# ",
+            "# The maximum size in MiB of a file stored on the server. Note that this is",
+            "# the size of the actual data stored on disk. Encoding adds 25% overhead.",
+            "# max_file_size = 50",
+        ))
+        makeValueString("performance.max_file_size").let { if (it.isNotEmpty()) sl.add(it) }
+
+        sl.addAll(listOf(
+            "$sep# The maximum size in MiB of a message. The value of max_file_size takes",
+            "# precedence if this value is larger than the value of max_file_size.",
+            "# max_message_size = 50",
+        ))
+        makeValueString("performance.max_message_size").let { if (it.isNotEmpty()) sl.add(it) }
+
+        sl.addAll(listOf(
+            "$sep# Max age of sync records in days. Any records older than the oldest device",
+            "# login timestamp minus this number of days are purged. Defaults to 1 week,",
+            "# which should be plenty.",
+            "# performance.max_sync_age = 7",
+        ))
+        makeValueString("performance.max_sync_age").let { if (it.isNotEmpty()) sl.add(it) }
+
+        sl.addAll(listOf(
+            "$sep# The maximum number of worker threads created handle delivering messages,",
+            "# both internally and externally",
+            "# performance.max_delivery_threads = 100",
+        ))
+        makeValueString("performance.max_delivery_threads").let { if (it.isNotEmpty()) sl.add(it) }
+
+        sl.addAll(listOf(
+            "$sep# The maximum number of client worker threads. Be careful in changing this",
+            "# number -- if it is too low, client devices many not be able to connect",
+            "# and messages may not be delivered from outside the organization, and if it",
+            "# is set too high, client demand may overwhelm the server.",
+            "# performance.max_client_threads = 10000",
+        ))
+        makeValueString("performance.max_client_threads").let { if (it.isNotEmpty()) sl.add(it) }
+
+        sl.addAll(listOf(
+            "$sep# The maximum number of keycards to keep in the in-memory cache. This number",
+            "# has a direct effect on the server's memory usage, so adjust this with care.",
+            "# performance.keycard_cache_size = 5000",
+        ))
+        makeValueString("performance.keycard_cache_size").let { if (it.isNotEmpty()) sl.add(it) }
+
+        sl.addAll(listOf(
+            "$sep[security]",
+            "# The number of words used in a registration code. 6 is recommended for best",
+            "# security in most situations. This value cannot be less than 3.",
+            "# diceware_wordcount = 6",
+        ))
+        makeValueString("security.diceware_wordcount").let { if (it.isNotEmpty()) sl.add(it) }
+
+        sl.addAll(listOf(
+            "$sep# The number of seconds to wait after a login failure before accepting another",
+            "# attempt",
+            "# failure_delay_sec = 3",
+        ))
+        makeValueString("security.failure_delay_sec").let { if (it.isNotEmpty()) sl.add(it) }
+
+        sl.addAll(listOf(
+            "$sep# The number of login failures made before a connection is closed. ",
+            "# max_failures = 5",
+        ))
+        makeValueString("security.max_failures").let { if (it.isNotEmpty()) sl.add(it) }
+
+        sl.addAll(listOf(
+            "$sep# The number of minutes the client must wait after reaching max_failures",
+            "# before another attempt may be made. Note that additional attempts to login",
+            "# prior to the completion of this delay resets the timeout.",
+            "# lockout_delay_min = 15",
+        ))
+        makeValueString("security.lockout_delay_min").let { if (it.isNotEmpty()) sl.add(it) }
+
+        sl.addAll(listOf(
+            "$sep# The delay, in minutes, between account registration requests from the same",
+            "# IP address. This is to prevent registration spam.",
+            "# registration_delay_min = 15",
+        ))
+        makeValueString("security.registration_delay_min").let { if (it.isNotEmpty()) sl.add(it) }
+
+        sl.addAll(listOf(
+            "$sep# The amount of time, in minutes, a password reset code is valid. It must be",
+            "# at least 10 and no more than 2880 (48 hours).",
+            "# password_reset_min = 60",
+        ))
+        makeValueString("security.password_reset_min").let { if (it.isNotEmpty()) sl.add(it) }
+
+        sl.add("")
 
         return sl.joinToString(System.lineSeparator())
     }
