@@ -351,4 +351,9 @@ registration = "private"
 
         assertEquals(expected, config.toVerboseString())
     }
+
+    @Test
+    fun validateTest() {
+        // TODO: Implement validateTest()
+    }
 }
