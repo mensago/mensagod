@@ -6,22 +6,31 @@ import mensagod.DatabaseCorruptionException
 import mensagod.NotConnectedException
 
 /**
- * getUserEntries pulls one or more entries from the database. Because of its flexibility, this call
+ * getEntries pulls one or more entries from the database. Because of its flexibility, this call
  * is a bit complicated. Entry indices start counting at 1.
+ *
+ * If you pass a null workspace ID, the call will return entries for the organization. If you pass a
+ * non-null WID, the call will return entries for the specified workspace. If the workspace is not
+ * found or the workspace does not have any entries uploaded yet, the call will return an empty
+ * list.
  *
  * If you want the entire keycard, just specify the WID. If you want just the current entry, pass
  * a 0 as the startIndex. In the unlikely event that you want just a subset of the entries, specify
  * both startIndex and endIndex. There is no penalty for specifying an endIndex which is larger
  * than the index of the current entry on the keycard -- such instances will function as if null
  * were passed as the endIndex and all entries starting with startIndex will be returned.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun getUserEntries(db: DBConn, wid: RandomID, startIndex: UInt = 1U, endIndex: UInt? = null):
+fun getEntries(db: DBConn, wid: RandomID?, startIndex: UInt = 1U, endIndex: UInt? = null):
         MutableList<String> {
+    val owner = wid?.toString() ?: "organization"
 
     val out = mutableListOf<String>()
     if (startIndex == 0U) {
         val rs = db.query("""SELECT entry FROM keycards WHERE owner = ? 
-            ORDER BY index DESC LIMIT 1""", wid)
+            ORDER BY index DESC LIMIT 1""", owner)
         if (!rs.next()) return out
         out.add(rs.getString("entry"))
         return out
@@ -31,10 +40,10 @@ fun getUserEntries(db: DBConn, wid: RandomID, startIndex: UInt = 1U, endIndex: U
         if (endIndex < startIndex) return out
 
         db.query("""SELECT entry FROM keycards WHERE owner = ? AND index >= ?
-            AND index <= ? ORDER BY index""", wid, startIndex, endIndex)
+            AND index <= ? ORDER BY index""", owner, startIndex, endIndex)
     } else {
         // Given just a start index
-        db.query("""SELECT entry FROM keycards WHERE owner = ? AND index >= ? """, wid,
+        db.query("""SELECT entry FROM keycards WHERE owner = ? AND index >= ? """, owner,
             startIndex)
     }
 
