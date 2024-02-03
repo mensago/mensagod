@@ -295,6 +295,16 @@ fun setupAdmin(db: DBConn) {
 
 }
 
+/**
+ * Contains all the state data used during test setup.
+ *
+ * @property config The config of the server in a ServerConfig instance
+ * @property serverSetupData A String-String map containing data generated during server setup. Keys
+ * used: "ovkey", "oskey", "oekey", "odkey", "admin_wid", "admin_regcode", "abuse_wid", and
+ * "support_wid"
+ * @property testPath The full filesystem path to the directory created for the test
+ *
+ */
 class SetupData(val config: ServerConfig, val serverSetupData: Map<String, String>,
     val testPath: String)
 
