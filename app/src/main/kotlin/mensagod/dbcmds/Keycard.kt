@@ -6,6 +6,21 @@ import mensagod.DatabaseCorruptionException
 import mensagod.NotConnectedException
 
 /**
+ * getUserEntries pulls one or more entries from the database. Because of its flexibility, this call
+ * is a bit complicated. Entry indices start counting at 1.
+ *
+ * If you want the entire keycard, just specify the WID. If you want just the current entry, pass
+ * a 0 as the startIndex. In the unlikely event that you want just a subset of the entries, specify
+ * both startIndex and endIndex. There is no penalty for specifying an endIndex which is larger
+ * than the index of the current entry on the keycard -- such instances will function as if null
+ * were passed as the endIndex and all entries starting with startIndex will be returned.
+ */
+fun getUserEntries(wid: RandomID, startIndex: UInt = 1U, endIndex: UInt? = null):
+        MutableList<String> {
+    TODO("Implement getUserEntries()")
+}
+
+/**
  * resolveAddress returns the workspace ID corresponding to a Mensago address. It will return null
  * if the corresponding workspace ID could not be found.
  *
