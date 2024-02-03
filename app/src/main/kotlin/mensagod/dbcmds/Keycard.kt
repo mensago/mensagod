@@ -15,9 +15,31 @@ import mensagod.NotConnectedException
  * than the index of the current entry on the keycard -- such instances will function as if null
  * were passed as the endIndex and all entries starting with startIndex will be returned.
  */
-fun getUserEntries(wid: RandomID, startIndex: UInt = 1U, endIndex: UInt? = null):
+fun getUserEntries(db: DBConn, wid: RandomID, startIndex: UInt = 1U, endIndex: UInt? = null):
         MutableList<String> {
-    TODO("Implement getUserEntries()")
+
+    val out = mutableListOf<String>()
+    if (startIndex == 0U) {
+        val rs = db.query("""SELECT entry FROM keycards WHERE owner = ? 
+            ORDER BY index DESC LIMIT 1""", wid)
+        if (!rs.next()) return out
+        out.add(rs.getString("entry"))
+        return out
+    }
+
+    val rs = if (endIndex != null) {
+        if (endIndex < startIndex) return out
+
+        db.query("""SELECT entry FROM keycards WHERE owner = ? AND index >= ?
+            AND index <= ? ORDER BY index""", wid, startIndex, endIndex)
+    } else {
+        // Given just a start index
+        db.query("""SELECT entry FROM keycards WHERE owner = ? AND index >= ? """, wid,
+            startIndex)
+    }
+
+    while (!rs.next()) out.add(rs.getString("entry"))
+    return out
 }
 
 /**
