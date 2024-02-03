@@ -12,12 +12,12 @@ class DBMiscCmdTest {
         val config = ServerConfig.load()
         resetDB(config)
         DBConn.initialize(config)
-        val dbConn = DBConn().connect().getConnection()!!
-        initDB(dbConn)
+        val db = DBConn().connect()
+        initDB(db.getConnection()!!)
 
         // These methods will return the proper data or throw, so we don't have to do anything to
         // test them except call them. :)
-        getEncryptionPair()
-        getPrimarySigningPair()
+        getEncryptionPair(db)
+        getPrimarySigningPair(db)
     }
 }

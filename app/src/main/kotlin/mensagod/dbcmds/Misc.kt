@@ -14,8 +14,7 @@ import mensagod.ResourceNotFoundException
  * @throws ResourceNotFoundException if the keypair was not found
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun getEncryptionPair(): EncryptionPair {
-    val db = DBConn()
+fun getEncryptionPair(db: DBConn): EncryptionPair {
     val rs = db.query("""SELECT pubkey,privkey FROM orgkeys WHERE purpose = 'encrypt' 
         ORDER BY rowid DESC LIMIT 1""")
     if (!rs.next()) throw ResourceNotFoundException("org encryption keypair not found")
@@ -32,8 +31,7 @@ fun getEncryptionPair(): EncryptionPair {
  * @throws ResourceNotFoundException if the keypair was not found
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun getPrimarySigningPair(): SigningPair {
-    val db = DBConn()
+fun getPrimarySigningPair(db: DBConn): SigningPair {
     val rs = db.query("""SELECT pubkey,privkey FROM orgkeys WHERE purpose = 'sign' 
         ORDER BY rowid DESC LIMIT 1""")
     if (!rs.next()) throw ResourceNotFoundException("org encryption keypair not found")

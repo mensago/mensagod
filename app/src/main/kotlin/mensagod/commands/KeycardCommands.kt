@@ -1,11 +1,14 @@
 package mensagod.commands
 
+import keznacl.CryptoString
 import libkeycard.MAddress
 import libkeycard.RandomID
 import libkeycard.UserEntry
 import libkeycard.UserID
 import mensagod.ClientSession
 import mensagod.DBConn
+import mensagod.dbcmds.getEntries
+import mensagod.dbcmds.getPrimarySigningPair
 import mensagod.dbcmds.resolveAddress
 import mensagod.gServerDomain
 import mensagod.logError
@@ -122,5 +125,91 @@ fun commandAddEntry(state: ClientSession) {
     // isDataCompliant() ensures all required fields are present, this can't be null
     val currentIndex = entry.getFieldInteger("Index")!!
 
-    // TODO: Finish implementing commandAddEntry(). Depends on getUserEntries()
+    // Here we check to make sure that the entry submitted is allowed to follow the previous one.
+    // This just means the new index == the old index +1 and that the chain of trust verifies
+    val tempEntryList = try { getEntries(db, wid, 0U) }
+    catch (e: Exception) {
+        logError("commandAddEntry.getCurrentEntry exception: $e")
+        ServerResponse.sendInternalError("Server can't get current keycard entry", state.conn)
+        return
+    }
+
+    val prevCRKey = if (tempEntryList.size > 0) {
+        val prevEntry = UserEntry.fromString(tempEntryList[0]).getOrElse {
+            logError("commandAddEntry.dbCorruption: bad user entry in db, wid=$wid - $it")
+            ServerResponse.sendInternalError("Error loading previous keycard entry", state.conn)
+            return
+        }
+
+        val prevIndex = prevEntry.getFieldInteger("Index")
+        if (prevIndex == null) {
+            logError("commandAddEntry.dbCorruption: bad user entry in db, wid=$wid, bad index")
+            ServerResponse.sendInternalError("Error in previous keycard entry", state.conn)
+            return
+        }
+
+        if (currentIndex != prevIndex+1) {
+           ServerResponse(412, "NONCOMPLIANT KEYCARD DATA", "Non-sequential index")
+               .sendCatching(state.conn,
+                   "commandAddEntry: Couldn't send response for nonsequential keycard index, "+
+                           "wid = ${state.wid}")
+           return
+        }
+
+        val isOK = entry.verifyChain(prevEntry).getOrElse {
+            logError("commandAddEntry.chainVerifyError, wid=$wid - $it")
+            ServerResponse.sendInternalError("Error verifying entry chain", state.conn)
+            return
+        }
+        if (!isOK) {
+            ServerResponse(412, "NONCOMPLIANT KEYCARD DATA",
+                "Entry failed to chain verify")
+                .sendCatching(state.conn,
+                    "commandAddEntry: Couldn't send response for chain verify failure, "+
+                            "wid = ${state.wid}")
+            return
+        }
+        CryptoString.fromString(
+            prevEntry.getFieldString("Contact-Request-Verification-Key")!!)!!
+    } else {
+        // We're here because there are no previous entries. The Index field must be one here
+        // because the only way that a valid root entry can have an Index greater than one is if
+        // it's a revocation root entry. Those are added by the REVOKE command.
+        if (currentIndex != 1) {
+            ServerResponse(412, "NONCOMPLIANT KEYCARD DATA",
+                "The index of the first keycard entry must be 1")
+                .sendCatching(state.conn,
+                    "commandAddEntry: Couldn't send response for root entry index != 1, "+
+                            "wid = ${state.wid}")
+            return
+        }
+        null
+    }
+
+    // If we managed to get this far, we can (theoretically) trust the initial data set given to us
+    // by the client. Here we sign the data with the organization's signing key and send the
+    // signature back to the client
+    val pskPair = try { getPrimarySigningPair(db) }
+    catch (e: Exception) {
+        logError("commandAddEntry.getPrimarySigningKey exception: $e")
+        ServerResponse.sendInternalError("Server can't get org signing key", state.conn)
+        return
+    }
+    entry.sign("Organization-Signature", pskPair)?.let {
+        logError("commandAddEntry.signEntry, wid=$wid - $it")
+        ServerResponse.sendInternalError("Error signing user entry", state.conn)
+        return
+    }
+
+    try { ServerResponse(100, "CONTINUE", "", mutableMapOf(
+                "Organization-Signature" to entry.getAuthString("Organization-Signature")!!
+                    .toString()))
+            .send(state.conn)
+    } catch (e: Exception) {
+        logError("commandAddEntry.sendContinue, wid=$wid - $e")
+        ServerResponse.sendInternalError("Error signing user entry", state.conn)
+        return
+    }
+
+    // TODO: Finish implementing commandAddEntry()
 }
