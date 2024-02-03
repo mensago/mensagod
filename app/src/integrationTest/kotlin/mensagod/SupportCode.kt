@@ -304,6 +304,7 @@ fun setupAdmin(db: DBConn) {
  * "support_wid"
  * @property testPath The full filesystem path to the directory created for the test
  *
+ * @see ServerConfig
  */
 class SetupData(val config: ServerConfig, val serverSetupData: Map<String, String>,
     val testPath: String)
