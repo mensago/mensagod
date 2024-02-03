@@ -10,8 +10,12 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class DBKeycardCmdTest {
+
+    // getEntries() is tested by the test for commandAddEntry. It suffers from a chicken-and-egg
+    // problem and would require a ton of code to test independently.
+
     @Test
-    fun resolveWIDAddress() {
+    fun resolveWIDAddressTest() {
         val config = ServerConfig.load()
         resetDB(config)
         DBConn.initialize(config)
