@@ -38,6 +38,8 @@ class SigningPair private constructor(publicKeyStr: CryptoString, privateKeyStr:
         return Result.success(CryptoString.fromBytes("ED25519", signature)!!)
     }
 
+    override fun toString(): String { return "$publicKey,$privateKey" }
+
     override fun verify(data: ByteArray, signature: CryptoString): Result<Boolean> {
         if (data.isEmpty()) return Result.failure(EmptyDataException())
         if (signature.prefix != publicKey.prefix) return Result.failure(AlgorithmMismatchException())
@@ -118,6 +120,8 @@ class VerificationKey: Verifier, PublicHasher {
             getOrElse { return Result.failure(it) }
         return Result.success(publicHash!!)
     }
+
+    override fun toString(): String { return publicKey.toString() }
 
     companion object {
 

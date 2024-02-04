@@ -47,6 +47,8 @@ class EncryptionPair private constructor(publicKeyStr: CryptoString, privateKeyS
             privateKey.toRaw().getOrElse { return Result.failure(it) })
     }
 
+    override fun toString(): String { return "$publicKey,$privateKey" }
+
     companion object {
 
         fun from(pubKeyCS: CryptoString, privKeyCS: CryptoString): Result<EncryptionPair> {
@@ -118,6 +120,8 @@ class EncryptionKey private constructor(): Encryptor {
             getOrElse { return Result.failure(it) }
         return Result.success(publicHash!!)
     }
+
+    override fun toString(): String { return publicKey.toString() }
 
     companion object {
 
