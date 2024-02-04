@@ -98,7 +98,7 @@ sealed class Entry {
         val baseField = fields["Expires"] ?: return Result.failure(MissingDataException())
         if (baseField !is DatestampField) return Result.failure(BadFieldException())
         val expires = baseField.value
-        return Result.success(expires.value.isAfter(Instant.now()))
+        return Result.success(expires.value.isBefore(Instant.now()))
     }
 
     /** Returns the body text of the entry */
