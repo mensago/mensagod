@@ -1,5 +1,6 @@
 package mensagod.dbcmds
 
+import keznacl.SigningPair
 import libkeycard.MAddress
 import libkeycard.OrgEntry
 import libkeycard.RandomID
@@ -10,10 +11,13 @@ import org.junit.jupiter.api.Test
 
 class DBKeycardCmdTest {
 
-    @Test fun addEntriesTest() {
+    @Test fun addEntryTest() {
         setupTest("dbcmds.addEntries")
         val db = DBConn()
         val osPair = getPrimarySigningPair(db)
+        val orgEntry = OrgEntry.fromString(getEntries(db, null, 0U)[0]).getOrThrow()
+        val crsPair = SigningPair.fromStrings(ADMIN_PROFILE_DATA["signing.public"]!!,
+            ADMIN_PROFILE_DATA["signing.private"]!!).getOrThrow()
 
         val rootEntry = UserEntry()
         rootEntry.run {
@@ -29,10 +33,16 @@ class DBKeycardCmdTest {
             setField("Verification-Key", ADMIN_PROFILE_DATA["signing.public"]!!)
             setField("Encryption-Key", ADMIN_PROFILE_DATA["encryption.public"]!!)
             sign("Organization-Signature", osPair)?.let { throw it }
+            addAuthString("Previous-Hash", orgEntry.getAuthString("Hash")!!)
+                ?.let { throw it }
+            hash()?.let { throw it }
+            sign("User-Signature", crsPair)?.let { throw it }
         }
-//        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        addEntry(db, rootEntry)
 
-        // TODO: Implement addEntries test
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val userEntries = getEntries(db, adminWID)
+        assertEquals(1, userEntries.size)
     }
 
     @Test fun getEntriesTest() {
