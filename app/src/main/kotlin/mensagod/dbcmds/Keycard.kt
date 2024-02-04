@@ -6,6 +6,17 @@ import mensagod.DatabaseCorruptionException
 import mensagod.NotConnectedException
 
 /**
+ * Adds an entry to the database. The caller is responsible for validation of the entry passed to
+ * this command.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ */
+fun addEntry(entry: Entry) {
+    TODO("Implement dbcmds.addEntry($entry)")
+}
+
+/**
  * getEntries pulls one or more entries from the database. Because of its flexibility, this call
  * is a bit complicated. Entry indices start counting at 1.
  *
