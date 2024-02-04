@@ -2,6 +2,7 @@ package mensagod.commands
 
 import keznacl.CryptoString
 import keznacl.SigningPair
+import libkeycard.Keycard
 import libkeycard.OrgEntry
 import libkeycard.RandomID
 import libkeycard.UserEntry
@@ -72,5 +73,45 @@ class KeycardCmdTest {
             response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             assertReturnCode(200, response)
         }.run()
+
+        val keycard = Keycard.new("User")!!
+        keycard.entries.add(rootEntry)
+        val newkeys = keycard.chain(crsPair).getOrThrow()
+        val newEntry = keycard.current!!
+        val newCRSPair = SigningPair.from(newkeys["crsigning.public"]!!,
+            newkeys["crsigning.private"]!!).getOrThrow()
+
+        // Test Case #2: Successfully add second user entry
+        CommandTest("addEntry.2",
+            SessionState(ClientRequest("ADDENTRY", mutableMapOf(
+                "Base-Entry" to newEntry.getFullText("Organization-Signature").getOrThrow(),
+            )), adminWID, LoginState.LoggedIn), ::commandAddEntry) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            assertReturnCode(100, response)
+            assert(response.data.containsKey("Organization-Signature"))
+            newEntry.run {
+                addAuthString("Organization-Signature",
+                    CryptoString.fromString(response.data["Organization-Signature"]!!)!!)
+                    ?.let { throw it }
+                addAuthString("Previous-Hash",
+                    newEntry.getAuthString("Previous-Hash")!!)?.let { throw it }
+                hash()?.let { throw it }
+                sign("User-Signature", newCRSPair)?.let { throw it }
+            }
+
+            ClientRequest("ADDENTRY", mutableMapOf(
+                "Base-Entry" to rootEntry.getFullText(null).getOrThrow(),
+                "Previous-Hash" to rootEntry.getAuthString("Previous-Hash")!!.toString(),
+                "Hash" to rootEntry.getAuthString("Hash")!!.toString(),
+                "User-Signature" to rootEntry.getAuthString("User-Signature")!!.toString()
+            )).send(socket.getOutputStream())
+
+            response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            assertReturnCode(200, response)
+        }.run()
+
+        // TODO: Finish implementing second case of commandAddEntry test
     }
 }
