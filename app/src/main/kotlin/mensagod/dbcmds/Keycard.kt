@@ -16,10 +16,10 @@ fun addEntry(db: DBConn, entry: Entry) {
     val owner = if (entry.getFieldString("Type") == "Organization") "organization"
         else entry.getFieldString("Workspace-ID")!!
 
-    db.query("""INSERT INTO keycards(owner, creationtime, index, entry, fingerprint)
+    db.execute("""INSERT INTO keycards(owner, creationtime, index, entry, fingerprint)
         VALUES(?,?,?,?,?)""",
         owner, entry.getFieldString("Timestamp")!!,
-        entry.getFieldString("Index")!!, entry.getFullText(null).getOrThrow(),
+        entry.getFieldInteger("Index")!!, entry.getFullText(null).getOrThrow(),
         entry.getAuthString("Hash")!!)
 }
 
@@ -58,14 +58,14 @@ fun getEntries(db: DBConn, wid: RandomID?, startIndex: UInt = 1U, endIndex: UInt
         if (endIndex < startIndex) return out
 
         db.query("""SELECT entry FROM keycards WHERE owner = ? AND index >= ?
-            AND index <= ? ORDER BY index""", owner, startIndex, endIndex)
+            AND index <= ? ORDER BY index""", owner, startIndex.toInt(), endIndex.toInt())
     } else {
         // Given just a start index
         db.query("""SELECT entry FROM keycards WHERE owner = ? AND index >= ? """, owner,
-            startIndex)
+            startIndex.toInt())
     }
 
-    while (!rs.next()) out.add(rs.getString("entry"))
+    while (rs.next()) out.add(rs.getString("entry"))
     return out
 }
 
