@@ -1,12 +1,12 @@
 package mensagod.commands
 
 import keznacl.CryptoString
-import libkeycard.MAddress
-import libkeycard.RandomID
-import libkeycard.UserEntry
-import libkeycard.UserID
+import keznacl.VerificationKey
+import keznacl.getSupportedHashAlgorithms
+import libkeycard.*
 import mensagod.ClientSession
 import mensagod.DBConn
+import mensagod.dbcmds.addEntry
 import mensagod.dbcmds.getEntries
 import mensagod.dbcmds.getPrimarySigningPair
 import mensagod.dbcmds.resolveAddress
@@ -134,14 +134,14 @@ fun commandAddEntry(state: ClientSession) {
         return
     }
 
-    val prevCRKey = if (tempEntryList.size > 0) {
-        val prevEntry = UserEntry.fromString(tempEntryList[0]).getOrElse {
+    val prevEntry = if (tempEntryList.size > 0) {
+        val prevUserEntry = UserEntry.fromString(tempEntryList[0]).getOrElse {
             logError("commandAddEntry.dbCorruption: bad user entry in db, wid=$wid - $it")
             ServerResponse.sendInternalError("Error loading previous keycard entry", state.conn)
             return
         }
 
-        val prevIndex = prevEntry.getFieldInteger("Index")
+        val prevIndex = prevUserEntry.getFieldInteger("Index")
         if (prevIndex == null) {
             logError("commandAddEntry.dbCorruption: bad user entry in db, wid=$wid, bad index")
             ServerResponse.sendInternalError("Error in previous keycard entry", state.conn)
@@ -156,7 +156,7 @@ fun commandAddEntry(state: ClientSession) {
            return
         }
 
-        val isOK = entry.verifyChain(prevEntry).getOrElse {
+        val isOK = entry.verifyChain(prevUserEntry).getOrElse {
             logError("commandAddEntry.chainVerifyError, wid=$wid - $it")
             ServerResponse.sendInternalError("Error verifying entry chain", state.conn)
             return
@@ -169,8 +169,7 @@ fun commandAddEntry(state: ClientSession) {
                             "wid = ${state.wid}")
             return
         }
-        CryptoString.fromString(
-            prevEntry.getFieldString("Contact-Request-Verification-Key")!!)!!
+        prevUserEntry
     } else {
         // We're here because there are no previous entries. The Index field must be one here
         // because the only way that a valid root entry can have an Index greater than one is if
@@ -183,7 +182,23 @@ fun commandAddEntry(state: ClientSession) {
                             "wid = ${state.wid}")
             return
         }
-        null
+
+        // This is the user's root entry, so the previous entry needs to be the org's current
+        // keycard entry.
+        val tempOrgList = try { getEntries(db, null, 0U) }
+        catch (e: Exception) {
+            logError("commandAddEntry.getCurrentOrgEntry exception: $e")
+            ServerResponse.sendInternalError("Server can't get current org keycard entry",
+                state.conn)
+            return
+        }
+
+        OrgEntry.fromString(tempEntryList[0]).getOrElse {
+            logError("commandAddEntry.dbCorruption: bad org entry in db - $it")
+            ServerResponse.sendInternalError("Error loading current org keycard entry",
+                state.conn)
+            return
+        }
     }
 
     // If we managed to get this far, we can (theoretically) trust the initial data set given to us
@@ -211,5 +226,134 @@ fun commandAddEntry(state: ClientSession) {
         return
     }
 
-    // TODO: Finish implementing commandAddEntry()
+    // ADDENTRY, Stage 2
+    // Client has attached the Previous-Hash and Hash fields and then signed the entire thing. We're
+    // really close to it being compliant and ready to put into the database, but we need to check
+    // the hashes to make sure the client doesn't try anything funny and confirm that the whole
+    // thing validates before adding it to the database -- the integrity of the keycard tree is of
+    // critical importance to the platform.
+
+    val req = try { ClientRequest.receive(state.conn.getInputStream()) }
+    catch (e: Exception) {
+        logError("commandAddEntry.receive2ndStage, wid=$wid - $e")
+        return
+    }
+
+    if (req.action == "CANCEL") {
+        ServerResponse(200, "OK").sendCatching(state.conn,
+                "commandAddEntry: Error sending Cancel acknowledgement, wid = ${state.wid}")
+        return
+    }
+    if (req.action != "ADDENTRY") {
+        ServerResponse.sendBadRequest("Session state mismatch", state.conn)
+        return
+    }
+    req.validate(setOf("Previous-Hash", "Hash", "User-Signature"))?.let {
+        ServerResponse.sendBadRequest("Missing required field $it", state.conn)
+        return
+    }
+
+    if (prevEntry.getAuthString("Previous-Hash")?.toString() != req.data["Previous-Hash"]) {
+        ServerResponse(412, "NONCOMPLIANT KEYCARD DATA",
+            "Previous-Hash mismatch in new entry")
+            .sendCatching(state.conn,
+                "commandAddEntry: Couldn't send response for hash verify failure, "+
+                        "wid = ${state.wid}")
+        return
+    }
+    entry.addAuthString("Previous-Hash", prevEntry.getAuthString("Previous-Hash")!!)
+
+    // We're really, really going to make sure the client doesn't screw things up. We'll actually
+    // calculate the hash ourselves using the algorithm that the client used and compare the two.
+    val clientHash = CryptoString.fromString(req.data["Hash"]!!)
+    if (clientHash == null) {
+        ServerResponse(412, "NONCOMPLIANT KEYCARD DATA",
+            "Invalid Hash in new entry")
+            .sendCatching(state.conn,
+                "commandAddEntry: Couldn't send response for invalid hash field, "+
+                        "wid = ${state.wid}")
+        return
+    }
+    if (!getSupportedHashAlgorithms().contains(clientHash.prefix)) {
+        ServerResponse(412, "ALGORITHM NOT SUPPORTED",
+            "This server doesn't support hashing with ${clientHash.prefix}")
+            .sendCatching(state.conn,
+                "commandAddEntry: Couldn't send response for unsupported hash algorithm, "+
+                        "wid = ${state.wid}")
+        return
+    }
+    entry.hash(clientHash.prefix)?.let {
+        logError("commandAddEntry.hashEntry exception: $it")
+        ServerResponse.sendInternalError("Server error hashing entry", state.conn)
+        return
+    }
+    if (entry.getAuthString("Hash")!!.toString() != clientHash.toString()) {
+        ServerResponse(412, "NONCOMPLIANT KEYCARD DATA",
+            "New entry hash mismatch")
+            .sendCatching(state.conn,
+                "commandAddEntry: Couldn't send response for hash field mismatch, "+
+                        "wid = ${state.wid}")
+        return
+    }
+
+    val userSig = CryptoString.fromString(req.data["User-Signature"]!!)
+    if (userSig == null) {
+        ServerResponse(412, "NONCOMPLIANT KEYCARD DATA",
+            "Invalid User-Signature in new entry")
+            .sendCatching(state.conn,
+                "commandAddEntry: Couldn't send response for invalid user signature, "+
+                        "wid = ${state.wid}")
+        return
+    }
+    entry.addAuthString("User-Signature", userSig)?.let {
+        logError("commandAddEntry.addUserSig: error adding user signature - $it")
+        ServerResponse.sendInternalError("Error adding user sig to entry", state.conn)
+        return
+    }
+
+    val prevCRKeyStr = prevEntry.getFieldString("Contact-Request-Verification-Key")
+    if (prevCRKeyStr == null) {
+        logError("commandAddEntry.dbCorruption: entry missing CRV Key in db, wid=$wid")
+        ServerResponse.sendInternalError("Error loading entry verification key", state.conn)
+        return
+    }
+    val prevCRKeyCS = CryptoString.fromString(prevCRKeyStr)
+    if (prevCRKeyCS == null) {
+        logError("commandAddEntry.dbCorruption: invalid previous CRV Key CS in db, wid=$wid")
+        ServerResponse.sendInternalError("Invalid previous entry verification key", state.conn)
+        return
+    }
+    val prevCRKey = VerificationKey.from(prevCRKeyCS).getOrElse {
+        logError("commandAddEntry.dbCorruption: error creating previous CRV Key, "+
+                "wid=$wid - $it")
+        ServerResponse.sendInternalError("Error creating previous entry verification key",
+            state.conn)
+        return
+    }
+
+    val verified = entry.verifySignature("User-Signature", prevCRKey).getOrElse {
+        logError("commandAddEntry.verifyError: error verifying entry, wid=$wid - $it")
+        ServerResponse.sendInternalError("Error verifying entry", state.conn)
+        return
+    }
+    if (!verified) {
+        ServerResponse(413, "INVALID SIGNATURE","User signature verification failure")
+            .sendCatching(state.conn,
+                "commandAddEntry: Couldn't send response for verify failure, "+
+                        "wid = ${state.wid}")
+        return
+    }
+
+    // Wow. We actually made it! YAY
+
+    try { addEntry(entry) }
+    catch (e: Exception) {
+        logError("commandAddEntry.addEntry: error adding entry, wid=$wid - $e")
+        ServerResponse.sendInternalError("Error adding entry", state.conn)
+        return
+    }
+
+    ServerResponse(200, "OK").sendCatching(state.conn,
+            "commandAddEntry: Couldn't send confirmation response for "+
+                    "wid = ${state.wid}")
 }
