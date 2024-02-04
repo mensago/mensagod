@@ -25,7 +25,7 @@ sealed class Entry {
      * field to be updated.
      */
     fun setField(fieldName: String, fieldValue: String): Throwable? {
-        if (!isFieldAllowed(fieldName)) { return BadFieldException() }
+        if (!isFieldAllowed(fieldName)) { return BadFieldException("$fieldName not allowed") }
 
         val result = EntryField.fromStrings(fieldName, fieldValue)
         if (result.isFailure) return result.exceptionOrNull()!!
