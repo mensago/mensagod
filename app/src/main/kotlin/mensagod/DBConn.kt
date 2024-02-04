@@ -160,6 +160,7 @@ class DBConn {
             when(args[i]::class.simpleName) {
                 "ByteArray" -> out.setBytes(i+1, args[i] as ByteArray)
                 "Boolean" -> out.setBoolean(i+1, args[i] as Boolean)
+                "Int" -> out.setInt(i+1, args[i] as Int)
                 else -> out.setString(i+1, args[i].toString())
             }
         }
