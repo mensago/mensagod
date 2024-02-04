@@ -44,7 +44,7 @@ fun commandAddEntry(state: ClientSession) {
     // The User-Signature field can only be part of the message once the AddEntry command has
     // started and the org signature and hashes have been added. If present, it constitutes an
     // out-of-order request
-    if (!state.message.hasField("User-Signature")) {
+    if (state.message.hasField("User-Signature")) {
         ServerResponse.sendBadRequest("Received out-of-order User-Signature", state.conn)
         return
     }
@@ -95,7 +95,7 @@ fun commandAddEntry(state: ClientSession) {
                 return
             }
 
-            if (state.wid == specialWID) {
+            if (state.wid == specialWID && outUID.toString() != it) {
                 ServerResponse(411, "BAD KEYCARD DATA",
                     "Admin, Support, and Abuse can't change their user IDs")
                     .sendCatching(state.conn,
@@ -253,15 +253,15 @@ fun commandAddEntry(state: ClientSession) {
         return
     }
 
-    if (prevEntry.getAuthString("Previous-Hash")?.toString() != req.data["Previous-Hash"]) {
-        ServerResponse(412, "NONCOMPLIANT KEYCARD DATA",
+    if (prevEntry.getAuthString("Hash")?.toString() != req.data["Previous-Hash"]) {
+            ServerResponse(412, "NONCOMPLIANT KEYCARD DATA",
             "Previous-Hash mismatch in new entry")
             .sendCatching(state.conn,
                 "commandAddEntry: Couldn't send response for hash verify failure, "+
                         "wid = ${state.wid}")
         return
     }
-    entry.addAuthString("Previous-Hash", prevEntry.getAuthString("Previous-Hash")!!)
+    entry.addAuthString("Previous-Hash", prevEntry.getAuthString("Hash")!!)
 
     // We're really, really going to make sure the client doesn't screw things up. We'll actually
     // calculate the hash ourselves using the algorithm that the client used and compare the two.
@@ -311,19 +311,19 @@ fun commandAddEntry(state: ClientSession) {
         return
     }
 
-    val prevCRKeyStr = prevEntry.getFieldString("Contact-Request-Verification-Key")
-    if (prevCRKeyStr == null) {
+    val crKeyStr = entry.getFieldString("Contact-Request-Verification-Key")
+    if (crKeyStr == null) {
         logError("commandAddEntry.dbCorruption: entry missing CRV Key in db, wid=$wid")
         ServerResponse.sendInternalError("Error loading entry verification key", state.conn)
         return
     }
-    val prevCRKeyCS = CryptoString.fromString(prevCRKeyStr)
-    if (prevCRKeyCS == null) {
+    val crKeyCS = CryptoString.fromString(crKeyStr)
+    if (crKeyCS == null) {
         logError("commandAddEntry.dbCorruption: invalid previous CRV Key CS in db, wid=$wid")
         ServerResponse.sendInternalError("Invalid previous entry verification key", state.conn)
         return
     }
-    val prevCRKey = VerificationKey.from(prevCRKeyCS).getOrElse {
+    val crKey = VerificationKey.from(crKeyCS).getOrElse {
         logError("commandAddEntry.dbCorruption: error creating previous CRV Key, "+
                 "wid=$wid - $it")
         ServerResponse.sendInternalError("Error creating previous entry verification key",
@@ -331,7 +331,7 @@ fun commandAddEntry(state: ClientSession) {
         return
     }
 
-    val verified = entry.verifySignature("User-Signature", prevCRKey).getOrElse {
+    val verified = entry.verifySignature("User-Signature", crKey).getOrElse {
         logError("commandAddEntry.verifyError: error verifying entry, wid=$wid - $it")
         ServerResponse.sendInternalError("Error verifying entry", state.conn)
         return
