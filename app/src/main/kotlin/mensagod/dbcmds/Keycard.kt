@@ -12,8 +12,15 @@ import mensagod.NotConnectedException
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun addEntry(entry: Entry) {
-    TODO("Implement dbcmds.addEntry($entry)")
+fun addEntry(db: DBConn, entry: Entry) {
+    val owner = if (entry.getFieldString("Type") == "Organization") "organization"
+        else entry.getFieldString("Workspace-ID")!!
+
+    db.query("""INSERT INTO keycards(owner, creationtime, index, entry, fingerprint)
+        VALUES(?,?,?,?,?)""",
+        owner, entry.getFieldString("Timestamp")!!,
+        entry.getFieldString("Index")!!, entry.getFullText(null).getOrThrow(),
+        entry.getAuthString("Hash")!!)
 }
 
 /**
