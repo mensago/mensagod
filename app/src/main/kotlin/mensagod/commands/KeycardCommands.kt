@@ -193,7 +193,7 @@ fun commandAddEntry(state: ClientSession) {
             return
         }
 
-        OrgEntry.fromString(tempEntryList[0]).getOrElse {
+        OrgEntry.fromString(tempOrgList[0]).getOrElse {
             logError("commandAddEntry.dbCorruption: bad org entry in db - $it")
             ServerResponse.sendInternalError("Error loading current org keycard entry",
                 state.conn)
