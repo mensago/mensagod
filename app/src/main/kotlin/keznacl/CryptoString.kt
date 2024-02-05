@@ -67,9 +67,14 @@ class CryptoString private constructor() {
 
     fun toByteArray(): ByteArray { return value.toByteArray() }
 
-    /** Returns the object's raw, unencoded data */
+    /**
+     * Returns the object's raw, unencoded data
+     *
+     * @throws IllegalArgumentException Returned if there was a Base85 decoding error
+     */
     fun toRaw(): Result<ByteArray> {
-        return Result.success(Base85.rfc1924Decoder.decode(encodedData))
+        val out = Base85.rfc1924Decoder.decode(encodedData).getOrElse { return Result.failure(it) }
+        return Result.success(out)
     }
 
     /** Calculates and returns the hash of the string value of the instance */

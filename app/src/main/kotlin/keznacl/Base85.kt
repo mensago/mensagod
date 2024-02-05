@@ -135,26 +135,34 @@ open class Decoder {
         return if (length % 5 == 1) -1 else (length * 0.8).toInt()
     }
 
-    fun decode(stringData: String, offset: Int = 0, length: Int = stringData.length): ByteArray {
+    /**
+     * Decodes a Base85-encoded string.
+     *
+     * @return A decoded array of bytes on success
+     * @throws IllegalArgumentException Returned on decoding errors
+     */
+    fun decode(stringData: String, offset: Int = 0, length: Int = stringData.length):
+            Result<ByteArray> {
 
         val size = decodedLength(stringData, offset, length)
         if (size < 0)
-            throw IllegalArgumentException("Malformed Base85/$name data")
+            return Result.failure(IllegalArgumentException("Malformed Base85/$name data"))
 
         val result = ByteArray(size)
         try {
             val len = decodeInternal(stringData.toByteArray(StandardCharsets.US_ASCII), offset,
-                length, result)
+                length, result).getOrElse { return Result.failure(it) }
 
             // Should not happen, but fitting the size makes sure tests will fail when it does happen.
-            if (result.size != len) return result.copyOf(len)
+            if (result.size != len) return Result.success(result.copyOf(len))
         } catch (ex: ArrayIndexOutOfBoundsException) {
-            throw IllegalArgumentException("Malformed Base85/$name data", ex)
+            return Result.failure(IllegalArgumentException("Malformed Base85/$name data", ex))
         }
-        return result
+        return Result.success(result)
     }
 
-    fun decodeBlockReverse(data: String, offset: Int = 0, length: Int = data.length): ByteArray {
+    fun decodeBlockReverse(data: String, offset: Int = 0, length: Int = data.length):
+            Result<ByteArray> {
 
         var sum = BigInteger.ZERO
         val b85 = BigInteger.valueOf(85)
@@ -167,10 +175,10 @@ open class Decoder {
                 i++
             }
         } catch (ex: ArrayIndexOutOfBoundsException) {
-            throw IllegalArgumentException("Malformed Base85/$name data", ex)
+            return Result.failure(IllegalArgumentException("Malformed Base85/$name data", ex))
         }
 
-        return sum.toByteArray()
+        return Result.success(sum.toByteArray())
     }
 
     open fun test(encodedString: String, offset: Int = 0, length: Int = encodedString.length):
@@ -196,19 +204,20 @@ open class Decoder {
     }
 
     private fun decodeDangling(decodeMap: ByteArray, `in`: ByteArray, ri: Int, buffer: ByteBuffer,
-                                 leftover: Int): Int {
+                                 leftover: Int): Result<Int> {
         if (leftover == 1)
-            throw IllegalArgumentException("Malformed Base85/$name data", null)
+            return Result.failure(IllegalArgumentException("Malformed Base85/$name data", null))
         var sum = decodeMap[`in`[ri].toInt()] * Power4 + decodeMap[`in`[ri + 1].toInt()] * Power3 + 85
         if (leftover >= 3) {
             sum += decodeMap[`in`[ri + 2].toInt()] * Power2
             sum += if (leftover >= 4) (decodeMap[`in`[ri + 3].toInt()] * 85).toLong() else Power2
         } else sum += Power3 + Power2
         buffer.putInt(0, sum.toInt())
-        return leftover - 1
+        return Result.success(leftover - 1)
     }
 
-    protected open fun decodeInternal(data: ByteArray, ri: Int, rlen: Int, out: ByteArray): Int {
+    protected open fun decodeInternal(data: ByteArray, ri: Int, rlen: Int, out: ByteArray):
+            Result<Int> {
 
         var rIndex = ri
         var wIndex = 0
@@ -224,10 +233,11 @@ open class Decoder {
             rIndex += 5
         }
         var leftover = rlen % 5
-        if (leftover == 0) return wIndex
-        leftover = decodeDangling(decodeMap, data, rIndex, buffer, leftover)
+        if (leftover == 0) return Result.success(wIndex)
+        leftover = decodeDangling(decodeMap, data, rIndex, buffer, leftover).
+            getOrElse { return Result.failure(it) }
         System.arraycopy(buf, 0, out as Any, wIndex, leftover)
-        return wIndex + leftover
+        return Result.success(wIndex + leftover)
     }
 
     private fun putData(buffer: ByteBuffer, map: ByteArray, `in`: ByteArray, ri: Int) {

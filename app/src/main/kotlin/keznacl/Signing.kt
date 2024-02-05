@@ -22,13 +22,21 @@ class SigningPair private constructor(publicKeyStr: CryptoString, privateKeyStr:
     override fun canEncrypt(): Boolean { return false }
     override fun canSign(): Boolean { return true }
 
+    /**
+     * Creates a digital signature of the data supplied to it.
+     *
+     * @throws IllegalArgumentException Returned if there was a Base85 decoding error
+     * @throws SigningFailureException Returned if there was an error signing the data
+     */
     fun sign(data: ByteArray): Result<CryptoString> {
         if (data.isEmpty()) return Result.failure(EmptyDataException())
 
         // TweetNaCl expects the private key to be 64-bytes -- the first 32 are the private key and
         // the last are the public key. We don't do that here -- they are split because they are
         // associated a different way.
-        val rawKey = Base85.rfc1924Decoder.decode(privateKey.encodedData + publicKey.encodedData)
+        val rawKey = Base85.rfc1924Decoder
+            .decode(privateKey.encodedData + publicKey.encodedData)
+            .getOrElse { return Result.failure(it) }
         val box = Signature(null, rawKey)
         val signature = box.detached(data)
 
