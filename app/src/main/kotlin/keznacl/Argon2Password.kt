@@ -6,7 +6,12 @@ import libkeycard.MissingDataException
 import java.nio.charset.Charset
 import java.util.*
 
-/** Instantiates an Argon2-family class instance from the supplied hash. */
+/**
+ * Instantiates an Argon2-family class instance from the supplied hash.
+ *
+ * @throws EmptyDataException Returned if given an empty string
+ * @throws BadValueException Returned if given a string that isn't an Argon2 hash
+ */
 fun argonPassFromHash(hashStr: String): Result<Argon2Password> {
     hashStr.ifEmpty { return Result.failure(EmptyDataException()) }
 
@@ -43,7 +48,13 @@ sealed class Argon2Password: Password() {
             super.salt = value
         }
 
-    /** Sets the instance's properties from an existing Argon2 hash */
+    /**
+     * Sets the instance's properties from an existing Argon2 hash
+     *
+     * @throws BadValueException Returned if given a bad hash algorithm name
+     * @throws NumberFormatException Returned if a hash parameter value or the version is not a number
+     * @throws IllegalArgumentException Returned if there is a Base64 decoding error
+     */
     override fun setFromHash(hashStr: String): Throwable? {
         parseHash(hashStr)?.let { return it }
         hash = hashStr
@@ -55,6 +66,9 @@ sealed class Argon2Password: Password() {
      * Updates the object from a PasswordInfo structure. NOTE: this call only performs basic
      * validation. If you are concerned about the validity of the data in pwInfo, pass it through
      * Argon2Password::validateInfo() first.
+     *
+     * @throws NumberFormatException Returned if given non-integers for parameter values
+     * @throws IllegalArgumentException Returned for Base64 decoding errors
      */
     fun setFromInfo(pwInfo: PasswordInfo): Throwable? {
         try {
@@ -72,6 +86,8 @@ sealed class Argon2Password: Password() {
     /**
      * Sets the general strength of the instance's properties. This affects memory cost,
      * parallelism, and iterations.
+     *
+     * @return Reference to the current object
      */
     override fun setStrength(strength: HashStrength): Argon2Password {
 
@@ -112,6 +128,10 @@ sealed class Argon2Password: Password() {
     /**
      * Updates internal properties from the passed hash. It does *not* change the internal hash
      * property itself.
+     *
+     * @throws BadValueException Returned if given a bad hash algorithm name
+     * @throws NumberFormatException Returned if a hash parameter value or the version is not a number
+     * @throws IllegalArgumentException Returned if there is a Base64 decoding error
      */
     private fun parseHash(hashStr: String): Throwable? {
         // Sample of the hash format
@@ -144,6 +164,8 @@ sealed class Argon2Password: Password() {
     /**
      * Parses out an Argon2 parameter token and returns a triple containing memory, iterations (time
      * cost), and parallelism (threads).
+     *
+     * @throws NumberFormatException Returned if given non-integers for parameter values
      */
     private fun parseParameters(paramStr: String): Result<Triple<Int,Int,Int>> {
         val paramParts = paramStr
@@ -158,7 +180,11 @@ sealed class Argon2Password: Password() {
 
     companion object {
 
-        /** Ensures that all the hash-related information in the instance is present and valid */
+        /**
+         * Ensures that all the hash-related information in the instance is present and valid
+         *
+         * @throws IllegalArgumentException Returned for Base64 decoding errors
+         */
         fun validateInfo(info: PasswordInfo): Throwable? {
 
             if (info.salt.isEmpty()) return EmptyDataException("Salt missing")
@@ -168,7 +194,7 @@ sealed class Argon2Password: Password() {
                 return BadValueException("${info.algorithm} not supported by Argon2Password class")
 
             try { Base64.getDecoder().decode(info.salt) }
-            catch (e : Exception) { return BadValueException("Undecodable salt") }
+            catch (e : Exception) { return IllegalArgumentException() }
 
             val paramParts = info.parameters
                 .split(',')
