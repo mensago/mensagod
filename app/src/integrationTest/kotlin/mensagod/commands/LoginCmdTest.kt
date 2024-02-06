@@ -1,5 +1,6 @@
 package mensagod.commands
 
+import keznacl.CryptoString
 import keznacl.EncryptionKey
 import keznacl.EncryptionPair
 import libkeycard.RandomID
@@ -39,16 +40,34 @@ class LoginCmdTest {
             )), adminWID,
                 LoginState.AwaitingDeviceID), ::commandDevice) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
-            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            assertReturnCode(100, response)
+            response.checkFields(listOf(Pair("Challenge", true)))
 
+            // The challenge from the server is expected to be Base85-encoded random bytes that are
+            // encrypted into a CryptoString. This means we decrypt the challenge and send the resulting
+            // decrypted string back to the server as proof of device identity.
+
+            val devPair = EncryptionPair.fromStrings(ADMIN_PROFILE_DATA["device.public"]!!,
+                ADMIN_PROFILE_DATA["device.private"]!!).getOrThrow()
+            val challStr = CryptoString.fromString(response.data["Challenge"]!!)!!
+            val challDecrypted = devPair.decrypt(challStr).getOrThrow().decodeToString()
+
+            val req = ClientRequest("DEVICE", mutableMapOf(
+                "Device-ID" to ADMIN_PROFILE_DATA["devid"]!!,
+                "Device-Key" to ADMIN_PROFILE_DATA["device.public"]!!,
+                "Device-Info" to encInfo.toString(),
+                "Response" to challDecrypted,
+            ))
+            req.send(socket.getOutputStream())
+            response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             assertReturnCode(200, response)
+
         }.run()
 
         // NOTE: This test is incomplete because it also needs a second case which goes through
         // the whole new-device-handling thing. That code is not yet implemented, but when it is,
         // a second test case will be added here to test it.
-
-        // TODO: Finish implementing deviceTest()
     }
 
     @Test

@@ -369,7 +369,7 @@ fun challengeDevice(state: ClientSession, devkey: CryptoString): Boolean {
         ServerResponse.sendBadRequest("Missing required field $missingField", state.conn)
         return false
     }
-    if (devkey.toString() != req.data["Device-ID"]) {
+    if (devkey.toString() != req.data["Device-Key"]) {
         ServerResponse.sendBadRequest("Device key mismatch", state.conn)
         return false
     }
