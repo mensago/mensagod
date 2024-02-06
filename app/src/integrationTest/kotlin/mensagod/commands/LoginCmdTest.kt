@@ -3,6 +3,7 @@ package mensagod.commands
 import keznacl.EncryptionKey
 import keznacl.EncryptionPair
 import libkeycard.RandomID
+import libkeycard.Timestamp
 import mensagod.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -10,6 +11,45 @@ import java.net.InetAddress
 import java.net.Socket
 
 class LoginCmdTest {
+
+    @Test
+    fun deviceTest() {
+        setupTest("commands.deviceTest")
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+
+        // Actually create some fake device info for the test
+        val devInfo = mapOf(
+            "Name" to "dellxps",
+            "User" to "CSimons",
+            "OS" to "Ubuntu 22.04",
+            "Device-ID" to ADMIN_PROFILE_DATA["devid"]!!,
+            "Device-Key" to ADMIN_PROFILE_DATA["device.public"]!!,
+            "Timestamp" to Timestamp().toString(),
+        )
+        val userKey = EncryptionKey.fromString(ADMIN_PROFILE_DATA["encryption.public"]!!)
+            .getOrThrow()
+        val encInfo = userKey.encrypt(devInfo.toString().encodeToByteArray()).getOrThrow()
+
+        // Test Case #1: Successfully complete first device auth phase
+        CommandTest("device.1",
+            SessionState(ClientRequest("DEVICE", mutableMapOf(
+                "Device-ID" to ADMIN_PROFILE_DATA["devid"]!!,
+                "Device-Key" to ADMIN_PROFILE_DATA["device.public"]!!,
+                "Device-Info" to encInfo.toString(),
+            )), adminWID,
+                LoginState.AwaitingDeviceID), ::commandDevice) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            assertReturnCode(200, response)
+        }.run()
+
+        // NOTE: This test is incomplete because it also needs a second case which goes through
+        // the whole new-device-handling thing. That code is not yet implemented, but when it is,
+        // a second test case will be added here to test it.
+
+        // TODO: Finish implementing deviceTest()
+    }
 
     @Test
     fun loginTest() {
