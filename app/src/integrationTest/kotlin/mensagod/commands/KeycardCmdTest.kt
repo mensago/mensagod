@@ -102,16 +102,14 @@ class KeycardCmdTest {
             }
 
             ClientRequest("ADDENTRY", mutableMapOf(
-                "Base-Entry" to rootEntry.getFullText(null).getOrThrow(),
-                "Previous-Hash" to rootEntry.getAuthString("Previous-Hash")!!.toString(),
-                "Hash" to rootEntry.getAuthString("Hash")!!.toString(),
-                "User-Signature" to rootEntry.getAuthString("User-Signature")!!.toString()
+                "Base-Entry" to newEntry.getFullText(null).getOrThrow(),
+                "Previous-Hash" to rootEntry.getAuthString("Hash")!!.toString(),
+                "Hash" to newEntry.getAuthString("Hash")!!.toString(),
+                "User-Signature" to newEntry.getAuthString("User-Signature")!!.toString()
             )).send(socket.getOutputStream())
 
             response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             assertReturnCode(200, response)
         }.run()
-
-        // TODO: Finish implementing second case of commandAddEntry test
     }
 }

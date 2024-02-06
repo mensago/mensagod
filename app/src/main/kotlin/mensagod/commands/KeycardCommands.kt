@@ -155,20 +155,6 @@ fun commandAddEntry(state: ClientSession) {
                            "wid = ${state.wid}")
            return
         }
-
-        val isOK = entry.verifyChain(prevUserEntry).getOrElse {
-            logError("commandAddEntry.chainVerifyError, wid=$wid - $it")
-            ServerResponse.sendInternalError("Error verifying entry chain", state.conn)
-            return
-        }
-        if (!isOK) {
-            ServerResponse(412, "NONCOMPLIANT KEYCARD DATA",
-                "Entry failed to chain verify")
-                .sendCatching(state.conn,
-                    "commandAddEntry: Couldn't send response for chain verify failure, "+
-                            "wid = ${state.wid}")
-            return
-        }
         prevUserEntry
     } else {
         // We're here because there are no previous entries. The Index field must be one here
