@@ -197,13 +197,16 @@ class LocalFS private constructor(val basePath: Path) {
      * file, but if given a directory path, it calculates the usage of the folder and all of its
      * subfolders.
      *
-     * @throws ResourceNotFoundException If the destination doesn't exist
+     * @throws ResourceNotFoundException Returned if the destination doesn't exist
+     * @throws IOException Returned on I/O errors
      */
-    fun getDiskUsage(path: MServerPath): Long {
+    fun getDiskUsage(path: MServerPath): Result<Long> {
         val localPath = convertToLocal(path)
         val pathFile = File(localPath.toString())
-        if (!pathFile.exists()) throw ResourceNotFoundException()
-        return FileUtils.sizeOf(pathFile)
+        if (!pathFile.exists()) return Result.failure(ResourceNotFoundException())
+
+        return try { Result.success(FileUtils.sizeOf(pathFile)) }
+        catch (e: Exception) { Result.failure(e) }
     }
 
     /**
