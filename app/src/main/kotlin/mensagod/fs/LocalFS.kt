@@ -53,7 +53,7 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
         val destFile = File(Paths.get(localDest.toString(), destName).toString())
         FileUtils.copyFile(file, destFile)
 
-        return Result.success(destPath.clone().push(destName))
+        return destPath.clone().push(destName)
     }
 
     /**

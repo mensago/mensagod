@@ -56,19 +56,19 @@ class MServerPath(path: String? = null) {
     /**
      * Appends the supplied path to the object.
      *
-     * @throws InvalidPathException If the path currently points to a file
-     * @throws BadValueException If given an invalid path argument
+     * @throws InvalidPathException Returned if the path currently points to a file
+     * @throws BadValueException Returned if given an invalid path argument
      */
-    fun push(s: String): MServerPath {
-        if (fileRE.matches(parts.last())) throw InvalidPathException()
+    fun push(s: String): Result<MServerPath> {
+        if (fileRE.matches(parts.last())) return Result.failure(InvalidPathException())
 
         val trimmed = s.trim().trim('/')
         val newPath = "$value $trimmed"
-        if (!serverPathRE.matches(newPath)) throw BadValueException()
+        if (!serverPathRE.matches(newPath)) return Result.failure(BadValueException())
         value = newPath
         parts = value.split(" ").toMutableList()
 
-        return this
+        return Result.success(this)
     }
 
     /**

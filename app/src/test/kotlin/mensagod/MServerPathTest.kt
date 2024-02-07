@@ -23,7 +23,7 @@ class MServerPathTest {
         assert(MServerPath().isRoot())
 
         path = MServerPath()
-        path.push("11111111-1111-1111-1111-111111111111")
+        path.push("11111111-1111-1111-1111-111111111111").getOrThrow()
         assertEquals("/ 11111111-1111-1111-1111-111111111111", path.get())
 
         assertNull(path.set("/abc\b/def"))
