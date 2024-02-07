@@ -13,7 +13,7 @@ class RegCmdTest {
     @Test
     fun preregTest() {
         setupTest("commands.preregTest")
-        val config = ServerConfig.load()
+        val config = ServerConfig.load().getOrThrow()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
         // Test Case #1: Supply no data. Expect WID, Domain, and reg code

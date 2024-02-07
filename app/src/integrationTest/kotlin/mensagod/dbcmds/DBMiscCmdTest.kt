@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test
 class DBMiscCmdTest {
     @Test
     fun keypairTest() {
-        val config = ServerConfig.load()
+        val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
         DBConn.initialize(config)
         val db = DBConn().connect()

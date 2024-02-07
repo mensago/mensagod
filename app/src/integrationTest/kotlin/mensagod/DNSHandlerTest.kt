@@ -28,7 +28,7 @@ class DNSHandlerTest {
 
     @Test
     fun fakeLookupTests() {
-        val config = ServerConfig.load()
+        val config = ServerConfig.load().getOrThrow()
         val db = resetDB(config).getOrThrow()
         initDB(db)
 

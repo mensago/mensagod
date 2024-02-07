@@ -10,7 +10,7 @@ class MiscCmdTest {
 
     @Test
     fun getWIDTest() {
-        val config = ServerConfig.load()
+        val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
         DBConn.initialize(config)
         val serverData = initDB(DBConn().connect().getConnection()!!)

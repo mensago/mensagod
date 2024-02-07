@@ -5,7 +5,6 @@ import keznacl.BadValueException
 import libkeycard.BadFieldValueException
 import libkeycard.Domain
 import libkeycard.MissingDataException
-import java.io.FileNotFoundException
 import java.net.InetAddress
 import java.nio.file.Files
 import java.nio.file.Path
@@ -90,13 +89,14 @@ class ServerConfig {
     /**
      * Sets a value in the configuration. Keys are expected to be in the format tablename.fieldname.
      *
-     * @throws BadValueException If the key specified is invalid.
-     * @throws BadFieldValueException If the value is more than 1K characters
+     * @throws BadValueException Returned if the key specified is invalid.
+     * @throws BadFieldValueException Returned if the value is more than 1K characters
      */
-    fun setValue(key: String, value: Any) {
-        if (!isValidKey(key)) throw BadValueException()
-        if (value is String && value.length > 1024) throw BadFieldValueException()
+    fun setValue(key: String, value: Any): Throwable? {
+        if (!isValidKey(key)) return BadValueException()
+        if (value is String && value.length > 1024) return BadFieldValueException()
         values[key] = value
+        return null
     }
 
     /**
@@ -138,22 +138,24 @@ class ServerConfig {
      * users. This is generally the better choice over toString() when saving the instance's
      * comments to a file.
      *
-     * @throws BadValueException if a key is not in the format table.fieldname
+     * @throws BadValueException Returned if a key is not in the format table.fieldname
      */
-    fun toVerboseString(): String {
+    fun toVerboseString(): Result<String> {
         val makeValueString = fun (key: String): String {
+            // We can throw here because if it crashes, it's a developer screw-up and will be
+            // caught by a unit test.
             if (!isValidKey(key)) throw BadValueException()
 
             val value = values[key] ?: return ""
             val parts = key.split(".")
 
-            when (value) {
+            return when (value) {
                 is Boolean -> {
                     val boolStr = if (value) "True" else "False"
-                    return "${parts[1]} = $boolStr"
+                    "${parts[1]} = $boolStr"
                 }
-                is Int -> return "${parts[1]} = $value"
-                else -> return """${parts[1]} = "$value""""
+                is Int -> "${parts[1]} = $value"
+                else -> """${parts[1]} = "$value""""
             }
         }
 
@@ -333,7 +335,7 @@ class ServerConfig {
 
         sl.add("")
 
-        return sl.joinToString(System.lineSeparator())
+        return Result.success(sl.joinToString(System.lineSeparator()))
     }
 
     /**
@@ -509,21 +511,21 @@ class ServerConfig {
          * C:\ProgramData\mensagod\serverconfig.toml on Windows and /etc/mensagod/serverconfig.toml
          * on other platforms.
          *
-         * @throws FileNotFoundException when the specified config file is not found
+         * @throws ResourceNotFoundException when the specified config file is not found
          * @throws IllegalStateException If the TOML data is invalid
          */
-        fun load(path: Path? = null): ServerConfig {
+        fun load(path: Path? = null): Result<ServerConfig> {
             val configFilePath = path ?: if (platformIsWindows)
                 Paths.get("C:\\ProgramData\\mensagod\\serverconfig.toml")
             else
                 Paths.get("/etc/mensagod/serverconfig.toml")
 
             if (!configFilePath.exists())
-                throw FileNotFoundException("Server config file not found")
+                return Result.failure(ResourceNotFoundException("Server config file not found"))
 
             val out = fromString(Files.readString(configFilePath))
             serverConfigSingleton = out
-            return out
+            return Result.success(out)
        }
 
         private val defaultConfig = mutableMapOf<String,Any>(

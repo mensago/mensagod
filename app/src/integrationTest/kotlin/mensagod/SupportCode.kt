@@ -320,7 +320,7 @@ fun setupTest(name: String): SetupData {
     val lfs = LocalFS.get()
     listOf("wsp","out","tmp","keys").forEach { lfs.entry(MServerPath("/ $it")).makeDirectory() }
 
-    val config = ServerConfig.load()
+    val config = ServerConfig.load().getOrThrow()
     resetDB(config).getOrThrow()
     DBConn.initialize(config)
     val db = DBConn().connect()

@@ -46,7 +46,7 @@ registration = "private"
         val testConfigPath = Paths.get(testPath, "testconfig.toml")
         makeTestConfigFile(testConfigPath.toString())
 
-        val config = ServerConfig.load(testConfigPath)
+        val config = ServerConfig.load(testConfigPath).getOrThrow()
         assertEquals("private", config.getString("global.registration"))
         assertEquals(50, config.getInteger("performance.max_file_size"))
     }
@@ -176,7 +176,7 @@ registration = "private"
             |# password_reset_min = 60
             |""".trimMargin()
 
-        assertEquals(expected, config.toVerboseString())
+        assertEquals(expected, config.toVerboseString().getOrThrow())
     }
 
     @Test
@@ -348,7 +348,7 @@ registration = "private"
             |password_reset_min = 120
             |""".trimMargin()
 
-        assertEquals(expected, config.toVerboseString())
+        assertEquals(expected, config.toVerboseString().getOrThrow())
     }
 
     @Test

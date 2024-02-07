@@ -10,7 +10,7 @@ import java.net.InetAddress
  */
 class FakeDNSHandler : DNSHandler() {
     val errors = mutableListOf<FakeDNSError>()
-    private val dbConfig = ServerConfig.load()
+    private val dbConfig = ServerConfig.load().getOrThrow()
 
     /**
      * Normally turns a DNS domain into an IPv4 address. This implementation always returns
