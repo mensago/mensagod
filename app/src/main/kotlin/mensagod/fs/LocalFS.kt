@@ -11,6 +11,8 @@ import mensagod.TypeException
 import org.apache.commons.io.FileUtils
 import java.io.File
 import java.io.IOException
+import java.nio.file.DirectoryNotEmptyException
+import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.io.path.exists
@@ -56,8 +58,20 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
     /**
      * Deletes the file pointed to by the handle. If the handle points to a directory, it will be
      * removed so long as it is empty.
+     *
+     * @throws DirectoryNotEmptyException Returned if the handle points to a directory and couldn't
+     * be deleted because it isn't empty
+     * @throws IOException Returned for I/O errors
+     * @throws SecurityException Returned if a security manager exists and won't allow the entry
+     * to be deleted.
      */
-    fun delete() { if (file.exists()) file.delete() }
+    fun delete(): Throwable? {
+        if (file.exists()) {
+            try { Files.delete(file.toPath()) }
+            catch (e: Exception) { return e }
+        }
+        return null
+    }
 
     /**
      * Checks to see if the specified path exists

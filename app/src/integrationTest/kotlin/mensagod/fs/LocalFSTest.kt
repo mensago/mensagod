@@ -35,7 +35,7 @@ class LocalFSTest {
 
         val handle = lfs.entry(MServerPath("/ ${testFileInfo.first}"))
         assert(handle.exists().getOrThrow())
-        handle.delete()
+        handle.delete()?.let { throw it }
         assertFalse(handle.exists().getOrThrow())
     }
 

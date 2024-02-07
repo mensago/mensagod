@@ -158,7 +158,9 @@ fun commandUpload(state: ClientSession) {
     }
 
     if (serverHash != clientHash) {
-        tempHandle.delete()
+        tempHandle.delete()?.let {
+            logError("commandUpload: Error deleting invalid temp file: $it")
+        }
         ServerResponse(410, "HASH MISMATCH").sendCatching(state.conn,
             "Hash mismatch on uploaded file")
         return
