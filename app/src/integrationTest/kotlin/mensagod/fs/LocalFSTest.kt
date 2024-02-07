@@ -72,6 +72,7 @@ class LocalFSTest {
             .first
 
         lfs.entry(MServerPath("/ wsp $widStr $testFileName")).moveTo(MServerPath("/ wsp"))
+            ?.let { throw it }
         assert(File(Paths.get(setupData.testPath, "topdir", "wsp", testFileName).toString())
             .exists())
 

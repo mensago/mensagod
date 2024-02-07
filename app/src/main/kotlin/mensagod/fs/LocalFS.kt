@@ -8,6 +8,7 @@ import mensagod.FSFailureException
 import mensagod.MServerPath
 import mensagod.ResourceNotFoundException
 import mensagod.TypeException
+import org.apache.commons.io.FileExistsException
 import org.apache.commons.io.FileUtils
 import java.io.File
 import java.io.IOException
@@ -113,16 +114,24 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
     /**
      * Moves the file to the specified directory. Note that the destination MUST point to
      * a directory. The path must also point to a file; moving directories is not supported.
+     *
+     * @throws ResourceNotFoundException Returned if the destination path doesn't exist
+     * @throws TypeException Returned if the destination path points to a file
+     * @throws FileExistsException Returned if a file by the same name exists in the destination
+     * @throws IOException Returned for I/O errors
      */
-    fun moveTo(destPath: MServerPath) {
+    fun moveTo(destPath: MServerPath): Throwable? {
         val lfs = LocalFS.get()
         val localDest = lfs.convertToLocal(destPath)
         if (!localDest.exists()) throw ResourceNotFoundException("$destPath doesn't exist")
         if (!localDest.isDirectory()) throw TypeException("$destPath is not a directory")
 
         val destFile = File(localDest.toString())
-        FileUtils.moveFileToDirectory(file, destFile, false)
+        try { FileUtils.moveFileToDirectory(file, destFile, false) }
+        catch (e: Exception) { return e }
         file = File(destFile, file.name)
+
+        return null
     }
 
     /**
