@@ -1,8 +1,8 @@
 package mensagod.commands
 
-import mensagod.ClientSession
+import mensagod.*
+import mensagod.dbcmds.getQuotaInfo
 import mensagod.fs.LocalFS
-import mensagod.logError
 
 // UPLOAD(Size,Hash,Path,Replaces="",Name="",Offset=0)
 fun commandUpload(state: ClientSession) {
@@ -68,6 +68,48 @@ fun commandUpload(state: ClientSession) {
     if (!uploadPathHandle.exists()) {
         ServerResponse(404, "NOT FOUND", "$uploadPathHandle doesn't exist")
             .sendCatching(state.conn, "Client requested nonexistent path $uploadPathHandle")
+        return
+    }
+
+    val resumeOffset: Int?
+    if (hasTempName) {
+        if (!MServerPath.validateFileName(state.message.data["TempName"]!!)) {
+            ServerResponse.sendBadRequest("Invalid value for field TempName", state.conn)
+            return
+        }
+
+        resumeOffset = try { state.message.data["Offset"]!!.toInt() }
+        catch (e: Exception) {
+            ServerResponse.sendBadRequest("Invalid value for field Offset", state.conn)
+            return
+        }
+        if (resumeOffset!! < 1 || resumeOffset > fileSize) {
+            ServerResponse.sendBadRequest("Invalid value for field Offset", state.conn)
+            return
+        }
+    } else resumeOffset = null
+
+    val config = ServerConfig.get()
+    if (fileSize > config.getInteger("performance.max_file_size")!! * 0x10_000) {
+        ServerResponse(414, "LIMIT REACHED",
+            "File size greater than max allowed on server")
+            .sendCatching(state.conn, "Client requested file larger than configured max")
+        return
+    }
+
+    // Arguments have been validated, do a quota check
+
+    val db = DBConn()
+    val quotaInfo = getQuotaInfo(db, state.wid!!).getOrElse {
+        logError("Error getting quota for wid ${state.wid!!}: $it")
+        ServerResponse.sendInternalError("Server error getting account quota info", state.conn)
+        return
+    }
+
+    if (quotaInfo.second > 0 && quotaInfo.first > quotaInfo.second) {
+        ServerResponse(409, "QUOTA INSUFFICIENT",
+            "Your account lacks sufficient space for the file")
+            .sendCatching(state.conn, "Client requested file larger than free space")
         return
     }
 
