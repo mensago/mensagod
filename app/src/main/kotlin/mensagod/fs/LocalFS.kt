@@ -29,16 +29,18 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
      * Creates a duplicate of the file in another directory. The destination path MUST point to a
      * directory.
      *
-     * @throws TypeException If given a path which points to a file
-     * @throws ResourceNotFoundException If the destination directory doesn't exist
-     * @throws IOException If there was a problem copying the file
+     * @throws TypeException Returned if given a path which points to a file
+     * @throws ResourceNotFoundException Returned if the destination directory doesn't exist
+     * @throws IOException Returned if there was a problem copying the file
      * @return The full path of the new file created
      */
-    fun copyTo(destPath: MServerPath): MServerPath {
+    fun copyTo(destPath: MServerPath): Result<MServerPath> {
         val lfs = LocalFS.get()
         val localDest = lfs.convertToLocal(destPath)
-        if (!localDest.exists()) throw ResourceNotFoundException("$destPath doesn't exist")
-        if (!localDest.isDirectory()) throw TypeException("$destPath is not a directory")
+        if (!localDest.exists())
+            return Result.failure(ResourceNotFoundException("$destPath doesn't exist"))
+        if (!localDest.isDirectory())
+            return Result.failure(TypeException("$destPath is not a directory"))
 
         val newID = RandomID.generate().toString()
         val unixTime = System.currentTimeMillis() / 1000L
@@ -48,7 +50,7 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
         val destFile = File(Paths.get(localDest.toString(), destName).toString())
         FileUtils.copyFile(file, destFile)
 
-        return destPath.clone().push(destName)
+        return Result.success(destPath.clone().push(destName))
     }
 
     /**
@@ -63,7 +65,11 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
      * @throws BadValueException If given a bad path
      * @throws SecurityException If a security manager exists and denies read access to the file or directory
      */
-    fun exists(): Boolean { return file.exists() }
+    fun exists(): Result<Boolean> {
+        val out = try { file.exists() }
+        catch (e: Exception) { return Result.failure(e) }
+        return Result.success(out)
+    }
 
     /** Returns the associated File object for the handle */
     fun getFile(): File { return file }

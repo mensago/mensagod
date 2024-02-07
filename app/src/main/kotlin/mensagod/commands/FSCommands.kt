@@ -46,7 +46,12 @@ fun commandUpload(state: ClientSession) {
             return
         }
 
-        if (!handle.exists()) {
+        val exists = handle.exists().getOrElse {
+            logError("Error checking existence of $replacesPath: $it")
+            ServerResponse.sendInternalError("commandUpload.2 error", state.conn)
+            return
+        }
+        if (!exists) {
             ServerResponse(404, "NOT FOUND", "$replacesPath doesn't exist")
                 .sendCatching(state.conn, "Client requested nonexistent path $replacesPath")
             return
@@ -70,10 +75,15 @@ fun commandUpload(state: ClientSession) {
     val uploadPathHandle = try { lfs.entry(uploadPath) }
     catch (e: SecurityException) {
         logError("Error opening path $replacesPath: $e")
-        ServerResponse.sendInternalError("commandUpload.2 error", state.conn)
+        ServerResponse.sendInternalError("commandUpload.3 error", state.conn)
         return
     }
-    if (!uploadPathHandle.exists()) {
+    val exists = uploadPathHandle.exists().getOrElse {
+        logError("Error checking existence of $uploadPath: $it")
+        ServerResponse.sendInternalError("commandUpload.4 error", state.conn)
+        return
+    }
+    if (!exists) {
         ServerResponse(404, "NOT FOUND", "$uploadPathHandle doesn't exist")
             .sendCatching(state.conn, "Client requested nonexistent path $uploadPathHandle")
         return

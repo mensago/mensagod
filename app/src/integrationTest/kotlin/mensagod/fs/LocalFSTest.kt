@@ -34,9 +34,9 @@ class LocalFSTest {
         val testFileInfo = makeTestFile(topdir)
 
         val handle = lfs.entry(MServerPath("/ ${testFileInfo.first}"))
-        assert(handle.exists())
+        assert(handle.exists().getOrThrow())
         handle.delete()
-        assertFalse(handle.exists())
+        assertFalse(handle.exists().getOrThrow())
     }
 
     @Test
@@ -73,7 +73,7 @@ class LocalFSTest {
             .exists())
 
         val newFilePath = lfs.entry(MServerPath("/ wsp $testFileName"))
-            .copyTo(MServerPath("/ wsp $widStr"))
+            .copyTo(MServerPath("/ wsp $widStr")).getOrThrow()
         val newFileLocalPath = lfs.convertToLocal(newFilePath)
         assert(File(newFileLocalPath.toString()).exists())
     }

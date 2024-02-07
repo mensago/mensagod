@@ -95,9 +95,8 @@ fun commandDevice(state: ClientSession) {
     val lfs = LocalFS.get()
     val widPath = MServerPath("/ wsp ${state.wid!!}")
     val widHandle = lfs.entry(widPath)
-    val exists = try { widHandle.exists() }
-    catch (e: Exception) {
-        logError("commandDevice.exists exception for $widPath: $e")
+    val exists = widHandle.exists().getOrElse {
+        logError("commandDevice.exists exception for $widPath: $it")
         ServerResponse.sendInternalError("Error checking for workspace root directory",
             state.conn)
         return
