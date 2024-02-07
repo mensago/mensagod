@@ -94,7 +94,7 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
      * Creates a hash of the file.
      */
     fun hashFile(algorithm: String = getPreferredHashAlgorithm()): Result<CryptoString> {
-        TODO("Implement LocalFSHandle::hashFile($algorithm")
+        return keznacl.hashFile(file.path.toString(), algorithm)
     }
 
     /**
