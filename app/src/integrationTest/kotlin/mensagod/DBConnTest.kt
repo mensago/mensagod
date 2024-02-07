@@ -11,7 +11,7 @@ class DBConnTest {
     @Test
     fun connectionTests() {
         val config = ServerConfig.load()
-        resetDB(config)
+        resetDB(config).getOrThrow()
         DBConn.initialize(config)
         val db = DBConn().connect()
 
@@ -25,7 +25,7 @@ class DBConnTest {
     @Test
     fun execute() {
         val config = ServerConfig.load()
-        resetDB(config)
+        resetDB(config).getOrThrow()
         DBConn.initialize(config)
         val db = DBConn().connect()
 
@@ -50,7 +50,7 @@ class DBConnTest {
     @Test
     fun batch() {
         val config = ServerConfig.load()
-        resetDB(config)
+        resetDB(config).getOrThrow()
         DBConn.initialize(config)
         val db = DBConn().connect()
 

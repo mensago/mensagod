@@ -321,7 +321,7 @@ fun setupTest(name: String): SetupData {
     listOf("wsp","out","tmp","keys").forEach { lfs.entry(MServerPath("/ $it")).makeDirectory() }
 
     val config = ServerConfig.load()
-    resetDB(config)
+    resetDB(config).getOrThrow()
     DBConn.initialize(config)
     val db = DBConn().connect()
     val serverData = initDB(db.getConnection()!!)

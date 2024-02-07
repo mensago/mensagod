@@ -12,7 +12,7 @@ class DBWorkspaceCmdTest {
     @Test
     fun addWorkspaceSetStatusTest() {
         val config = ServerConfig.load()
-        resetDB(config)
+        resetDB(config).getOrThrow()
         DBConn.initialize(config)
         val db = DBConn().connect()
         initDB(db.getConnection()!!)
@@ -46,7 +46,7 @@ class DBWorkspaceCmdTest {
     @Test
     fun checkWorkspaceUserIDTest() {
         val config = ServerConfig.load()
-        resetDB(config)
+        resetDB(config).getOrThrow()
         DBConn.initialize(config)
         val db = DBConn().connect()
         val serverData = initDB(db.getConnection()!!)

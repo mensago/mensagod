@@ -23,7 +23,7 @@ class DBDeviceCmdTest {
         // removeDevice
 
         val config = ServerConfig.load()
-        resetDB(config)
+        resetDB(config).getOrThrow()
         DBConn.initialize(config)
         val db = DBConn().connect()
         initDB(db.getConnection()!!)
@@ -63,7 +63,7 @@ class DBDeviceCmdTest {
         // This one tests all the methods that the first case didn't get, mostly device info stuff.
 
         val config = ServerConfig.load()
-        resetDB(config)
+        resetDB(config).getOrThrow()
         DBConn.initialize(config)
         val db = DBConn().connect()
         initDB(db.getConnection()!!)
@@ -112,7 +112,7 @@ class DBDeviceCmdTest {
     @Test
     fun keyInfoTest() {
         val config = ServerConfig.load()
-        resetDB(config)
+        resetDB(config).getOrThrow()
         DBConn.initialize(config)
         val db = DBConn().connect()
         initDB(db.getConnection()!!)

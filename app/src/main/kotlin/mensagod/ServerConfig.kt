@@ -38,7 +38,7 @@ class ServerConfig {
      * @throws MissingDataException if the database password is empty or otherwise missing
      * @throws java.sql.SQLException for problems connecting to the database
      */
-    fun connectToDB(): Connection {
+    fun connectToDB(): Result<Connection> {
         val sb = StringBuilder("jdbc:postgresql://")
         sb.append(getString("database.host") + ":" + getInteger("database.port"))
         sb.append("/" + getString("database.name"))
@@ -47,12 +47,11 @@ class ServerConfig {
         args["user"] = getString("database.user")
 
         if (getString("database.password")!!.isEmpty())
-            throw MissingDataException("Database password must not be empty")
+            return Result.failure(MissingDataException("Database password must not be empty"))
         args["password"] = getString("database.password")
 
-        val out = DriverManager.getConnection(sb.toString(), args)
-
-        return out
+        return try { Result.success(DriverManager.getConnection(sb.toString(), args)) }
+        catch (e: Exception) { Result.failure(e) }
     }
 
     /**

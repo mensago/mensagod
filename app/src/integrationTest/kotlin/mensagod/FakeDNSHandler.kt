@@ -88,7 +88,7 @@ class FakeDNSHandler : DNSHandler() {
             }
         }
 
-        val db = dbConfig.connectToDB()
+        val db = dbConfig.connectToDB().getOrThrow()
         var stmt = db.prepareStatement("SELECT pubkey FROM orgkeys WHERE purpose = 'encrypt';")
         var results = stmt.executeQuery()
         results.next()

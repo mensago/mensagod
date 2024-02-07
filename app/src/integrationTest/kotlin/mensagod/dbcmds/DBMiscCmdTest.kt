@@ -10,7 +10,7 @@ class DBMiscCmdTest {
     @Test
     fun keypairTest() {
         val config = ServerConfig.load()
-        resetDB(config)
+        resetDB(config).getOrThrow()
         DBConn.initialize(config)
         val db = DBConn().connect()
         initDB(db.getConnection()!!)

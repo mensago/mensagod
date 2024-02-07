@@ -7,9 +7,9 @@ import java.sql.Connection
  *
  * @throws java.sql.SQLException on database errors
  */
-fun resetDB(config: ServerConfig): Connection {
+fun resetDB(config: ServerConfig): Result<Connection> {
 
-    val db = config.connectToDB()
+    val db = config.connectToDB().getOrElse { return Result.failure(it) }
     val stmt = db.createStatement()
 
     // Drop all tables in the database
@@ -126,5 +126,5 @@ fun resetDB(config: ServerConfig): Connection {
 
     stmt.executeBatch()
 
-    return db
+    return Result.success(db)
 }
