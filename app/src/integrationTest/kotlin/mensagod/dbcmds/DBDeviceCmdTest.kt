@@ -25,7 +25,7 @@ class DBDeviceCmdTest {
         val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
         DBConn.initialize(config)
-        val db = DBConn().connect()
+        val db = DBConn().connect().getOrThrow()
         initDB(db.getConnection()!!)
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
@@ -65,7 +65,7 @@ class DBDeviceCmdTest {
         val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
         DBConn.initialize(config)
-        val db = DBConn().connect()
+        val db = DBConn().connect().getOrThrow()
         initDB(db.getConnection()!!)
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
@@ -114,7 +114,7 @@ class DBDeviceCmdTest {
         val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
         DBConn.initialize(config)
-        val db = DBConn().connect()
+        val db = DBConn().connect().getOrThrow()
         initDB(db.getConnection()!!)
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!

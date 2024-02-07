@@ -12,7 +12,7 @@ class DBMiscCmdTest {
         val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
         DBConn.initialize(config)
-        val db = DBConn().connect()
+        val db = DBConn().connect().getOrThrow()
         initDB(db.getConnection()!!)
 
         // These methods will return the proper data or throw, so we don't have to do anything to

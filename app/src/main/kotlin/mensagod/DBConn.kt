@@ -20,7 +20,7 @@ class DBConn {
     private var batch: Statement? = null
 
     init {
-        connect()
+        connect().getOrThrow()
     }
 
     /**
@@ -29,15 +29,15 @@ class DBConn {
      * @throws EmptyDataException if called before initialize()
      * @throws java.sql.SQLException if there are problems connecting to the database
      */
-    fun connect(): DBConn {
-        if (dbURL.isEmpty()) throw EmptyDataException()
+    fun connect(): Result<DBConn> {
+        if (dbURL.isEmpty()) return Result.failure(EmptyDataException())
 
         // No sense in creating a new connection if we're already connected
-        if (conn != null) return this
+        if (conn != null) return Result.success(this)
 
         conn = if (dbArgs.isNotEmpty()) DriverManager.getConnection(dbURL, dbArgs)
             else DriverManager.getConnection(dbURL)
-        return this
+        return Result.success(this)
     }
 
     /**

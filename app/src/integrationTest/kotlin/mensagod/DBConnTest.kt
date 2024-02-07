@@ -13,7 +13,7 @@ class DBConnTest {
         val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
         DBConn.initialize(config)
-        val db = DBConn().connect()
+        val db = DBConn().connect().getOrThrow()
 
         assert(db.isConnected())
         db.disconnect()
@@ -27,7 +27,7 @@ class DBConnTest {
         val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
         DBConn.initialize(config)
-        val db = DBConn().connect()
+        val db = DBConn().connect().getOrThrow()
 
         db.execute("""CREATE TABLE testtable(
                     rowid SERIAL PRIMARY KEY,
@@ -52,7 +52,7 @@ class DBConnTest {
         val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
         DBConn.initialize(config)
-        val db = DBConn().connect()
+        val db = DBConn().connect().getOrThrow()
 
         db.execute("""CREATE TABLE testtable(
                     rowid SERIAL PRIMARY KEY,

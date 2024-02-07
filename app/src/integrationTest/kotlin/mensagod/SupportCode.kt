@@ -323,7 +323,7 @@ fun setupTest(name: String): SetupData {
     val config = ServerConfig.load().getOrThrow()
     resetDB(config).getOrThrow()
     DBConn.initialize(config)
-    val db = DBConn().connect()
+    val db = DBConn().connect().getOrThrow()
     val serverData = initDB(db.getConnection()!!)
     setupAdmin(db)
     gServerDomain = Domain.fromString(config.getString("global.domain"))!!

@@ -13,7 +13,7 @@ class MiscCmdTest {
         val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
         DBConn.initialize(config)
-        val serverData = initDB(DBConn().connect().getConnection()!!)
+        val serverData = initDB(DBConn().connect().getOrThrow().getConnection()!!)
 
         val state = SessionState(
             message = ClientRequest("GETWID", mutableMapOf("User-ID" to "support")))
