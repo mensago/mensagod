@@ -1,8 +1,16 @@
 package mensagod.commands
 
+import keznacl.UnsupportedAlgorithmException
+import libkeycard.RandomID
 import mensagod.*
+import mensagod.dbcmds.UpdateRecord
+import mensagod.dbcmds.UpdateType
+import mensagod.dbcmds.addUpdateRecord
 import mensagod.dbcmds.getQuotaInfo
 import mensagod.fs.LocalFS
+import mensagod.fs.LocalFSHandle
+import java.time.Instant
+import java.util.*
 
 // UPLOAD(Size,Hash,Path,Replaces="",Name="",Offset=0)
 fun commandUpload(state: ClientSession) {
@@ -13,8 +21,8 @@ fun commandUpload(state: ClientSession) {
         return
     }
 
-    val hash = state.getCryptoString("Hash", true)
-    if (hash == null) {
+    val clientHash = state.getCryptoString("Hash", true)
+    if (clientHash == null) {
         ServerResponse.sendBadRequest("Invalid value for Hash", state.conn)
         return
     }
@@ -113,5 +121,72 @@ fun commandUpload(state: ClientSession) {
         return
     }
 
-    // TODO: Finish implementing commandUpload()
+    val tempPath = if (resumeOffset != null) {
+        MServerPath.fromString("/ tmp ${state.wid!!} ${state.message.data["TempName"]!!}")!!
+    } else {
+        val tempName =
+            "${Instant.now().epochSecond}.$fileSize.${UUID.randomUUID().toString().lowercase()}"
+        MServerPath.fromString("/ tmp ${state.wid!!} $tempName")!!
+    }
+    val tempHandle = lfs.entry(tempPath)
+    readFileData(state, tempHandle, resumeOffset)?.let {
+        // Transfer was interrupted. We won't delete the file--we will leave it so the client can
+        // attempt to resume the upload later.
+        return
+    }
+
+    val serverHash = tempHandle.hashFile(clientHash.prefix).getOrElse {
+        if (it is UnsupportedAlgorithmException) {
+            ServerResponse(309, "UNSUPPORTED ALGORITHM",
+                "Hash algorithm ${clientHash.prefix} not unsupported")
+                .sendCatching(state.conn, "Client requested unsupported hash algorithm")
+        } else {
+            logError("commandUpload: Error hashing file: $it")
+            ServerResponse.sendInternalError("Server error hashing file", state.conn)
+        }
+        return
+    }
+
+    if (serverHash != clientHash) {
+        tempHandle.delete()
+        ServerResponse(410, "HASH MISMATCH").sendCatching(state.conn,
+            "Hash mismatch on uploaded file")
+        return
+    }
+
+    // TODO: Install temp file here
+    val realName = ""
+
+    if (replacesPath != null) {
+        // TODO: Lock and delete file
+        // TODO: finish data for update record here
+        addUpdateRecord(db, state.wid!!, UpdateRecord(
+            RandomID.generate(), UpdateType.Replace, "add replaces path here",
+            "some time stamp", state.devid!!
+        ))
+    } else {
+        lfs.modifyQuotaUsage(state.wid!!, fileSize)?.let {
+            logError("commandUpload: Error adjusting quota usage: $it")
+            ServerResponse.sendInternalError("Server account quota error", state.conn)
+            return
+        }
+        // TODO: finish data for update record here
+        addUpdateRecord(db, state.wid!!, UpdateRecord(
+            RandomID.generate(), UpdateType.Create, "add create path here",
+            "some time stamp", state.devid!!
+        ))
+    }
+
+    val ok = ServerResponse(200, "OK")
+    ok.data["FileName"] = realName
+    ok.sendCatching(state.conn,
+        "commandUpload: Couldn't send confirmation response for wid = ${state.wid}")
+}
+
+/**
+ * Reads file data from a client and writes it directly to the file, optionally resuming from a
+ * specified file offset.
+ */
+private fun readFileData(state: ClientSession, handle: LocalFSHandle, offset: Int?): Throwable? {
+    TODO("Implement readFileData($state, $handle, $offset)")
 }

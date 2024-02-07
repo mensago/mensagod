@@ -1,6 +1,8 @@
 package mensagod.fs
 
 import keznacl.BadValueException
+import keznacl.CryptoString
+import keznacl.getPreferredHashAlgorithm
 import libkeycard.RandomID
 import mensagod.FSFailureException
 import mensagod.MServerPath
@@ -62,6 +64,16 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
      * @throws SecurityException If a security manager exists and denies read access to the file or directory
      */
     fun exists(): Boolean { return file.exists() }
+
+    /** Returns the associated File object for the handle */
+    fun getFile(): File { return file }
+
+    /**
+     * Creates a hash of the file.
+     */
+    fun hashFile(algorithm: String = getPreferredHashAlgorithm()): Result<CryptoString> {
+        TODO("Implement LocalFSHandle::hashFile($algorithm")
+    }
 
     /**
      * Creates a directory in the local filesystem within the top-level Mensago directory.
@@ -150,6 +162,13 @@ class LocalFS private constructor(val basePath: Path) {
         val pathFile = File(localPath.toString())
         if (!pathFile.exists()) throw ResourceNotFoundException()
         return FileUtils.sizeOf(pathFile)
+    }
+
+    /**
+     * Modifies the disk usage in the quota information by a relative amount specified in bytes.
+     */
+    fun modifyQuotaUsage(wid: RandomID, size: Int): Throwable? {
+        TODO("Implement modifyQuotaUsage($wid, $size)")
     }
 
     companion object {
