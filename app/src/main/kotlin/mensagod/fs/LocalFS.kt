@@ -135,19 +135,29 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
     }
 
     /**
-     * ReadFile reads data from a file opened with openFile().
+     * readAll reads data from a file into memory.
      *
-     * @throws SecurityException - if a security manager exists and denies read access to the file
-     * @throws IOException If there was a problem reading the file
+     * @throws ResourceNotFoundException Returned if the file doesn't exist
+     * @throws SecurityException Returned if a security manager exists and denies read access to the
+     * file
+     * @throws IOException Returned if there was a problem reading the file
      */
-    fun readAll(): ByteArray { return FileUtils.readFileToByteArray(file) }
+    fun readAll(): Result<ByteArray> {
+        if (!file.exists()) return Result.failure(ResourceNotFoundException())
+        return try { Result.success(FileUtils.readFileToByteArray(file)) }
+        catch (e: Exception) { Result.failure(e) }
+    }
 
     /**
      * Writes data to a file
      *
-     * @return The number of bytes written
+     * @throws IOException Returned if there was a problem reading the file
      */
-    fun writeAll(data: ByteArray) { return FileUtils.writeByteArrayToFile(file, data) }
+    fun writeAll(data: ByteArray): Throwable? {
+        try { FileUtils.writeByteArrayToFile(file, data) }
+        catch (e: Exception) { return e }
+        return null
+    }
 }
 
 /**

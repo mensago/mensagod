@@ -138,15 +138,14 @@ fun commandDevice(state: ClientSession) {
             return
         }
 
-        val keyInfo = try { infoHandle.readAll().decodeToString() }
-        catch (e: Exception) {
-            logError("commandDevice.readFile exception for ${state.wid}: $e")
+        val keyInfo = infoHandle.readAll().getOrElse {
+            logError("commandDevice.readFile exception for ${state.wid}: $it")
             state.loginState = LoginState.NoSession
             state.wid = null
             ServerResponse.sendInternalError("Error reading device key information",
                 state.conn)
             return
-        }
+        }.decodeToString()
         response.code = 203
         response.status = "APPROVED"
         response.data["Key-Info"] = keyInfo
