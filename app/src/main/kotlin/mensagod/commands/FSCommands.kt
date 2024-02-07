@@ -3,10 +3,7 @@ package mensagod.commands
 import keznacl.UnsupportedAlgorithmException
 import libkeycard.RandomID
 import mensagod.*
-import mensagod.dbcmds.UpdateRecord
-import mensagod.dbcmds.UpdateType
-import mensagod.dbcmds.addUpdateRecord
-import mensagod.dbcmds.getQuotaInfo
+import mensagod.dbcmds.*
 import mensagod.fs.LocalFS
 import mensagod.fs.LocalFSHandle
 import java.time.Instant
@@ -177,7 +174,7 @@ fun commandUpload(state: ClientSession) {
             "some time stamp", state.devid!!
         ))
     } else {
-        lfs.modifyQuotaUsage(state.wid!!, fileSize)?.let {
+        modifyQuotaUsage(db, state.wid!!, fileSize)?.let {
             logError("commandUpload: Error adjusting quota usage: $it")
             ServerResponse.sendInternalError("Server account quota error", state.conn)
             return
