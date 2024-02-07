@@ -209,13 +209,6 @@ class LocalFS private constructor(val basePath: Path) {
         catch (e: Exception) { Result.failure(e) }
     }
 
-    /**
-     * Modifies the disk usage in the quota information by a relative amount specified in bytes.
-     */
-    fun modifyQuotaUsage(wid: RandomID, size: Int): Throwable? {
-        TODO("Implement modifyQuotaUsage($wid, $size)")
-    }
-
     companion object {
         fun initialize(basePath: String) {
             val p = Paths.get(basePath)
