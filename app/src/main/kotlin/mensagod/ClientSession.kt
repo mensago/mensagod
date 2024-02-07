@@ -83,6 +83,29 @@ class ClientSession(val conn: Socket): SessionState() {
     }
 
     /**
+     * Validator function which gets an MServerPath from the specified field. All error states for
+     * the field are handled internally, so if null is returned, the caller need not do anything
+     * else. If the value is not required to be present, a default value may be specified, as well.
+     */
+    fun getPath(field: String, required: Boolean, default: MServerPath? = null): MServerPath? {
+        if (!message.hasField(field)) {
+            return if (required) {
+                ServerResponse(400, "BAD REQUEST",
+                    "Required field missing: $field").send(conn)
+                return null
+            } else {
+                default
+            }
+        }
+
+        val tempPath = MServerPath.fromString(message.data[field]!!)
+        if (tempPath == null) {
+            ServerResponse(400, "BAD REQUEST", "Bad $field").send(conn)
+            return null
+        }
+        return tempPath
+    }
+    /**
      * Validator function which gets a user ID from the specified field. All error states for the
      * field are handled internally, so if null is returned, the caller need not do anything else.
      * If the value is not required to be present, a default value may be specified, as well.
