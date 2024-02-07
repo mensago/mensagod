@@ -48,12 +48,15 @@ class LocalFSTest {
             lfs.entry(MServerPath(
                 "/ wsp 6e99f804-7bb6-435a-9dce-53d9c6d33816 5769bf90-aeb2-46b1-9bc5-4809d55991df"))
                 .makeDirectory()
+                ?.let { throw it }
         }
 
         val wspdir = File(Paths.get(setupData.testPath, "topdir", "wsp",
             "6e99f804-7bb6-435a-9dce-53d9c6d33816").toString())
         assert(!wspdir.exists())
-        lfs.entry(MServerPath("/ wsp 6e99f804-7bb6-435a-9dce-53d9c6d33816")).makeDirectory()
+        lfs.entry(MServerPath("/ wsp 6e99f804-7bb6-435a-9dce-53d9c6d33816"))
+            .makeDirectory()
+            ?.let { throw it }
         assert(wspdir.exists())
     }
 
@@ -63,7 +66,7 @@ class LocalFSTest {
         val lfs = LocalFS.get()
 
         val widStr = "6e99f804-7bb6-435a-9dce-53d9c6d33816"
-        lfs.entry(MServerPath("/ wsp $widStr")).makeDirectory()
+        lfs.entry(MServerPath("/ wsp $widStr")).makeDirectory()?.let { throw it }
         val testFileName = makeTestFile(
             Paths.get(setupData.testPath, "topdir", "wsp", widStr).toString())
             .first

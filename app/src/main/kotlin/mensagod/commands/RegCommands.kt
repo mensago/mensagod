@@ -102,9 +102,8 @@ fun commandPreregister(state: ClientSession) {
 
     val lfs = LocalFS.get()
     val handle = lfs.entry(MServerPath("/ wsp $outWID"))
-    try { handle.makeDirectory() }
-    catch (e: Exception) {
-        logError("commandPreregister.makeWorkspace exception: $e")
+    handle.makeDirectory()?.let {
+        logError("commandPreregister.makeWorkspace exception: $it")
         ServerResponse.sendInternalError("preregistration workspace creation failure",
             state.conn)
         return

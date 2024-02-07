@@ -102,9 +102,8 @@ fun commandDevice(state: ClientSession) {
         return
     }
     if (!exists) {
-        try { lfs.entry(widPath).makeDirectory() }
-        catch (e: Exception) {
-            logError("commandDevice.makeDirectory exception for $widPath: $e")
+        lfs.entry(widPath).makeDirectory()?.let {
+            logError("commandDevice.makeDirectory exception for $widPath: $it")
             ServerResponse.sendInternalError("Error creating workspace root directory",
                 state.conn)
             return

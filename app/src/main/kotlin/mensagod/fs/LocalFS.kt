@@ -63,7 +63,8 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
      * Checks to see if the specified path exists
      *
      * @throws BadValueException If given a bad path
-     * @throws SecurityException If a security manager exists and denies read access to the file or directory
+     * @throws SecurityException If a security manager exists and denies read access to the file or
+     * directory
      */
     fun exists(): Result<Boolean> {
         val out = try { file.exists() }
@@ -84,13 +85,15 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
     /**
      * Creates a directory in the local filesystem within the top-level Mensago directory.
      *
-     * @throws BadValueException If given a bad path
-     * @throws SecurityException If a security manager exists and won't let the directory be created.
-     * @throws FSFailureException For other reasons the system couldn't create a directory, such as a nonexistent parent directory.
+     * @throws BadValueException Returned if given a bad path
+     * @throws SecurityException Returned if a security manager exists and won't let the directory
+     * be created.
+     * @throws FSFailureException Returned for other reasons the system couldn't create a directory,
+     * such as a nonexistent parent directory.
      */
-    fun makeDirectory() {
-        if (file.exists()) return
-        if (!file.mkdir()) throw FSFailureException()
+    fun makeDirectory(): Throwable? {
+        if (file.exists()) return null
+        return if (file.mkdir()) null else FSFailureException()
     }
 
     /**
