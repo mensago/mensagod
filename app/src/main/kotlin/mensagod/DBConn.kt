@@ -45,9 +45,12 @@ class DBConn {
      *
      * @throws java.sql.SQLException if there are problems disconnecting from the database
      */
-    fun disconnect() {
-        if (conn != null) { conn!!.close() }
-        conn = null
+    fun disconnect(): Throwable? {
+        return try {
+            if (conn != null) { conn!!.close() }
+            conn = null
+            null
+        } catch (e: Exception) { e }
     }
 
     fun isConnected(): Boolean {

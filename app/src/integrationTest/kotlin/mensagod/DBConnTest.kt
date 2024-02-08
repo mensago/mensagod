@@ -15,7 +15,7 @@ class DBConnTest {
         val db = DBConn().connect().getOrThrow()
 
         assert(db.isConnected())
-        db.disconnect()
+        db.disconnect()?.let { throw it }
         assert(!db.isConnected())
         db.connect().getOrThrow()
         assert(db.isConnected())
@@ -43,7 +43,7 @@ class DBConnTest {
         assert(db.exists("SELECT wid,userid FROM testtable;"))
         assertFalse(db.exists("SELECT wid FROM testtable WHERE wid='bar';"))
 
-        db.disconnect()
+        db.disconnect()?.let { throw it }
     }
 
     @Test
