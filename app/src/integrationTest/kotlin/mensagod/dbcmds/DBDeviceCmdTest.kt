@@ -24,7 +24,7 @@ class DBDeviceCmdTest {
 
         val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
-        DBConn.initialize(config)
+        DBConn.initialize(config)?.let { throw it }
         val db = DBConn().connect().getOrThrow()
         initDB(db.getConnection()!!)
 
@@ -64,7 +64,7 @@ class DBDeviceCmdTest {
 
         val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
-        DBConn.initialize(config)
+        DBConn.initialize(config)?.let { throw it }
         val db = DBConn().connect().getOrThrow()
         initDB(db.getConnection()!!)
 
@@ -113,7 +113,7 @@ class DBDeviceCmdTest {
     fun keyInfoTest() {
         val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
-        DBConn.initialize(config)
+        DBConn.initialize(config)?.let { throw it }
         val db = DBConn().connect().getOrThrow()
         initDB(db.getConnection()!!)
 

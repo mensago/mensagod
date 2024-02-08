@@ -194,7 +194,7 @@ class DBConn {
          * @throws MissingDataException if the database password is empty or missing
          * @throws java.sql.SQLException if there are problems connecting to the database
          */
-        fun initialize(config: ServerConfig) {
+        fun initialize(config: ServerConfig): Throwable? {
             val sb = StringBuilder("jdbc:postgresql://")
             sb.append(config.getString("database.host") + ":" +
                     config.getInteger("database.port").toString())
@@ -204,7 +204,7 @@ class DBConn {
             args["user"] = config.getString("database.user")
 
             if (config.getString("database.password")?.isEmpty() == true)
-                throw MissingDataException("Database password must not be empty")
+                return MissingDataException("Database password must not be empty")
             args["password"] = config.getString("database.password")
 
             val url = sb.toString()
@@ -212,6 +212,7 @@ class DBConn {
 
             dbURL = url
             dbArgs = args
+            return null
         }
     }
 }

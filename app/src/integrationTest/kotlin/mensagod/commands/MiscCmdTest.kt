@@ -12,7 +12,7 @@ class MiscCmdTest {
     fun getWIDTest() {
         val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
-        DBConn.initialize(config)
+        DBConn.initialize(config)?.let { throw it }
         val serverData = initDB(DBConn().connect().getOrThrow().getConnection()!!)
 
         val state = SessionState(

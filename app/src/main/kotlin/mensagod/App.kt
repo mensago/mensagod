@@ -77,7 +77,7 @@ class Server private constructor(val config: ServerConfig) {
 
             val logLocation = Paths.get(config.getString("global.log_dir")!!, "mensagod.log")
             initLogging(logLocation, false)
-            DBConn.initialize(config)
+            DBConn.initialize(config)?.let { return Result.failure(it) }
 
             val out = Server(config)
             out.clientPool.capacity = config.getInteger("performance.max_client_threads")!!

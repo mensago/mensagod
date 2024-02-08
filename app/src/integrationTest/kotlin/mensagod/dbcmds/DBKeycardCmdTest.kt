@@ -76,7 +76,7 @@ class DBKeycardCmdTest {
     fun resolveWIDAddressTest() {
         val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
-        DBConn.initialize(config)
+        DBConn.initialize(config)?.let { throw it }
         val db = DBConn().connect().getOrThrow()
         val setupData = initDB(db.getConnection()!!)
 

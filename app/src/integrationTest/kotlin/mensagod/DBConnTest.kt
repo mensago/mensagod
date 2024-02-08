@@ -11,7 +11,7 @@ class DBConnTest {
     fun connectionTests() {
         val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
-        DBConn.initialize(config)
+        DBConn.initialize(config)?.let { throw it }
         val db = DBConn().connect().getOrThrow()
 
         assert(db.isConnected())
@@ -25,7 +25,7 @@ class DBConnTest {
     fun execute() {
         val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
-        DBConn.initialize(config)
+        DBConn.initialize(config)?.let { throw it }
         val db = DBConn().connect().getOrThrow()
 
         db.execute("""CREATE TABLE testtable(
@@ -50,7 +50,7 @@ class DBConnTest {
     fun batch() {
         val config = ServerConfig.load().getOrThrow()
         resetDB(config).getOrThrow()
-        DBConn.initialize(config)
+        DBConn.initialize(config)?.let { throw it }
         val db = DBConn().connect().getOrThrow()
 
         db.execute("""CREATE TABLE testtable(

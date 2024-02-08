@@ -322,7 +322,7 @@ fun setupTest(name: String): SetupData {
 
     val config = ServerConfig.load().getOrThrow()
     resetDB(config).getOrThrow()
-    DBConn.initialize(config)
+    DBConn.initialize(config)?.let { throw it }
     val db = DBConn().connect().getOrThrow()
     val serverData = initDB(db.getConnection()!!)
     setupAdmin(db)
