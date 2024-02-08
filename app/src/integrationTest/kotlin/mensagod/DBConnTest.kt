@@ -57,9 +57,9 @@ class DBConnTest {
                     rowid SERIAL PRIMARY KEY,
                     wid VARCHAR(36) NOT NULL UNIQUE, userid VARCHAR(64));""").getOrThrow()
 
-        db.add("""INSERT INTO testtable(wid,userid) VALUES('foo1', 'bar1');""")
-        db.add("""INSERT INTO testtable(wid,userid) VALUES('foo2', 'bar2');""")
-        db.add("""INSERT INTO testtable(wid,userid) VALUES('foo3', 'bar3');""")
+        db.add("""INSERT INTO testtable(wid,userid) VALUES('foo1', 'bar1');""")?.let { throw it }
+        db.add("""INSERT INTO testtable(wid,userid) VALUES('foo2', 'bar2');""")?.let { throw it }
+        db.add("""INSERT INTO testtable(wid,userid) VALUES('foo3', 'bar3');""")?.let { throw it }
         db.executeBatch()
 
         val rs = db.query("SELECT COUNT(*) FROM testtable;")

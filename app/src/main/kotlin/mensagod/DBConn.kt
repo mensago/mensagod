@@ -100,13 +100,16 @@ class DBConn {
      * @throws BadValueException if the query placeholder count doesn't match the query argument count
      * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
      */
-    fun add(s: String) {
-        if (s.isEmpty()) throw EmptyDataException()
-        if (!isConnected()) throw NotConnectedException()
+    fun add(s: String): Throwable? {
+        if (s.isEmpty()) return EmptyDataException()
+        if (!isConnected()) return NotConnectedException()
 
-        if (batch == null)
-            batch = conn!!.createStatement()
-        batch!!.addBatch(s)
+        return try {
+            if (batch == null)
+                batch = conn!!.createStatement()
+            batch!!.addBatch(s)
+            null
+        } catch (e: Exception) { e }
     }
 
     /**
