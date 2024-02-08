@@ -39,7 +39,7 @@ fun modifyQuotaUsage(db: DBConn, wid: RandomID, size: Int): Throwable? {
  * or with the connection
  */
 fun resetQuotaUsage(db: DBConn): Throwable? {
-    TODO("Implement resetQuotaUsage($db)")
+    return db.execute("UPDATE quotas SET usage=-1").exceptionOrNull()
 }
 
 /**
