@@ -34,7 +34,7 @@ class DBConnTest {
         db.execute("""INSERT INTO testtable(wid,userid) VALUES('foo', 'bar');""").getOrThrow()
         assert(db.execute("CREATE ;").exceptionOrNull() is SQLException)
 
-        val rs = db.query("SELECT wid,userid FROM testtable;")
+        val rs = db.query("SELECT wid,userid FROM testtable;").getOrThrow()
 
         assert(rs.next())
         assertEquals("foo", rs.getString(1))
@@ -62,7 +62,7 @@ class DBConnTest {
         db.add("""INSERT INTO testtable(wid,userid) VALUES('foo3', 'bar3');""")?.let { throw it }
         db.executeBatch()?.let { throw it }
 
-        val rs = db.query("SELECT COUNT(*) FROM testtable;")
+        val rs = db.query("SELECT COUNT(*) FROM testtable;").getOrThrow()
         assert(rs.next())
         assertEquals(3, rs.getInt(1))
     }

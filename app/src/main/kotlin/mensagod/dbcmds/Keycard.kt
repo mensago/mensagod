@@ -48,7 +48,7 @@ fun getEntries(db: DBConn, wid: RandomID?, startIndex: UInt = 1U, endIndex: UInt
     val out = mutableListOf<String>()
     if (startIndex == 0U) {
         val rs = db.query("""SELECT entry FROM keycards WHERE owner = ? 
-            ORDER BY index DESC LIMIT 1""", owner)
+            ORDER BY index DESC LIMIT 1""", owner).getOrThrow()
         if (!rs.next()) return out
         out.add(rs.getString("entry"))
         return out
@@ -59,10 +59,11 @@ fun getEntries(db: DBConn, wid: RandomID?, startIndex: UInt = 1U, endIndex: UInt
 
         db.query("""SELECT entry FROM keycards WHERE owner = ? AND index >= ?
             AND index <= ? ORDER BY index""", owner, startIndex.toInt(), endIndex.toInt())
+            .getOrThrow()
     } else {
         // Given just a start index
         db.query("""SELECT entry FROM keycards WHERE owner = ? AND index >= ? """, owner,
-            startIndex.toInt())
+            startIndex.toInt()).getOrThrow()
     }
 
     while (rs.next()) out.add(rs.getString("entry"))
@@ -91,6 +92,7 @@ fun resolveAddress(db: DBConn, addr: MAddress): RandomID? {
     }
 
     val rs = db.query("""SELECT wid FROM workspaces WHERE uid=?""", addr.userid.value)
+        .getOrThrow()
     if (!rs.next()) return null
 
     return RandomID.fromString(rs.getString("wid"))
@@ -104,7 +106,7 @@ fun resolveAddress(db: DBConn, addr: MAddress): RandomID? {
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun resolveWID(db: DBConn, wid: RandomID): WAddress? {
-    val rs = db.query("""SELECT domain FROM workspaces WHERE wid=?""", wid)
+    val rs = db.query("""SELECT domain FROM workspaces WHERE wid=?""", wid).getOrThrow()
     if (!rs.next()) return null
 
     val dom = Domain.fromString(rs.getString("domain"))

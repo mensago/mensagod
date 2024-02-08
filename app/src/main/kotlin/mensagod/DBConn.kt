@@ -67,12 +67,13 @@ class DBConn {
      * @throws BadValueException if the query placeholder count doesn't match the query argument count
      * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
      */
-    fun query(q: String, vararg args: Any): ResultSet {
-        if (q.isEmpty()) throw EmptyDataException()
-        if (!isConnected()) throw NotConnectedException()
+    fun query(q: String, vararg args: Any): Result<ResultSet> {
+        if (q.isEmpty()) return Result.failure(EmptyDataException())
+        if (!isConnected()) return Result.failure(NotConnectedException())
 
-        val stmt = prepStatement(q, args).getOrThrow()
-        return stmt.executeQuery()
+        val stmt = prepStatement(q, args).getOrElse { return Result.failure(it) }
+        return try { Result.success(stmt.executeQuery()) }
+        catch (e: Exception) { Result.failure(e) }
     }
 
     /**

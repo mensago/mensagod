@@ -99,13 +99,13 @@ fun addWorkspace(db: DBConn, wid: RandomID, uid: UserID?, domain: Domain, passha
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun checkWorkspace(db: DBConn, wid: RandomID): WorkspaceStatus? {
-    var rs = db.query("""SELECT status FROM workspaces WHERE wid=?""", wid)
+    var rs = db.query("""SELECT status FROM workspaces WHERE wid=?""", wid).getOrThrow()
     if (rs.next()) {
         val stat = rs.getString("status")
         return WorkspaceStatus.fromString(stat)
             ?: throw DatabaseCorruptionException("Bad workspace status '$stat' for workspace $wid")
     }
-    rs = db.query("""SELECT wid FROM prereg WHERE wid=?""", wid)
+    rs = db.query("""SELECT wid FROM prereg WHERE wid=?""", wid).getOrThrow()
     if (rs.next())
         return WorkspaceStatus.Preregistered
 
@@ -121,7 +121,7 @@ fun checkWorkspace(db: DBConn, wid: RandomID): WorkspaceStatus? {
  */
 fun resolveUserID(db: DBConn, uid: UserID): RandomID? {
     for (table in listOf("workspaces", "prereg")) {
-        val rs = db.query("""SELECT wid FROM $table WHERE uid=?""", uid)
+        val rs = db.query("""SELECT wid FROM $table WHERE uid=?""", uid).getOrThrow()
         if (rs.next()) {
             val widStr = rs.getString("wid")
             return RandomID.fromString(widStr)

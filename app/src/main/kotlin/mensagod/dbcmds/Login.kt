@@ -15,7 +15,7 @@ import mensagod.*
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun checkPassword(db: DBConn, wid: RandomID, password: String): Boolean {
-    val rs = db.query("""SELECT password FROM workspaces WHERE wid=?""", wid)
+    val rs = db.query("""SELECT password FROM workspaces WHERE wid=?""", wid).getOrThrow()
     if (!rs.next()) throw ResourceNotFoundException()
 
     val hasher = Argon2idPassword()
@@ -40,10 +40,10 @@ fun checkRegCode(db: DBConn, addr: MAddress, regcode: String): Pair<RandomID, Us
         db.query(
             """SELECT uid,regcode FROM prereg WHERE wid=? AND domain=?""",
             addr.userid, addr.domain
-        )
+        ).getOrThrow()
     } else {
         db.query("""SELECT wid,regcode FROM prereg WHERE uid=? AND domain=?""",
-            addr.userid, addr.domain)
+            addr.userid, addr.domain).getOrThrow()
     }
     if (!rs.next()) return null
 
@@ -88,6 +88,7 @@ fun deletePrereg(db: DBConn, addr: WAddress) {
  */
 fun getPasswordInfo(db: DBConn, wid: RandomID): PasswordInfo? {
     val rs = db.query("""SELECT passtype,salt,passparams FROM workspaces WHERE wid=?""", wid)
+        .getOrThrow()
     if (rs.next()) {
         val type = rs.getString("passtype")
         val salt = rs.getString("salt")

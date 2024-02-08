@@ -23,7 +23,7 @@ class DBWorkspaceCmdTest {
             "passalgorithm", "salt", "passparams", WorkspaceStatus.Active,
             WorkspaceType.Individual)
 
-        val rs = db.query("""SELECT * FROM workspaces WHERE wid=?""", adminWID)
+        val rs = db.query("""SELECT * FROM workspaces WHERE wid=?""", adminWID).getOrThrow()
         assert(rs.next())
         assertEquals("admin", rs.getString("uid"))
         assertEquals(gServerDomain.toString(), rs.getString("domain"))

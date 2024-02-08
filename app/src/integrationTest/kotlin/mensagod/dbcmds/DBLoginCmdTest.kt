@@ -47,6 +47,7 @@ class DBLoginCmdTest {
 
         preregWorkspace(db, newWID, newUID, domain, testHash)
         var rs = db.query("SELECT wid,uid,domain,regcode FROM prereg WHERE wid=?", newWID)
+            .getOrThrow()
         assert(rs.next())
         assertEquals(newWID.toString(), rs.getString("wid"))
         assertEquals(newUID.toString(), rs.getString("uid"))
@@ -62,6 +63,7 @@ class DBLoginCmdTest {
 
         preregWorkspace(db, newWID2, null, domain, testHash)
         rs = db.query("SELECT wid,uid,domain,regcode FROM prereg WHERE wid=?", newWID2)
+            .getOrThrow()
         assert(rs.next())
         assertEquals(newWID2.toString(), rs.getString("wid"))
         assertNull(rs.getString("uid"))

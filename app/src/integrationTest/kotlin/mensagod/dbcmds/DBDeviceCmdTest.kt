@@ -125,7 +125,7 @@ class DBDeviceCmdTest {
         addKeyInfo(db, adminWID, devid, testPath)
 
         val rs = db.query("""SELECT wid,devid,path FROM keyinfo WHERE wid=? AND devid=?""",
-            adminWID, devid)
+            adminWID, devid).getOrThrow()
         assert(rs.next())
         assertEquals(adminWID.toString(), rs.getString("wid"))
         assertEquals(devid.toString(), rs.getString("devid"))

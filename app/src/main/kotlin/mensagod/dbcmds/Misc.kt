@@ -16,7 +16,7 @@ import mensagod.ResourceNotFoundException
  */
 fun getEncryptionPair(db: DBConn): EncryptionPair {
     val rs = db.query("""SELECT pubkey,privkey FROM orgkeys WHERE purpose = 'encrypt' 
-        ORDER BY rowid DESC LIMIT 1""")
+        ORDER BY rowid DESC LIMIT 1""").getOrThrow()
     if (!rs.next()) throw ResourceNotFoundException("org encryption keypair not found")
 
     return EncryptionPair.fromStrings(rs.getString("pubkey"),
@@ -33,7 +33,7 @@ fun getEncryptionPair(db: DBConn): EncryptionPair {
  */
 fun getPrimarySigningPair(db: DBConn): SigningPair {
     val rs = db.query("""SELECT pubkey,privkey FROM orgkeys WHERE purpose = 'sign' 
-        ORDER BY rowid DESC LIMIT 1""")
+        ORDER BY rowid DESC LIMIT 1""").getOrThrow()
     if (!rs.next()) throw ResourceNotFoundException("org encryption keypair not found")
 
     return SigningPair.fromStrings(rs.getString("pubkey"),

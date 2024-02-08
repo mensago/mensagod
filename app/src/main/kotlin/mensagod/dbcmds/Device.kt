@@ -44,7 +44,7 @@ fun addKeyInfo(db: DBConn, wid: RandomID, devid: RandomID, path: MServerPath) {
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun countDevices(db: DBConn, wid: RandomID): Int {
-    val rs = db.query("""SELECT COUNT(*) FROM iwkspc_devices WHERE wid=?""", wid)
+    val rs = db.query("""SELECT COUNT(*) FROM iwkspc_devices WHERE wid=?""", wid).getOrThrow()
     if (!rs.next()) return 0
     return rs.getInt(1)
 }
@@ -57,7 +57,7 @@ fun countDevices(db: DBConn, wid: RandomID): Int {
  */
 fun getDeviceKey(db: DBConn, wid: RandomID, devid: RandomID): CryptoString? {
     val rs = db.query("""SELECT devkey FROM iwkspc_devices WHERE wid=? AND devid=?""",
-        wid, devid)
+        wid, devid).getOrThrow()
     if (rs.next()) {
         val key = rs.getString("devkey")
         return CryptoString.fromString(key)
@@ -79,9 +79,10 @@ fun getDeviceKey(db: DBConn, wid: RandomID, devid: RandomID): CryptoString? {
 fun getDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID?): List<Pair<RandomID,CryptoString>> {
     val rs = if (devid == null) {
         db.query("""SELECT devid,devinfo FROM iwkspc_devices WHERE wid=? ORDER BY devid""", wid)
+            .getOrThrow()
     } else {
         db.query("""SELECT devid,devinfo FROM iwkspc_devices WHERE wid=? AND devid=?""",
-            wid, devid)
+            wid, devid).getOrThrow()
     }
 
     val out = mutableListOf<Pair<RandomID,CryptoString>>()
@@ -104,7 +105,7 @@ fun getDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID?): List<Pair<Random
  */
 fun getDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID): DeviceStatus {
     val rs = db.query("""SELECT status FROM iwkspc_devices WHERE wid=? AND devid=?""",
-        wid, devid)
+        wid, devid).getOrThrow()
     if (rs.next()) {
         val stat = rs.getString("status")
         return DeviceStatus.fromString(stat)
@@ -123,6 +124,7 @@ fun getDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID): DeviceStatus {
  */
 fun getKeyInfo(db: DBConn, wid: RandomID, devid: RandomID): MServerPath? {
     val rs = db.query("""SELECT path FROM keyinfo WHERE wid=? AND devid=?""", wid, devid)
+        .getOrThrow()
     if (rs.next()) {
         val infopath = rs.getString("path")
         return MServerPath.fromString(infopath)
@@ -140,7 +142,7 @@ fun getKeyInfo(db: DBConn, wid: RandomID, devid: RandomID): MServerPath? {
  */
 fun getLastDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID): Timestamp? {
     val rs = db.query("""SELECT lastlogin FROM iwkspc_devices WHERE wid=? AND devid=?""",
-        wid, devid)
+        wid, devid).getOrThrow()
     if (rs.next()) {
         val lastlogin = rs.getString("lastlogin")
         return Timestamp.fromString(lastlogin)
