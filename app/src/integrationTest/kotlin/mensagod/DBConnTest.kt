@@ -40,8 +40,8 @@ class DBConnTest {
         assertEquals("foo", rs.getString(1))
         assertEquals("bar", rs.getString(2))
 
-        assert(db.exists("SELECT wid,userid FROM testtable;"))
-        assertFalse(db.exists("SELECT wid FROM testtable WHERE wid='bar';"))
+        assert(db.exists("SELECT wid,userid FROM testtable;").getOrThrow())
+        assertFalse(db.exists("SELECT wid FROM testtable WHERE wid='bar';").getOrThrow())
 
         db.disconnect()?.let { throw it }
     }

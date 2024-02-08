@@ -81,9 +81,12 @@ fun resolveAddress(db: DBConn, addr: MAddress): RandomID? {
     // If the address is a workspace address, all we have to do is confirm the workspace exists --
     // workspace IDs are unique across an organization, not just a domain.
     if (addr.userid.type == IDType.WorkspaceID) {
-        if (db.exists("""SELECT wtype FROM workspaces WHERE wid=?""", addr.userid.value) ||
-            db.exists("""SELECT wid FROM aliases WHERE wid=?""", addr.userid.value))
+        if (db.exists("""SELECT wtype FROM workspaces WHERE wid=?""", addr.userid.value)
+                .getOrThrow() ||
+            db.exists("""SELECT wid FROM aliases WHERE wid=?""", addr.userid.value)
+                .getOrThrow()) {
             return addr.userid.toWID()!!
+        }
         return null
     }
 
