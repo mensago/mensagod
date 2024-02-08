@@ -20,7 +20,7 @@ fun addEntry(db: DBConn, entry: Entry) {
         VALUES(?,?,?,?,?)""",
         owner, entry.getFieldString("Timestamp")!!,
         entry.getFieldInteger("Index")!!, entry.getFullText(null).getOrThrow(),
-        entry.getAuthString("Hash")!!)
+        entry.getAuthString("Hash")!!).getOrThrow()
 }
 
 /**

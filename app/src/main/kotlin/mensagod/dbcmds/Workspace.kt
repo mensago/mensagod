@@ -88,7 +88,7 @@ fun addWorkspace(db: DBConn, wid: RandomID, uid: UserID?, domain: Domain, passha
         throw ResourceExistsException("$wid exists")
     db.execute("""INSERT INTO workspaces(wid, uid, domain, password, passtype, salt, passparams,
         status, wtype) VALUES(?,?,?,?,?,?,?,?,?)""",
-        wid, uid ?: "", domain, passhash, algorithm, salt, passParams, status, wtype)
+        wid, uid ?: "", domain, passhash, algorithm, salt, passParams, status, wtype).getOrThrow()
 }
 
 /**
@@ -139,5 +139,5 @@ fun resolveUserID(db: DBConn, uid: UserID): RandomID? {
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun setWorkspaceStatus(db: DBConn, wid: RandomID, status: WorkspaceStatus) {
-    db.execute("""UPDATE workspaces SET status=? WHERE wid=?""", status, wid)
+    db.execute("""UPDATE workspaces SET status=? WHERE wid=?""", status, wid).getOrThrow()
 }

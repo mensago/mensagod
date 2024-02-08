@@ -77,7 +77,7 @@ fun checkRegCode(db: DBConn, addr: MAddress, regcode: String): Pair<RandomID, Us
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun deletePrereg(db: DBConn, addr: WAddress) {
-    db.execute("DELETE FROM prereg WHERE wid=? AND domain=?", addr.id, addr.domain)
+    db.execute("DELETE FROM prereg WHERE wid=? AND domain=?", addr.id, addr.domain).getOrThrow()
 }
 
 /**
@@ -116,12 +116,12 @@ fun preregWorkspace(db: DBConn, wid: RandomID, userID: UserID?, domain: Domain, 
             throw ResourceExistsException("Workspcae-ID $wid already exists")
 
         db.execute("""INSERT INTO prereg(wid, uid, domain, regcode) VALUES(?,?,?,?)""",
-            wid, userID, domain, reghash)
+            wid, userID, domain, reghash).getOrThrow()
         return
     }
 
     if (resolveWID(db, wid) != null)
         throw ResourceExistsException("Workspace-ID $wid already exists")
     db.execute("""INSERT INTO prereg(wid, domain, regcode) VALUES(?,?,?)""", wid, domain,
-        reghash)
+        reghash).getOrThrow()
 }

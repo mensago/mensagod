@@ -3,7 +3,6 @@ package mensagod
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import java.sql.SQLException
 
 class DBConnTest {
@@ -31,9 +30,9 @@ class DBConnTest {
 
         db.execute("""CREATE TABLE testtable(
                     rowid SERIAL PRIMARY KEY,
-                    wid VARCHAR(36) NOT NULL UNIQUE, userid VARCHAR(64));""")
-        db.execute("""INSERT INTO testtable(wid,userid) VALUES('foo', 'bar');""")
-        assertThrows<SQLException> { db.execute("CREATE ;") }
+                    wid VARCHAR(36) NOT NULL UNIQUE, userid VARCHAR(64));""").getOrThrow()
+        db.execute("""INSERT INTO testtable(wid,userid) VALUES('foo', 'bar');""").getOrThrow()
+        assert(db.execute("CREATE ;").exceptionOrNull() is SQLException)
 
         val rs = db.query("SELECT wid,userid FROM testtable;")
 
@@ -56,7 +55,7 @@ class DBConnTest {
 
         db.execute("""CREATE TABLE testtable(
                     rowid SERIAL PRIMARY KEY,
-                    wid VARCHAR(36) NOT NULL UNIQUE, userid VARCHAR(64));""")
+                    wid VARCHAR(36) NOT NULL UNIQUE, userid VARCHAR(64));""").getOrThrow()
 
         db.add("""INSERT INTO testtable(wid,userid) VALUES('foo1', 'bar1');""")
         db.add("""INSERT INTO testtable(wid,userid) VALUES('foo2', 'bar2');""")

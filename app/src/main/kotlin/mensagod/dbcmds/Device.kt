@@ -21,7 +21,7 @@ fun addDevice(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString,
               devInfo: CryptoString, status: DeviceStatus) {
     val now = Timestamp()
     db.execute("""INSERT INTO iwkspc_devices(wid, devid, devkey, lastlogin, devinfo, status)
-        VALUES(?,?,?,?,?,?)""", wid, devid, devkey, now, devInfo, status)
+        VALUES(?,?,?,?,?,?)""", wid, devid, devkey, now, devInfo, status).getOrThrow()
 }
 
 /**
@@ -32,8 +32,9 @@ fun addDevice(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString,
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun addKeyInfo(db: DBConn, wid: RandomID, devid: RandomID, path: MServerPath) {
-    db.execute("""DELETE FROM keyinfo WHERE wid=? AND devid=?""", wid, devid)
+    db.execute("""DELETE FROM keyinfo WHERE wid=? AND devid=?""", wid, devid).getOrThrow()
     db.execute("""INSERT INTO keyinfo(wid, devid, path) VALUES(?,?,?) """, wid, devid, path)
+        .getOrThrow()
 }
 
 /**
@@ -156,7 +157,7 @@ fun getLastDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID): Timestamp? {
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun removeDevice(db: DBConn, wid: RandomID, devid: RandomID) {
-    db.execute("""DELETE FROM iwkspc_devices WHERE wid=? AND devid=?""", wid, devid)
+    db.execute("""DELETE FROM iwkspc_devices WHERE wid=? AND devid=?""", wid, devid).getOrThrow()
 }
 
 /**
@@ -166,7 +167,7 @@ fun removeDevice(db: DBConn, wid: RandomID, devid: RandomID) {
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun removeKeyInfo(db: DBConn, wid: RandomID, devid: RandomID) {
-    db.execute("""DELETE FROM keyinfo WHERE wid=? AND devid=?""", wid, devid)
+    db.execute("""DELETE FROM keyinfo WHERE wid=? AND devid=?""", wid, devid).getOrThrow()
 }
 
 /**
@@ -178,7 +179,7 @@ fun removeKeyInfo(db: DBConn, wid: RandomID, devid: RandomID) {
  */
 fun updateDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID, devInfo: CryptoString) {
     db.execute("""UPDATE iwkspc_devices SET devinfo=? WHERE wid=? AND devid=?""",
-        devInfo, wid, devid)
+        devInfo, wid, devid).getOrThrow()
 }
 
 /**
@@ -189,7 +190,7 @@ fun updateDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID, devInfo: Crypto
  */
 fun updateDeviceKey(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString) {
     db.execute("""UPDATE iwkspc_devices SET devkey=? WHERE wid=? AND devid=?""",
-        devkey, wid, devid)
+        devkey, wid, devid).getOrThrow()
 }
 
 /**
@@ -201,7 +202,7 @@ fun updateDeviceKey(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoSt
  */
 fun updateDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID) {
     db.execute("""UPDATE iwkspc_devices SET lastlogin=? WHERE wid=? AND devid=?""",
-        Timestamp(), wid, devid)
+        Timestamp(), wid, devid).getOrThrow()
 }
 
 /**
@@ -212,5 +213,5 @@ fun updateDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID) {
  */
 fun updateDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID, status: DeviceStatus) {
     db.execute("""UPDATE iwkspc_devices SET status=? WHERE wid=? AND devid=?""",
-        status, wid, devid)
+        status, wid, devid).getOrThrow()
 }

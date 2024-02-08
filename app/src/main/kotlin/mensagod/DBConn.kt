@@ -68,7 +68,7 @@ class DBConn {
         if (q.isEmpty()) throw EmptyDataException()
         if (!isConnected()) throw NotConnectedException()
 
-        val stmt = prepStatement(q, args)
+        val stmt = prepStatement(q, args).getOrThrow()
         return stmt.executeQuery()
     }
 
@@ -80,12 +80,16 @@ class DBConn {
      * @throws BadValueException if the query placeholder count doesn't match the query argument count
      * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
      */
-    fun execute(s: String, vararg args: Any) {
-        if (s.isEmpty()) throw EmptyDataException()
-        if (!isConnected()) throw NotConnectedException()
+    fun execute(s: String, vararg args: Any): Result<Int?> {
+        if (s.isEmpty()) return Result.failure(EmptyDataException())
+        if (!isConnected()) return Result.failure(NotConnectedException())
 
-        val stmt = prepStatement(s, args)
-        stmt.execute()
+        val stmt = prepStatement(s, args).getOrElse { return Result.failure(it) }
+        return try {
+            stmt.execute()
+            val count = stmt.updateCount
+            return Result.success(if (count < 0) null else count)
+        } catch (e : Exception) { Result.failure(e) }
     }
 
     /**
@@ -133,7 +137,7 @@ class DBConn {
         if (q.isEmpty()) throw EmptyDataException()
         if (!isConnected()) throw NotConnectedException()
 
-        val stmt = prepStatement(q, args)
+        val stmt = prepStatement(q, args).getOrThrow()
         val rs = stmt.executeQuery()
         return rs.next()
     }
@@ -145,27 +149,28 @@ class DBConn {
      * @throws BadValueException if the query placeholder count doesn't match the query argument count
      * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
      */
-    private fun prepStatement(s: String, args: Array<out Any>): PreparedStatement {
+    private fun prepStatement(s: String, args: Array<out Any>): Result<PreparedStatement> {
 
         // Make sure the ? count in s matches the number of args
         val qCount = s.split("?").size - 1
         if (qCount != args.size)
-            throw BadValueException(
-                "Parameter count $qCount does not match number of placeholders")
+            return Result.failure(BadValueException(
+                "Parameter count $qCount does not match number of placeholders"))
 
         // This is an internal call for query() and execute(). The null check is done there.
-        val out = conn!!.prepareStatement(s)
-
-        for (i in 0 until qCount) {
-            when(args[i]::class.simpleName) {
-                "ByteArray" -> out.setBytes(i+1, args[i] as ByteArray)
-                "Boolean" -> out.setBoolean(i+1, args[i] as Boolean)
-                "Int" -> out.setInt(i+1, args[i] as Int)
-                else -> out.setString(i+1, args[i].toString())
+        return try {
+            val out = conn!!.prepareStatement(s)
+            for (i in 0 until qCount) {
+                when(args[i]::class.simpleName) {
+                    "ByteArray" -> out.setBytes(i+1, args[i] as ByteArray)
+                    "Boolean" -> out.setBoolean(i+1, args[i] as Boolean)
+                    "Int" -> out.setInt(i+1, args[i] as Int)
+                    else -> out.setString(i+1, args[i].toString())
+                }
             }
+            Result.success(out)
         }
-
-        return out
+        catch (e: Exception) { Result.failure(e) }
     }
 
     companion object {
