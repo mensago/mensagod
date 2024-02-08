@@ -24,7 +24,7 @@ fun getQuotaInfo(db: DBConn, wid: RandomID): Result<Pair<Int, Int>> {
  */
 fun modifyQuotaUsage(db: DBConn, wid: RandomID, size: Int): Throwable? {
 
-    TODO("Implement modifyQuotaUsage($wid, $size)")
+    TODO("Implement modifyQuotaUsage($db, $wid, $size)")
 }
 
 /**
@@ -36,7 +36,7 @@ fun modifyQuotaUsage(db: DBConn, wid: RandomID, size: Int): Throwable? {
  * or with the connection
  */
 fun resetQuotaUsage(db: DBConn): Throwable? {
-    TODO("Implement resetQuotaUsage()")
+    TODO("Implement resetQuotaUsage($db)")
 }
 
 /**

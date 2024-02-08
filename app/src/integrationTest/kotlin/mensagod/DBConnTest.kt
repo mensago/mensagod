@@ -17,7 +17,7 @@ class DBConnTest {
         assert(db.isConnected())
         db.disconnect()
         assert(!db.isConnected())
-        db.connect()
+        db.connect().getOrThrow()
         assert(db.isConnected())
     }
 
