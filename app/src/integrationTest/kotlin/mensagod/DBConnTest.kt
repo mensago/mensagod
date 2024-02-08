@@ -60,7 +60,7 @@ class DBConnTest {
         db.add("""INSERT INTO testtable(wid,userid) VALUES('foo1', 'bar1');""")?.let { throw it }
         db.add("""INSERT INTO testtable(wid,userid) VALUES('foo2', 'bar2');""")?.let { throw it }
         db.add("""INSERT INTO testtable(wid,userid) VALUES('foo3', 'bar3');""")?.let { throw it }
-        db.executeBatch()
+        db.executeBatch()?.let { throw it }
 
         val rs = db.query("SELECT COUNT(*) FROM testtable;")
         assert(rs.next())
