@@ -177,6 +177,7 @@ class DBConn {
                     "ByteArray" -> out.setBytes(i+1, args[i] as ByteArray)
                     "Boolean" -> out.setBoolean(i+1, args[i] as Boolean)
                     "Int" -> out.setInt(i+1, args[i] as Int)
+                    "Long" -> out.setLong(i+1, args[i] as Long)
                     else -> out.setString(i+1, args[i].toString())
                 }
             }
