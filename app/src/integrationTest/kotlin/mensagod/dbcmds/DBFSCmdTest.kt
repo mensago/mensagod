@@ -30,6 +30,9 @@ class DBFSCmdTest {
         // This should be different from the actual value -- we are expected
         // to notify the system of any changes while the server is running
         assertEquals(info.first, getQuotaInfo(db, userWID).getOrThrow().first)
+
+        resetQuotaUsage(db)?.let { throw it }
+        assertEquals(2048, getQuotaInfo(db, userWID).getOrThrow().first)
     }
 
     @Test
