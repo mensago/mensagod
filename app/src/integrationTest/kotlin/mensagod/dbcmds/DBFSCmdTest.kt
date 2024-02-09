@@ -2,6 +2,7 @@ package mensagod.dbcmds
 
 import libkeycard.RandomID
 import mensagod.*
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.nio.file.Paths
 
@@ -20,6 +21,11 @@ class DBFSCmdTest {
 
         // Set the quota for 2MB
         setQuota(db, userWID, 0x200_000)?.let { throw it }
+
+        val rs = db.query("SELECT usage,quota FROM quotas WHERE wid=?", userWID).getOrThrow()
+        assert(rs.next())
+        assertEquals(0x100_000, rs.getLong("usage"))
+        assertEquals(0x200_000, rs.getLong("quota"))
     }
     // TODO: Implement quota tests
 }
