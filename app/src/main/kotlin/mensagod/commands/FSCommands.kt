@@ -58,7 +58,7 @@ fun commandUpload(state: ClientSession) {
         return
     }
 
-    val fileSize = try { state.message.data["Size"]!!.toInt() }
+    val fileSize = try { state.message.data["Size"]!!.toLong() }
     catch (e: Exception) {
         ServerResponse.sendBadRequest("Invalid value for Size", state.conn)
         return
