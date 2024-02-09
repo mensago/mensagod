@@ -36,6 +36,25 @@ class DBFSCmdTest {
     }
 
     @Test
+    fun modifyQuotaUsageTest() {
+        val setupData = setupTest("dbcmds.modifyQuotaUsage")
+        val db = DBConn()
+        setupUser(db)
+
+        val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
+        val userTopPath = Paths.get(setupData.testPath, "topdir", "wsp", userWID.toString())
+        userTopPath.toFile().mkdirs()
+        makeTestFile(userTopPath.toString(), fileSize = 3000)
+
+        // Usage hasn't been loaded, so the value should be ignored here.
+        assertEquals(3000, modifyQuotaUsage(db, userWID, 1000).getOrThrow())
+        makeTestFile(userTopPath.toString(), fileSize = 1000)
+        assertEquals(4000, modifyQuotaUsage(db, userWID, 1000).getOrThrow())
+
+        assertEquals(4000, getQuotaInfo(db, userWID).getOrThrow().first)
+    }
+
+    @Test
     fun setQuotaTest() {
         val setupData = setupTest("dbcmds.setQuota")
         val db = DBConn()
@@ -75,6 +94,4 @@ class DBFSCmdTest {
         info = getQuotaInfo(db, userWID).getOrThrow()
         assertEquals(2000, info.first)
     }
-
-    // TODO: Implement quota tests
 }
