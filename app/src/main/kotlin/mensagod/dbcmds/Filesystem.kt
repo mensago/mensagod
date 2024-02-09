@@ -105,14 +105,15 @@ fun resetQuotaUsage(db: DBConn): Throwable? {
  * or with the connection
  * @throws ResourceNotFoundException Returned if the workspace doesn't exist
  */
-fun setQuota(db: DBConn, wid: RandomID, quota: Int): Throwable? {
+fun setQuota(db: DBConn, wid: RandomID, quota: Long): Throwable? {
     val rows = db.execute("UPDATE quotas SET quota=? WHERE wid=?", quota, wid)
         .getOrElse { return it }
 
     // If we made a change, we're done here
-    if (rows != null) return null
+    if ((rows ?: -1) > 0) return null
 
-    return addQuotaFromDisk(db, wid).exceptionOrNull()
+    addQuotaFromDisk(db, wid).getOrElse { return it }
+    return db.execute("UPDATE quotas SET quota=? WHERE wid=?", quota, wid).exceptionOrNull()
 }
 
 /**
