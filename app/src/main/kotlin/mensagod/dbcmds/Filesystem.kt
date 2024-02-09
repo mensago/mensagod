@@ -8,6 +8,14 @@ import mensagod.fs.LocalFS
  * Helper function for adding a quota record to the database.
  */
 private fun addQuotaFromDisk(db: DBConn, wid: RandomID): Result<Pair<Long, Long>> {
+    val userWidPath = MServerPath("/ wsp $wid")
+    val handle = LocalFS.get().entry(userWidPath)
+    if (!handle.exists().getOrElse { return Result.failure(it) }) {
+        val status = try { checkWorkspace(db, wid) }
+        catch (e: Exception) { return Result.failure(e) }
+        if (status == null) return Result.failure(ResourceNotFoundException())
+    }
+
     val usage = LocalFS.get().getDiskUsage(MServerPath("/ wsp $wid"))
         .getOrElse { return Result.failure(it) }
     val defaultQuota = ServerConfig.get().getInteger("global.default_quota")!! * 1_048_576L
@@ -101,22 +109,10 @@ fun setQuota(db: DBConn, wid: RandomID, quota: Int): Throwable? {
     val rows = db.execute("UPDATE quotas SET quota=? WHERE wid=?", quota, wid)
         .getOrElse { return it }
 
-    // We made a change, so we're done here
+    // If we made a change, we're done here
     if (rows != null) return null
 
-    // No change made, so we need to update things
-    val lfs = LocalFS.get()
-    val userWidPath = MServerPath("/ wsp $wid")
-    val handle = lfs.entry(userWidPath)
-    if (!handle.exists().getOrElse { return it }) {
-        // If the directory for a workspace doesn't exist, check to see if it's at least an
-        // actual workspace somewhere in the system
-        val status = try { checkWorkspace(db, wid) } catch (e: Exception) { return e }
-        if (status == null) return ResourceNotFoundException()
-    }
-    val usage = lfs.getDiskUsage(userWidPath).getOrElse { return it }
-    return db.execute("INSERT INTO quotas(wid, usage, quota) VALUES(?,?,?)", wid, usage, quota)
-        .exceptionOrNull()
+    return addQuotaFromDisk(db, wid).exceptionOrNull()
 }
 
 /**
@@ -128,5 +124,11 @@ fun setQuota(db: DBConn, wid: RandomID, quota: Int): Throwable? {
  * or with the connection
  */
 fun setQuotaUsage(db: DBConn, wid: RandomID, usage: Long): Throwable? {
-    TODO("Implement setQuota($db, $wid, $usage)")
+    val rows = db.execute("UPDATE quotas SET usage=? WHERE wid=?", usage, wid)
+        .getOrElse { return it }
+
+    // If we made a change, we're done here
+    if (rows != null) return null
+
+    return addQuotaFromDisk(db, wid).exceptionOrNull()
 }
