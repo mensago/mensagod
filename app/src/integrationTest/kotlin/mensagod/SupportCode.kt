@@ -92,6 +92,43 @@ val ADMIN_PROFILE_DATA = mutableMapOf(
     "keycard.fingerprint" to "BLAKE2B-256:`-l^-<lxieg9Or0o|8sAl4owSwG(_^yN3TNc5%o(",
 )
 
+val USER_PROFILE_DATA = mutableMapOf(
+    "name" to "Corbin Simons",
+    "uid" to "csimons",
+    "wid" to "4418bf6c-000b-4bb3-8111-316e72030468",
+    "domain" to "example.com",
+    "address" to "csimons/example.com",
+    "waddress" to "4418bf6c-000b-4bb3-8111-316e72030468/example.com",
+    "password" to "MyS3cretPassw*rd",
+    "passhash" to "\$argon2id\$v=19\$m=65536,t=2,p=1\$ejzAtaom5H1y6wnLH" +
+            "vrb7g\$ArzyFkg5KH5rp8fa6/7iLp/kAVLh9kaSJQfUKMnHWRM",
+    "crencryption.public" to "CURVE25519:j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph",
+    "crencryption.private" to "CURVE25519:55t6A0y%S?{7c47p(R@C*X#at9Y`q5(Rc#YBS;r}",
+    "crsigning.public" to "ED25519:d0-oQb;{QxwnO{=!|^62+E=UYk2Y3mr2?XKScF4D",
+    "crsigning.private" to "ED25519:ip52{ps^jH)t\$k-9bc_RzkegpIW?}FFe~BX&<V}9",
+    "encryption.public" to "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
+    "encryption.private" to "CURVE25519:4A!nTPZSVD#tm78d=-?1OIQ43{ipSpE;@il{lYkg",
+    "signing.public" to "ED25519:k^GNIJbl3p@N=j8diO-wkNLuLcNF6#JF=@|a}wFE",
+    "signing.private" to "ED25519:;NEoR>t9n3v%RbLJC#*%n4g%oxqzs)&~k+fH4uqi",
+    "storage" to "XSALSA20:(bk%y@WBo3&}(UeXeHeHQ|1B}!rqYF20DiDG+9^Q",
+    "folder" to "XSALSA20:-DfH*_9^tVtb(z9j3Lu@_(=ow7q~8pq^<;;f%2_B",
+    "device.public" to "CURVE25519:94|@e{Kpsu_Qe{L@_U;QnOHz!eJ5zz?V@>+K)6F}",
+    "device.private" to "CURVE25519:!x2~_pSSCx1M\$n7{QBQ5e*%~ytBzKL_C(bCviqYh",
+    "devid" to "fd21b07b-6112-4a89-b998-a1c55755d9d7",
+
+    "name.formatted" to "Corbin Simons",
+    "name.given" to "Corbin",
+    "name.family" to "Simons",
+    "gender" to "Male",
+    "website.personal" to "https://www.example.com",
+    "website.mensago" to "https://mensago.org",
+    "phone.mobile" to "555-555-1234",
+    "birthday" to "19750415",
+    "anniversary" to "0714",
+    "mastodon" to "@corbinsimons@example.com",
+    "email.personal" to "corbin.simons@example.com",
+)
+
 /** Returns the canonical version of the path specified. */
 fun getPathForTest(testName: String): String? {
     return try {
@@ -292,7 +329,22 @@ fun setupAdmin(db: DBConn) {
         WorkspaceStatus.Active,WorkspaceType.Individual)
     addDevice(db, adminWID, devid, devkey, fakeInfo, DeviceStatus.Registered)
     deletePrereg(db, WAddress.fromParts(adminWID, gServerDomain))
+}
 
+/**
+ * Registers a regular user account and populates its workspace with test data.
+ */
+fun setupUser(db: DBConn) {
+    val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
+    val userUID = UserID.fromString(USER_PROFILE_DATA["uid"])!!
+    val devid = RandomID.fromString(USER_PROFILE_DATA["devid"])!!
+    val devkey = CryptoString.fromString(USER_PROFILE_DATA["device.public"]!!)!!
+    val fakeInfo = CryptoString.fromString("XSALSA20:abcdefg1234567890")!!
+    addWorkspace(db, userWID, userUID, gServerDomain, USER_PROFILE_DATA["passhash"]!!,
+        "argon2id", "ejzAtaom5H1y6wnLHvrb7g", "m=65536,t=2,p=1",
+        WorkspaceStatus.Active,WorkspaceType.Individual)
+    addDevice(db, userWID, devid, devkey, fakeInfo, DeviceStatus.Registered)
+    deletePrereg(db, WAddress.fromParts(userWID, gServerDomain))
 }
 
 /**
@@ -321,12 +373,12 @@ fun setupTest(name: String): SetupData {
     listOf("wsp","out","tmp","keys").forEach { lfs.entry(MServerPath("/ $it")).makeDirectory() }
 
     val config = ServerConfig.load().getOrThrow()
+    gServerDomain = Domain.fromString(config.getString("global.domain"))!!
     resetDB(config).getOrThrow()
     DBConn.initialize(config)?.let { throw it }
     val db = DBConn().connect().getOrThrow()
     val serverData = initDB(db.getConnection()!!)
     setupAdmin(db)
-    gServerDomain = Domain.fromString(config.getString("global.domain"))!!
 
 
     return SetupData(config, serverData, testpath)
