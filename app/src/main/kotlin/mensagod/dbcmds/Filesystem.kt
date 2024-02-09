@@ -1,10 +1,7 @@
 package mensagod.dbcmds
 
 import libkeycard.RandomID
-import mensagod.DBConn
-import mensagod.MServerPath
-import mensagod.NotConnectedException
-import mensagod.ResourceNotFoundException
+import mensagod.*
 import mensagod.fs.LocalFS
 
 /**
@@ -14,8 +11,31 @@ import mensagod.fs.LocalFS
  * @throws java.sql.SQLException Returned for database problems, most likely either with your query
  * or with the connection
  */
-fun getQuotaInfo(db: DBConn, wid: RandomID): Result<Pair<Int, Int>> {
-    TODO("Implement dbcmds.getQuotaInfo($db, $wid")
+fun getQuotaInfo(db: DBConn, wid: RandomID): Result<Pair<Long, Long>> {
+    val rs = db.query("SELECT usage,quota FROM quotas WHERE wid=?", wid)
+        .getOrElse { return Result.failure(it) }
+
+    val widPath = MServerPath("/ wsp $wid")
+    if (!rs.next()) {
+        // No rows affected, so the user has no quota
+        val outUsage = LocalFS.get().getDiskUsage(widPath).getOrElse { return Result.failure(it) }
+        setQuotaUsage(db, wid, outUsage)?.let { return Result.failure(it) }
+        return Result.success(Pair(outUsage, 0L))
+    }
+    val dbUsage = rs.getLong("usage")
+    val dbQuota = rs.getLong("quota")
+    if (dbUsage >= 0) { return Result.success(Pair(dbUsage, dbQuota)) }
+
+    // We got this far, which means that the usage has not yet been loaded since the server was
+    // started.
+    val fsUsage = LocalFS.get().getDiskUsage(widPath).getOrElse { return Result.failure(it) }
+    val defaultQuota = ServerConfig.get().getInteger("global.default_quota")!! * 1_048_576L
+    db.execute("INSERT INTO quotas(wid, usage, quota) VALUES(?,?,?)", wid, fsUsage, defaultQuota)
+        .getOrElse { return Result.failure(it) }
+
+    setQuotaUsage(db, wid, fsUsage)?.let { return Result.failure(it) }
+
+    return Result.success(Pair(fsUsage, defaultQuota))
 }
 
 /**
@@ -83,6 +103,6 @@ fun setQuota(db: DBConn, wid: RandomID, quota: Int): Throwable? {
  * @throws java.sql.SQLException Returned for database problems, most likely either with your query
  * or with the connection
  */
-fun setQuotaUsage(db: DBConn, wid: RandomID, usage: Int): Throwable? {
+fun setQuotaUsage(db: DBConn, wid: RandomID, usage: Long): Throwable? {
     TODO("Implement setQuota($db, $wid, $usage)")
 }
