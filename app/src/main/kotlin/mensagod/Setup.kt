@@ -114,7 +114,7 @@ fun resetDB(config: ServerConfig): Result<Connection> {
     */
     stmt.addBatch(
         """CREATE TABLE updates(rowid SERIAL PRIMARY KEY, rid CHAR(36) NOT NULL, wid CHAR(36) NOT NULL,
-        update_type INTEGER, update_data VARCHAR(2048), unixtime BIGINT, devid CHAR(36) NOT NULL);"""
+        update_type VARCHAR(16), update_data VARCHAR(2048), unixtime BIGINT, devid CHAR(36) NOT NULL);"""
     )
 
     stmt.addBatch(
