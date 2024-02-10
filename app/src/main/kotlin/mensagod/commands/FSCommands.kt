@@ -163,26 +163,31 @@ fun commandUpload(state: ClientSession) {
         return
     }
 
-    // TODO: Install temp file here
+    // TODO: Handle specific error states moving temp file to its final location
+    tempHandle.moveTo(uploadPath)?.let {
+        logError("commandUpload: Error installing temp file: $it")
+        ServerResponse.sendInternalError("Server error finishing upload", state.conn)
+    }
     val realName = ""
 
+    val unixTime = System.currentTimeMillis() / 1000L
     if (replacesPath != null) {
         // TODO: Lock and delete file
-        // TODO: finish data for update record here
+
         addUpdateRecord(db, state.wid!!, UpdateRecord(
-            RandomID.generate(), UpdateType.Replace, "add replaces path here",
-            "some time stamp", state.devid!!
+            RandomID.generate(), UpdateType.Replace, "$replacesPath:$uploadPath",
+            unixTime.toString(), state.devid!!
         ))
     } else {
-        modifyQuotaUsage(db, state.wid!!, fileSize)?.let {
+        modifyQuotaUsage(db, state.wid!!, fileSize).getOrElse {
             logError("commandUpload: Error adjusting quota usage: $it")
             ServerResponse.sendInternalError("Server account quota error", state.conn)
             return
         }
-        // TODO: finish data for update record here
+
         addUpdateRecord(db, state.wid!!, UpdateRecord(
-            RandomID.generate(), UpdateType.Create, "add create path here",
-            "some time stamp", state.devid!!
+            RandomID.generate(), UpdateType.Create, uploadPath.toString(),
+            unixTime.toString(), state.devid!!
         ))
     }
 
