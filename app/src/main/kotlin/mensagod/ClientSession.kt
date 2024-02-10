@@ -173,7 +173,7 @@ class ClientSession(val conn: Socket): SessionState() {
      * specified file offset.
      */
     fun readFileData(fileSize: Long, handle: LocalFSHandle, offset: Long?): Throwable? {
-        var remaining = fileSize
+        var remaining = fileSize - (offset ?: 0)
 
         try {
             FileUtils.touch(handle.getFile())

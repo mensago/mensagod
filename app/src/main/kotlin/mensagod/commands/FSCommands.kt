@@ -181,7 +181,6 @@ fun commandUpload(state: ClientSession) {
         logError("commandUpload: Error installing temp file: $it")
         ServerResponse.sendInternalError("Server error finishing upload", state.conn)
     }
-    val realName = ""
 
     val unixTime = System.currentTimeMillis() / 1000L
     if (replacesPath != null) {
@@ -205,7 +204,7 @@ fun commandUpload(state: ClientSession) {
     }
 
     val ok = ServerResponse(200, "OK")
-    ok.data["FileName"] = realName
+    ok.data["FileName"] = tempHandle.path.basename()
     ok.sendCatching(state.conn,
         "commandUpload: Couldn't send confirmation response for wid = ${state.wid}")
 }
