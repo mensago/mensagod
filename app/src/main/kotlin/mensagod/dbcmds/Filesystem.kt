@@ -1,11 +1,22 @@
 package mensagod.dbcmds
 
+import keznacl.BadValueException
 import libkeycard.RandomID
 import mensagod.*
 import mensagod.fs.LocalFS
+import java.io.IOException
 
 /**
  * Helper function for adding a quota record to the database.
+ *
+ * @throws ResourceNotFoundException Returned if the workspace doesn't exist
+ * @throws IOException Returned if an I/O error occurs getting disk usage
+ * @throws BadValueException Returned if given a bad path
+ * @throws SecurityException Returned if a security manager exists and denies read access to the
+ * file or directory
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with
+ * the connection
  */
 private fun addQuotaFromDisk(db: DBConn, wid: RandomID): Result<Pair<Long, Long>> {
     val userWidPath = MServerPath("/ wsp $wid")
@@ -28,9 +39,14 @@ private fun addQuotaFromDisk(db: DBConn, wid: RandomID): Result<Pair<Long, Long>
 /**
  * Returns a pair of integers representing the current disk usage and quota size.
  *
- * @throws NotConnectedException Returned if not connected to the database
- * @throws java.sql.SQLException Returned for database problems, most likely either with your query
- * or with the connection
+ * @throws ResourceNotFoundException Returned if the workspace doesn't exist
+ * @throws IOException Returned if an I/O error occurs getting disk usage
+ * @throws BadValueException Returned if given a bad path
+ * @throws SecurityException Returned if a security manager exists and denies read access to the
+ * file or directory
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with
+ * the connection
  */
 fun getQuotaInfo(db: DBConn, wid: RandomID): Result<Pair<Long, Long>> {
     val rs = db.query("SELECT usage,quota FROM quotas WHERE wid=?", wid)
@@ -57,9 +73,14 @@ fun getQuotaInfo(db: DBConn, wid: RandomID): Result<Pair<Long, Long>> {
  * server started, the size parameter will be ignored and quota usage will be set from actual usage
  * on disk.
  *
- * @throws NotConnectedException Returned if not connected to the database
- * @throws java.sql.SQLException Returned for database problems, most likely either with your query
- * or with the connection
+ * @throws ResourceNotFoundException Returned if the workspace doesn't exist
+ * @throws IOException Returned if an I/O error occurs getting disk usage
+ * @throws BadValueException Returned if given a bad path
+ * @throws SecurityException Returned if a security manager exists and denies read access to the
+ * file or directory
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with
+ * the connection
  */
 fun modifyQuotaUsage(db: DBConn, wid: RandomID, size: Long): Result<Long> {
     val rs = db.query("SELECT usage FROM quotas WHERE wid=?", wid)
@@ -100,10 +121,14 @@ fun resetQuotaUsage(db: DBConn): Throwable? {
 /**
  * Sets the disk quota for a workspace to the specified number of bytes.
  *
- * @throws NotConnectedException Returned if not connected to the database
- * @throws java.sql.SQLException Returned for database problems, most likely either with your query
- * or with the connection
  * @throws ResourceNotFoundException Returned if the workspace doesn't exist
+ * @throws IOException Returned if an I/O error occurs getting disk usage
+ * @throws BadValueException Returned if given a bad path
+ * @throws SecurityException Returned if a security manager exists and denies read access to the
+ * file or directory
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with
+ * the connection
  */
 fun setQuota(db: DBConn, wid: RandomID, quota: Long): Throwable? {
     val rows = db.execute("UPDATE quotas SET quota=? WHERE wid=?", quota, wid)
@@ -120,9 +145,14 @@ fun setQuota(db: DBConn, wid: RandomID, quota: Long): Throwable? {
  * Sets the disk quota for a workspace to the specified number of bytes. If the usage has not been
  * updated since boot, the total is ignored and the actual value from disk is used.
  *
- * @throws NotConnectedException Returned if not connected to the database
- * @throws java.sql.SQLException Returned for database problems, most likely either with your query
- * or with the connection
+ * @throws ResourceNotFoundException Returned if the workspace doesn't exist
+ * @throws IOException Returned if an I/O error occurs getting disk usage
+ * @throws BadValueException Returned if given a bad path
+ * @throws SecurityException Returned if a security manager exists and denies read access to the
+ * file or directory
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with
+ * the connection
  */
 fun setQuotaUsage(db: DBConn, wid: RandomID, usage: Long): Throwable? {
     val rows = db.execute("UPDATE quotas SET usage=? WHERE wid=?", usage, wid)
