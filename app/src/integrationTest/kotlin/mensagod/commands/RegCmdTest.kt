@@ -87,7 +87,7 @@ class RegCmdTest {
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
-            assertReturnCode(201, response)
+            response.assertReturnCode(201)
             assertEquals("csimons", response.data["User-ID"])
             assertEquals(gServerDomain.toString(), response.data["Domain"])
         }.run()

@@ -41,7 +41,7 @@ class LoginCmdTest {
                 LoginState.AwaitingDeviceID), ::commandDevice) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
-            assertReturnCode(100, response)
+            response.assertReturnCode(100)
             response.checkFields(listOf(Pair("Challenge", true)))
 
             // The challenge from the server is expected to be Base85-encoded random bytes that are
@@ -61,7 +61,7 @@ class LoginCmdTest {
             ))
             req.send(socket.getOutputStream())
             response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
-            assertReturnCode(200, response)
+            response.assertReturnCode(200)
 
         }.run()
 
@@ -91,7 +91,7 @@ class LoginCmdTest {
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
-            assertReturnCode(100, response)
+            response.assertReturnCode(100)
             assert(response.checkFields(listOf(
                 Pair("Response", true),
                 Pair("Password-Algorithm", true),
@@ -115,7 +115,7 @@ class LoginCmdTest {
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
-            assertReturnCode(400, response)
+            response.assertReturnCode(400)
         }.run()
 
         // Test Case #3: Decryption failure
@@ -132,7 +132,7 @@ class LoginCmdTest {
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
-            assertReturnCode(306, response)
+            response.assertReturnCode(306)
         }.run()
 
         // Test Case #4: Bad login state
@@ -146,7 +146,7 @@ class LoginCmdTest {
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
-            assertReturnCode(400, response)
+            response.assertReturnCode(400)
         }.run()
     }
 
@@ -159,7 +159,7 @@ class LoginCmdTest {
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
-            assertReturnCode(200, response)
+            response.assertReturnCode(200)
         }.run()
 
     }
@@ -178,7 +178,7 @@ class LoginCmdTest {
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
-            assertReturnCode(100, response)
+            response.assertReturnCode(100)
             assert(response.data.isEmpty())
         }.run()
 
@@ -191,7 +191,7 @@ class LoginCmdTest {
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
-            assertReturnCode(402, response)
+            response.assertReturnCode(402)
             assert(response.data.isEmpty())
         }.run()
     }

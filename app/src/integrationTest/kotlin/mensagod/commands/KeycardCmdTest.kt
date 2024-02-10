@@ -51,7 +51,7 @@ class KeycardCmdTest {
             val socket = Socket(InetAddress.getByName("localhost"), port)
             var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
-            assertReturnCode(100, response)
+            response.assertReturnCode(100)
             assert(response.data.containsKey("Organization-Signature"))
             rootEntry.run {
                 addAuthString("Organization-Signature",
@@ -71,7 +71,7 @@ class KeycardCmdTest {
             )).send(socket.getOutputStream())
 
             response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
-            assertReturnCode(200, response)
+            response.assertReturnCode(200)
         }.run()
 
         val keycard = Keycard.new("User")!!
@@ -89,7 +89,7 @@ class KeycardCmdTest {
             val socket = Socket(InetAddress.getByName("localhost"), port)
             var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
-            assertReturnCode(100, response)
+            response.assertReturnCode(100)
             assert(response.data.containsKey("Organization-Signature"))
             newEntry.run {
                 addAuthString("Organization-Signature",
@@ -109,7 +109,7 @@ class KeycardCmdTest {
             )).send(socket.getOutputStream())
 
             response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
-            assertReturnCode(200, response)
+            response.assertReturnCode(200)
         }.run()
     }
 }
