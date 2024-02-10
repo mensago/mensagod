@@ -178,7 +178,7 @@ fun commandUpload(state: ClientSession) {
 
     val unixTime = System.currentTimeMillis() / 1000L
     if (replacesPath != null) {
-        // TODO: Lock and delete file
+        lfs.withLock(replacesPath) { lfs.entry(it).delete() }
 
         addUpdateRecord(db, state.wid!!, UpdateRecord(
             RandomID.generate(), UpdateType.Replace, "$replacesPath:$uploadPath",
