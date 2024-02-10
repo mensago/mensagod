@@ -4,6 +4,7 @@ import keznacl.hash
 import keznacl.hashFile
 import libkeycard.RandomID
 import mensagod.*
+import mensagod.dbcmds.setQuota
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.net.InetAddress
@@ -79,7 +80,63 @@ class FSCmdTest {
             assertEquals(1024, uploadedFile.length())
             assert(hashFile(uploadedFile.path.toString()).getOrThrow() == fileHash)
         }.run()
+    }
 
-        // TODO: Finish uploadTest test cases
+    @Test
+    fun uploadReplaceTest() {
+        // TODO: Implement uploadReplaceTest()
+    }
+
+    @Test
+    fun uploadErrorsTest() {
+        val setupData = setupTest("commands.uploadErrorsTest")
+        ServerConfig.load().getOrThrow()
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+
+        val adminTopPath = Paths.get(setupData.testPath, "topdir", "wsp", adminWID.toString())
+        adminTopPath.toFile().mkdirs()
+        makeTestFile(adminTopPath.toString(), "upload.txt", 4096)
+        val tempPath = Paths.get(adminTopPath.toString(), "upload.txt").toString()
+        val fileHash = hashFile(tempPath).getOrThrow()
+        val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+        setQuota(DBConn(), adminWID, 8192)
+
+        // Test Case #1: Quota limit
+        CommandTest("uploadErrors.1",
+            SessionState(ClientRequest("UPLOAD", mutableMapOf(
+                "Size" to "10240",
+                "Hash" to fileHash.toString(),
+                "Path" to "/ wsp $adminWID",
+            )), adminWID, LoginState.LoggedIn, devid), ::commandUpload) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(409)
+        }.run()
+
+        // Test Case #2: Hash mismatch
+        CommandTest("uploadErrors.2",
+            SessionState(ClientRequest("UPLOAD", mutableMapOf(
+                "Size" to "1024",
+                "Hash" to "BLAKE2B-256:asdcvbed",
+                "Path" to "/ wsp $adminWID",
+            )), adminWID, LoginState.LoggedIn, devid), ::commandUpload) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(100)
+
+            val ostream = socket.getOutputStream()
+            ostream.write("0".repeat(1024).encodeToByteArray())
+            ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(410)
+        }.run()
+
+        // Test Case #3: Destination doesn't exist
+        CommandTest("uploadErrors.3",
+            SessionState(ClientRequest("UPLOAD", mutableMapOf(
+                "Size" to "1024",
+                "Hash" to fileHash.toString(),
+                "Path" to "/ wsp $adminWID 12db8776-cc91-4ed9-8dbc-efcc3bf904ac",
+            )), adminWID, LoginState.LoggedIn, devid), ::commandUpload) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(404)
+        }.run()
+
     }
 }
