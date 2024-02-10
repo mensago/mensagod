@@ -9,6 +9,7 @@ import mensagod.commands.ClientRequest
 import mensagod.commands.ServerResponse
 import mensagod.dbcmds.resolveAddress
 import mensagod.fs.LocalFSHandle
+import org.apache.commons.io.FileUtils
 import java.io.RandomAccessFile
 import java.net.Socket
 
@@ -175,8 +176,9 @@ class ClientSession(val conn: Socket): SessionState() {
         var remaining = fileSize
 
         try {
-            val file = RandomAccessFile(handle.getFile(), "w")
-            if (offset != null) file.seek(offset)
+            FileUtils.touch(handle.getFile())
+            val rfile = RandomAccessFile(handle.getFile(), "rw")
+            if (offset != null) rfile.seek(offset)
 
             val istream = conn.getInputStream()
             val buffer = ByteArray(65536)
@@ -184,12 +186,12 @@ class ClientSession(val conn: Socket): SessionState() {
                 if (remaining < 65536) {
                     val lastChunk = try { istream.readNBytes(remaining.toInt()) }
                     catch (e: Exception) { return e }
-                    try { file.write(lastChunk) } catch (e: Exception) { return e }
+                    try { rfile.write(lastChunk) } catch (e: Exception) { return e }
                     break
                 }
                 val bytesRead = try { istream.read(buffer) } catch (e: Exception) { return e }
                 remaining -= bytesRead
-                file.write(buffer)
+                rfile.write(buffer)
             }
         } catch (e: Exception) { return e }
         return null
