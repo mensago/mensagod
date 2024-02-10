@@ -12,6 +12,7 @@ import java.net.Socket
 import java.nio.file.Paths
 import java.time.Instant
 import java.util.*
+import kotlin.io.path.exists
 
 class FSCmdTest {
 
@@ -28,7 +29,7 @@ class FSCmdTest {
         val fileHash = hash(fileData).getOrThrow()
         val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
 
-        CommandTest("upload.1",
+        CommandTest("uploadError.1",
             SessionState(ClientRequest("UPLOAD", mutableMapOf(
                 "Size" to "1024",
                 "Hash" to fileHash.toString(),
@@ -56,7 +57,7 @@ class FSCmdTest {
         tempFile.createNewFile()
         tempFile.writeText("0".repeat(512))
 
-        CommandTest("upload.2",
+        CommandTest("uploadError.2",
             SessionState(ClientRequest("UPLOAD", mutableMapOf(
                 "Size" to "1024",
                 "Hash" to fileHash.toString(),
@@ -84,6 +85,38 @@ class FSCmdTest {
 
     @Test
     fun uploadReplaceTest() {
+        val setupData = setupTest("commands.uploadReplaceTest")
+        ServerConfig.load().getOrThrow()
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+
+        // Test Case #1: Successful replace
+        val adminTopPath = Paths.get(setupData.testPath, "topdir", "wsp", adminWID.toString())
+        adminTopPath.toFile().mkdirs()
+        val replacedInfo = makeTestFile(adminTopPath.toString(), fileSize = 10240)
+        val fileData = "0".repeat(1024).encodeToByteArray()
+        val fileHash = hash(fileData).getOrThrow()
+        val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+
+        CommandTest("uploadReplace.1",
+            SessionState(ClientRequest("UPLOAD", mutableMapOf(
+                "Size" to "1024",
+                "Hash" to fileHash.toString(),
+                "Path" to "/ wsp $adminWID",
+                "Replaces" to "/ wsp $adminWID ${replacedInfo.first}"
+            )), adminWID, LoginState.LoggedIn, devid), ::commandUpload) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(100)
+
+            val ostream = socket.getOutputStream()
+            ostream.write(fileData)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            val replacedPath = Paths.get(adminTopPath.toString(), replacedInfo.first)
+            assert(!replacedPath.exists())
+            val newPath = Paths.get(adminTopPath.toString(), response.data["FileName"]!!)
+            assert(newPath.exists())
+
+        }.run()
         // TODO: Implement uploadReplaceTest()
     }
 
