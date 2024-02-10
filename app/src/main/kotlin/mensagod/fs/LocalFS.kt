@@ -168,6 +168,8 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
  */
 class LocalFS private constructor(val basePath: Path) {
 
+    private val locks = mutableSetOf<String>()
+
     /**
      * Converts the server path to a local filesystem path format. The output path is relative to
      * the local path provided, e.g '/ wsp foo' relative to '/var/mensagod' would become
@@ -207,6 +209,22 @@ class LocalFS private constructor(val basePath: Path) {
 
         return try { Result.success(FileUtils.sizeOf(pathFile)) }
         catch (e: Exception) { Result.failure(e) }
+    }
+
+    /** Creates a lock on a filesystem entry. */
+    fun lock(path: MServerPath) = synchronized(locks) { locks.add(path.toString()) }
+
+    /** Removes the lock on a filesystem entry. */
+    fun unlock(path: MServerPath) = synchronized(locks) { locks.remove(path.toString()) }
+
+    /**
+     * Runs a block of code while locking a filesystem entity.
+     */
+    fun withLock(path: MServerPath, lockfun: (p: MServerPath) -> Throwable?): Throwable? {
+        lock(path)
+        val out = lockfun(path)
+        unlock(path)
+        return out
     }
 
     companion object {
