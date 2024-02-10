@@ -132,13 +132,20 @@ fun commandUpload(state: ClientSession) {
         return
     }
 
-    val tempPath = if (resumeOffset != null) {
-        MServerPath.fromString("/ tmp ${state.wid!!} ${state.message.data["TempName"]!!}")!!
-    } else {
-        val tempName =
-            "${Instant.now().epochSecond}.$fileSize.${UUID.randomUUID().toString().lowercase()}"
-        MServerPath.fromString("/ tmp ${state.wid!!} $tempName")!!
+    val tempName = if (resumeOffset != null)
+        state.message.data["TempName"]!!
+    else
+        "${Instant.now().epochSecond}.$fileSize.${UUID.randomUUID().toString().lowercase()}"
+    val tempPath = MServerPath.fromString("/ tmp ${state.wid!!} $tempName")!!
+
+    try {
+        ServerResponse(100, "CONTINUE", "", mutableMapOf("TempName" to tempName))
+            .send(state.conn)
+    } catch (e: Exception) {
+        logDebug("Error sending continue message for wid ${state.wid!!}: $e")
+        return
     }
+
     val tempHandle = lfs.entry(tempPath)
     state.readFileData(fileSize, tempHandle, resumeOffset)?.let {
         // Transfer was interrupted. We won't delete the file--we will leave it so the client can
