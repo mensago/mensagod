@@ -8,6 +8,8 @@ import libkeycard.UserID
 import mensagod.commands.ClientRequest
 import mensagod.commands.ServerResponse
 import mensagod.dbcmds.resolveAddress
+import mensagod.fs.LocalFSHandle
+import java.io.RandomAccessFile
 import java.net.Socket
 
 /** The LoginState class denotes where in the login process a client session is */
@@ -163,6 +165,34 @@ class ClientSession(val conn: Socket): SessionState() {
         val adminWID = resolveAddress(DBConn(), MAddress.fromString("admin/$gServerDomain")!!)
             ?: throw DatabaseCorruptionException("isAdmin couldn't find the admin's workspace ID")
         return adminWID == wid
+    }
+
+    /**
+     * Reads file data from a client and writes it directly to the file, optionally resuming from a
+     * specified file offset.
+     */
+    fun readFileData(fileSize: Long, handle: LocalFSHandle, offset: Long?): Throwable? {
+        var remaining = fileSize
+
+        try {
+            val file = RandomAccessFile(handle.getFile(), "w")
+            if (offset != null) file.seek(offset)
+
+            val istream = conn.getInputStream()
+            val buffer = ByteArray(65536)
+            while (remaining > 0) {
+                if (remaining < 65536) {
+                    val lastChunk = try { istream.readNBytes(remaining.toInt()) }
+                    catch (e: Exception) { return e }
+                    try { file.write(lastChunk) } catch (e: Exception) { return e }
+                    break
+                }
+                val bytesRead = try { istream.read(buffer) } catch (e: Exception) { return e }
+                remaining -= bytesRead
+                file.write(buffer)
+            }
+        } catch (e: Exception) { return e }
+        return null
     }
 
     /**

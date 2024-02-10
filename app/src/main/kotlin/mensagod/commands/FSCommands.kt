@@ -5,7 +5,6 @@ import libkeycard.RandomID
 import mensagod.*
 import mensagod.dbcmds.*
 import mensagod.fs.LocalFS
-import mensagod.fs.LocalFSHandle
 import java.time.Instant
 import java.util.*
 
@@ -69,6 +68,11 @@ fun commandUpload(state: ClientSession) {
         ServerResponse.sendBadRequest("Invalid value for field Path", state.conn)
         return
     }
+    if (uploadPath.isFile()) {
+        ServerResponse.sendBadRequest("Upload path must be a directory", state.conn)
+        return
+    }
+
     val uploadPathHandle = try { lfs.entry(uploadPath) }
     catch (e: SecurityException) {
         logError("Error opening path $replacesPath: $e")
@@ -86,14 +90,14 @@ fun commandUpload(state: ClientSession) {
         return
     }
 
-    val resumeOffset: Int?
+    val resumeOffset: Long?
     if (hasTempName) {
         if (!MServerPath.validateFileName(state.message.data["TempName"]!!)) {
             ServerResponse.sendBadRequest("Invalid value for field TempName", state.conn)
             return
         }
 
-        resumeOffset = try { state.message.data["Offset"]!!.toInt() }
+        resumeOffset = try { state.message.data["Offset"]!!.toLong() }
         catch (e: Exception) {
             ServerResponse.sendBadRequest("Invalid value for field Offset", state.conn)
             return
@@ -121,7 +125,7 @@ fun commandUpload(state: ClientSession) {
         return
     }
 
-    if (quotaInfo.second > 0 && quotaInfo.first > quotaInfo.second) {
+    if (quotaInfo.second > 0 && quotaInfo.first + fileSize > quotaInfo.second) {
         ServerResponse(409, "QUOTA INSUFFICIENT",
             "Your account lacks sufficient space for the file")
             .sendCatching(state.conn, "Client requested file larger than free space")
@@ -136,9 +140,12 @@ fun commandUpload(state: ClientSession) {
         MServerPath.fromString("/ tmp ${state.wid!!} $tempName")!!
     }
     val tempHandle = lfs.entry(tempPath)
-    readFileData(state, tempHandle, resumeOffset)?.let {
+    state.readFileData(fileSize, tempHandle, resumeOffset)?.let {
         // Transfer was interrupted. We won't delete the file--we will leave it so the client can
         // attempt to resume the upload later.
+        ServerResponse(305, "INTERRUPTED",
+            "Interruption source: $it")
+            .sendCatching(state.conn, "Upload interrupted for wid ${state.wid}")
         return
     }
 
@@ -163,7 +170,6 @@ fun commandUpload(state: ClientSession) {
         return
     }
 
-    // TODO: Handle specific error states moving temp file to its final location
     tempHandle.moveTo(uploadPath)?.let {
         logError("commandUpload: Error installing temp file: $it")
         ServerResponse.sendInternalError("Server error finishing upload", state.conn)
@@ -197,10 +203,3 @@ fun commandUpload(state: ClientSession) {
         "commandUpload: Couldn't send confirmation response for wid = ${state.wid}")
 }
 
-/**
- * Reads file data from a client and writes it directly to the file, optionally resuming from a
- * specified file offset.
- */
-private fun readFileData(state: ClientSession, handle: LocalFSHandle, offset: Int?): Throwable? {
-    TODO("Implement readFileData($state, $handle, $offset)")
-}
