@@ -7,6 +7,12 @@ import mensagod.resetDB
 import org.junit.jupiter.api.Test
 
 class DBMiscCmdTest {
+
+    @Test
+    fun addUpdateRecordTest() {
+        // TODO: Implement test for addUpdateRecord()
+    }
+
     @Test
     fun keypairTest() {
         val config = ServerConfig.load().getOrThrow()
