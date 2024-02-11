@@ -18,6 +18,36 @@ class FSCmdTest {
 
     @Test
     fun downloadTest() {
+        val setupData = setupTest("commands.downloadTest")
+        ServerConfig.load().getOrThrow()
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+
+        // Test Case #1: Successful file download
+        val adminTopPath = Paths.get(setupData.testPath, "topdir", "wsp", adminWID.toString())
+        adminTopPath.toFile().mkdirs()
+        val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+        val fileInfo = makeTestFile(adminTopPath.toString(), fileSize = 1024)
+
+        CommandTest("download.1",
+            SessionState(ClientRequest("DOWNLOAD", mutableMapOf(
+                "Path" to "/ wsp $adminWID ${fileInfo.first}",
+            )), adminWID, LoginState.LoggedIn, devid), ::commandDownload) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(100)
+            response.assertField("Size") { it == "1024" }
+
+            ClientRequest("DOWNLOAD", mutableMapOf(
+                "Path" to "/ wsp $adminWID ${fileInfo.first}",
+                "Size" to response.data["Size"]!!,
+            )).send(socket.getOutputStream())
+
+            val buffer = ByteArray(response.data["Size"]!!.toInt())
+            val istream = socket.getInputStream()
+            val bytesRead = istream.read(buffer)
+            assertEquals(1024, bytesRead)
+        }.run()
+
         // TODO: Implement downloadTest()
     }
 
@@ -34,7 +64,7 @@ class FSCmdTest {
         val fileHash = hash(fileData).getOrThrow()
         val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
 
-        CommandTest("uploadError.1",
+        CommandTest("upload.1",
             SessionState(ClientRequest("UPLOAD", mutableMapOf(
                 "Size" to "1024",
                 "Hash" to fileHash.toString(),
@@ -62,7 +92,7 @@ class FSCmdTest {
         tempFile.createNewFile()
         tempFile.writeText("0".repeat(512))
 
-        CommandTest("uploadError.2",
+        CommandTest("upload.2",
             SessionState(ClientRequest("UPLOAD", mutableMapOf(
                 "Size" to "1024",
                 "Hash" to fileHash.toString(),
