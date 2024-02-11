@@ -8,6 +8,7 @@ import libkeycard.UserID
 import mensagod.commands.ClientRequest
 import mensagod.commands.ServerResponse
 import mensagod.dbcmds.resolveAddress
+import mensagod.fs.LocalFS
 import mensagod.fs.LocalFSHandle
 import org.apache.commons.io.FileUtils
 import java.io.RandomAccessFile
@@ -184,12 +185,11 @@ class ClientSession(val conn: Socket): SessionState() {
             val buffer = ByteArray(65536)
             while (remaining > 0) {
                 if (remaining < 65536) {
-                    val lastChunk = try { istream.readNBytes(remaining.toInt()) }
-                    catch (e: Exception) { return e }
-                    try { rfile.write(lastChunk) } catch (e: Exception) { return e }
+                    val lastChunk = istream.readNBytes(remaining.toInt())
+                    rfile.write(lastChunk)
                     break
                 }
-                val bytesRead = try { istream.read(buffer) } catch (e: Exception) { return e }
+                val bytesRead = istream.read(buffer)
                 remaining -= bytesRead
                 rfile.write(buffer)
             }
@@ -210,7 +210,34 @@ class ClientSession(val conn: Socket): SessionState() {
         return true
     }
 
-    fun sendFileData(path: MServerPath, offset: Long): Throwable? {
-        TODO("Implement sendFileData($path, $offset")
+    /**
+     * Reads file data from a file and sends it to a client, optionally resuming from a
+     * specified file offset.
+     */
+    fun sendFileData(path: MServerPath, fileSize: Long, offset: Long): Throwable? {
+        var remaining = fileSize - offset
+
+        try {
+            val lfs = LocalFS.get()
+            val handle = lfs.entry(path)
+            val rfile = RandomAccessFile(handle.getFile(), "r")
+            rfile.seek(offset)
+
+            val ostream = conn.getOutputStream()
+            val buffer = ByteArray(65536)
+            while (remaining > 0) {
+                if (remaining < 65536) {
+                    val lastChunkSize = rfile.read(buffer)
+                    ostream.write(buffer, 0, lastChunkSize)
+                    break
+                }
+
+                val bytesRead = rfile.read(buffer)
+                remaining -= bytesRead
+                ostream.write(buffer, 0, bytesRead)
+            }
+
+        } catch (e: Exception) { return e }
+        return null
     }
 }

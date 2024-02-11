@@ -17,6 +17,11 @@ import kotlin.io.path.exists
 class FSCmdTest {
 
     @Test
+    fun downloadTest() {
+        // TODO: Implement downloadTest()
+    }
+
+    @Test
     fun uploadTest() {
         val setupData = setupTest("commands.uploadTest")
         ServerConfig.load().getOrThrow()

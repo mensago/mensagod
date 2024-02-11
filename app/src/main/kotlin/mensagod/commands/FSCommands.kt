@@ -69,7 +69,7 @@ fun commandDownload(state: ClientSession) {
         return
     }
 
-    lfs.withLock(path) { state.sendFileData(path, offset) }?.let {
+    lfs.withLock(path) { state.sendFileData(path, fileSize, offset) }?.let {
         logDebug("commandDownload: sendFileData error for ${state.wid}: $it")
     }
 }
