@@ -158,17 +158,6 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
         return try { Result.success(file.length()) }
             catch (e: Exception) { Result.failure(e) }
     }
-
-    /**
-     * Writes data to a file
-     *
-     * @throws IOException Returned if there was a problem reading the file
-     */
-    fun writeAll(data: ByteArray): Throwable? {
-        try { FileUtils.writeByteArrayToFile(file, data) }
-        catch (e: Exception) { return e }
-        return null
-    }
 }
 
 /**
