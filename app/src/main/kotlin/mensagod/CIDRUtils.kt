@@ -25,7 +25,8 @@ package mensagod
 *
 */
 
-// Converted from its original Java to Kotlin
+// This code is heavily modified from Edin's original Java code. It was translated to Kotlin for
+// all the benefits it provides and then restructured to use more functional concepts.
 
 import java.math.BigInteger
 import java.net.InetAddress
@@ -33,103 +34,110 @@ import java.net.UnknownHostException
 import java.nio.ByteBuffer
 
 /**
- * A class that enables to get an IP range from CIDR specification. It supports
- * both IPv4 and IPv6.
+ * A class that enables to get an IP range from CIDR specification. It supports both IPv4 and IPv6.
  */
-class CIDRUtils(private val cidr: String) {
-    private var inetAddress: InetAddress? = null
-    private var startAddress: InetAddress? = null
-    private var endAddress: InetAddress? = null
-    private var prefixLength = 0
-
-
-    init {
-        /* split CIDR to address and prefix part */
-        if (cidr.contains("/")) {
-            val index = cidr.indexOf("/")
-            val addressPart = cidr.substring(0, index)
-            val networkPart = cidr.substring(index + 1)
-
-            inetAddress = InetAddress.getByName(addressPart)
-            prefixLength = networkPart.toInt()
-
-            calculate()
-        } else {
-            throw IllegalArgumentException("not an valid CIDR format!")
-        }
-    }
-
-
-    @Throws(UnknownHostException::class)
-    private fun calculate() {
-        val maskBuffer: ByteBuffer
-        val targetSize: Int
-        if (inetAddress!!.address.size == 4) {
-            maskBuffer =
-                ByteBuffer.allocate(4)
-                    .putInt(-1)
-            targetSize = 4
-        } else {
-            maskBuffer = ByteBuffer.allocate(16)
-                .putLong(-1L)
-                .putLong(-1L)
-            targetSize = 16
-        }
-
-        val mask = BigInteger(1, maskBuffer.array()).not().shiftRight(prefixLength)
-
-        val buffer = ByteBuffer.wrap(inetAddress!!.address)
-        val ipVal = BigInteger(1, buffer.array())
-
-        val startIp = ipVal.and(mask)
-        val endIp = startIp.add(mask.not())
-
-        val startIpArr = toBytes(startIp.toByteArray(), targetSize)
-        val endIpArr = toBytes(endIp.toByteArray(), targetSize)
-
-        this.startAddress = InetAddress.getByAddress(startIpArr)
-        this.endAddress = InetAddress.getByAddress(endIpArr)
-    }
-
-    private fun toBytes(array: ByteArray, targetSize: Int): ByteArray {
-        var counter = 0
-        val newArr = mutableListOf<Byte>()
-        while (counter < targetSize && (array.size - 1 - counter >= 0)) {
-            newArr.add(0, array[array.size - 1 - counter])
-            counter++
-        }
-
-        val size = newArr.size
-        for (i in 0 until (targetSize - size)) {
-            newArr.add(0, 0.toByte())
-        }
-
-        val ret = ByteArray(newArr.size)
-        for (i in newArr.indices) {
-            ret[i] = newArr[i]
-        }
-        return ret
-    }
+class CIDRUtils private constructor(val value: String,
+                                    private val startAddress: InetAddress,
+                                    private val endAddress: InetAddress,
+                                    val prefix: Int) {
 
     val networkAddress: String
-        get() = startAddress!!.hostAddress
+        get() = startAddress.hostAddress
 
     val broadcastAddress: String
-        get() = endAddress!!.hostAddress
+        get() = endAddress.hostAddress
 
-    @Throws(UnknownHostException::class)
-    fun isInRange(ipAddress: String?): Boolean {
-        val address = InetAddress.getByName(ipAddress)
+    /**
+     * Returns true if the IP addres string is in the range represented by the object.
+     *
+     * @throws UnknownHostException Returned if given a hostname or FQDN that doesn't resolve.
+     */
+    fun isInRange(ipAddress: String?): Result<Boolean> {
+        val address = try { InetAddress.getByName(ipAddress)
+        } catch (e: Exception) { return Result.failure(e) }
+
         val start = BigInteger(
             1,
-            startAddress!!.address
+            startAddress.address
         )
-        val end = BigInteger(1, endAddress!!.address)
+        val end = BigInteger(1, endAddress.address)
         val target = BigInteger(1, address.address)
 
         val st = start.compareTo(target)
         val te = target.compareTo(end)
 
-        return (st == -1 || st == 0) && (te == -1 || te == 0)
+        return Result.success((st == -1 || st == 0) && (te == -1 || te == 0))
+    }
+
+    companion object {
+
+        fun fromString(s: String): CIDRUtils? {
+            if (!s.contains("/")) return null
+
+            val index = s.indexOf("/")
+            val addressPart = s.substring(0, index)
+            val networkPart = s.substring(index + 1)
+
+            return try {
+                val addr = InetAddress.getByName(addressPart)
+                val prefixLength = networkPart.toInt()
+                val addrPair = calculate(addr, prefixLength).getOrElse { return null }
+
+                CIDRUtils(s, addrPair.first, addrPair.second, prefixLength)
+
+            } catch (e: Exception) { null }
+        }
+
+        private fun calculate(addr: InetAddress, prefix: Int): Result<Pair<InetAddress, InetAddress>> {
+            val maskBuffer: ByteBuffer
+            val targetSize: Int
+            if (addr.address.size == 4) {
+                maskBuffer =
+                    ByteBuffer.allocate(4)
+                        .putInt(-1)
+                targetSize = 4
+            } else {
+                maskBuffer = ByteBuffer.allocate(16)
+                    .putLong(-1L)
+                    .putLong(-1L)
+                targetSize = 16
+            }
+
+            val mask = BigInteger(1, maskBuffer.array()).not().shiftRight(prefix)
+
+            val buffer = ByteBuffer.wrap(addr.address)
+            val ipVal = BigInteger(1, buffer.array())
+
+            val startIp = ipVal.and(mask)
+            val endIp = startIp.add(mask.not())
+
+            val startIpArr = toBytes(startIp.toByteArray(), targetSize)
+            val endIpArr = toBytes(endIp.toByteArray(), targetSize)
+
+            return try {
+                Result.success(
+                    Pair(InetAddress.getByAddress(startIpArr), InetAddress.getByAddress(endIpArr))
+                )
+            } catch (e: Exception) { Result.failure(e) }
+        }
+
+        private fun toBytes(array: ByteArray, targetSize: Int): ByteArray {
+            var counter = 0
+            val newArr = mutableListOf<Byte>()
+            while (counter < targetSize && (array.size - 1 - counter >= 0)) {
+                newArr.add(0, array[array.size - 1 - counter])
+                counter++
+            }
+
+            val size = newArr.size
+            for (i in 0 until (targetSize - size))
+                newArr.add(0, 0.toByte())
+
+            val ret = ByteArray(newArr.size)
+            for (i in newArr.indices)
+                ret[i] = newArr[i]
+
+            return ret
+        }
     }
 }

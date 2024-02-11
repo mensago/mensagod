@@ -428,10 +428,8 @@ class ServerConfig {
                     .map { it.trim() }
                     .filter { it.isNotEmpty() }
                     .forEach {
-                        try { CIDRUtils(it) }
-                        catch (e: Exception) {
-                            return "Invalid subnet '$it' in setting $subnetField"
-                        }
+                        CIDRUtils.fromString(it)
+                            ?: return "Invalid subnet '$it' in setting $subnetField"
                     }
             }
         }
