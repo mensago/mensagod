@@ -8,6 +8,72 @@ import mensagod.fs.LocalFS
 import java.time.Instant
 import java.util.*
 
+// DOWNLOAD(Path,Offset=0)
+fun commandDownload(state: ClientSession) {
+
+    if (!state.requireLogin()) return
+    val path = state.getPath("Path", true) ?: return
+    val lfs = LocalFS.get()
+    val handle = lfs.entry(path)
+    // TODO: Check permissions to download
+
+    if (path.isDir()) {
+        ServerResponse.sendBadRequest("Path must be for a file", state.conn)
+        return
+    }
+    val exists = handle.exists().getOrElse {
+        logError("commandDownload: Error checking existence of $path: $it")
+        ServerResponse.sendInternalError("Error checking path existence", state.conn)
+        return
+    }
+    if (!exists) {
+        ServerResponse(404, "RESOURCE NOT FOUND").sendCatching(state.conn,
+            "Error sending 404 error to client for wid ${state.wid}")
+        return
+    }
+
+    val offset = if (state.message.hasField("Offset")) {
+        try { state.message.data["Offset"]!!.toLong() }
+        catch (e: Exception) {
+            ServerResponse.sendBadRequest("Invalid value for Offset", state.conn)
+            return
+        }
+    } else 0L
+    val fileSize = handle.size().getOrElse {
+        logError("commandDownload: Error getting size of $path: $it")
+        ServerResponse.sendInternalError("Error getting file size", state.conn)
+        return
+    }
+    if (offset < 0 || offset > fileSize) {
+        ServerResponse.sendBadRequest("Offset out of range", state.conn)
+        return
+    }
+
+    try {
+        ServerResponse(100, "CONTINUE", "",
+            mutableMapOf("Size" to fileSize.toString())).send(state.conn)
+    } catch (e: Exception) {
+        logDebug("commandDownload: Error sending continue message for wid ${state.wid!!}: $e")
+        return
+    }
+
+    val req = try { ClientRequest.receive(state.conn.getInputStream()) }
+    catch (e: Exception) {
+        logDebug("commandDownload: error receiving client continue request: $e")
+        return
+    }
+    if (req.action == "CANCEL") return
+
+    if (req.action != "DOWNLOAD" || !req.hasField("Size")) {
+        ServerResponse.sendBadRequest("Session mismatch", state.conn)
+        return
+    }
+
+    lfs.withLock(path) { state.sendFileData(path, offset) }?.let {
+        logDebug("commandDownload: sendFileData error for ${state.wid}: $it")
+    }
+}
+
 // UPLOAD(Size,Hash,Path,Replaces="",Name="",Offset=0)
 fun commandUpload(state: ClientSession) {
 
@@ -75,10 +141,11 @@ fun commandUpload(state: ClientSession) {
 
     val uploadPathHandle = try { lfs.entry(uploadPath) }
     catch (e: SecurityException) {
-        logError("Error opening path $replacesPath: $e")
+        logError("Error opening path $uploadPath: $e")
         ServerResponse.sendInternalError("commandUpload.3 error", state.conn)
         return
     }
+    // TODO: Check permissions to upload
     val exists = uploadPathHandle.exists().getOrElse {
         logError("Error checking existence of $uploadPath: $it")
         ServerResponse.sendInternalError("commandUpload.4 error", state.conn)
@@ -142,7 +209,7 @@ fun commandUpload(state: ClientSession) {
         ServerResponse(100, "CONTINUE", "", mutableMapOf("TempName" to tempName))
             .send(state.conn)
     } catch (e: Exception) {
-        logDebug("Error sending continue message for wid ${state.wid!!}: $e")
+        logDebug("commandUpload: Error sending continue message for wid ${state.wid!!}: $e")
         return
     }
 

@@ -209,4 +209,8 @@ class ClientSession(val conn: Socket): SessionState() {
 
         return true
     }
+
+    fun sendFileData(path: MServerPath, offset: Long): Throwable? {
+        TODO("Implement sendFileData($path, $offset")
+    }
 }
