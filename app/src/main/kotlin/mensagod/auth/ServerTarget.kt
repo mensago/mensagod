@@ -2,11 +2,9 @@ package mensagod.auth
 
 import libkeycard.MAddress
 import libkeycard.UserID
-import mensagod.DBConn
-import mensagod.DatabaseCorruptionException
-import mensagod.ServerConfig
+import mensagod.*
 import mensagod.dbcmds.resolveAddress
-import mensagod.gServerDomain
+import java.net.Inet4Address
 
 /**
  * The ServerTarget class is used for actions which operate at the server level of scope. This
@@ -26,8 +24,18 @@ class ServerTarget: AuthTarget {
         when (regType) {
             "public", "moderated" -> out.add(AuthAction.Register)
             "network" -> {
-                // TODO: Authorize SessionActor based on ip and subnet. Depends on implementing
-                //  an IPv6-capable subnet matcher.
+                actor as SessionActor
+                val netListStr = if (actor.ip is Inet4Address)
+                    ServerConfig.get().getString("global.registration_subnet")!!
+                else
+                    ServerConfig.get().getString("global.registration_subnet6")!!
+
+                netListStr.split(",")
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+                    .mapNotNull { CIDRUtils.fromString(it) }
+                    .find { it.isInRange(actor.ip.toString()).getOrDefault(false) }
+                    ?.let { out.add(AuthAction.Register) }
             }
         }
 

@@ -40,7 +40,7 @@ open class WIDActor(val wid: RandomID): AuthActor {
  * The SessionActor class represents more than just a workspace ID as a security context. It also
  * provides an IP address for the specific session.
  */
-class SessionActor(wid: RandomID, private val ip: InetAddress): WIDActor(wid)
+class SessionActor(wid: RandomID, val ip: InetAddress): WIDActor(wid)
 
 /**
  * The AuthAction class represents an action or group of actions as defined by the permissions
