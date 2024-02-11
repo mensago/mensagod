@@ -33,9 +33,12 @@ class LocalFSTest {
         val topdir = Paths.get(setupData.testPath, "topdir").toString()
         val testFileInfo = makeTestFile(topdir)
 
-        val handle = lfs.entry(MServerPath("/ ${testFileInfo.first}"))
+        val deletePath = MServerPath("/ ${testFileInfo.first}")
+        val handle = lfs.entry(deletePath)
         assert(handle.exists().getOrThrow())
+        lfs.lock(deletePath)
         handle.delete()?.let { throw it }
+        lfs.unlock(deletePath)
         assertFalse(handle.exists().getOrThrow())
     }
 
