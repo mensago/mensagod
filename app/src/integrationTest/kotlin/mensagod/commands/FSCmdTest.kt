@@ -27,6 +27,8 @@ class FSCmdTest {
         adminTopPath.toFile().mkdirs()
         val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
         val fileInfo = makeTestFile(adminTopPath.toString(), fileSize = 1024)
+        val testFilePath = Paths.get(adminTopPath.toString(), fileInfo.first)
+        val fileHash = hashFile(testFilePath.toString()).getOrThrow()
 
         CommandTest("download.1",
             SessionState(ClientRequest("DOWNLOAD", mutableMapOf(
@@ -46,9 +48,33 @@ class FSCmdTest {
             val istream = socket.getInputStream()
             val bytesRead = istream.read(buffer)
             assertEquals(1024, bytesRead)
+
+            val dataHash = hash(buffer).getOrThrow()
+            assertEquals(fileHash, dataHash)
         }.run()
 
-        // TODO: Implement downloadTest()
+        // Test Case #2: Successful resume
+        CommandTest("download.2",
+            SessionState(ClientRequest("DOWNLOAD", mutableMapOf(
+                "Path" to "/ wsp $adminWID ${fileInfo.first}",
+                "Offset" to "512",
+            )), adminWID, LoginState.LoggedIn, devid), ::commandDownload) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(100)
+            response.assertField("Size") { it == "1024" }
+
+            ClientRequest("DOWNLOAD", mutableMapOf(
+                "Path" to "/ wsp $adminWID ${fileInfo.first}",
+                "Size" to response.data["Size"]!!,
+            )).send(socket.getOutputStream())
+
+            val buffer = ByteArray(response.data["Size"]!!.toInt())
+            val istream = socket.getInputStream()
+            val bytesRead = istream.read(buffer)
+            assertEquals(512, bytesRead)
+            assertEquals("0".repeat(512), buffer.copyOf(bytesRead).decodeToString())
+        }.run()
     }
 
     @Test
