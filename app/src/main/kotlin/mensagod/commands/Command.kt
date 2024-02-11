@@ -11,6 +11,7 @@ fun processCommand(state: ClientSession) {
     when (state.message.action) {
         "ADDENTRY" -> commandAddEntry(state)
         "DEVICE" -> commandDevice(state)
+        "DOWNLOAD" -> commandDownload(state)
         "GETWID" -> commandGetWID(state)
         "LOGIN" -> commandLogin(state)
         "LOGOUT" -> commandLogout(state)

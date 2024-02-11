@@ -3,6 +3,10 @@ package mensagod.commands
 import keznacl.UnsupportedAlgorithmException
 import libkeycard.RandomID
 import mensagod.*
+import mensagod.auth.AuthAction
+import mensagod.auth.DirectoryTarget
+import mensagod.auth.FileTarget
+import mensagod.auth.WIDActor
 import mensagod.dbcmds.*
 import mensagod.fs.LocalFS
 import java.time.Instant
@@ -15,10 +19,15 @@ fun commandDownload(state: ClientSession) {
     val path = state.getPath("Path", true) ?: return
     val lfs = LocalFS.get()
     val handle = lfs.entry(path)
-    // TODO: Check permissions to download
 
-    if (path.isDir()) {
+    // The FileTarget class verifies that the path is, indeed, pointing to a file
+    val fileTarget = FileTarget.fromPath(path)
+    if (fileTarget == null) {
         ServerResponse.sendBadRequest("Path must be for a file", state.conn)
+        return
+    }
+    if (!fileTarget.isAuthorized(WIDActor(state.wid!!), AuthAction.Read)) {
+        ServerResponse.sendForbidden("", state.conn)
         return
     }
     val exists = handle.exists().getOrElse {
@@ -134,8 +143,14 @@ fun commandUpload(state: ClientSession) {
         ServerResponse.sendBadRequest("Invalid value for field Path", state.conn)
         return
     }
-    if (uploadPath.isFile()) {
+    // The DirectoryTarget constructor validates that the target path points to a directory
+    val dirTarget = DirectoryTarget.fromPath(uploadPath)
+    if (dirTarget == null) {
         ServerResponse.sendBadRequest("Upload path must be a directory", state.conn)
+        return
+    }
+    if (!dirTarget.isAuthorized(WIDActor(state.wid!!), AuthAction.Create)) {
+        ServerResponse.sendForbidden("", state.conn)
         return
     }
 
@@ -145,7 +160,6 @@ fun commandUpload(state: ClientSession) {
         ServerResponse.sendInternalError("commandUpload.3 error", state.conn)
         return
     }
-    // TODO: Check permissions to upload
     val exists = uploadPathHandle.exists().getOrElse {
         logError("Error checking existence of $uploadPath: $it")
         ServerResponse.sendInternalError("commandUpload.4 error", state.conn)
