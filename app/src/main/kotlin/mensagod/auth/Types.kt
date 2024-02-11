@@ -32,7 +32,11 @@ enum class AuthAction {
     // These are mostly for filesystem entries, but are general enough for other things, too.
     Create,
     Delete,
-    
+    Read,
+    Modify,
+
+    Access,         // For directory traversal and contents listing
+
     Register,       // account self-provisioning
     Preregister,    // provisioning an account on another's behalf
     Unregister,     // deprovisioning account, on another's behalf or self-deprovisioning
@@ -43,5 +47,7 @@ enum class AuthAction {
  * intended to be subclassed to represent specific types of targets.
  */
 interface AuthTarget {
+    // TODO: Implement getActions interface method
+    //fun getActions(actor: AuthActor, action: AuthAction): List<AuthAction>
     fun isAuthorized(actor: AuthActor, action: AuthAction): Boolean
 }

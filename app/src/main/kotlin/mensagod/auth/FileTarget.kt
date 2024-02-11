@@ -9,32 +9,27 @@ import mensagod.gServerDomain
 import mensagod.logError
 
 /**
- * The DirectoryTarget class is used for actions which operate on a directory.
+ * The FileTarget class is used for actions which operate on a file. Currently this is a very
+ * simple system: admins can access everything and users can access everything in their own
+ * workspace directories.
  *
- * Admins have full access to the workspace hierarchy. Users have full access to their keys
- * directory and their own identity workspace directory hierarchy.
- *
- * Access allows an actor to view the contents of the directory and navigate into subdirectories
- * Create allows creation and modification of files and subdirectories
- * Delete allows the actor to delete files and subdirectories
- *
- * Currently only users are authorized directory target access.
  */
-class DirectoryTarget private constructor(private val path: MServerPath): AuthTarget {
+class FileTarget private constructor(private val path: MServerPath): AuthTarget {
+    private val parent = path.parent()
 
     override fun isAuthorized(actor: AuthActor, action: AuthAction): Boolean {
         when (action) {
-            AuthAction.Create, AuthAction.Delete, AuthAction.Access -> {
+            AuthAction.Create, AuthAction.Delete, AuthAction.Read, AuthAction.Modify -> {
                 if (actor.getType() != AuthActorType.WID) return false
                 actor as WIDActor
 
-                // Admins can access all directories
+                // Admins can access all directories and files
                 if (isAdmin(actor.wid)) return true
 
                 // Users have admin access over their identity workspaces and their corresponding
                 // key directories
                 if (isKeysDirectory(actor.wid)) return true
-                if (ownsPath(actor.wid)) return true
+                if (ownsParent(actor.wid)) return true
             }
             else -> return false
         }
@@ -50,18 +45,18 @@ class DirectoryTarget private constructor(private val path: MServerPath): AuthTa
         return adminWID == wid
     }
 
-    private fun ownsPath(wid: RandomID): Boolean {
-        return path.toString().startsWith("/ wsp $wid")
+    private fun ownsParent(wid: RandomID): Boolean {
+        return parent.toString().startsWith("/ wsp $wid")
     }
 
     companion object {
 
         /**
-         * Creates a DirectoryTarget object from the supplied path. Returns null if given a path
-         * for a file.
+         * Creates a FileTarget object from the supplied path. Returns null if given a path
+         * for a directory.
          */
-        fun fromPath(path: MServerPath): DirectoryTarget? {
-            return if (path.isDir()) DirectoryTarget(path) else null
+        fun fromPath(path: MServerPath): FileTarget? {
+            return if (path.isFile()) FileTarget(path) else null
         }
     }
 }
