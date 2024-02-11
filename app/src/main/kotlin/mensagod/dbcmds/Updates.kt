@@ -2,45 +2,65 @@ package mensagod.dbcmds
 
 import keznacl.BadValueException
 import keznacl.CryptoString
+import libkeycard.EntryTypeException
 import libkeycard.RandomID
 import mensagod.DBConn
 import mensagod.MServerPath
-import mensagod.TypeException
-import java.util.regex.Pattern
-
-private val movePattern = Pattern.compile(
-"""^/( wsp| out| tmp)?( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*""" +
-    """( new)?( [0-9]+\.[0-9]+\.""" +
-    """[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*\s+""" +
-    """/( wsp| out| tmp)?( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*""" +
-    """( new)?$"""
-).toRegex()
 
 class UpdateRecord(val id: RandomID, val type: UpdateType, val data: String, val time: String,
                    val devid: RandomID)
 
 /**
- * Adds a record to the update table
+ * Adds a record to the update table.
+ *
+ * @throws BadValueException Returned if the record's data is invalid for the update type
+ * @throws EntryTypeException Returned if there is a typing problem in the record's data field, such
+ * as a directory being given for a Create update record.
+
+ * @see UpdateRecord
  */
 fun addUpdateRecord(db: DBConn, wid: RandomID, rec: UpdateRecord): Throwable? {
 
+    val parseSplitPath = fun (s: String): Pair<MServerPath,MServerPath>? {
+        val parts = s.split(":", limit = 2)
+        if (parts.size != 2) return null
+
+        val pathOne = MServerPath.fromString(parts[0]) ?: return null
+        val pathTwo = MServerPath.fromString(parts[1]) ?: return null
+        return Pair(pathOne,pathTwo)
+    }
+
     when (rec.type) {
-        UpdateType.Create, UpdateType.Delete, UpdateType.RmDir -> {
-            if (MServerPath.fromString(rec.data) == null)
-                return BadValueException("Invalid path in ${rec.type} record")
+        UpdateType.Create, UpdateType.Delete, UpdateType.Rotate -> {
+            val filePath = MServerPath.fromString(rec.data)
+                ?: return BadValueException("Invalid path in ${rec.type} record")
+            if (filePath.isDir()) return EntryTypeException()
         }
         UpdateType.Mkdir -> {
             val parts = rec.data.split(":", limit = 2)
-            if (parts.size != 2 || MServerPath.fromString(parts[0]) == null ||
-                CryptoString.fromString(parts[1]) == null) {
+            val dirPath = MServerPath.fromString(parts[0])
+
+            if (parts.size != 2 || dirPath == null || CryptoString.fromString(parts[1]) == null)
                 return BadValueException("Invalid data in ${rec.type} record")
-            }
+            if (dirPath.isFile()) return EntryTypeException()
         }
         UpdateType.Move -> {
-            if (!movePattern.matches(rec.data))
-                return BadValueException("Invalid data in ${rec.type} record")
+            val pathPair = parseSplitPath(rec.data)
+                ?: return BadValueException("Invalid data in ${rec.type} record")
+
+            if (pathPair.first.isDir() || pathPair.second.isFile()) return EntryTypeException()
         }
-        else -> return TypeException("Bad record type")
+        UpdateType.Replace -> {
+            val pathPair = parseSplitPath(rec.data)
+                ?: return BadValueException("Invalid data in ${rec.type} record")
+
+            if (pathPair.first.isDir() || pathPair.second.isDir()) return EntryTypeException()
+        }
+        UpdateType.Rmdir -> {
+            val dirPath = MServerPath.fromString(rec.data)
+                ?: return BadValueException("Invalid path in ${rec.type} record")
+            if (dirPath.isFile()) return EntryTypeException()
+        }
     }
 
     val now = System.currentTimeMillis() / 1000L
@@ -60,7 +80,7 @@ enum class UpdateType {
     Mkdir,
     Move,
     Replace,
-    RmDir,
+    Rmdir,
     Rotate;
 
     override fun toString(): String {
@@ -70,7 +90,7 @@ enum class UpdateType {
             Mkdir -> "mkdir"
             Move -> "move"
             Replace -> "replace"
-            RmDir -> "rmdir"
+            Rmdir -> "rmdir"
             Rotate -> "rotate"
         }
     }
@@ -84,8 +104,8 @@ enum class UpdateType {
                 "mkdir" -> Mkdir
                 "move" -> Move
                 "replace" -> Replace
-                "rmdir" -> RmDir
-                "roate" -> Rotate
+                "rmdir" -> Rmdir
+                "rotate" -> Rotate
                 else -> null
             }
         }
