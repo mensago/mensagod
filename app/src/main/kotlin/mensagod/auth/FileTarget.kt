@@ -1,12 +1,7 @@
 package mensagod.auth
 
-import libkeycard.MAddress
 import libkeycard.RandomID
-import mensagod.DBConn
 import mensagod.MServerPath
-import mensagod.dbcmds.resolveAddress
-import mensagod.gServerDomain
-import mensagod.logError
 
 /**
  * The FileTarget class is used for actions which operate on a file. Currently this is a very
@@ -17,6 +12,16 @@ import mensagod.logError
 class FileTarget private constructor(private val path: MServerPath): AuthTarget {
     private val parent = path.parent()
 
+    override fun getActions(actor: AuthActor, action: AuthAction): List<AuthAction> {
+        if (actor.getType() != AuthActorType.WID) return listOf()
+        actor as WIDActor
+
+        if (actor.isAdmin() || isKeysDirectory(actor.wid) || ownsParent(actor.wid))
+            return listOf(AuthAction.Create, AuthAction.Delete, AuthAction.Read, AuthAction.Modify)
+
+        return listOf()
+    }
+
     override fun isAuthorized(actor: AuthActor, action: AuthAction): Boolean {
         when (action) {
             AuthAction.Create, AuthAction.Delete, AuthAction.Read, AuthAction.Modify -> {
@@ -24,7 +29,7 @@ class FileTarget private constructor(private val path: MServerPath): AuthTarget 
                 actor as WIDActor
 
                 // Admins can access all directories and files
-                if (isAdmin(actor.wid)) return true
+                if (actor.isAdmin()) return true
 
                 // Users have admin access over their identity workspaces and their corresponding
                 // key directories
@@ -37,13 +42,6 @@ class FileTarget private constructor(private val path: MServerPath): AuthTarget 
     }
 
     private fun isKeysDirectory(wid: RandomID): Boolean { return path.toString() == "/ keys $wid" }
-
-    private fun isAdmin(wid: RandomID): Boolean {
-        val adminWID = resolveAddress(DBConn(), MAddress.fromString("admin/$gServerDomain")!!)
-        if (adminWID == null)
-            logError("isAdmin couldn't find the admin's workspace ID")
-        return adminWID == wid
-    }
 
     private fun ownsParent(wid: RandomID): Boolean {
         return parent.toString().startsWith("/ wsp $wid")
