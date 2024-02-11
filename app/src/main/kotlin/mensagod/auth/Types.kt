@@ -29,6 +29,10 @@ class WIDActor(val wid: RandomID): AuthActor {
  * AuthTarget. AuthAction is intended to be subclassed to represent specific actions.
  */
 enum class AuthAction {
+    // These are mostly for filesystem entries, but are general enough for other things, too.
+    Create,
+    Delete,
+    
     Register,       // account self-provisioning
     Preregister,    // provisioning an account on another's behalf
     Unregister,     // deprovisioning account, on another's behalf or self-deprovisioning
