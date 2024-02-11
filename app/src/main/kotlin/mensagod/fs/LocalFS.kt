@@ -149,6 +149,17 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
     }
 
     /**
+     * size returns the size of the file.
+     *
+     * @throws SecurityException Returned if a security manager exists and denies read access to the
+     * file
+     */
+    fun size(): Result<Long> {
+        return try { Result.success(file.length()) }
+            catch (e: Exception) { Result.failure(e) }
+    }
+
+    /**
      * Writes data to a file
      *
      * @throws IOException Returned if there was a problem reading the file
