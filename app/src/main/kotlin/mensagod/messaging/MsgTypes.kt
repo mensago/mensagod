@@ -5,6 +5,24 @@ import libkeycard.Domain
 import libkeycard.MAddress
 import libkeycard.RandomID
 import libkeycard.Timestamp
+import java.io.File
+
+/**
+ * SealedEnvelope is used for storing envelope data which is still completely encrypted.
+ */
+class SealedEnvelope(val type: String, val version: String, val receiver: CryptoString,
+                     val sender: CryptoString, val date: Timestamp, val payloadKey: CryptoString) {
+
+    fun decryptReceiver(): Result<String> {
+        TODO("Implement SealedEnvelope::decryptReceiver()")
+    }
+
+    companion object {
+        fun readFromFile(file: File): Result<SealedEnvelope> {
+            TODO("Implement SealedEnvelope::readFromFile($file)")
+        }
+    }
+}
 
 /**
  * The RecipientInfo class contains the information used by the receiving domain's server to

@@ -70,6 +70,10 @@ fun getEntries(db: DBConn, wid: RandomID?, startIndex: UInt = 1U, endIndex: UInt
     return out
 }
 
+fun isDomainLocal(db: DBConn, domain: Domain): Result<Boolean> {
+    TODO("Implement isDomainLocal($db, $domain")
+}
+
 /**
  * resolveAddress returns the workspace ID corresponding to a Mensago address. It will return null
  * if the corresponding workspace ID could not be found.
