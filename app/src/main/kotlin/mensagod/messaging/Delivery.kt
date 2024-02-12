@@ -1,13 +1,15 @@
 package mensagod.messaging
 
 import libkeycard.Domain
+import libkeycard.RandomID
 import libkeycard.WAddress
-import mensagod.DBConn
-import mensagod.MServerPath
-import mensagod.WorkerPool
+import mensagod.*
+import mensagod.dbcmds.UpdateRecord
+import mensagod.dbcmds.UpdateType
+import mensagod.dbcmds.addUpdateRecord
 import mensagod.dbcmds.isDomainLocal
 import mensagod.fs.LocalFS
-import mensagod.logError
+import java.time.Instant
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -37,7 +39,7 @@ fun deliveryWorker(id: ULong) {
         val msgInfo = gMessageQueue.poll() ?: break
 
         val handle = lfs.entry(msgInfo.path)
-        val exists = handle.exists().getOrElse {
+        var exists = handle.exists().getOrElse {
             logError("Invalid msgInfo path ${msgInfo.path}")
             return
         }
@@ -78,7 +80,35 @@ fun deliveryWorker(id: ULong) {
                     ?.let { logError("Error sending deliveryWorker bounce #4: $it") }
             }
 
-            // TODO: Finish local delivery code in deliveryWorker()
+            val destHandle = lfs.entry(MServerPath("/ wsp ${recipient!!.id} new"))
+            exists = destHandle.exists().getOrElse {
+                logError("Unable to check for path ${destHandle.path}")
+                return
+            }
+            if (!exists) {
+                try { destHandle.getFile().mkdirs() }
+                catch (e: Exception) {
+                    logError("Unable to check for path ${destHandle.path}")
+                    return
+                }
+            }
+
+            handle.moveTo(destHandle.path)?.let {
+                logError("Unable to move ${handle.path} to ${destHandle.path}: $it")
+                return
+            }
+
+            val finalPath = destHandle.path.clone()
+            finalPath.push(handle.path.basename()).getOrElse {
+                logError("Error creating final path for ${handle.path}: $it")
+                return
+            }
+            addUpdateRecord(db, recipient.id, UpdateRecord(
+                RandomID.generate(), UpdateType.Create, finalPath.toString(),
+                Instant.now().epochSecond.toString(), gServerDevID
+            ))
+
+            // TODO: push out update notification to active sessions for the workspace
         }
 
         // FEATURE: ExternalDelivery
