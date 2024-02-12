@@ -83,7 +83,9 @@ fun commandDevice(state: ClientSession) {
 
             // 2) If there are multiple devices, push out an approval request and return
             if (devCount > 0) {
-                // TODO: Implement device handling
+                // Feature: LocalDelivery
+                // Feature: DeviceManagement
+                // FeatureTODO: Implement device handling
                 println("New device handling state encountered")
             }
             addDevice(db, state.wid!!, devid, devkey, devinfo, DeviceStatus.Registered)
@@ -112,7 +114,8 @@ fun commandDevice(state: ClientSession) {
     state.currentPath = widPath
     state.loginState = LoginState.LoggedIn
 
-    // TODO: commandDevice: register workspace with message delivery subsystem
+    // Feature: LocalDelivery
+    // FeatureTODO: Register workspace with message delivery subsystem
     state.devid = devid
 
     val response = ServerResponse(200, "OK")

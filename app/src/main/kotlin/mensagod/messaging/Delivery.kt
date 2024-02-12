@@ -82,6 +82,7 @@ fun deliveryWorker(id: ULong) {
         }
 
         // FEATURE: ExternalDelivery
+        // FeatureTODO: Send message externally
 
         // External delivery is not needed for the MVP. For the moment, we'll just delete the
         // message and push a bounce message into the sender's workspace for now.

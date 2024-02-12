@@ -64,8 +64,8 @@ class Server private constructor(val config: ServerConfig) {
             Thread.ofVirtual().start { connectionWorker(conn) }
         }
 
-        // TODO: implement graceful server shutdown
-        // close listener here
+        // Feature: ServerShutdown
+        // FeatureTODO: close listener here
     }
 
     companion object {
