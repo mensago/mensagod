@@ -70,8 +70,16 @@ fun getEntries(db: DBConn, wid: RandomID?, startIndex: UInt = 1U, endIndex: UInt
     return out
 }
 
+/**
+ * IsDomainLocal checks to see if the domain passed to it is managed by this server
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ */
 fun isDomainLocal(db: DBConn, domain: Domain): Result<Boolean> {
-    TODO("Implement isDomainLocal($db, $domain")
+    val rs = db.query("SELECT domain FROM workspaces WHERE domain=?", domain)
+        .getOrElse { return Result.failure(it) }
+    return Result.success(rs.next())
 }
 
 /**
