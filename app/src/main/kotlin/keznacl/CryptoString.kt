@@ -1,5 +1,6 @@
 package keznacl
 
+import kotlinx.serialization.Serializable
 import java.util.regex.Pattern
 
 /**
@@ -39,6 +40,7 @@ import java.util.regex.Pattern
  * or calling `to_string()`, `to_bytes()`, or `to_raw()`. The last of these three methods only
  * returns the raw data stored in the object.
  */
+@Serializable
 class CryptoString private constructor() {
     var value: String = ""
         private set
