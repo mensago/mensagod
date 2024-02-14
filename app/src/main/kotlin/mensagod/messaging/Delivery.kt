@@ -2,7 +2,6 @@ package mensagod.messaging
 
 import libkeycard.Domain
 import libkeycard.RandomID
-import libkeycard.WAddress
 import mensagod.*
 import mensagod.dbcmds.UpdateRecord
 import mensagod.dbcmds.UpdateType
@@ -68,19 +67,13 @@ fun deliveryWorker(id: ULong) {
                 return
             }
 
-            val recipientStr = sealedEnv.decryptReceiver().getOrElse {
+            val recipientInfo = sealedEnv.decryptReceiver().getOrElse {
                 sendBounce(504, msgInfo, mapOf())
                     ?.let { logError("Error sending deliveryWorker bounce #3: $it") }
                 return
             }
 
-            val recipient = WAddress.fromString(recipientStr)
-            if (recipient == null) {
-                sendBounce(503, msgInfo, mapOf("RECIPIENTADDRESS" to recipientStr))
-                    ?.let { logError("Error sending deliveryWorker bounce #4: $it") }
-            }
-
-            val destHandle = lfs.entry(MServerPath("/ wsp ${recipient!!.id} new"))
+            val destHandle = lfs.entry(MServerPath("/ wsp ${recipientInfo.to.id} new"))
             exists = destHandle.exists().getOrElse {
                 logError("Unable to check for path ${destHandle.path}")
                 return
@@ -103,7 +96,7 @@ fun deliveryWorker(id: ULong) {
                 logError("Error creating final path for ${handle.path}: $it")
                 return
             }
-            addUpdateRecord(db, recipient.id, UpdateRecord(
+            addUpdateRecord(db, recipientInfo.to.id, UpdateRecord(
                 RandomID.generate(), UpdateType.Create, finalPath.toString(),
                 Instant.now().epochSecond.toString(), gServerDevID
             ))

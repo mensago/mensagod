@@ -2,21 +2,21 @@ package mensagod.messaging
 
 import keznacl.CryptoString
 import libkeycard.Domain
-import libkeycard.MAddress
 import libkeycard.RandomID
 import libkeycard.Timestamp
+import libkeycard.WAddress
 
 /**
  * The RecipientInfo class contains the information used by the receiving domain's server to
  * deliver a message to its recipient.
  */
-class RecipientInfo(var to: MAddress, var senderDom: Domain)
+class RecipientInfo(var to: WAddress, var senderDom: Domain)
 
 /**
  * The SenderInfo class contains the information used by the sending domain's server to
  * deliver a message to the server for its recipient.
  */
-class SenderInfo(var from: MAddress, var recipientDom: Domain)
+class SenderInfo(var from: WAddress, var recipientDom: Domain)
 
 /**
  * The Envelope is a data structure class which represents the public delivery information for a
