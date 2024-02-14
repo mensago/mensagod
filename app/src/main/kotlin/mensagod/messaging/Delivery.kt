@@ -107,8 +107,6 @@ fun deliveryWorker(id: ULong) {
                 RandomID.generate(), UpdateType.Create, finalPath.toString(),
                 Instant.now().epochSecond.toString(), gServerDevID
             ))
-
-            // TODO: push out update notification to active sessions for the workspace
         }
 
         // FEATURE: ExternalDelivery
