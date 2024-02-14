@@ -8,6 +8,8 @@ import mensagod.ClientSession
  * @throws java.io.IOException For network errors
  */
 fun processCommand(state: ClientSession) {
+
+    state.checkForUpdates()
     when (state.message.action) {
         "ADDENTRY" -> commandAddEntry(state)
         "DEVICE" -> commandDevice(state)

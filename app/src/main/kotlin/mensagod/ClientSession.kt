@@ -38,6 +38,13 @@ open class SessionState(
 class ClientSession(val conn: Socket): SessionState() {
 
     /**
+     * Checks the database for updates and update the session state update count.
+     */
+    fun checkForUpdates() {
+        // TODO: Implement ClientSession::checkForUpdates()
+    }
+
+    /**
      * Validator function which gets a CryptoString from the specified field. All error states for
      * the field are handled internally, so if null is returned, the caller need not do anything
      * else. If the value is not required to be present, a default value may be specified, as well.
