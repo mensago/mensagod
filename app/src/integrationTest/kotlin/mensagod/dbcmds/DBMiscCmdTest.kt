@@ -73,7 +73,7 @@ class DBMiscCmdTest {
 
         // These methods will return the proper data or throw, so we don't have to do anything to
         // test them except call them. :)
-        getEncryptionPair(db)
-        getPrimarySigningPair(db)
+        getEncryptionPair(db).getOrThrow()
+        getPrimarySigningPair(db).getOrThrow()
     }
 }

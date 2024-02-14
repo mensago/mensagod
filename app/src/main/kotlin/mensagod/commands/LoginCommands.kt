@@ -252,9 +252,8 @@ fun commandLogin(state: ClientSession) {
     }
 
     // We got this far, so decrypt the challenge and send it to the client
-    val orgPair = try { getEncryptionPair(db) }
-    catch (e: Exception) {
-        logError("commandLogin.getEncryptionPair exception: $e")
+    val orgPair = getEncryptionPair(db).getOrElse {
+        logError("commandLogin.getEncryptionPair exception: $it")
         ServerResponse.sendInternalError("Server can't process client login challenge",
             state.conn)
         return

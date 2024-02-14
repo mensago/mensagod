@@ -14,7 +14,7 @@ class DBKeycardCmdTest {
     @Test fun addEntryTest() {
         setupTest("dbcmds.addEntries")
         val db = DBConn()
-        val osPair = getPrimarySigningPair(db)
+        val osPair = getPrimarySigningPair(db).getOrThrow()
         val orgEntry = OrgEntry.fromString(getEntries(db, null, 0U)[0]).getOrThrow()
         val crsPair = SigningPair.fromStrings(ADMIN_PROFILE_DATA["signing.public"]!!,
             ADMIN_PROFILE_DATA["signing.private"]!!).getOrThrow()

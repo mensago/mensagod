@@ -190,9 +190,8 @@ fun commandAddEntry(state: ClientSession) {
     // If we managed to get this far, we can (theoretically) trust the initial data set given to us
     // by the client. Here we sign the data with the organization's signing key and send the
     // signature back to the client
-    val pskPair = try { getPrimarySigningPair(db) }
-    catch (e: Exception) {
-        logError("commandAddEntry.getPrimarySigningKey exception: $e")
+    val pskPair = getPrimarySigningPair(db).getOrElse {
+        logError("commandAddEntry.getPrimarySigningKey exception: $it")
         ServerResponse.sendInternalError("Server can't get org signing key", state.conn)
         return
     }
