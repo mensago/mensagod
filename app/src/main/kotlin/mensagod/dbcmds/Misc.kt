@@ -12,7 +12,9 @@ import mensagod.ResourceNotFoundException
  *
  * @throws NotConnectedException if not connected to the database
  * @throws ResourceNotFoundException if the keypair was not found
- * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with
+ * the connection
+ * @throws DatabaseCorruptionException if something bad was received from the database itself
  */
 fun getEncryptionPair(db: DBConn): Result<EncryptionPair> {
     val rs = db.query("""SELECT pubkey,privkey FROM orgkeys WHERE purpose = 'encrypt' 
@@ -31,9 +33,12 @@ fun getEncryptionPair(db: DBConn): Result<EncryptionPair> {
 /**
  * Returns the orgnization's primary signing keypair.
  *
- * @throws NotConnectedException if not connected to the database
- * @throws ResourceNotFoundException if the keypair was not found
- * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ * @throws NotConnectedException Returned if not connected to the database
+ * @throws ResourceNotFoundException Returned if the keypair was not found
+ * @throws java.sql.SQLException Returned for database problems, most likely either with your query
+ * or with the connection
+ * @throws DatabaseCorruptionException Returned if something bad was received from the database
+ * itself
  */
 fun getPrimarySigningPair(db: DBConn): Result<SigningPair> {
     val rs = db.query("""SELECT pubkey,privkey FROM orgkeys WHERE purpose = 'sign' 
