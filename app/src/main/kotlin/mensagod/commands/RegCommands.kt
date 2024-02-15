@@ -194,9 +194,8 @@ fun commandRegCode(state: ClientSession) {
         return
     }
 
-    try { addDevice(db, regInfo.first, devid, devkey, devinfo, DeviceStatus.Registered) }
-    catch (e: Exception) {
-        logError("commandRegCode.addDevice: $e")
+    addDevice(db, regInfo.first, devid, devkey, devinfo, DeviceStatus.Registered)?.let {
+        logError("commandRegCode.addDevice: $it")
         ServerResponse.sendInternalError("commandRegCode.3", state.conn)
         return
     }

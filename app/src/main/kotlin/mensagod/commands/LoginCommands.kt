@@ -88,7 +88,11 @@ fun commandDevice(state: ClientSession) {
                 // FeatureTODO: Implement device handling
                 println("New device handling state encountered")
             }
-            addDevice(db, state.wid!!, devid, devkey, devinfo, DeviceStatus.Registered)
+            addDevice(db, state.wid!!, devid, devkey, devinfo, DeviceStatus.Registered)?.let {
+                logError("commandDevice.addDevice exception: $it")
+                ServerResponse.sendInternalError("Error adding device", state.conn)
+                return
+            }
         }
     }
 

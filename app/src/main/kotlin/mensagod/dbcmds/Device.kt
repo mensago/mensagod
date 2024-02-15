@@ -18,10 +18,11 @@ import mensagod.commands.DeviceStatus
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun addDevice(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString,
-              devInfo: CryptoString, status: DeviceStatus) {
+              devInfo: CryptoString, status: DeviceStatus): Throwable? {
     val now = Timestamp()
-    db.execute("""INSERT INTO iwkspc_devices(wid, devid, devkey, lastlogin, devinfo, status)
-        VALUES(?,?,?,?,?,?)""", wid, devid, devkey, now, devInfo, status).getOrThrow()
+    return db.execute("""INSERT INTO iwkspc_devices(wid, devid, devkey, lastlogin, devinfo, status)
+        VALUES(?,?,?,?,?,?)""", wid, devid, devkey, now, devInfo, status)
+        .exceptionOrNull()
 }
 
 /**

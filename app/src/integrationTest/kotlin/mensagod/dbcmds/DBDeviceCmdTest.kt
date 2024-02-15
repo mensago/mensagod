@@ -36,11 +36,11 @@ class DBDeviceCmdTest {
         val devKey = CryptoString.fromString(
             "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN")!!
         val fakeInfo = CryptoString.fromString("AES256:ABCDEFG123456789")!!
-        addDevice(db, adminWID, devid, devKey, fakeInfo, DeviceStatus.Pending)
+        addDevice(db, adminWID, devid, devKey, fakeInfo, DeviceStatus.Pending)?.let { throw it }
         assertEquals(1, countDevices(db, adminWID))
 
         val devid2 = RandomID.fromString("557688c4-8324-4577-ad8b-2dc6fed79567")!!
-        addDevice(db, adminWID, devid2, devKey, fakeInfo, DeviceStatus.Registered)
+        addDevice(db, adminWID, devid2, devKey, fakeInfo, DeviceStatus.Registered)?.let { throw it }
         assertEquals(2, countDevices(db, adminWID))
 
         assertEquals(DeviceStatus.Pending, getDeviceStatus(db, adminWID, devid))
@@ -77,11 +77,12 @@ class DBDeviceCmdTest {
         val devKey = CryptoString.fromString(
             "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN")!!
         val fakeInfo = CryptoString.fromString("AES256:ABCDEFG123456789")!!
-        addDevice(db, adminWID, devid, devKey, fakeInfo, DeviceStatus.Pending)
+        addDevice(db, adminWID, devid, devKey, fakeInfo, DeviceStatus.Pending)?.let { throw it }
 
         val devid2 = RandomID.fromString("557688c4-8324-4577-ad8b-2dc6fed79567")!!
         val fakeInfo2 = CryptoString.fromString("XSALSA20:ABCDEFG123456789")!!
         addDevice(db, adminWID, devid2, devKey, fakeInfo2, DeviceStatus.Registered)
+            ?.let { throw it }
 
         val infoList = getDeviceInfo(db, adminWID, devid)
         assertEquals(1, infoList.size)
