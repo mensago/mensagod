@@ -23,9 +23,8 @@ fun commandDevice(state: ClientSession) {
     val devinfo = state.getCryptoString("Device-Info", false)
 
     val db = DBConn()
-    val devstatus = try { getDeviceStatus(db, state.wid!!, devid) }
-    catch (e: Exception) {
-        logError("commandDevice.getDeviceStatus exception: $e")
+    val devstatus = getDeviceStatus(db, state.wid!!, devid).getOrElse {
+        logError("commandDevice.getDeviceStatus exception: $it")
         ServerResponse.sendInternalError("Server can't get device status", state.conn)
         return
     }
@@ -54,9 +53,8 @@ fun commandDevice(state: ClientSession) {
             }
 
             if (devinfo != null) {
-                try { updateDeviceInfo(db, state.wid!!, devid, devinfo) }
-                catch (e: Exception) {
-                    logError("commandDevice.challengeDevice exception: $e")
+                updateDeviceInfo(db, state.wid!!, devid, devinfo)?.let {
+                    logError("commandDevice.challengeDevice exception: $it")
                     ServerResponse.sendInternalError("Error updating device info",
                         state.conn)
                     return
@@ -124,7 +122,14 @@ fun commandDevice(state: ClientSession) {
     val response = ServerResponse(200, "OK")
 
     if (devstatus == DeviceStatus.Approved) {
-        val infopath = getKeyInfo(db, state.wid!!, devid)
+        val infopath = getKeyInfo(db, state.wid!!, devid).getOrElse {
+            logError("commandDevice.getKeyInfo error for ${state.wid}: $it")
+            state.loginState = LoginState.NoSession
+            state.wid = null
+            ServerResponse.sendInternalError("Error finding new device key information",
+                state.conn)
+            return
+        }
         if (infopath == null) {
             logError("commandDevice.getKeyInfo missing for ${state.wid}")
             state.loginState = LoginState.NoSession
@@ -167,15 +172,13 @@ fun commandDevice(state: ClientSession) {
         return
     }
 
-    try { updateDeviceLogin(db, state.wid!!, devid) }
-    catch (e: Exception) {
-        logError("commandDevice.logDeviceLogin exception for ${state.wid}: $e")
+    updateDeviceLogin(db, state.wid!!, devid)?.let {
+        logError("commandDevice.logDeviceLogin exception for ${state.wid}: $it")
     }
 
     if (devstatus == DeviceStatus.Approved) {
-        try { removeKeyInfo(db, state.wid!!, devid) }
-        catch (e: Exception) {
-            logError("commandDevice.removeKeyInfo exception for ${state.wid}: $e")
+        removeKeyInfo(db, state.wid!!, devid)?.let {
+            logError("commandDevice.removeKeyInfo exception for ${state.wid}: $it")
         }
     }
 }

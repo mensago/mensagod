@@ -116,53 +116,60 @@ fun getDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID?):
  * or with the connection
  * @throws DatabaseCorruptionException Returned if bad data was loaded from the database
  */
-fun getDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID): DeviceStatus {
+fun getDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID): Result<DeviceStatus> {
     val rs = db.query("""SELECT status FROM iwkspc_devices WHERE wid=? AND devid=?""",
-        wid, devid).getOrThrow()
+        wid, devid).getOrElse { return Result.failure(it) }
     if (rs.next()) {
         val stat = rs.getString("status")
-        return DeviceStatus.fromString(stat)
-            ?: throw DatabaseCorruptionException(
-                "Bad device status '$stat' for device $devid in workspace $wid")
+        val out = DeviceStatus.fromString(stat)
+            ?: return Result.failure(DatabaseCorruptionException(
+                "Bad device status '$stat' for device $devid in workspace $wid"))
+        return Result.success(out)
     }
-    return DeviceStatus.NotRegistered
+    return Result.success(DeviceStatus.NotRegistered)
 }
 
 /**
  * getKeyInfo returns the path of a key information file needed for the specified device belonging
  * to the specified workspace. It returns null if the entry is not found.
  *
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ * @throws NotConnectedException Returned if not connected to the database
+ * @throws java.sql.SQLException Returned for database problems, most likely either with your query
+ * or with the connection
+ * @throws DatabaseCorruptionException Returned if bad data was loaded from the database
  */
-fun getKeyInfo(db: DBConn, wid: RandomID, devid: RandomID): MServerPath? {
+fun getKeyInfo(db: DBConn, wid: RandomID, devid: RandomID): Result<MServerPath?> {
     val rs = db.query("""SELECT path FROM keyinfo WHERE wid=? AND devid=?""", wid, devid)
-        .getOrThrow()
+        .getOrElse { return Result.failure(it) }
     if (rs.next()) {
         val infopath = rs.getString("path")
-        return MServerPath.fromString(infopath)
-            ?: throw DatabaseCorruptionException(
-                "Bad key info path '$infopath' for device $devid in workspace $wid")
+        val out = MServerPath.fromString(infopath)
+            ?: return Result.failure(DatabaseCorruptionException(
+                "Bad key info path '$infopath' for device $devid in workspace $wid"))
+        return Result.success(out)
     }
-    return null
+    return Result.success(null)
 }
 
 /**
  * Returns the time of the specified device's last login or null if it was not found.
  *
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ * @throws NotConnectedException Returned if not connected to the database
+ * @throws java.sql.SQLException Returned for database problems, most likely either with your query
+ * or with the connection
+ * @throws DatabaseCorruptionException Returned if bad data was loaded from the database
  */
-fun getLastDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID): Timestamp? {
+fun getLastDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID): Result<Timestamp?> {
     val rs = db.query("""SELECT lastlogin FROM iwkspc_devices WHERE wid=? AND devid=?""",
-        wid, devid).getOrThrow()
+        wid, devid).getOrElse { return Result.failure(it) }
     if (rs.next()) {
         val lastlogin = rs.getString("lastlogin")
-        return Timestamp.fromString(lastlogin)
-            ?: throw DatabaseCorruptionException(
-                "Bad device timestamp '$lastlogin' for device $devid in workspace $wid")
+        val out = Timestamp.fromString(lastlogin)
+            ?: return Result.failure(DatabaseCorruptionException(
+                "Bad device timestamp '$lastlogin' for device $devid in workspace $wid"))
+        return Result.success(out)
     }
-    return null
+    return Result.success(null)
 }
 
 /**
@@ -171,8 +178,9 @@ fun getLastDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID): Timestamp? {
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun removeDevice(db: DBConn, wid: RandomID, devid: RandomID) {
-    db.execute("""DELETE FROM iwkspc_devices WHERE wid=? AND devid=?""", wid, devid).getOrThrow()
+fun removeDevice(db: DBConn, wid: RandomID, devid: RandomID): Throwable? {
+    return db.execute("""DELETE FROM iwkspc_devices WHERE wid=? AND devid=?""", wid, devid)
+        .exceptionOrNull()
 }
 
 /**
@@ -181,8 +189,9 @@ fun removeDevice(db: DBConn, wid: RandomID, devid: RandomID) {
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun removeKeyInfo(db: DBConn, wid: RandomID, devid: RandomID) {
-    db.execute("""DELETE FROM keyinfo WHERE wid=? AND devid=?""", wid, devid).getOrThrow()
+fun removeKeyInfo(db: DBConn, wid: RandomID, devid: RandomID): Throwable? {
+    return db.execute("""DELETE FROM keyinfo WHERE wid=? AND devid=?""", wid, devid)
+        .exceptionOrNull()
 }
 
 /**
@@ -192,9 +201,10 @@ fun removeKeyInfo(db: DBConn, wid: RandomID, devid: RandomID) {
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun updateDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID, devInfo: CryptoString) {
-    db.execute("""UPDATE iwkspc_devices SET devinfo=? WHERE wid=? AND devid=?""",
-        devInfo, wid, devid).getOrThrow()
+fun updateDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID, devInfo: CryptoString):
+        Throwable? {
+    return db.execute("""UPDATE iwkspc_devices SET devinfo=? WHERE wid=? AND devid=?""",
+        devInfo, wid, devid).exceptionOrNull()
 }
 
 /**
@@ -203,9 +213,9 @@ fun updateDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID, devInfo: Crypto
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun updateDeviceKey(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString) {
-    db.execute("""UPDATE iwkspc_devices SET devkey=? WHERE wid=? AND devid=?""",
-        devkey, wid, devid).getOrThrow()
+fun updateDeviceKey(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString): Throwable? {
+    return db.execute("""UPDATE iwkspc_devices SET devkey=? WHERE wid=? AND devid=?""",
+        devkey, wid, devid).exceptionOrNull()
 }
 
 /**
@@ -215,9 +225,9 @@ fun updateDeviceKey(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoSt
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun updateDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID) {
-    db.execute("""UPDATE iwkspc_devices SET lastlogin=? WHERE wid=? AND devid=?""",
-        Timestamp(), wid, devid).getOrThrow()
+fun updateDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID): Throwable? {
+    return db.execute("""UPDATE iwkspc_devices SET lastlogin=? WHERE wid=? AND devid=?""",
+        Timestamp(), wid, devid).exceptionOrNull()
 }
 
 /**
@@ -226,7 +236,8 @@ fun updateDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID) {
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun updateDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID, status: DeviceStatus) {
-    db.execute("""UPDATE iwkspc_devices SET status=? WHERE wid=? AND devid=?""",
-        status, wid, devid).getOrThrow()
+fun updateDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID, status: DeviceStatus):
+        Throwable? {
+    return db.execute("""UPDATE iwkspc_devices SET status=? WHERE wid=? AND devid=?""",
+        status, wid, devid).exceptionOrNull()
 }
