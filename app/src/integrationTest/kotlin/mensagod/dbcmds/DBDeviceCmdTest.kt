@@ -31,17 +31,17 @@ class DBDeviceCmdTest {
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         val devid = RandomID.fromString("c41cb142-9742-4b38-b250-7d61b22beb31")!!
         val badID = RandomID.fromString("89b7f0cc-9dea-412a-b9da-f3a4f131bd78")!!
-        assertEquals(0, countDevices(db, adminWID))
+        assertEquals(0, countDevices(db, adminWID).getOrThrow())
 
         val devKey = CryptoString.fromString(
             "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN")!!
         val fakeInfo = CryptoString.fromString("AES256:ABCDEFG123456789")!!
         addDevice(db, adminWID, devid, devKey, fakeInfo, DeviceStatus.Pending)?.let { throw it }
-        assertEquals(1, countDevices(db, adminWID))
+        assertEquals(1, countDevices(db, adminWID).getOrThrow())
 
         val devid2 = RandomID.fromString("557688c4-8324-4577-ad8b-2dc6fed79567")!!
         addDevice(db, adminWID, devid2, devKey, fakeInfo, DeviceStatus.Registered)?.let { throw it }
-        assertEquals(2, countDevices(db, adminWID))
+        assertEquals(2, countDevices(db, adminWID).getOrThrow())
 
         assertEquals(DeviceStatus.Pending, getDeviceStatus(db, adminWID, devid))
         assertEquals(DeviceStatus.NotRegistered, getDeviceStatus(db, adminWID, badID))
@@ -55,7 +55,7 @@ class DBDeviceCmdTest {
         assert(secondlogin.toString() > firstlogin.toString())
 
         removeDevice(db, adminWID, devid2)
-        assertEquals(1, countDevices(db, adminWID))
+        assertEquals(1, countDevices(db, adminWID).getOrThrow())
     }
 
     @Test
@@ -123,7 +123,7 @@ class DBDeviceCmdTest {
         val testPath = MServerPath("/ keys $adminWID $devid")
 
         assertNull(getKeyInfo(db, adminWID, devid))
-        addKeyInfo(db, adminWID, devid, testPath)
+        addKeyInfo(db, adminWID, devid, testPath)?.let { throw it }
 
         val rs = db.query("""SELECT wid,devid,path FROM keyinfo WHERE wid=? AND devid=?""",
             adminWID, devid).getOrThrow()

@@ -73,9 +73,8 @@ fun commandDevice(state: ClientSession) {
             }
 
             // 1) Check to see if the workspace has any devices registered.
-            val devCount = try { countDevices(db, state.wid!!) }
-            catch (e: Exception) {
-                logError("commandDevice.countDevices exception: $e")
+            val devCount = countDevices(db, state.wid!!).getOrElse {
+                logError("commandDevice.countDevices exception: $it")
                 ServerResponse.sendInternalError("Error checking device count",
                     state.conn)
                 return

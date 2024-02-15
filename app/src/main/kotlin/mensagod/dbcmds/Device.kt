@@ -14,8 +14,9 @@ import mensagod.commands.DeviceStatus
  * called because a new device is added only at certain times, such as at registration or when a
  * user logs into a workspace on a new device.
  *
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ * @throws NotConnectedException Returned if not connected to the database
+ * @throws java.sql.SQLException Returned for database problems, most likely either with your query
+ * or with the connection
  */
 fun addDevice(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString,
               devInfo: CryptoString, status: DeviceStatus): Throwable? {
@@ -29,25 +30,29 @@ fun addDevice(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString,
  * addKeyInfo adds to the database an entry for a key information package. Key information packages
  * are used for key exchange among the devices in an individual workspace.
  *
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ * @throws NotConnectedException Returned if not connected to the database
+ * @throws java.sql.SQLException Returned for database problems, most likely either with your query
+ * or with the connection
  */
-fun addKeyInfo(db: DBConn, wid: RandomID, devid: RandomID, path: MServerPath) {
-    db.execute("""DELETE FROM keyinfo WHERE wid=? AND devid=?""", wid, devid).getOrThrow()
-    db.execute("""INSERT INTO keyinfo(wid, devid, path) VALUES(?,?,?) """, wid, devid, path)
-        .getOrThrow()
+fun addKeyInfo(db: DBConn, wid: RandomID, devid: RandomID, path: MServerPath): Throwable? {
+    db.execute("""DELETE FROM keyinfo WHERE wid=? AND devid=?""", wid, devid)
+        .exceptionOrNull()?.let{ return it }
+    return db.execute("""INSERT INTO keyinfo(wid, devid, path) VALUES(?,?,?) """, wid, devid,
+        path).exceptionOrNull()
 }
 
 /**
  * Returns the number of devices assigned to a workspace.
  *
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ * @throws NotConnectedException Returned if not connected to the database
+ * @throws java.sql.SQLException Returned for database problems, most likely either with your query
+ * or with the connection
  */
-fun countDevices(db: DBConn, wid: RandomID): Int {
-    val rs = db.query("""SELECT COUNT(*) FROM iwkspc_devices WHERE wid=?""", wid).getOrThrow()
-    if (!rs.next()) return 0
-    return rs.getInt(1)
+fun countDevices(db: DBConn, wid: RandomID): Result<Int> {
+    val rs = db.query("""SELECT COUNT(*) FROM iwkspc_devices WHERE wid=?""", wid)
+        .getOrElse { return Result.failure(it) }
+    if (!rs.next()) return Result.success(0)
+    return Result.success(rs.getInt(1))
 }
 
 /**
