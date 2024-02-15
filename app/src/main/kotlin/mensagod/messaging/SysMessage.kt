@@ -7,11 +7,11 @@ import libkeycard.WAddress
 import java.security.SecureRandom
 
 /**
- * Class which represents a Mensago message. It is not as full-featured as a class for a Mensago
- * client would be, as the only type of messages that a server will generate would be system
- * messages, so there is no need for support for attachments and other user-focused features.
+ * Class which represents a Mensago system message. It is not as full-featured as a class for a
+ * Mensago client would be, as there is no need for support for attachments and other user-focused
+ * features.
  */
-class Message(var from: WAddress, var to: WAddress, var subtype:String = "") {
+class SysMessage(var from: WAddress, var to: WAddress, var subtype:String = "") {
 
     var version = 1.0f
     var type = "system"
@@ -24,8 +24,8 @@ class Message(var from: WAddress, var to: WAddress, var subtype:String = "") {
     var body = ""
     var randomString: String = makePadding(1..24)
 
-    fun setBody(s: String): Message { body = s; return this }
-    fun setSubject(s: String): Message { subject = s; return this }
+    fun setBody(s: String): SysMessage { body = s; return this }
+    fun setSubject(s: String): SysMessage { subject = s; return this }
 
     companion object {
 

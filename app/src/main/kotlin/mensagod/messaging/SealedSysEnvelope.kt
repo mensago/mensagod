@@ -16,11 +16,11 @@ import java.io.IOException
 import java.security.GeneralSecurityException
 
 /**
- * SealedEnvelope is used for storing envelope data which is still completely encrypted.
+ * SealedSysEnvelope is used for storing envelope data which is still completely encrypted.
  */
 @Serializable
-class SealedEnvelope(val type: String, val version: String, val receiver: CryptoString,
-                     val sender: CryptoString, val date: Timestamp, val payloadKey: CryptoString) {
+class SealedSysEnvelope(val type: String, val version: String, val receiver: CryptoString,
+                        val sender: CryptoString, val date: Timestamp, val payloadKey: CryptoString) {
 
     /**
      * Decrypts the encrypted recipient information in the message using the organization's
@@ -59,14 +59,14 @@ class SealedEnvelope(val type: String, val version: String, val receiver: Crypto
     companion object {
 
         /**
-         * Creates a new SealedEnvelope instance from a file.
+         * Creates a new SealedSysEnvelope instance from a file.
          *
          * @throws IOException Returned if there was an I/O error
          * @throws BadValueException Returned if the file header could not be parsed
          * @throws kotlinx.serialization.SerializationException encoding-specific errors
          * @throws IllegalArgumentException if the encoded input does not comply format's specification
          */
-        fun readFromFile(file: File): Result<SealedEnvelope> {
+        fun readFromFile(file: File): Result<SealedSysEnvelope> {
 
             var ready = false
             val reader = file.bufferedReader()
@@ -90,7 +90,7 @@ class SealedEnvelope(val type: String, val version: String, val receiver: Crypto
                 headerLines.add(line)
             } while (line != null)
 
-            val out = try { Json.decodeFromString<SealedEnvelope>(headerLines.joinToString()) }
+            val out = try { Json.decodeFromString<SealedSysEnvelope>(headerLines.joinToString()) }
             catch (e: Exception) { return Result.failure(e) }
 
             return Result.success(out)

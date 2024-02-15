@@ -2,10 +2,10 @@ package mensagod.messaging
 
 import org.junit.jupiter.api.Test
 
-class SealedEnvelopeTest {
+class SealedSysEnvelopeTest {
 
     @Test
     fun basicTest() {
-        // TODO: Implement SealedEnvelopeTest::basicTest()
+        // TODO: Implement SealedSysEnvelopeTest::basicTest()
     }
 }

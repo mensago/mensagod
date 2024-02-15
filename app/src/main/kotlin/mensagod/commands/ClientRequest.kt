@@ -56,7 +56,7 @@ class ClientRequest(@SerialName("Action") var action: String,
             val jsonMsg = try { readStringMessage(conn) }
             catch (e: Exception) {
                 if (e is BadFrameException || e is SizeException || e is BadSessionException)
-                    throw java.io.IOException("Message session error")
+                    throw java.io.IOException("SysMessage session error")
                 throw e
             }
             return Json.decodeFromString<ClientRequest>(jsonMsg)

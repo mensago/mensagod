@@ -2,6 +2,7 @@ package mensagod.messaging
 
 import keznacl.CryptoString
 import libkeycard.Domain
+import libkeycard.RandomID
 import libkeycard.Timestamp
 import libkeycard.WAddress
 
@@ -23,3 +24,16 @@ class SenderInfo(var from: WAddress, var recipientDom: Domain)
  */
 class Envelope(var type: String, var version: String, var receiver: RecipientInfo,
                var sender: SenderInfo, var date: Timestamp, var payloadKey: CryptoString)
+
+/**
+ * A DeliveryTarget is a special data class which can be either a full workspace address or just a
+ * domain. It is used in envelope delivery headers.
+ */
+class DeliveryTarget(var domain: Domain, var id: RandomID? = null) {
+    companion object {
+
+        fun fromString(s: String): DeliveryTarget? {
+            TODO("Implement DeliveryTarget::fromString($s")
+        }
+    }
+}

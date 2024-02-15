@@ -60,7 +60,7 @@ fun deliveryWorker(id: ULong) {
         }
 
         if (isLocal) {
-            val sealedEnv = SealedEnvelope.readFromFile(handle.getFile()).getOrElse {
+            val sealedEnv = SealedSysEnvelope.readFromFile(handle.getFile()).getOrElse {
                 sendBounce(300, msgInfo,
                     mapOf("INTERNALCODE" to "messaging.deliveryWorker.2"))
                     ?.let { logError("Error sending deliveryWorker bounce #2: $it") }

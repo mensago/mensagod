@@ -74,7 +74,7 @@ class DataFrameTest {
         assertEquals(FrameType.MultipartFrameFinal, frame.type)
         msgParts.addAll(frame.payload.toList())
 
-        // Message data received from both data frames and complete. Now reassemble, check total
+        // SysMessage data received from both data frames and complete. Now reassemble, check total
         // size, and confirm value match.
         val receivedMsg = msgParts.toByteArray().decodeToString()
         assertEquals(sentMsg, receivedMsg)
