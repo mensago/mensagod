@@ -58,19 +58,21 @@ fun countDevices(db: DBConn, wid: RandomID): Result<Int> {
 /**
  * Gets the encryption key for the specified device or null if not found.
  *
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ * @throws NotConnectedException Returned if not connected to the database
+ * @throws java.sql.SQLException Returned for database problems, most likely either with your query
+ * or with the connection
+ * @throws DatabaseCorruptionException Returned if bad data was loaded from the database
  */
-fun getDeviceKey(db: DBConn, wid: RandomID, devid: RandomID): CryptoString? {
+fun getDeviceKey(db: DBConn, wid: RandomID, devid: RandomID): Result<CryptoString?> {
     val rs = db.query("""SELECT devkey FROM iwkspc_devices WHERE wid=? AND devid=?""",
         wid, devid).getOrThrow()
-    if (rs.next()) {
-        val key = rs.getString("devkey")
-        return CryptoString.fromString(key)
-            ?: throw DatabaseCorruptionException(
-                "Bad device key '$key' for device $devid in workspace $wid")
-    }
-    return null
+    if (!rs.next()) return Result.success(null)
+
+    val key = rs.getString("devkey")
+    val out = CryptoString.fromString(key)
+        ?: return Result.failure(DatabaseCorruptionException(
+            "Bad device key '$key' for device $devid in workspace $wid"))
+    return Result.success(out)
 }
 
 /**
@@ -79,35 +81,40 @@ fun getDeviceKey(db: DBConn, wid: RandomID, devid: RandomID): CryptoString? {
  * passed for the device ID, the device information for all devices registered to the workspace is
  * returned. When information for multiple devices is returned, it is sorted by device ID.
  *
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ * @throws NotConnectedException Returned if not connected to the database
+ * @throws java.sql.SQLException Returned for database problems, most likely either with your query
+ * or with the connection
+ * @throws DatabaseCorruptionException Returned if bad data was loaded from the database
  */
-fun getDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID?): List<Pair<RandomID,CryptoString>> {
+fun getDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID?):
+        Result<List<Pair<RandomID,CryptoString>>> {
     val rs = if (devid == null) {
         db.query("""SELECT devid,devinfo FROM iwkspc_devices WHERE wid=? ORDER BY devid""", wid)
-            .getOrThrow()
+            .getOrElse { return Result.failure(it) }
     } else {
         db.query("""SELECT devid,devinfo FROM iwkspc_devices WHERE wid=? AND devid=?""",
-            wid, devid).getOrThrow()
+            wid, devid).getOrElse { return Result.failure(it) }
     }
 
     val out = mutableListOf<Pair<RandomID,CryptoString>>()
     while (rs.next()) {
         val dev = RandomID.fromString(rs.getString("devid"))
-            ?: throw DatabaseCorruptionException("Bad device ID in wid $wid")
+            ?: return Result.failure(DatabaseCorruptionException("Bad device ID in wid $wid"))
         val info = CryptoString.fromString(rs.getString("devinfo"))
-            ?: throw DatabaseCorruptionException("Bad device info for wid $wid")
+            ?: return Result.failure(DatabaseCorruptionException("Bad device info for wid $wid"))
         out.add(Pair(dev,info))
     }
-    return out
+    return Result.success(out)
 }
 
 /**
  * Checks if a particular device ID has been added to a workspace and returns its status if it
  * exists or DeviceStatus.NotRegistered if it does not.
  *
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ * @throws NotConnectedException Returned if not connected to the database
+ * @throws java.sql.SQLException Returned for database problems, most likely either with your query
+ * or with the connection
+ * @throws DatabaseCorruptionException Returned if bad data was loaded from the database
  */
 fun getDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID): DeviceStatus {
     val rs = db.query("""SELECT status FROM iwkspc_devices WHERE wid=? AND devid=?""",

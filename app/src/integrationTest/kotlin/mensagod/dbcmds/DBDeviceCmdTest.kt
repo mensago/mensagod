@@ -72,7 +72,7 @@ class DBDeviceCmdTest {
         val devid = RandomID.fromString("1e9538b4-880a-4792-a8b9-efe0382d1cd5")!!
         val badID = RandomID.fromString("eb859f7e-8ed3-4859-aae3-e969de8011db")!!
 
-        assertEquals(0, getDeviceInfo(db, adminWID, null).size)
+        assertEquals(0, getDeviceInfo(db, adminWID, null).getOrThrow().size)
 
         val devKey = CryptoString.fromString(
             "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN")!!
@@ -84,26 +84,26 @@ class DBDeviceCmdTest {
         addDevice(db, adminWID, devid2, devKey, fakeInfo2, DeviceStatus.Registered)
             ?.let { throw it }
 
-        val infoList = getDeviceInfo(db, adminWID, devid)
+        val infoList = getDeviceInfo(db, adminWID, devid).getOrThrow()
         assertEquals(1, infoList.size)
         assertEquals(devid, infoList[0].first)
         assertEquals(fakeInfo, infoList[0].second)
 
-        assertEquals(0, getDeviceInfo(db, adminWID, badID).size)
+        assertEquals(0, getDeviceInfo(db, adminWID, badID).getOrThrow().size)
 
-        val infoList2 = getDeviceInfo(db, adminWID, null)
+        val infoList2 = getDeviceInfo(db, adminWID, null).getOrThrow()
         assertEquals(2, infoList2.size)
         assertEquals(devid2, infoList2[1].first)
         assertEquals(fakeInfo2, infoList2[1].second)
 
         updateDeviceInfo(db, adminWID, devid, fakeInfo2)
-        assertEquals(fakeInfo2, getDeviceInfo(db, adminWID, devid)[0].second)
+        assertEquals(fakeInfo2, getDeviceInfo(db, adminWID, devid).getOrThrow()[0].second)
 
         val devKey2 = CryptoString.fromString(
             "CURVE25519:mO?WWA-k2B2O|Z%fA`~s3^\$iiN{5R->#jxO@cy6{")!!
         updateDeviceKey(db, adminWID, devid, devKey2)
-        assertEquals(devKey2, getDeviceKey(db, adminWID, devid))
-        assertNull(getDeviceKey(db, adminWID, badID))
+        assertEquals(devKey2, getDeviceKey(db, adminWID, devid).getOrThrow())
+        assertNull(getDeviceKey(db, adminWID, badID).getOrThrow())
 
         updateDeviceStatus(db, adminWID, devid, DeviceStatus.Registered)
         assertEquals(DeviceStatus.Registered, getDeviceStatus(db, adminWID, devid))
