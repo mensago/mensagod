@@ -16,6 +16,8 @@ import java.nio.file.DirectoryNotEmptyException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.time.Instant
+import java.util.*
 import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 
@@ -213,6 +215,24 @@ class LocalFS private constructor(val basePath: Path) {
 
     /** Creates a lock on a filesystem entry. */
     fun lock(path: MServerPath) = synchronized(locks) { locks.add(path.toString()) }
+
+    /**
+     * Creates a handle for a temporary file. The file itself doesn't exist, but this gets rid of
+     * all the boilerplate code needed to prepare one.
+     */
+    fun makeTempFile(wid: RandomID, fileSize: Long): Result<LocalFSHandle> {
+        val widTempPath = Paths.get(basePath.toString(), "tmp", wid.toString())
+        val out = try {
+            widTempPath.toFile().mkdirs()
+            val tempName =
+                "${Instant.now().epochSecond}.fileSize.${UUID.randomUUID().toString().lowercase()}"
+            val tempFile = Paths.get(widTempPath.toString(), tempName).toFile()
+            val tempMPath = MServerPath("/ tmp $wid $tempName")
+            LocalFSHandle(tempMPath, tempFile)
+        }
+        catch (e: Exception) { return Result.failure(e) }
+        return Result.success(out)
+    }
 
     /** Removes the lock on a filesystem entry. */
     fun unlock(path: MServerPath) = synchronized(locks) { locks.remove(path.toString()) }
