@@ -1,9 +1,8 @@
 package mensagod.fs
 
-import mensagod.FSFailureException
-import mensagod.MServerPath
-import mensagod.makeTestFile
-import mensagod.setupTest
+import libkeycard.RandomID
+import mensagod.*
+import org.apache.commons.io.FileUtils
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
@@ -61,6 +60,16 @@ class LocalFSTest {
             .makeDirectory()
             ?.let { throw it }
         assert(wspdir.exists())
+    }
+
+    @Test
+    fun makeTempTest() {
+        setupTest("fs.makeTempFile")
+
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val lfs = LocalFS.get()
+        val tempHandle = lfs.makeTempFile(adminWID, 4096).getOrThrow()
+        FileUtils.touch(tempHandle.getFile())
     }
 
     @Test

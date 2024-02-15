@@ -81,6 +81,9 @@ testing {
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:$coroutinesVersion")
 
+                // FileUtils are handy in integration tests, too
+                implementation("commons-io:commons-io:2.13.0")
+
                 // For DNS testing
                 implementation("org.minidns:minidns-hla:1.0.4")
             }

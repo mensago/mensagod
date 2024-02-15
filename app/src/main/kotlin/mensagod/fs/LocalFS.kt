@@ -225,7 +225,7 @@ class LocalFS private constructor(val basePath: Path) {
         val out = try {
             widTempPath.toFile().mkdirs()
             val tempName =
-                "${Instant.now().epochSecond}.fileSize.${UUID.randomUUID().toString().lowercase()}"
+                "${Instant.now().epochSecond}.$fileSize.${UUID.randomUUID().toString().lowercase()}"
             val tempFile = Paths.get(widTempPath.toString(), tempName).toFile()
             val tempMPath = MServerPath("/ tmp $wid $tempName")
             LocalFSHandle(tempMPath, tempFile)
