@@ -2,6 +2,7 @@ package mensagod.messaging
 
 import keznacl.BadValueException
 import keznacl.CryptoString
+import keznacl.decryptAndDeserialize
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import libkeycard.Timestamp
@@ -34,17 +35,25 @@ class SealedEnvelope(val type: String, val version: String, val receiver: Crypto
      * @throws GeneralSecurityException Returned for decryption failures
      */
     fun decryptReceiver(): Result<RecipientInfo> {
-        /**
-         * Decrypts the encrypted recipient information in the message using the organization's
-         * decryption key.
-         */
         val keyPair = getEncryptionPair(DBConn()).getOrElse { return Result.failure(it) }
-        val rawJSON = keyPair.decrypt(receiver)
-            .getOrElse { return Result.failure(it) }
-            .decodeToString()
-        val out = try { Json.decodeFromString<RecipientInfo>(rawJSON) }
-            catch (e: Exception) { return Result.failure(e) }
-        return Result.success(out)
+        return decryptAndDeserialize<RecipientInfo>(receiver, keyPair)
+    }
+
+    /**
+     * Decrypts the encrypted recipient information in the message using the organization's
+     * decryption key.
+     *
+     * @throws NotConnectedException Returned if not connected to the database
+     * @throws ResourceNotFoundException Returned if the keypair was not found
+     * @throws java.sql.SQLException Returned for database problems, most likely either with your
+     * query or with the connection
+     * @throws DatabaseCorruptionException if bad data was received from the database itself
+     * @throws IllegalArgumentException Returned if there was a Base85 decoding error
+     * @throws GeneralSecurityException Returned for decryption failures
+     */
+    fun decryptSender(): Result<SenderInfo> {
+        val keyPair = getEncryptionPair(DBConn()).getOrElse { return Result.failure(it) }
+        return decryptAndDeserialize<SenderInfo>(sender, keyPair)
     }
 
     companion object {
