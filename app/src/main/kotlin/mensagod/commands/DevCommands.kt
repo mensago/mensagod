@@ -1,5 +1,21 @@
 package mensagod.commands
 
+import mensagod.ClientSession
+import mensagod.DBConn
+import mensagod.dbcmds.getDeviceStatus
+
+fun commandKeyPkg(state: ClientSession) {
+
+    if (!state.requireLogin()) return
+    val devID = state.getRandomID("Device-ID", true) ?: return
+    val keyInfo = state.getCryptoString("Key-Info", true) ?: return
+
+    val db = DBConn()
+    val devStatus = getDeviceStatus(db, state.wid!!, devID)
+
+    // TODO: Finish implementing commandKeyPkg()
+}
+
 enum class DeviceStatus {
     Approved,
     Blocked,
