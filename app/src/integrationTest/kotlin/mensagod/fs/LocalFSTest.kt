@@ -3,7 +3,7 @@ package mensagod.fs
 import libkeycard.RandomID
 import mensagod.*
 import org.apache.commons.io.FileUtils
-import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -20,7 +20,7 @@ class LocalFSTest {
         val converted = Paths.get(lfs.basePath.toString(), "wsp",
             "d8b6d06b-7728-4c43-bc08-85a0c645d260").toString()
 
-        Assertions.assertEquals(converted, lfs.convertToLocal(
+        assertEquals(converted, lfs.convertToLocal(
             MServerPath("/ wsp d8b6d06b-7728-4c43-bc08-85a0c645d260")).toString())
     }
 
@@ -83,10 +83,11 @@ class LocalFSTest {
             Paths.get(setupData.testPath, "topdir", "wsp", widStr).toString())
             .first
 
-        lfs.entry(MServerPath("/ wsp $widStr $testFileName")).moveTo(MServerPath("/ wsp"))
-            ?.let { throw it }
+        val movedEntry = lfs.entry(MServerPath("/ wsp $widStr $testFileName"))
+        movedEntry.moveTo(MServerPath("/ wsp"))?.let { throw it }
         assert(File(Paths.get(setupData.testPath, "topdir", "wsp", testFileName).toString())
             .exists())
+        assertEquals("/ wsp $testFileName", movedEntry.path.toString())
 
         val newFilePath = lfs.entry(MServerPath("/ wsp $testFileName"))
             .copyTo(MServerPath("/ wsp $widStr")).getOrThrow()

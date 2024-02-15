@@ -28,7 +28,9 @@ var localFSSingleton: LocalFS? = null
  * interacting with a filesystem in a generic way, enabling potential usage of S3, SANs, or other
  * non-local storage media.
  */
-class LocalFSHandle(val path: MServerPath, private var file: File) {
+class LocalFSHandle(mpath: MServerPath, private var file: File) {
+    var path: MServerPath = mpath
+        private set
 
     /**
      * Creates a duplicate of the file in another directory. The destination path MUST point to a
@@ -131,7 +133,10 @@ class LocalFSHandle(val path: MServerPath, private var file: File) {
         val destFile = File(localDest.toString())
         try { FileUtils.moveFileToDirectory(file, destFile, false) }
         catch (e: Exception) { return e }
+        val newPath = destPath.clone().push(path.basename()).getOrElse { return it }
+
         file = File(destFile, file.name)
+        path = newPath
 
         return null
     }
