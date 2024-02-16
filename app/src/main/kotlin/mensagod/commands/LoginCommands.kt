@@ -82,7 +82,7 @@ fun commandDevice(state: ClientSession) {
             if (devCount > 0) {
                 // Feature: LocalDelivery
                 // Feature: DeviceManagement
-                // FeatureTODO: Implement device handling
+                // TODO: Implement device handling
                 println("New device handling state encountered")
             }
             addDevice(db, state.wid!!, devid, devkey, devinfo, DeviceStatus.Registered)?.let {
