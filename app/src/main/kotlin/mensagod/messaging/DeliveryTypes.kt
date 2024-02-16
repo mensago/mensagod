@@ -1,9 +1,7 @@
 package mensagod.messaging
 
-import keznacl.CryptoString
 import libkeycard.Domain
 import libkeycard.RandomID
-import libkeycard.Timestamp
 import libkeycard.WAddress
 
 /**
@@ -17,13 +15,6 @@ class RecipientInfo(var to: WAddress, var senderDom: Domain)
  * deliver a message to the server for its recipient.
  */
 class SenderInfo(var from: WAddress, var recipientDom: Domain)
-
-/**
- * The Envelope is a data structure class which represents the public delivery information for a
- * message.
- */
-class Envelope(var type: String, var version: String, var receiver: RecipientInfo,
-               var sender: SenderInfo, var date: Timestamp, var payloadKey: CryptoString)
 
 /**
  * A DeliveryTarget is a special data class which can be either a full workspace address or just a

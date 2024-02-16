@@ -7,6 +7,7 @@ import keznacl.UnsupportedAlgorithmException
 import mensagod.*
 import mensagod.dbcmds.*
 import mensagod.fs.LocalFS
+import mensagod.messaging.DeviceApprovalMsg
 import java.security.GeneralSecurityException
 import java.security.SecureRandom
 
@@ -82,6 +83,34 @@ fun commandDevice(state: ClientSession) {
             if (devCount > 0) {
                 // Feature: LocalDelivery
                 // Feature: DeviceManagement
+
+                val recipient = try {
+                    val out = resolveWID(db, state.wid!!)
+                    if (out == null) {
+                        logError("commandDevice.resolveWID returned null for wid ${state.wid!!}")
+                        ServerResponse.sendInternalError("Server error: workspace missing",
+                            state.conn)
+                        return
+                    }
+                    out
+                }
+                catch (e: Exception) {
+                    logError("commandDevice.resolveWID exception: $e")
+                    ServerResponse.sendInternalError("Error looking up workspace address",
+                        state.conn)
+                    return
+                }
+
+                val msg = DeviceApprovalMsg.new(gServerAddress, recipient, state.conn.inetAddress)
+                    .getOrElse {
+                        logError("commandDevice.createApprovalMsg exception: $it")
+                        ServerResponse.sendInternalError(
+                            "Error creating device approval request", state.conn)
+                        return
+                    }
+                // Create auth message and save to file
+                // call queueMessageForDelivery() with delivery info
+
                 // TODO: Implement device handling
                 println("New device handling state encountered")
             }

@@ -4,6 +4,7 @@ import keznacl.Base85
 import libkeycard.RandomID
 import libkeycard.Timestamp
 import libkeycard.WAddress
+import java.net.InetAddress
 import java.security.SecureRandom
 
 /**
@@ -11,7 +12,7 @@ import java.security.SecureRandom
  * Mensago client would be, as there is no need for support for attachments and other user-focused
  * features.
  */
-class SysMessage(var from: WAddress, var to: WAddress, var subtype:String = "") {
+open class SysMessage(var from: WAddress, var to: WAddress, var subtype:String = "") {
 
     var version = 1.0f
     var type = "system"
@@ -43,4 +44,24 @@ class SysMessage(var from: WAddress, var to: WAddress, var subtype:String = "") 
     }
 }
 
+/**
+ * The DeviceApprovalMsg class represents a device approval message.
+ */
+class DeviceApprovalMsg private constructor(from: WAddress, to: WAddress):
+    SysMessage(from, to, "devrequest") {
 
+    companion object {
+        /**
+         * Creates a new device approval message.
+         */
+        fun new(from: WAddress, to: WAddress, addr: InetAddress): Result<DeviceApprovalMsg> {
+            val out = DeviceApprovalMsg(from, to)
+            out.setSubject("New Device Login")
+
+            val ts = Timestamp()
+            // TODO: Implement DeviceApprovalMsg::new()
+
+            return Result.success(out)
+        }
+    }
+}
