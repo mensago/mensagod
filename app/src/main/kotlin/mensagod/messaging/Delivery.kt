@@ -2,6 +2,7 @@ package mensagod.messaging
 
 import libkeycard.Domain
 import libkeycard.RandomID
+import libkeycard.WAddress
 import mensagod.*
 import mensagod.dbcmds.UpdateRecord
 import mensagod.dbcmds.UpdateType
@@ -14,7 +15,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 /**
  * Used for giving the necessary information for delivery threads to do their jobs.
  */
-class MessageInfo(val sender: String, val receiver: String, val path: MServerPath)
+class MessageInfo(val sender: DeliveryTarget, val receiver: DeliveryTarget, val path: MServerPath)
 
 // The global message queue for delivery threads to process work from.
 private val gMessageQueue = ConcurrentLinkedQueue<MessageInfo>()
@@ -24,13 +25,15 @@ private val gDeliveryPool = WorkerPool(100)
  * Add a MessageInfo object to the delivery queue. It also spawns a delivery thread to handle the
  * message if the thread pool is not running at capacity.
  */
-fun queueMessageForDelivery(info: MessageInfo) {
+fun queueMessageForDelivery(sender: WAddress, domain: Domain, path: MServerPath) {
+    val info = MessageInfo(DeliveryTarget(sender.domain, sender.id),
+        DeliveryTarget(domain), path)
     gMessageQueue.add(info)
 
-    // TODO: Launch delivery thread
+    Thread.ofVirtual().start { deliveryWorker() }
 }
 
-fun deliveryWorker(id: ULong) {
+fun deliveryWorker() {
 
     val lfs = LocalFS.get()
     val db = DBConn()
@@ -48,14 +51,8 @@ fun deliveryWorker(id: ULong) {
             continue
         }
 
-        val domain = Domain.fromString(msgInfo.receiver)
-        if (domain == null) {
-            logError("Bad domain ${msgInfo.receiver} for ${msgInfo.path}")
-            continue
-        }
-
-        val isLocal = isDomainLocal(db, domain).getOrElse {
-            logError("Error determining domain $domain is local: $it")
+        val isLocal = isDomainLocal(db, msgInfo.receiver.domain).getOrElse {
+            logError("Error determining domain ${msgInfo.receiver.domain} is local: $it")
             return
         }
 
@@ -111,8 +108,6 @@ fun deliveryWorker(id: ULong) {
         lfs.withLock(msgInfo.path) { handle.delete() }
             ?.let { logError("Couldn't delete ${msgInfo.path}: $it") }
     }
-
-    gDeliveryPool.done(id)
 }
 
 private fun sendBounce(errorcode: Int, info: MessageInfo, extraData: Map<String,String>):
