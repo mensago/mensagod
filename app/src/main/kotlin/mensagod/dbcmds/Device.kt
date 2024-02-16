@@ -5,9 +5,9 @@ import libkeycard.RandomID
 import libkeycard.Timestamp
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
-import mensagod.MServerPath
 import mensagod.NotConnectedException
 import mensagod.commands.DeviceStatus
+import mensagod.libmensago.MServerPath
 
 /**
  * Adds a device to a workspcae. The device's initial last login is set to when this method is

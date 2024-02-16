@@ -8,8 +8,7 @@ import libkeycard.UserID
 import mensagod.commands.ClientRequest
 import mensagod.commands.ServerResponse
 import mensagod.dbcmds.resolveAddress
-import mensagod.fs.LocalFS
-import mensagod.fs.LocalFSHandle
+import mensagod.libmensago.MServerPath
 import org.apache.commons.io.FileUtils
 import java.io.RandomAccessFile
 import java.net.Socket

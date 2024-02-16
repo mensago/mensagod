@@ -1,13 +1,10 @@
-package mensagod.fs
+package mensagod
 
 import keznacl.BadValueException
 import keznacl.CryptoString
 import keznacl.getPreferredHashAlgorithm
 import libkeycard.RandomID
-import mensagod.FSFailureException
-import mensagod.MServerPath
-import mensagod.ResourceNotFoundException
-import mensagod.TypeException
+import mensagod.libmensago.MServerPath
 import org.apache.commons.io.FileExistsException
 import org.apache.commons.io.FileUtils
 import java.io.File

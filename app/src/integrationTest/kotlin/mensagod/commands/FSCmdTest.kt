@@ -5,6 +5,7 @@ import keznacl.hashFile
 import libkeycard.RandomID
 import mensagod.*
 import mensagod.dbcmds.setQuota
+import mensagod.libmensago.MServerPath
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.net.InetAddress

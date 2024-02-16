@@ -8,7 +8,7 @@ import libkeycard.*
 import mensagod.commands.DeviceStatus
 import mensagod.commands.ServerResponse
 import mensagod.dbcmds.*
-import mensagod.fs.LocalFS
+import mensagod.libmensago.MServerPath
 import org.apache.commons.io.FileUtils
 import org.junit.jupiter.api.Assertions.assertEquals
 import java.io.File

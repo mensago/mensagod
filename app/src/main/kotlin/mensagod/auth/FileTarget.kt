@@ -1,7 +1,7 @@
 package mensagod.auth
 
 import libkeycard.RandomID
-import mensagod.MServerPath
+import mensagod.libmensago.MServerPath
 
 /**
  * The FileTarget class is used for actions which operate on a file. Currently this is a very

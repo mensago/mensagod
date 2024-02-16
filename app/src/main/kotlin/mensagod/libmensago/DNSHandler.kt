@@ -1,4 +1,4 @@
-package mensagod
+package mensagod.libmensago
 
 import libkeycard.Domain
 import org.minidns.hla.ResolverApi

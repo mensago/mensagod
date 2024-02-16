@@ -5,7 +5,7 @@ import keznacl.CryptoString
 import libkeycard.EntryTypeException
 import libkeycard.RandomID
 import mensagod.DBConn
-import mensagod.MServerPath
+import mensagod.libmensago.MServerPath
 
 class UpdateRecord(val id: RandomID, val type: UpdateType, val data: String, val time: String,
                    val devid: RandomID)
@@ -21,7 +21,7 @@ class UpdateRecord(val id: RandomID, val type: UpdateType, val data: String, val
  */
 fun addUpdateRecord(db: DBConn, wid: RandomID, rec: UpdateRecord): Throwable? {
 
-    val parseSplitPath = fun (s: String): Pair<MServerPath,MServerPath>? {
+    val parseSplitPath = fun (s: String): Pair<MServerPath, MServerPath>? {
         val parts = s.split(":", limit = 2)
         if (parts.size != 2) return null
 

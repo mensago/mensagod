@@ -11,7 +11,7 @@ import mensagod.auth.AuthAction
 import mensagod.auth.ServerTarget
 import mensagod.auth.WIDActor
 import mensagod.dbcmds.*
-import mensagod.fs.LocalFS
+import mensagod.libmensago.MServerPath
 
 // PREREG(User-ID="", Workspace-ID="",Domain="")
 fun commandPreregister(state: ClientSession) {

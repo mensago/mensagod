@@ -8,7 +8,7 @@ import mensagod.dbcmds.UpdateRecord
 import mensagod.dbcmds.UpdateType
 import mensagod.dbcmds.addUpdateRecord
 import mensagod.dbcmds.isDomainLocal
-import mensagod.fs.LocalFS
+import mensagod.libmensago.MServerPath
 import mensagod.libmensago.SealedSysEnvelope
 import java.time.Instant
 import java.util.concurrent.ConcurrentLinkedQueue

@@ -6,8 +6,8 @@ import keznacl.EncryptionKey
 import keznacl.UnsupportedAlgorithmException
 import mensagod.*
 import mensagod.dbcmds.*
-import mensagod.fs.LocalFS
 import mensagod.libmensago.DeviceApprovalMsg
+import mensagod.libmensago.MServerPath
 import java.security.GeneralSecurityException
 import java.security.SecureRandom
 

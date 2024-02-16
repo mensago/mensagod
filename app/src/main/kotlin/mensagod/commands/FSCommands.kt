@@ -8,7 +8,7 @@ import mensagod.auth.DirectoryTarget
 import mensagod.auth.FileTarget
 import mensagod.auth.WIDActor
 import mensagod.dbcmds.*
-import mensagod.fs.LocalFS
+import mensagod.libmensago.MServerPath
 import java.time.Instant
 import java.util.*
 

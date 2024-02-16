@@ -1,7 +1,7 @@
-package mensagod.fs
+package mensagod
 
 import libkeycard.RandomID
-import mensagod.*
+import mensagod.libmensago.MServerPath
 import org.apache.commons.io.FileUtils
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -21,7 +21,8 @@ class LocalFSTest {
             "d8b6d06b-7728-4c43-bc08-85a0c645d260").toString()
 
         assertEquals(converted, lfs.convertToLocal(
-            MServerPath("/ wsp d8b6d06b-7728-4c43-bc08-85a0c645d260")).toString())
+            MServerPath("/ wsp d8b6d06b-7728-4c43-bc08-85a0c645d260")
+        ).toString())
     }
 
     @Test
@@ -47,8 +48,10 @@ class LocalFSTest {
         val lfs = LocalFS.get()
 
         assertThrows<FSFailureException> {
-            lfs.entry(MServerPath(
-                "/ wsp 6e99f804-7bb6-435a-9dce-53d9c6d33816 5769bf90-aeb2-46b1-9bc5-4809d55991df"))
+            lfs.entry(
+                MServerPath(
+                "/ wsp 6e99f804-7bb6-435a-9dce-53d9c6d33816 5769bf90-aeb2-46b1-9bc5-4809d55991df")
+            )
                 .makeDirectory()
                 ?.let { throw it }
         }

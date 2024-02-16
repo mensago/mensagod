@@ -3,7 +3,7 @@ package mensagod.dbcmds
 import keznacl.BadValueException
 import libkeycard.RandomID
 import mensagod.*
-import mensagod.fs.LocalFS
+import mensagod.libmensago.MServerPath
 import java.io.IOException
 
 /**
