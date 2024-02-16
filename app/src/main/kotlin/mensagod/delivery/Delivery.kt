@@ -1,4 +1,4 @@
-package mensagod.messaging
+package mensagod.delivery
 
 import libkeycard.Domain
 import libkeycard.RandomID
@@ -47,7 +47,7 @@ fun deliveryWorker() {
             return
         }
         if (!exists) {
-            sendBounce(300, msgInfo, mapOf("INTERNALCODE" to "messaging.deliveryWorker.1"))
+            sendBounce(300, msgInfo, mapOf("INTERNALCODE" to "delivery.deliveryWorker.1"))
                 ?.let { logError("Error sending deliveryWorker bounce #1: $it") }
             continue
         }
@@ -60,7 +60,7 @@ fun deliveryWorker() {
         if (isLocal) {
             val sealedEnv = SealedSysEnvelope.readFromFile(handle.getFile()).getOrElse {
                 sendBounce(300, msgInfo,
-                    mapOf("INTERNALCODE" to "messaging.deliveryWorker.2"))
+                    mapOf("INTERNALCODE" to "delivery.deliveryWorker.2"))
                     ?.let { logError("Error sending deliveryWorker bounce #2: $it") }
                 return
             }

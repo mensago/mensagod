@@ -7,7 +7,7 @@ import keznacl.UnsupportedAlgorithmException
 import mensagod.*
 import mensagod.dbcmds.*
 import mensagod.fs.LocalFS
-import mensagod.messaging.DeviceApprovalMsg
+import mensagod.libmensago.DeviceApprovalMsg
 import java.security.GeneralSecurityException
 import java.security.SecureRandom
 

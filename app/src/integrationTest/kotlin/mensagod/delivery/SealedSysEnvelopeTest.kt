@@ -1,4 +1,4 @@
-package mensagod.messaging
+package mensagod.delivery
 
 import org.junit.jupiter.api.Test
 

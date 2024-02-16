@@ -1,4 +1,4 @@
-package mensagod.messaging
+package mensagod.libmensago
 
 import keznacl.Base85
 import libkeycard.RandomID
