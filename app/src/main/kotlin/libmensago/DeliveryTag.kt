@@ -1,7 +1,8 @@
 package libmensago
 
-import keznacl.CryptoString
 import keznacl.Encryptor
+import keznacl.SecretKey
+import keznacl.serializeAndEncrypt
 import libkeycard.Domain
 import libkeycard.Timestamp
 import libkeycard.WAddress
@@ -29,22 +30,39 @@ class SenderInfo(var from: WAddress, var recipientDom: Domain)
  *
  */
 class DeliveryTag private constructor(var receiver: RecipientInfo, var sender: SenderInfo,
-                                      val payloadKey: CryptoString, val keyHash: CryptoString,
-                                      var type: MsgType = MsgType.User,
+                                      val payloadKey: SecretKey, var type: MsgType = MsgType.User,
                                       var subType: String? = null) {
     var version = 1.0f
     var date = Timestamp()
 
     /**
-     * Creates a SealedDeliverySysTag instance ready for use in an Envelope object.
+     * Creates a SealedDeliverySysTag instance ready for use in an Envelope object. The recipientKey
+     * parameter is intentionally vague. Determining whether to use asymmetric or symmetric
+     * encryption and the algorithm used requires additional context to determine. So long as the
+     * encryption key used can be decrypted by the recipient, the specific don't matter as far as
+     * this call is concerned.
      *
+     * @param recipientKey An encryption key used for communicating with the recipient.
      * @param senderKey The encryption key for the sender's organization. This is obtained from the
      * Encryption-Key field in the organization's keycard.
      * @param receiverKey The encryption key for the recipient's organization. This is obtained from
      * the Encryption-Key field in the keycard for the recipient's organization.
      */
-    fun seal(senderKey: Encryptor, receiverKey: Encryptor): Result<SealedDeliveryTag> {
-        TODO("Implement SysDeliveryTag::seal($senderKey, $receiverKey)")
+    fun seal(recipientKey: Encryptor, senderKey: Encryptor, receiverKey: Encryptor):
+            Result<SealedDeliveryTag> {
+
+        val encReceiver = serializeAndEncrypt(receiver, receiverKey)
+            .getOrElse { return Result.failure(it) }
+        val encSender = serializeAndEncrypt(sender, senderKey)
+            .getOrElse { return Result.failure(it) }
+        val encPayKey = recipientKey.encrypt(payloadKey.key.value.encodeToByteArray())
+            .getOrElse { return Result.failure(it) }
+
+        return Result.success(SealedDeliveryTag(
+            encReceiver, encSender, type, date, encPayKey,
+            payloadKey.getHash().getOrElse { return Result.failure(it) },
+            subType, version
+        ))
     }
 
     companion object {
@@ -55,7 +73,12 @@ class DeliveryTag private constructor(var receiver: RecipientInfo, var sender: S
          */
         fun new(from: WAddress, to: WAddress, type: MsgType = MsgType.User,
                 subType: String? = null): Result<DeliveryTag> {
-            TODO("Implement DeliveryTag::new($from, $to, $type, $subType)")
+
+            val rInfo = RecipientInfo(to, from.domain)
+            val sInfo = SenderInfo(from, to.domain)
+            val payKey = SecretKey.generate().getOrElse { return Result.failure(it) }
+
+            return Result.success(DeliveryTag(rInfo, sInfo, payKey, type, subType))
         }
     }
 }
