@@ -1,12 +1,12 @@
 package mensagod.commands
 
+import libmensago.MServerPath
 import mensagod.ClientSession
 import mensagod.DBConn
 import mensagod.LocalFS
 import mensagod.dbcmds.addKeyInfo
 import mensagod.dbcmds.getDeviceStatus
 import mensagod.dbcmds.updateDeviceStatus
-import mensagod.libmensago.MServerPath
 import mensagod.logError
 import org.apache.commons.io.FileUtils
 

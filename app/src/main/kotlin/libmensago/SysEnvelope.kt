@@ -1,4 +1,4 @@
-package mensagod.libmensago
+package libmensago
 
 import keznacl.CryptoString
 import keznacl.Encryptor
@@ -9,7 +9,8 @@ import keznacl.SecretKey
  */
 class SysEnvelope private constructor (val subtype: String, receiver: RecipientInfo,
                                        sender: SenderInfo, payloadKey: CryptoString,
-                                       keyHash: CryptoString, message: Message):
+                                       keyHash: CryptoString, message: Message
+):
     Envelope(receiver, sender, payloadKey, keyHash, message) {
 
     init {

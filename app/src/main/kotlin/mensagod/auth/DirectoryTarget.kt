@@ -1,7 +1,7 @@
 package mensagod.auth
 
 import libkeycard.RandomID
-import mensagod.libmensago.MServerPath
+import libmensago.MServerPath
 
 /**
  * The DirectoryTarget class is used for actions which operate on a directory.

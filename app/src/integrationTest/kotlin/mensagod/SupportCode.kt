@@ -5,10 +5,10 @@ import keznacl.CryptoString
 import keznacl.EncryptionPair
 import keznacl.SigningPair
 import libkeycard.*
+import libmensago.MServerPath
 import mensagod.commands.DeviceStatus
 import mensagod.commands.ServerResponse
 import mensagod.dbcmds.*
-import mensagod.libmensago.MServerPath
 import org.apache.commons.io.FileUtils
 import org.junit.jupiter.api.Assertions.assertEquals
 import java.io.File

@@ -1,4 +1,4 @@
-package mensagod.libmensago
+package libmensago
 
 /**
  * The MsgFormat class represents the text format contained in a message. Currently the only

@@ -1,7 +1,6 @@
 package libmensago
 
 import keznacl.BadValueException
-import mensagod.libmensago.MServerPath
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 

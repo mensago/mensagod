@@ -1,4 +1,4 @@
-package mensagod.libmensago
+package libmensago
 
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable

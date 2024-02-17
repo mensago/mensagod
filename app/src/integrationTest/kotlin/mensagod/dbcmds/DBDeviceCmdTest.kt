@@ -2,9 +2,9 @@ package mensagod.dbcmds
 
 import keznacl.CryptoString
 import libkeycard.RandomID
+import libmensago.MServerPath
 import mensagod.*
 import mensagod.commands.DeviceStatus
-import mensagod.libmensago.MServerPath
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 

@@ -3,11 +3,11 @@ package mensagod.dbcmds
 import keznacl.CryptoString
 import libkeycard.RandomID
 import libkeycard.Timestamp
+import libmensago.MServerPath
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
 import mensagod.NotConnectedException
 import mensagod.commands.DeviceStatus
-import mensagod.libmensago.MServerPath
 
 /**
  * Adds a device to a workspcae. The device's initial last login is set to when this method is

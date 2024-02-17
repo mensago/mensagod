@@ -3,13 +3,13 @@ package mensagod.delivery
 import libkeycard.Domain
 import libkeycard.RandomID
 import libkeycard.WAddress
+import libmensago.MServerPath
+import libmensago.SealedSysEnvelope
 import mensagod.*
 import mensagod.dbcmds.UpdateRecord
 import mensagod.dbcmds.UpdateType
 import mensagod.dbcmds.addUpdateRecord
 import mensagod.dbcmds.isDomainLocal
-import mensagod.libmensago.MServerPath
-import mensagod.libmensago.SealedSysEnvelope
 import java.time.Instant
 import java.util.concurrent.ConcurrentLinkedQueue
 

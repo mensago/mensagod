@@ -4,10 +4,10 @@ import keznacl.Base85
 import keznacl.CryptoString
 import keznacl.EncryptionKey
 import keznacl.UnsupportedAlgorithmException
+import libmensago.DeviceApprovalMsg
+import libmensago.MServerPath
 import mensagod.*
 import mensagod.dbcmds.*
-import mensagod.libmensago.DeviceApprovalMsg
-import mensagod.libmensago.MServerPath
 import java.security.GeneralSecurityException
 import java.security.SecureRandom
 

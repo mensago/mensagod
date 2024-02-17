@@ -4,7 +4,7 @@ import keznacl.BadValueException
 import keznacl.CryptoString
 import keznacl.getPreferredHashAlgorithm
 import libkeycard.RandomID
-import mensagod.libmensago.MServerPath
+import libmensago.MServerPath
 import org.apache.commons.io.FileExistsException
 import org.apache.commons.io.FileUtils
 import java.io.File

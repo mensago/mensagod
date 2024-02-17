@@ -5,8 +5,6 @@ import libkeycard.Domain
 import mensagod.NetworkErrorException
 import mensagod.ResourceNotFoundException
 import mensagod.ServerConfig
-import mensagod.libmensago.DNSHandler
-import mensagod.libmensago.ServiceConfig
 import java.net.Inet6Address
 import java.net.InetAddress
 

@@ -1,4 +1,4 @@
-package mensagod.libmensago
+package libmensago
 
 import keznacl.CryptoString
 import keznacl.SecretKey
@@ -24,7 +24,8 @@ class SenderInfo(var from: WAddress, var recipientDom: Domain)
  * interact with the custom serialization format it uses on disk.
  */
 open class Envelope protected constructor(var receiver: RecipientInfo, var sender: SenderInfo,
-                    val payloadKey: CryptoString, val keyHash: CryptoString, val message: Message) {
+                                          val payloadKey: CryptoString, val keyHash: CryptoString, val message: Message
+) {
     var version = 1.0f
     var date = Timestamp()
     var type = MsgType.User

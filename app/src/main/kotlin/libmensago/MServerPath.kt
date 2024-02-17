@@ -1,4 +1,4 @@
-package mensagod.libmensago
+package libmensago
 
 import keznacl.BadValueException
 import mensagod.InvalidPathException

@@ -2,8 +2,8 @@ package mensagod.dbcmds
 
 import keznacl.BadValueException
 import libkeycard.RandomID
+import libmensago.MServerPath
 import mensagod.*
-import mensagod.libmensago.MServerPath
 import java.io.IOException
 
 /**

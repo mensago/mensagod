@@ -5,10 +5,10 @@ import libkeycard.Domain
 import libkeycard.MAddress
 import libkeycard.RandomID
 import libkeycard.UserID
+import libmensago.MServerPath
 import mensagod.commands.ClientRequest
 import mensagod.commands.ServerResponse
 import mensagod.dbcmds.resolveAddress
-import mensagod.libmensago.MServerPath
 import org.apache.commons.io.FileUtils
 import java.io.RandomAccessFile
 import java.net.Socket

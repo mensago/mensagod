@@ -2,7 +2,6 @@ package libmensago
 
 import mensagod.ServerConfig
 import mensagod.initDB
-import mensagod.libmensago.DNSHandler
 import mensagod.resetDB
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

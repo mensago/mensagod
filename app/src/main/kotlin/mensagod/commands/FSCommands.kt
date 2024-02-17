@@ -2,13 +2,13 @@ package mensagod.commands
 
 import keznacl.UnsupportedAlgorithmException
 import libkeycard.RandomID
+import libmensago.MServerPath
 import mensagod.*
 import mensagod.auth.AuthAction
 import mensagod.auth.DirectoryTarget
 import mensagod.auth.FileTarget
 import mensagod.auth.WIDActor
 import mensagod.dbcmds.*
-import mensagod.libmensago.MServerPath
 import java.time.Instant
 import java.util.*
 

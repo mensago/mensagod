@@ -1,7 +1,7 @@
 package mensagod
 
 import libkeycard.RandomID
-import mensagod.libmensago.MServerPath
+import libmensago.MServerPath
 import org.apache.commons.io.FileUtils
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse

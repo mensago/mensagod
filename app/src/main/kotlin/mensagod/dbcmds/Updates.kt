@@ -4,8 +4,8 @@ import keznacl.BadValueException
 import keznacl.CryptoString
 import libkeycard.EntryTypeException
 import libkeycard.RandomID
+import libmensago.MServerPath
 import mensagod.DBConn
-import mensagod.libmensago.MServerPath
 
 class UpdateRecord(val id: RandomID, val type: UpdateType, val data: String, val time: String,
                    val devid: RandomID)

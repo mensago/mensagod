@@ -1,4 +1,4 @@
-package mensagod.libmensago
+package libmensago
 
 import libkeycard.Timestamp
 import libkeycard.WAddress
