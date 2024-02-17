@@ -15,54 +15,49 @@ data class ServiceConfig(val server: Domain, val port: Int, val priority: Int)
  */
 open class DNSHandler {
 
-    /**
-     * Turns a domain into an IPv4 address.
-     *
-     * @throws java.io.IOException
-     */
-    open fun lookupA(d: String): List<InetAddress> {
+    /** Turns a domain into an IPv4 address */
+    open fun lookupA(d: String): Result<List<InetAddress>> {
         val out = mutableListOf<InetAddress>()
+        try {
+            val result = ResolverApi.INSTANCE.resolve(d, A::class.java)
+            if (result.wasSuccessful()) {
+                for (record in result.answers)
+                    out.add(record.inetAddress)
+            }
+        } catch (e: Exception) { return Result.failure(e) }
 
-        val result = ResolverApi.INSTANCE.resolve(d, A::class.java)
-        if (result.wasSuccessful()) {
-            for (record in result.answers)
-                out.add(record.inetAddress)
-        }
-
-        return out
+        return Result.success(out)
     }
 
-    /**
-     * Turns a domain into an IPv6 address.
-     *
-     * @throws java.io.IOException
-     */
-    open fun lookupAAAA(d: String): List<InetAddress> {
+    /** Turns a domain into an IPv6 address */
+    open fun lookupAAAA(d: String): Result<List<InetAddress>> {
         val out = mutableListOf<InetAddress>()
-        val result = ResolverApi.INSTANCE.resolve(d, AAAA::class.java)
-        if (result.wasSuccessful()) {
-            for (record in result.answers)
-                out.add(record.inetAddress)
-        }
+        try {
+            val result = ResolverApi.INSTANCE.resolve(d, AAAA::class.java)
+            if (result.wasSuccessful()) {
+                for (record in result.answers)
+                    out.add(record.inetAddress)
+            }
+        } catch (e: Exception) { return Result.failure(e) }
 
-        return out
+        return Result.success(out)
     }
 
     /**
      * Returns all text records for a specific domain. This call is primarily intended for Mensago
      * management record lookups
-     *
-     * @throws java.io.IOException
      */
-    open fun lookupTXT(d: String): List<String> {
+    open fun lookupTXT(d: String): Result<List<String>> {
         val out = mutableListOf<String>()
-        val result = ResolverApi.INSTANCE.resolve(d, TXT::class.java)
-        if (result.wasSuccessful()) {
-            for (record in result.answers)
-                out.add(record.text)
-        }
+        try {
+            val result = ResolverApi.INSTANCE.resolve(d, TXT::class.java)
+            if (result.wasSuccessful()) {
+                for (record in result.answers)
+                    out.add(record.text)
+            }
+        } catch (e: Exception) { return Result.failure(e) }
 
-        return out
+        return Result.success(out)
     }
 
     /**
@@ -70,22 +65,21 @@ open class DNSHandler {
      * series of tuples containing the domain, the port, and the Time To Live. This call
      * internally sorts the records by priority and weight in descending order such that the
      * first entry in the returned list has the highest priority.
-     *
-     * @throws java.io.IOException
      */
-    open fun lookupSRV(d: String): List<ServiceConfig> {
+    open fun lookupSRV(d: String): Result<List<ServiceConfig>> {
         val out = mutableListOf<ServiceConfig>()
-
-        val result = ResolverApi.INSTANCE.resolveSrv(d)
-        if (result.wasSuccessful()) {
-            for (record in result.answers) {
-                val dom = Domain.fromString(record.target.toString()) ?: continue
-                out.add(ServiceConfig(dom, record.port, record.priority))
+        try {
+            val result = ResolverApi.INSTANCE.resolveSrv(d)
+            if (result.wasSuccessful()) {
+                for (record in result.answers) {
+                    val dom = Domain.fromString(record.target.toString()) ?: continue
+                    out.add(ServiceConfig(dom, record.port, record.priority))
+                }
             }
-        }
+        } catch (e: Exception) { return Result.failure(e) }
 
         out.sortWith(compareBy({it.priority}, {it.server.toString()}))
-        return out
+        return Result.success(out)
     }
 
 }
