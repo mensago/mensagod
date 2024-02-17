@@ -1,13 +1,17 @@
 package mensagod.libmensago
 
+import keznacl.CryptoString
 import keznacl.Encryptor
-import libkeycard.Timestamp
 
 /**
  * This contains the encrypted header information for a Mensago system message.
  */
-class SysEnvelope(val type: String, val version: String, val receiver: String,
-                  val sender: String, val date: Timestamp) {
+class SysEnvelope(val subtype: String, receiver: RecipientInfo, sender: SenderInfo,
+                  payloadKey: CryptoString): Envelope(receiver, sender, payloadKey) {
+
+    init {
+        type = MsgType.System
+    }
 
     /**
      * Creates a SealedSysEnvelope instance from the existing

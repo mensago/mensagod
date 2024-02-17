@@ -1,26 +1,57 @@
 package mensagod.libmensago
 
-import keznacl.CryptoString
-import libkeycard.Domain
-import libkeycard.Timestamp
-import libkeycard.WAddress
-
 /**
- * The RecipientInfo class contains the information used by the receiving domain's server to
- * deliver a message to its recipient.
+ * The MsgFormat class represents the text format contained in a message. Currently the only
+ * supported formats are plaintext and SDF.
  */
-class RecipientInfo(var to: WAddress, var senderDom: Domain)
+enum class MsgFormat {
+    Text,
+    SDF;
 
-/**
- * The SenderInfo class contains the information used by the sending domain's server to
- * deliver a message to the server for its recipient.
- */
-class SenderInfo(var from: WAddress, var recipientDom: Domain)
+    override fun toString(): String {
+        return when(this) {
+            Text -> "text"
+            SDF -> "sdf"
+        }
+    }
 
-/**
- * The Envelope is a data structure class which represents the public delivery information for a
- * message.
- */
-class Envelope(var type: String, var version: String, var receiver: RecipientInfo,
-               var sender: SenderInfo, var date: Timestamp, var payloadKey: CryptoString
-)
+    companion object {
+        fun fromString(s: String): MsgFormat? {
+            return when (s.lowercase()) {
+                "text" -> Text
+                "sdf" -> SDF
+                else -> null
+            }
+        }
+    }
+}
+
+/** Enumeration which represents the type of quoting to be used in generating message replies */
+enum class QuoteType {
+    None,
+    Top,
+    Bottom,
+}
+
+/** The main type of a message, which can be User or System */
+enum class MsgType {
+    User,
+    System;
+
+    override fun toString(): String {
+        return when(this) {
+            User -> "usermessage"
+            System -> "sysmessage"
+        }
+    }
+
+    companion object {
+        fun fromString(s: String): MsgType? {
+            return when (s.lowercase()) {
+                "usermessage", "user" -> User
+                "sysmessage", "system" -> System
+                else -> null
+            }
+        }
+    }
+}

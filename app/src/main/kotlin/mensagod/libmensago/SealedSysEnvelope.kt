@@ -16,7 +16,11 @@ import java.io.IOException
 import java.security.GeneralSecurityException
 
 /**
- * SealedSysEnvelope is used for storing envelope data which is still completely encrypted.
+ * SealedSysEnvelope is a completely encrypted representation of a message and its associated
+ * delivery data. The main purpose of this class is for saving/loading from disk, although it could
+ * be used for other purposes, as well. The receiver tag is decryptable only by the server handling
+ * message delivery for the recipient. The sender tag is readable only by the server carrying the
+ * message to the next hop on the behalf of the message author.
  */
 @Serializable
 class SealedSysEnvelope(val type: String, val version: String, val receiver: CryptoString,
