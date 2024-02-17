@@ -1,4 +1,4 @@
-package mensagod.delivery
+package libmensago
 
 import org.junit.jupiter.api.Test
 
