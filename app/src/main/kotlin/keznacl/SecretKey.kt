@@ -18,7 +18,7 @@ fun getSupportedSymmetricAlgorithms(): List<String> {
 fun getPreferredSymmetricAlgorithm(): String { return "XSALSA20" }
 
 
-class SecretKey private constructor(keyStr: CryptoString) {
+class SecretKey private constructor(keyStr: CryptoString): Encryptor {
     val key: CryptoString = keyStr
     private var keyHash: CryptoString? = null
 
@@ -28,8 +28,11 @@ class SecretKey private constructor(keyStr: CryptoString) {
         return Result.success(keyHash!!)
     }
 
+    override fun getPublicHash(algorithm: String): Result<CryptoString> {
+        return getHash(algorithm)
+    }
 
-    fun encrypt(data: ByteArray): Result<CryptoString> {
+    override fun encrypt(data: ByteArray): Result<CryptoString> {
         val rawKey = key.toRaw()
         val box = SecretBox(rawKey.getOrElse { return Result.failure(it) })
 
