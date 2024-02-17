@@ -24,6 +24,7 @@ open class Message(var from: WAddress, var to: WAddress, var format: MsgFormat) 
 
     var version = 1.0f
     var type = MsgType.User
+    var subType: String? = null
     var id = RandomID.generate()
     var threadID = RandomID.generate()
 
