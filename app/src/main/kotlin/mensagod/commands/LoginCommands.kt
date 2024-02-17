@@ -101,15 +101,12 @@ fun commandDevice(state: ClientSession) {
                     return
                 }
 
-                val msg = DeviceApprovalMsg.new(gServerAddress, recipient, state.conn.inetAddress)
-                    .getOrElse {
-                        logError("commandDevice.createApprovalMsg exception: $it")
-                        ServerResponse.sendInternalError(
-                            "Error creating device approval request", state.conn)
-                        return
-                    }
                 // Create auth message and save to file
+                val msg = DeviceApprovalMsg(gServerAddress, recipient, state.conn.inetAddress,
+                    devinfo)
+
                 // call queueMessageForDelivery() with delivery info
+                // queueMessageForDelivery(gServerAddress, recipient.domain, )
 
                 // TODO: Implement device handling
                 println("New device handling state encountered")
