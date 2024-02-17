@@ -3,6 +3,7 @@ package libmensago
 import keznacl.Encryptor
 import keznacl.SecretKey
 import keznacl.serializeAndEncrypt
+import kotlinx.serialization.Serializable
 import libkeycard.Domain
 import libkeycard.Timestamp
 import libkeycard.WAddress
@@ -12,6 +13,7 @@ import libkeycard.WAddress
  * deliver a message to its recipient. To protect the message author's privacy, this part of the
  * delivery tag contains the full address of the recipient, but only the domain of the author.
  */
+@Serializable
 class RecipientInfo(var to: WAddress, var senderDom: Domain)
 
 /**
@@ -20,6 +22,7 @@ class RecipientInfo(var to: WAddress, var senderDom: Domain)
  * part of the delivery tag contains only the domain of the recipient, but the full address of the
  * message author so that the sending server can handle errors and perform other administration.
  */
+@Serializable
 class SenderInfo(var from: WAddress, var recipientDom: Domain)
 
 /**

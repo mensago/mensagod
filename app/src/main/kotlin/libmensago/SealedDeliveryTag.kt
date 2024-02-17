@@ -2,15 +2,11 @@ package libmensago
 
 import keznacl.BadValueException
 import keznacl.CryptoString
+import keznacl.EncryptionPair
 import keznacl.decryptAndDeserialize
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import libkeycard.Timestamp
-import mensagod.DBConn
-import mensagod.DatabaseCorruptionException
-import mensagod.NotConnectedException
-import mensagod.ResourceNotFoundException
-import mensagod.dbcmds.getEncryptionPair
 import java.io.File
 import java.io.IOException
 import java.security.GeneralSecurityException
@@ -33,16 +29,10 @@ class SealedDeliveryTag(val receiver: CryptoString, val sender: CryptoString, va
      * Decrypts the encrypted recipient information in the message using the organization's
      * decryption key.
      *
-     * @throws NotConnectedException Returned if not connected to the database
-     * @throws ResourceNotFoundException Returned if the keypair was not found
-     * @throws java.sql.SQLException Returned for database problems, most likely either with your
-     * query or with the connection
-     * @throws DatabaseCorruptionException if bad data was received from the database itself
      * @throws IllegalArgumentException Returned if there was a Base85 decoding error
      * @throws GeneralSecurityException Returned for decryption failures
      */
-    fun decryptReceiver(): Result<RecipientInfo> {
-        val keyPair = getEncryptionPair(DBConn()).getOrElse { return Result.failure(it) }
+    fun decryptReceiver(keyPair: EncryptionPair): Result<RecipientInfo> {
         return decryptAndDeserialize<RecipientInfo>(receiver, keyPair)
     }
 
@@ -50,16 +40,10 @@ class SealedDeliveryTag(val receiver: CryptoString, val sender: CryptoString, va
      * Decrypts the encrypted recipient information in the message using the organization's
      * decryption key.
      *
-     * @throws NotConnectedException Returned if not connected to the database
-     * @throws ResourceNotFoundException Returned if the keypair was not found
-     * @throws java.sql.SQLException Returned for database problems, most likely either with your
-     * query or with the connection
-     * @throws DatabaseCorruptionException if bad data was received from the database itself
      * @throws IllegalArgumentException Returned if there was a Base85 decoding error
      * @throws GeneralSecurityException Returned for decryption failures
      */
-    fun decryptSender(): Result<SenderInfo> {
-        val keyPair = getEncryptionPair(DBConn()).getOrElse { return Result.failure(it) }
+    fun decryptSender(keyPair: EncryptionPair): Result<SenderInfo> {
         return decryptAndDeserialize<SenderInfo>(sender, keyPair)
     }
 

@@ -6,10 +6,7 @@ import libkeycard.WAddress
 import libmensago.MServerPath
 import libmensago.SealedDeliveryTag
 import mensagod.*
-import mensagod.dbcmds.UpdateRecord
-import mensagod.dbcmds.UpdateType
-import mensagod.dbcmds.addUpdateRecord
-import mensagod.dbcmds.isDomainLocal
+import mensagod.dbcmds.*
 import java.time.Instant
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -65,7 +62,11 @@ fun deliveryWorker() {
                 return
             }
 
-            val recipientInfo = sealedEnv.decryptReceiver().getOrElse {
+            val orgKeyPair = getEncryptionPair(db).getOrElse {
+                logError("deliveryWorker: Unable to get the org encryption pair: $it")
+                return
+            }
+            val recipientInfo = sealedEnv.decryptReceiver(orgKeyPair).getOrElse {
                 sendBounce(504, msgInfo, mapOf())
                     ?.let { logError("Error sending deliveryWorker bounce #3: $it") }
                 return
