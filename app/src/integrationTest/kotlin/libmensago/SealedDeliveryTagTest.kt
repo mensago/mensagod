@@ -2,10 +2,10 @@ package libmensago
 
 import org.junit.jupiter.api.Test
 
-class SealedSysEnvelopeTest {
+class SealedDeliveryTagTest {
 
     @Test
     fun basicTest() {
-        // TODO: Implement SealedSysEnvelopeTest::basicTest()
+        // TODO: Implement SealedDeliveryTagTest::basicTest()
     }
 }

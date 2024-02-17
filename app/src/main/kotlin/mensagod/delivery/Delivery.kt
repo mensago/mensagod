@@ -4,7 +4,7 @@ import libkeycard.Domain
 import libkeycard.RandomID
 import libkeycard.WAddress
 import libmensago.MServerPath
-import libmensago.SealedSysEnvelope
+import libmensago.SealedDeliveryTag
 import mensagod.*
 import mensagod.dbcmds.UpdateRecord
 import mensagod.dbcmds.UpdateType
@@ -58,7 +58,7 @@ fun deliveryWorker() {
         }
 
         if (isLocal) {
-            val sealedEnv = SealedSysEnvelope.readFromFile(handle.getFile()).getOrElse {
+            val sealedEnv = SealedDeliveryTag.readFromFile(handle.getFile()).getOrElse {
                 sendBounce(300, msgInfo,
                     mapOf("INTERNALCODE" to "delivery.deliveryWorker.2"))
                     ?.let { logError("Error sending deliveryWorker bounce #2: $it") }

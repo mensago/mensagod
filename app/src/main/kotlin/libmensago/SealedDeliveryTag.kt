@@ -16,16 +16,16 @@ import java.io.IOException
 import java.security.GeneralSecurityException
 
 /**
- * SealedSysEnvelope is a completely encrypted representation of a message and its associated
+ * SealedDeliveryTag is a completely encrypted representation of a message and its associated
  * delivery data. The main purpose of this class is for saving/loading from disk, although it could
  * be used for other purposes, as well. The receiver tag is decryptable only by the server handling
  * message delivery for the recipient. The sender tag is readable only by the server carrying the
  * message to the next hop on the behalf of the message author.
  */
 @Serializable
-class SealedSysEnvelope(val type: String, val version: String, val receiver: CryptoString,
-                        val sender: CryptoString, val date: Timestamp, val payloadKey: CryptoString) {
-
+class SealedDeliveryTag(val type: String, val version: String, val receiver: CryptoString,
+                        val sender: CryptoString, val date: Timestamp, val payloadKey: CryptoString,
+                        val subType: String? = null) {
     /**
      * Decrypts the encrypted recipient information in the message using the organization's
      * decryption key.
@@ -63,41 +63,23 @@ class SealedSysEnvelope(val type: String, val version: String, val receiver: Cry
     companion object {
 
         /**
-         * Creates a new SealedSysEnvelope instance from a file.
+         * Creates a new SealedDeliveryTag instance from a file.
          *
          * @throws IOException Returned if there was an I/O error
          * @throws BadValueException Returned if the file header could not be parsed
          * @throws kotlinx.serialization.SerializationException encoding-specific errors
          * @throws IllegalArgumentException if the encoded input does not comply format's specification
          */
-        fun readFromFile(file: File): Result<SealedSysEnvelope> {
+        fun readFromFile(file: File): Result<SealedDeliveryTag> {
 
-            var ready = false
-            val reader = file.bufferedReader()
-            do {
-                val line = try { reader.readLine() }
-                catch (e: Exception) { return Result.failure(e) }
-                if (line.trim() == "MENSAGO") {
-                    ready = true
-                    break
-                }
-            } while (line != null)
+            val data = readEnvelopeFile(file, true)
+                .getOrElse { return Result.failure(it) }
 
-            if (!ready) return Result.failure(BadValueException())
-
-            val headerLines = mutableListOf<String>()
-            do {
-                val line = try { reader.readLine() }
-                catch (e: Exception) { return Result.failure(e) }
-                if (line.trim() == "----------")
-                    break
-                headerLines.add(line)
-            } while (line != null)
-
-            val out = try { Json.decodeFromString<SealedSysEnvelope>(headerLines.joinToString()) }
+            val out = try { Json.decodeFromString<SealedDeliveryTag>(data.first) }
             catch (e: Exception) { return Result.failure(e) }
 
             return Result.success(out)
         }
     }
 }
+
