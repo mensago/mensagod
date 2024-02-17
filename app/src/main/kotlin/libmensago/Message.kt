@@ -7,10 +7,11 @@ import libkeycard.WAddress
 import java.security.SecureRandom
 
 /**
- * Message is primarily a data model class which also provides most the functionality for
+ * Message is primarily a data model class which also provides most of the functionality for
  * interacting with messages.
  *
  * @see SysMessage For interacting with system messages.
+ * @see Envelope High-level API for encrypting messages.
  */
 open class Message(var from: WAddress, var to: WAddress, var format: MsgFormat) {
 

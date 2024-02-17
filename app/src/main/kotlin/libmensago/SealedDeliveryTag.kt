@@ -16,16 +16,19 @@ import java.io.IOException
 import java.security.GeneralSecurityException
 
 /**
- * SealedDeliveryTag is a completely encrypted representation of a message and its associated
- * delivery data. The main purpose of this class is for saving/loading from disk, although it could
- * be used for other purposes, as well. The receiver tag is decryptable only by the server handling
- * message delivery for the recipient. The sender tag is readable only by the server carrying the
- * message to the next hop on the behalf of the message author.
+ * SealedDeliveryTag is an encrypted DeliveryTag. The receiver tag is decryptable only by the server
+ * handling message delivery for the recipient. The sender tag is readable only by the server
+ * carrying the message to the next hop on the behalf of the message author.
+ *
+ * This class is not intended to be instantiated directly, but rather either from readFromFile() or
+ * DeliveryTag::seal().
  */
 @Serializable
-class SealedDeliveryTag(val type: String, val version: String, val receiver: CryptoString,
-                        val sender: CryptoString, val date: Timestamp, val payloadKey: CryptoString,
-                        val subType: String? = null) {
+class SealedDeliveryTag(val receiver: CryptoString, val sender: CryptoString, val type: MsgType,
+                        val date: Timestamp, val payloadKey: CryptoString,
+                        val keyHash: CryptoString, val subType: String? = null,
+                        val version: Float) {
+
     /**
      * Decrypts the encrypted recipient information in the message using the organization's
      * decryption key.

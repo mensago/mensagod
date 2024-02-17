@@ -8,9 +8,10 @@ import java.io.File
 import java.io.IOException
 
 /**
- * Envelope is a representation of an encrypted message and its associated delivery tag. The main
- * purpose of this class is for saving/loading from disk, although it could be used for other
- * purposes, as well.
+ * Envelope is a representation of an encrypted message and its associated delivery tag. Its main
+ * purpose is to provide a simple, high-level API to encrypt and decrypt messages and provide
+ * easy serialization and deserialization. If you're just interested in sending a message, create
+ * your message, grab the encryption key for the recipient, and call seal().
  */
 class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
 
@@ -21,19 +22,22 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
         TODO("Implement Envelope::open($keyPair)")
     }
 
+    // TODO: Implement toString()
+    // TODO: Implement saveFile()
+
     companion object {
 
         /**
-         * Creates a completely ready-to-send encrypted message.
+         * Creates a new Envelope object representing a ready-to-send encrypted message.
          */
-        fun fromMessage(key: Encryptor, message: Message): Result<Envelope> {
-            TODO("Implement Envelope::fromMessage($key, $message")
+        fun seal(key: Encryptor, message: Message): Result<Envelope> {
+            TODO("Implement Envelope::seal($key, $message")
         }
 
         /**
          * Reads the specified file and returns an Envelope object
          */
-        fun readFromFile(file: File): Result<Envelope> {
+        fun loadFile(file: File): Result<Envelope> {
 
             val data = readEnvelopeFile(file, false)
                 .getOrElse { return Result.failure(it) }
@@ -46,6 +50,7 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
 /**
  * Reads the data from an envelope file and possibly also the encrypted message. It performs no
  * processing of the data at all.
+ *
  * @param headerOnly Specify whether or not to read just the header or the entire file. If this
  * parameter is true, the second string is empty.
  *
