@@ -6,9 +6,16 @@ import libkeycard.Keycard
 import libkeycard.OrgEntry
 import libkeycard.RandomID
 import libkeycard.UserEntry
-import mensagod.*
+import libmensago.ClientRequest
+import libmensago.ServerResponse
+import mensagod.DBConn
+import mensagod.LoginState
+import mensagod.SessionState
 import mensagod.dbcmds.getEntries
 import org.junit.jupiter.api.Test
+import testsupport.ADMIN_PROFILE_DATA
+import testsupport.assertReturnCode
+import testsupport.setupTest
 import java.net.InetAddress
 import java.net.Socket
 
@@ -23,7 +30,8 @@ class KeycardCmdTest {
 
         val db = DBConn()
         val orgEntry = OrgEntry.fromString(getEntries(db, null, 0U)[0]).getOrThrow()
-        val crsPair = SigningPair.fromStrings(ADMIN_PROFILE_DATA["crsigning.public"]!!,
+        val crsPair = SigningPair.fromStrings(
+            ADMIN_PROFILE_DATA["crsigning.public"]!!,
             ADMIN_PROFILE_DATA["crsigning.private"]!!).getOrThrow()
 
         val rootEntry = UserEntry()
@@ -45,7 +53,8 @@ class KeycardCmdTest {
 
         // Test Case #1: Successfully add root user entry
         CommandTest("addEntry.1",
-            SessionState(ClientRequest("ADDENTRY", mutableMapOf(
+            SessionState(
+                ClientRequest("ADDENTRY", mutableMapOf(
                 "Base-Entry" to rootEntry.getFullText("Organization-Signature").getOrThrow()
             )), adminWID, LoginState.LoggedIn), ::commandAddEntry) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
@@ -83,7 +92,8 @@ class KeycardCmdTest {
 
         // Test Case #2: Successfully add second user entry
         CommandTest("addEntry.2",
-            SessionState(ClientRequest("ADDENTRY", mutableMapOf(
+            SessionState(
+                ClientRequest("ADDENTRY", mutableMapOf(
                 "Base-Entry" to newEntry.getFullText("Organization-Signature").getOrThrow(),
             )), adminWID, LoginState.LoggedIn), ::commandAddEntry) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)

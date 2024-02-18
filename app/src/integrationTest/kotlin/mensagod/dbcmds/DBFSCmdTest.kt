@@ -1,9 +1,13 @@
 package mensagod.dbcmds
 
 import libkeycard.RandomID
-import mensagod.*
+import mensagod.DBConn
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import testsupport.USER_PROFILE_DATA
+import testsupport.makeTestFile
+import testsupport.setupTest
+import testsupport.setupUser
 import java.nio.file.Paths
 
 class DBFSCmdTest {

@@ -6,7 +6,6 @@ import libkeycard.Timestamp
 import libmensago.MServerPath
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
-import mensagod.NotConnectedException
 import mensagod.commands.DeviceStatus
 
 /**

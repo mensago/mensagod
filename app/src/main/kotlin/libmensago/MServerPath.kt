@@ -1,7 +1,6 @@
 package libmensago
 
 import keznacl.BadValueException
-import mensagod.InvalidPathException
 import java.util.regex.Pattern
 
 /**

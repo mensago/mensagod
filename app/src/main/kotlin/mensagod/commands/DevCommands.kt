@@ -1,6 +1,7 @@
 package mensagod.commands
 
 import libmensago.MServerPath
+import libmensago.ServerResponse
 import mensagod.ClientSession
 import mensagod.DBConn
 import mensagod.LocalFS

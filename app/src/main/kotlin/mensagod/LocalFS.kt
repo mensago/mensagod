@@ -5,6 +5,8 @@ import keznacl.CryptoString
 import keznacl.getPreferredHashAlgorithm
 import libkeycard.RandomID
 import libmensago.MServerPath
+import libmensago.ResourceNotFoundException
+import libmensago.TypeException
 import org.apache.commons.io.FileExistsException
 import org.apache.commons.io.FileUtils
 import java.io.File

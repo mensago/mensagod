@@ -1,4 +1,4 @@
-package mensagod.commands
+package libmensago
 
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -107,13 +107,5 @@ class ServerResponse(@Required @SerialName("Code") var code: Int = 0,
             try { ServerResponse(300, "INTERNAL SERVER ERROR", info).send(conn) }
             catch (e: java.io.IOException) { /* Suppress network errors */ }
         }
-    }
-}
-
-@Serializable
-class CmdStatus(var code: Int, var description: String, var info: String) {
-    override fun toString(): String {
-        return if (info.isEmpty()) "$code: $description"
-        else "$code: $description ($info)"
     }
 }

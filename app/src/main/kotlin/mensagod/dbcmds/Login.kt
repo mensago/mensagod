@@ -4,6 +4,8 @@ import keznacl.Argon2idPassword
 import keznacl.EmptyDataException
 import keznacl.PasswordInfo
 import libkeycard.*
+import libmensago.ResourceExistsException
+import libmensago.ResourceNotFoundException
 import mensagod.*
 
 /**

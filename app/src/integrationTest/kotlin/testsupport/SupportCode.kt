@@ -1,4 +1,4 @@
-package mensagod
+package testsupport
 
 import keznacl.Argon2idPassword
 import keznacl.CryptoString
@@ -6,8 +6,10 @@ import keznacl.EncryptionPair
 import keznacl.SigningPair
 import libkeycard.*
 import libmensago.MServerPath
+import libmensago.ResourceNotFoundException
+import libmensago.ServerResponse
+import mensagod.*
 import mensagod.commands.DeviceStatus
-import mensagod.commands.ServerResponse
 import mensagod.dbcmds.*
 import org.apache.commons.io.FileUtils
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -360,7 +362,7 @@ fun setupUser(db: DBConn) {
  * @see ServerConfig
  */
 class SetupData(val config: ServerConfig, val serverSetupData: Map<String, String>,
-    val testPath: String)
+                val testPath: String)
 
 /**
  * Performs all the setup that most server tests will need and returns the path to the test

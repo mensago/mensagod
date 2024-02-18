@@ -2,10 +2,16 @@ package mensagod.commands
 
 import keznacl.CryptoString
 import libkeycard.RandomID
+import libmensago.ClientRequest
+import libmensago.ServerResponse
 import mensagod.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
+import testsupport.ADMIN_PROFILE_DATA
+import testsupport.assertReturnCode
+import testsupport.preregUser
+import testsupport.setupTest
 import java.net.InetAddress
 import java.net.Socket
 
@@ -19,7 +25,8 @@ class RegCmdTest {
         // Test Case #1: Supply no data. Expect WID, Domain, and reg code
         var regUser = RandomID.generate()
         CommandTest("prereg.1",
-            SessionState(ClientRequest("PREREG", mutableMapOf()), adminWID,
+            SessionState(
+                ClientRequest("PREREG", mutableMapOf()), adminWID,
                 LoginState.LoggedIn), ::commandPreregister) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
@@ -34,7 +41,8 @@ class RegCmdTest {
 
         // Test Case #2: Supply all data.
         CommandTest("prereg.2",
-            SessionState(ClientRequest("PREREG", mutableMapOf(
+            SessionState(
+                ClientRequest("PREREG", mutableMapOf(
                 "User-ID" to "csimons",
                 "Workspace-ID" to "a2950671-99cd-4ad5-8d6c-3efdd125a6d2",
                 "Domain" to "example.com",
@@ -53,7 +61,8 @@ class RegCmdTest {
 
         // Test Case #3: Try to preregister an existing user
         CommandTest("prereg.3",
-            SessionState(ClientRequest("PREREG", mutableMapOf(
+            SessionState(
+                ClientRequest("PREREG", mutableMapOf(
                 "Workspace-ID" to regUser.toString(),
                 "Domain" to gServerDomain.toString(),
             )), adminWID, LoginState.LoggedIn), ::commandPreregister) { port ->
@@ -75,7 +84,8 @@ class RegCmdTest {
         val db = DBConn()
         val regInfo = preregUser(db, "csimons")
         CommandTest("regcode.1",
-            SessionState(ClientRequest("REGCODE", mutableMapOf(
+            SessionState(
+                ClientRequest("REGCODE", mutableMapOf(
                 "Reg-Code" to regInfo["Reg-Code"]!!,
                 "User-ID" to "csimons",
                 "Password-Hash" to "this is a pretty terrible password",

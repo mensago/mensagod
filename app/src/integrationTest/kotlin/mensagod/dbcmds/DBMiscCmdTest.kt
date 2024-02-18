@@ -2,9 +2,15 @@ package mensagod.dbcmds
 
 import libkeycard.EntryTypeException
 import libkeycard.RandomID
-import mensagod.*
+import mensagod.DBConn
+import mensagod.ServerConfig
+import mensagod.resetDB
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import testsupport.ADMIN_PROFILE_DATA
+import testsupport.initDB
+import testsupport.setupTest
+import testsupport.setupUser
 import java.time.Instant
 import java.util.*
 

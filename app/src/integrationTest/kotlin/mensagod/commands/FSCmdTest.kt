@@ -3,11 +3,17 @@ package mensagod.commands
 import keznacl.hash
 import keznacl.hashFile
 import libkeycard.RandomID
+import libmensago.ClientRequest
 import libmensago.MServerPath
-import mensagod.*
+import libmensago.ServerResponse
+import mensagod.DBConn
+import mensagod.LoginState
+import mensagod.ServerConfig
+import mensagod.SessionState
 import mensagod.dbcmds.setQuota
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import testsupport.*
 import java.net.InetAddress
 import java.net.Socket
 import java.nio.file.Paths
@@ -32,7 +38,8 @@ class FSCmdTest {
         val fileHash = hashFile(testFilePath.toString()).getOrThrow()
 
         CommandTest("download.1",
-            SessionState(ClientRequest("DOWNLOAD", mutableMapOf(
+            SessionState(
+                ClientRequest("DOWNLOAD", mutableMapOf(
                 "Path" to "/ wsp $adminWID ${fileInfo.first}",
             )), adminWID, LoginState.LoggedIn, devid), ::commandDownload) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
@@ -56,7 +63,8 @@ class FSCmdTest {
 
         // Test Case #2: Successful resume
         CommandTest("download.2",
-            SessionState(ClientRequest("DOWNLOAD", mutableMapOf(
+            SessionState(
+                ClientRequest("DOWNLOAD", mutableMapOf(
                 "Path" to "/ wsp $adminWID ${fileInfo.first}",
                 "Offset" to "512",
             )), adminWID, LoginState.LoggedIn, devid), ::commandDownload) { port ->
@@ -92,7 +100,8 @@ class FSCmdTest {
         val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
 
         CommandTest("upload.1",
-            SessionState(ClientRequest("UPLOAD", mutableMapOf(
+            SessionState(
+                ClientRequest("UPLOAD", mutableMapOf(
                 "Size" to "1024",
                 "Hash" to fileHash.toString(),
                 "Path" to "/ wsp $adminWID",
@@ -120,7 +129,8 @@ class FSCmdTest {
         tempFile.writeText("0".repeat(512))
 
         CommandTest("upload.2",
-            SessionState(ClientRequest("UPLOAD", mutableMapOf(
+            SessionState(
+                ClientRequest("UPLOAD", mutableMapOf(
                 "Size" to "1024",
                 "Hash" to fileHash.toString(),
                 "Path" to "/ wsp $adminWID",
@@ -160,7 +170,8 @@ class FSCmdTest {
         val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
 
         CommandTest("uploadReplace.1",
-            SessionState(ClientRequest("UPLOAD", mutableMapOf(
+            SessionState(
+                ClientRequest("UPLOAD", mutableMapOf(
                 "Size" to "1024",
                 "Hash" to fileHash.toString(),
                 "Path" to "/ wsp $adminWID",
@@ -197,7 +208,8 @@ class FSCmdTest {
 
         // Test Case #1: Quota limit
         CommandTest("uploadErrors.1",
-            SessionState(ClientRequest("UPLOAD", mutableMapOf(
+            SessionState(
+                ClientRequest("UPLOAD", mutableMapOf(
                 "Size" to "10240",
                 "Hash" to fileHash.toString(),
                 "Path" to "/ wsp $adminWID",
@@ -208,7 +220,8 @@ class FSCmdTest {
 
         // Test Case #2: Hash mismatch
         CommandTest("uploadErrors.2",
-            SessionState(ClientRequest("UPLOAD", mutableMapOf(
+            SessionState(
+                ClientRequest("UPLOAD", mutableMapOf(
                 "Size" to "1024",
                 "Hash" to "BLAKE2B-256:asdcvbed",
                 "Path" to "/ wsp $adminWID",
@@ -223,7 +236,8 @@ class FSCmdTest {
 
         // Test Case #3: Destination doesn't exist
         CommandTest("uploadErrors.3",
-            SessionState(ClientRequest("UPLOAD", mutableMapOf(
+            SessionState(
+                ClientRequest("UPLOAD", mutableMapOf(
                 "Size" to "1024",
                 "Hash" to fileHash.toString(),
                 "Path" to "/ wsp $adminWID 12db8776-cc91-4ed9-8dbc-efcc3bf904ac",

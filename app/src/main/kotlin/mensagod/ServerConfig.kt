@@ -5,6 +5,8 @@ import keznacl.BadValueException
 import libkeycard.BadFieldValueException
 import libkeycard.Domain
 import libkeycard.MissingDataException
+import libmensago.InvalidPathException
+import libmensago.ResourceNotFoundException
 import java.net.InetAddress
 import java.nio.file.Files
 import java.nio.file.Path

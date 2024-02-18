@@ -1,10 +1,6 @@
-package mensagod.commands
+package libmensago
 
 import keznacl.EmptyDataException
-import mensagod.BadFrameException
-import mensagod.BadSessionException
-import mensagod.FrameTypeException
-import mensagod.SizeException
 import java.io.InputStream
 import java.io.OutputStream
 

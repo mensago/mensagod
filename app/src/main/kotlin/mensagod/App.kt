@@ -7,7 +7,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import libkeycard.Domain
-import mensagod.commands.ClientRequest
+import libmensago.ClientRequest
 import mensagod.commands.processCommand
 import java.io.IOException
 import java.net.ServerSocket

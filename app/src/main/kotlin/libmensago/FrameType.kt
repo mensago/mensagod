@@ -1,4 +1,4 @@
-package mensagod.commands
+package libmensago
 
 enum class FrameType {
     SingleFrame,

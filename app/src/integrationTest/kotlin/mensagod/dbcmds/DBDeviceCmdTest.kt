@@ -3,10 +3,14 @@ package mensagod.dbcmds
 import keznacl.CryptoString
 import libkeycard.RandomID
 import libmensago.MServerPath
-import mensagod.*
+import mensagod.DBConn
+import mensagod.ServerConfig
 import mensagod.commands.DeviceStatus
+import mensagod.resetDB
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import testsupport.ADMIN_PROFILE_DATA
+import testsupport.initDB
 
 class DBDeviceCmdTest {
 

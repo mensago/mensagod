@@ -4,6 +4,8 @@ import keznacl.CryptoString
 import keznacl.VerificationKey
 import keznacl.getSupportedHashAlgorithms
 import libkeycard.*
+import libmensago.ClientRequest
+import libmensago.ServerResponse
 import mensagod.ClientSession
 import mensagod.DBConn
 import mensagod.dbcmds.addEntry

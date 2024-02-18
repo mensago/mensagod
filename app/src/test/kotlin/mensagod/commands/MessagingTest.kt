@@ -1,5 +1,9 @@
 package mensagod.commands
 
+import libmensago.ClientRequest
+import libmensago.FrameType
+import libmensago.ServerResponse
+import libmensago.writeMessage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import kotlin.test.Test

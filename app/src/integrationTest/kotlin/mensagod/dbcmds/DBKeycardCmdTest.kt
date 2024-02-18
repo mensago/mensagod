@@ -5,9 +5,14 @@ import libkeycard.MAddress
 import libkeycard.OrgEntry
 import libkeycard.RandomID
 import libkeycard.UserEntry
-import mensagod.*
+import mensagod.DBConn
+import mensagod.ServerConfig
+import mensagod.resetDB
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import testsupport.ADMIN_PROFILE_DATA
+import testsupport.initDB
+import testsupport.setupTest
 
 class DBKeycardCmdTest {
 
@@ -16,7 +21,8 @@ class DBKeycardCmdTest {
         val db = DBConn()
         val osPair = getPrimarySigningPair(db).getOrThrow()
         val orgEntry = OrgEntry.fromString(getEntries(db, null, 0U)[0]).getOrThrow()
-        val crsPair = SigningPair.fromStrings(ADMIN_PROFILE_DATA["signing.public"]!!,
+        val crsPair = SigningPair.fromStrings(
+            ADMIN_PROFILE_DATA["signing.public"]!!,
             ADMIN_PROFILE_DATA["signing.private"]!!).getOrThrow()
 
         val rootEntry = UserEntry()

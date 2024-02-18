@@ -3,7 +3,6 @@ package mensagod.dbcmds
 import libkeycard.*
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
-import mensagod.NotConnectedException
 
 /**
  * Adds an entry to the database. The caller is responsible for validation of the entry passed to

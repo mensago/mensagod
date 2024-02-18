@@ -4,10 +4,15 @@ import libkeycard.MAddress
 import libkeycard.RandomID
 import libkeycard.UserID
 import libkeycard.WAddress
-import mensagod.*
+import libmensago.ResourceExistsException
+import libmensago.ResourceNotFoundException
+import mensagod.DBConn
+import mensagod.gServerDomain
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import testsupport.ADMIN_PROFILE_DATA
+import testsupport.setupTest
 
 class DBLoginCmdTest {
 

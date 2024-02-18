@@ -2,10 +2,17 @@ package mensagod.commands
 
 import keznacl.CryptoString
 import libkeycard.RandomID
-import mensagod.*
+import libmensago.ClientRequest
+import libmensago.ServerResponse
+import mensagod.DBConn
+import mensagod.LoginState
+import mensagod.SessionState
 import mensagod.dbcmds.addDevice
 import mensagod.dbcmds.updateDeviceStatus
 import org.junit.jupiter.api.Test
+import testsupport.ADMIN_PROFILE_DATA
+import testsupport.assertReturnCode
+import testsupport.setupTest
 import java.net.InetAddress
 import java.net.Socket
 
@@ -24,7 +31,8 @@ class DevCommandTest {
 
         // Test Case #1: Successful execution
         CommandTest("keypkg.1",
-            SessionState(ClientRequest("KEYPKG", mutableMapOf(
+            SessionState(
+                ClientRequest("KEYPKG", mutableMapOf(
                 "Device-ID" to devid.toString(),
                 "Key-Info" to "XSALSA20:abcdefg1234567890",
             )), adminWID, LoginState.LoggedIn), ::commandKeyPkg) { port ->
@@ -35,7 +43,8 @@ class DevCommandTest {
 
         // Test Case #2: Already approved
         CommandTest("keypkg.2",
-            SessionState(ClientRequest("KEYPKG", mutableMapOf(
+            SessionState(
+                ClientRequest("KEYPKG", mutableMapOf(
                 "Device-ID" to devid.toString(),
                 "Key-Info" to "XSALSA20:abcdefg1234567890",
             )), adminWID, LoginState.LoggedIn), ::commandKeyPkg) { port ->
@@ -47,7 +56,8 @@ class DevCommandTest {
         // Test Case #3: Already registered
         updateDeviceStatus(db, adminWID, devid, DeviceStatus.Registered)?.let { throw it }
         CommandTest("keypkg.3",
-            SessionState(ClientRequest("KEYPKG", mutableMapOf(
+            SessionState(
+                ClientRequest("KEYPKG", mutableMapOf(
                 "Device-ID" to devid.toString(),
                 "Key-Info" to "XSALSA20:abcdefg1234567890",
             )), adminWID, LoginState.LoggedIn), ::commandKeyPkg) { port ->
@@ -59,7 +69,8 @@ class DevCommandTest {
         // Test Case #4: Error for a blocked device
         updateDeviceStatus(db, adminWID, devid, DeviceStatus.Blocked)?.let { throw it }
         CommandTest("keypkg.4",
-            SessionState(ClientRequest("KEYPKG", mutableMapOf(
+            SessionState(
+                ClientRequest("KEYPKG", mutableMapOf(
                 "Device-ID" to devid.toString(),
                 "Key-Info" to "XSALSA20:abcdefg1234567890",
             )), adminWID, LoginState.LoggedIn), ::commandKeyPkg) { port ->

@@ -2,7 +2,9 @@ package mensagod.commands
 
 import keznacl.UnsupportedAlgorithmException
 import libkeycard.RandomID
+import libmensago.ClientRequest
 import libmensago.MServerPath
+import libmensago.ServerResponse
 import mensagod.*
 import mensagod.auth.AuthAction
 import mensagod.auth.DirectoryTarget

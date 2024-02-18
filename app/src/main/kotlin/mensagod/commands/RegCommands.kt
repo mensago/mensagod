@@ -7,6 +7,8 @@ import libkeycard.RandomID
 import libkeycard.UserID
 import libkeycard.WAddress
 import libmensago.MServerPath
+import libmensago.ResourceExistsException
+import libmensago.ServerResponse
 import mensagod.*
 import mensagod.auth.AuthAction
 import mensagod.auth.ServerTarget

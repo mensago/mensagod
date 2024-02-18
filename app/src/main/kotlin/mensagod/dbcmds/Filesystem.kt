@@ -3,6 +3,7 @@ package mensagod.dbcmds
 import keznacl.BadValueException
 import libkeycard.RandomID
 import libmensago.MServerPath
+import libmensago.ResourceNotFoundException
 import mensagod.*
 import java.io.IOException
 

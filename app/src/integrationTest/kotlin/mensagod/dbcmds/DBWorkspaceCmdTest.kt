@@ -2,10 +2,16 @@ package mensagod.dbcmds
 
 import libkeycard.RandomID
 import libkeycard.UserID
-import mensagod.*
+import libmensago.ResourceExistsException
+import mensagod.DBConn
+import mensagod.ServerConfig
+import mensagod.gServerDomain
+import mensagod.resetDB
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import testsupport.ADMIN_PROFILE_DATA
+import testsupport.initDB
 
 class DBWorkspaceCmdTest {
 

@@ -1,12 +1,9 @@
-package mensagod.commands
+package libmensago
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import mensagod.BadFrameException
-import mensagod.BadSessionException
-import mensagod.SizeException
 import java.io.InputStream
 import java.io.OutputStream
 

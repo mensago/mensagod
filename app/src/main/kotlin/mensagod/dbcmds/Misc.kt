@@ -2,10 +2,10 @@ package mensagod.dbcmds
 
 import keznacl.EncryptionPair
 import keznacl.SigningPair
+import libmensago.NotConnectedException
+import libmensago.ResourceNotFoundException
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
-import mensagod.NotConnectedException
-import mensagod.ResourceNotFoundException
 
 /**
  * Returns the orgnization's encryption keypair.

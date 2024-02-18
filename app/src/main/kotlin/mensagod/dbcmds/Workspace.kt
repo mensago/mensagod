@@ -3,10 +3,10 @@ package mensagod.dbcmds
 import libkeycard.Domain
 import libkeycard.RandomID
 import libkeycard.UserID
+import libmensago.NotConnectedException
+import libmensago.ResourceExistsException
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
-import mensagod.NotConnectedException
-import mensagod.ResourceExistsException
 
 enum class WorkspaceType {
     Individual;

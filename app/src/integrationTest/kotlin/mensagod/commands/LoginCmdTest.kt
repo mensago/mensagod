@@ -5,9 +5,15 @@ import keznacl.EncryptionKey
 import keznacl.EncryptionPair
 import libkeycard.RandomID
 import libkeycard.Timestamp
-import mensagod.*
+import libmensago.ClientRequest
+import libmensago.ServerResponse
+import mensagod.LoginState
+import mensagod.SessionState
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import testsupport.ADMIN_PROFILE_DATA
+import testsupport.assertReturnCode
+import testsupport.setupTest
 import java.net.InetAddress
 import java.net.Socket
 
@@ -33,7 +39,8 @@ class LoginCmdTest {
 
         // Test Case #1: Successfully complete first device auth phase
         CommandTest("device.1",
-            SessionState(ClientRequest("DEVICE", mutableMapOf(
+            SessionState(
+                ClientRequest("DEVICE", mutableMapOf(
                 "Device-ID" to ADMIN_PROFILE_DATA["devid"]!!,
                 "Device-Key" to ADMIN_PROFILE_DATA["device.public"]!!,
                 "Device-Info" to encInfo.toString(),
@@ -48,7 +55,8 @@ class LoginCmdTest {
             // encrypted into a CryptoString. This means we decrypt the challenge and send the resulting
             // decrypted string back to the server as proof of device identity.
 
-            val devPair = EncryptionPair.fromStrings(ADMIN_PROFILE_DATA["device.public"]!!,
+            val devPair = EncryptionPair.fromStrings(
+                ADMIN_PROFILE_DATA["device.public"]!!,
                 ADMIN_PROFILE_DATA["device.private"]!!).getOrThrow()
             val challStr = CryptoString.fromString(response.data["Challenge"]!!)!!
             val challDecrypted = devPair.decrypt(challStr).getOrThrow().decodeToString()
@@ -82,7 +90,8 @@ class LoginCmdTest {
 
         // Test Case #1: Successfully log in in as admin
         CommandTest("login.1",
-            SessionState(ClientRequest("LOGIN", mutableMapOf(
+            SessionState(
+                ClientRequest("LOGIN", mutableMapOf(
                 "Login-Type" to "PLAIN",
                 "Workspace-ID" to adminWID.toString(),
                 "Challenge" to encrypted.toString(),
@@ -106,7 +115,8 @@ class LoginCmdTest {
 
         // Test Case #2: Login-Type missing
         CommandTest("login.2",
-            SessionState(ClientRequest("LOGIN", mutableMapOf(
+            SessionState(
+                ClientRequest("LOGIN", mutableMapOf(
                 // Leave out Login-Type
                 "Workspace-ID" to adminWID.toString(),
                 "Challenge" to encrypted.toString(),
@@ -123,7 +133,8 @@ class LoginCmdTest {
             .encrypt(challenge.encodeToByteArray()).getOrThrow()
 
         CommandTest("login.3",
-            SessionState(ClientRequest("LOGIN", mutableMapOf(
+            SessionState(
+                ClientRequest("LOGIN", mutableMapOf(
                 "Login-Type" to "PLAIN",
                 "Workspace-ID" to adminWID.toString(),
                 "Challenge" to badChallenge.toString(),
@@ -137,7 +148,8 @@ class LoginCmdTest {
 
         // Test Case #4: Bad login state
         CommandTest("login.4",
-            SessionState(ClientRequest("LOGIN", mutableMapOf(
+            SessionState(
+                ClientRequest("LOGIN", mutableMapOf(
                 "Login-Type" to "PLAIN",
                 "Workspace-ID" to adminWID.toString(),
                 "Challenge" to challenge,
@@ -154,7 +166,8 @@ class LoginCmdTest {
     fun logoutTest() {
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         CommandTest("logout.1",
-            SessionState(ClientRequest("LOGOUT"), adminWID,
+            SessionState(
+                ClientRequest("LOGOUT"), adminWID,
                 LoginState.LoggedIn), ::commandLogout) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
@@ -171,7 +184,8 @@ class LoginCmdTest {
 
         // Test Case #1: Successful password auth as admin
         CommandTest("password.1",
-            SessionState(ClientRequest("PASSWORD", mutableMapOf(
+            SessionState(
+                ClientRequest("PASSWORD", mutableMapOf(
                 "Password-Hash" to ADMIN_PROFILE_DATA["password"]!!,
             )), adminWID,
                 LoginState.AwaitingPassword), ::commandPassword) { port ->
@@ -184,7 +198,8 @@ class LoginCmdTest {
 
         // Test Case #2: Password auth failure as admin
         CommandTest("password.2",
-            SessionState(ClientRequest("PASSWORD", mutableMapOf(
+            SessionState(
+                ClientRequest("PASSWORD", mutableMapOf(
                 "Password-Hash" to "foobar",
             )), adminWID,
                 LoginState.AwaitingPassword), ::commandPassword) { port ->

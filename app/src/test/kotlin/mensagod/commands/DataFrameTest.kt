@@ -1,5 +1,6 @@
 package mensagod.commands
 
+import libmensago.*
 import org.junit.jupiter.api.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -64,9 +65,9 @@ class DataFrameTest {
         // Now get and process the first actual data frame
         frame.read(inStream)
         assertEquals(FrameType.MultipartFrame, frame.type)
-        assertEquals(sentMsg.substring(IntRange(0, MAX_MSG_SIZE-1)).length,
+        assertEquals(sentMsg.substring(IntRange(0, MAX_MSG_SIZE -1)).length,
             frame.payload.decodeToString().length)
-        assertEquals(sentMsg.substring(IntRange(0, MAX_MSG_SIZE-1)), frame.payload.decodeToString())
+        assertEquals(sentMsg.substring(IntRange(0, MAX_MSG_SIZE -1)), frame.payload.decodeToString())
         msgParts.addAll(frame.payload.toList())
 
         // Finally deal with the final frame

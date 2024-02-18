@@ -5,9 +5,9 @@ import libkeycard.Domain
 import libkeycard.MAddress
 import libkeycard.RandomID
 import libkeycard.UserID
+import libmensago.ClientRequest
 import libmensago.MServerPath
-import mensagod.commands.ClientRequest
-import mensagod.commands.ServerResponse
+import libmensago.ServerResponse
 import mensagod.dbcmds.resolveAddress
 import org.apache.commons.io.FileUtils
 import java.io.RandomAccessFile

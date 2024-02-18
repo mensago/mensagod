@@ -3,6 +3,7 @@ package mensagod
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import testsupport.makeTestFolder
 import java.io.File
 import java.nio.file.Paths
 

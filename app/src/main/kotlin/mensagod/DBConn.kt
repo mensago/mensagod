@@ -3,6 +3,7 @@ package mensagod
 import keznacl.BadValueException
 import keznacl.EmptyDataException
 import libkeycard.MissingDataException
+import libmensago.NotConnectedException
 import java.sql.*
 import java.util.*
 

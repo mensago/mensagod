@@ -1,6 +1,7 @@
 package mensagod.commands
 
 import libkeycard.MAddress
+import libmensago.ServerResponse
 import mensagod.ClientSession
 import mensagod.DBConn
 import mensagod.dbcmds.resolveAddress
