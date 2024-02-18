@@ -6,14 +6,11 @@ import keznacl.getSupportedHashAlgorithms
 import libkeycard.*
 import libmensago.ClientRequest
 import libmensago.ServerResponse
-import mensagod.ClientSession
-import mensagod.DBConn
+import mensagod.*
 import mensagod.dbcmds.addEntry
 import mensagod.dbcmds.getEntries
 import mensagod.dbcmds.getPrimarySigningPair
 import mensagod.dbcmds.resolveAddress
-import mensagod.gServerDomain
-import mensagod.logError
 
 // ADDENTRY(Base-Entry)
 fun commandAddEntry(state: ClientSession) {
@@ -39,7 +36,7 @@ fun commandAddEntry(state: ClientSession) {
     if (!state.requireLogin()) return
 
     if (!state.message.hasField("Base-Entry")) {
-        ServerResponse.sendBadRequest("Missing required field Base-Entry", state.conn)
+        QuickResponse.sendBadRequest("Missing required field Base-Entry", state.conn)
         return
     }
 
@@ -47,7 +44,7 @@ fun commandAddEntry(state: ClientSession) {
     // started and the org signature and hashes have been added. If present, it constitutes an
     // out-of-order request
     if (state.message.hasField("User-Signature")) {
-        ServerResponse.sendBadRequest("Received out-of-order User-Signature", state.conn)
+        QuickResponse.sendBadRequest("Received out-of-order User-Signature", state.conn)
         return
     }
 
@@ -82,7 +79,7 @@ fun commandAddEntry(state: ClientSession) {
     if (entry.hasField("User-ID")) {
         val outUID = UserID.fromString(entry.getFieldString("User-ID")!!.lowercase())
         if (outUID == null) {
-            ServerResponse.sendBadRequest("Bad User-ID", state.conn)
+            QuickResponse.sendBadRequest("Bad User-ID", state.conn)
             return
         }
 
@@ -92,7 +89,7 @@ fun commandAddEntry(state: ClientSession) {
             val specialWID = resolveAddress(db, specialAddr)
             if (specialWID == null) {
                 logError("commandAddEntry: error resolving address ")
-                ServerResponse.sendInternalError("Internal error in server error handling",
+                QuickResponse.sendInternalError("Internal error in server error handling",
                     state.conn)
                 return
             }
@@ -112,7 +109,7 @@ fun commandAddEntry(state: ClientSession) {
     // client is valid EXCEPT checking the expiration
     val isExpired = entry.isExpired()
     if (isExpired.isFailure) {
-        ServerResponse.sendBadRequest("Bad expiration field", state.conn)
+        QuickResponse.sendBadRequest("Bad expiration field", state.conn)
         return
     }
     if (isExpired.getOrThrow()) {
@@ -132,21 +129,21 @@ fun commandAddEntry(state: ClientSession) {
     val tempEntryList = try { getEntries(db, wid, 0U) }
     catch (e: Exception) {
         logError("commandAddEntry.getCurrentEntry exception: $e")
-        ServerResponse.sendInternalError("Server can't get current keycard entry", state.conn)
+        QuickResponse.sendInternalError("Server can't get current keycard entry", state.conn)
         return
     }
 
     val prevEntry = if (tempEntryList.size > 0) {
         val prevUserEntry = UserEntry.fromString(tempEntryList[0]).getOrElse {
             logError("commandAddEntry.dbCorruption: bad user entry in db, wid=$wid - $it")
-            ServerResponse.sendInternalError("Error loading previous keycard entry", state.conn)
+            QuickResponse.sendInternalError("Error loading previous keycard entry", state.conn)
             return
         }
 
         val prevIndex = prevUserEntry.getFieldInteger("Index")
         if (prevIndex == null) {
             logError("commandAddEntry.dbCorruption: bad user entry in db, wid=$wid, bad index")
-            ServerResponse.sendInternalError("Error in previous keycard entry", state.conn)
+            QuickResponse.sendInternalError("Error in previous keycard entry", state.conn)
             return
         }
 
@@ -176,14 +173,14 @@ fun commandAddEntry(state: ClientSession) {
         val tempOrgList = try { getEntries(db, null, 0U) }
         catch (e: Exception) {
             logError("commandAddEntry.getCurrentOrgEntry exception: $e")
-            ServerResponse.sendInternalError("Server can't get current org keycard entry",
+            QuickResponse.sendInternalError("Server can't get current org keycard entry",
                 state.conn)
             return
         }
 
         OrgEntry.fromString(tempOrgList[0]).getOrElse {
             logError("commandAddEntry.dbCorruption: bad org entry in db - $it")
-            ServerResponse.sendInternalError("Error loading current org keycard entry",
+            QuickResponse.sendInternalError("Error loading current org keycard entry",
                 state.conn)
             return
         }
@@ -194,12 +191,12 @@ fun commandAddEntry(state: ClientSession) {
     // signature back to the client
     val pskPair = getPrimarySigningPair(db).getOrElse {
         logError("commandAddEntry.getPrimarySigningKey exception: $it")
-        ServerResponse.sendInternalError("Server can't get org signing key", state.conn)
+        QuickResponse.sendInternalError("Server can't get org signing key", state.conn)
         return
     }
     entry.sign("Organization-Signature", pskPair)?.let {
         logError("commandAddEntry.signEntry, wid=$wid - $it")
-        ServerResponse.sendInternalError("Error signing user entry", state.conn)
+        QuickResponse.sendInternalError("Error signing user entry", state.conn)
         return
     }
 
@@ -209,7 +206,7 @@ fun commandAddEntry(state: ClientSession) {
             .send(state.conn)
     } catch (e: Exception) {
         logError("commandAddEntry.sendContinue, wid=$wid - $e")
-        ServerResponse.sendInternalError("Error signing user entry", state.conn)
+        QuickResponse.sendInternalError("Error signing user entry", state.conn)
         return
     }
 
@@ -231,11 +228,11 @@ fun commandAddEntry(state: ClientSession) {
         return
     }
     if (req.action != "ADDENTRY") {
-        ServerResponse.sendBadRequest("Session state mismatch", state.conn)
+        QuickResponse.sendBadRequest("Session state mismatch", state.conn)
         return
     }
     req.validate(setOf("Previous-Hash", "Hash", "User-Signature"))?.let {
-        ServerResponse.sendBadRequest("Missing required field $it", state.conn)
+        QuickResponse.sendBadRequest("Missing required field $it", state.conn)
         return
     }
 
@@ -270,7 +267,7 @@ fun commandAddEntry(state: ClientSession) {
     }
     entry.hash(clientHash.prefix)?.let {
         logError("commandAddEntry.hashEntry exception: $it")
-        ServerResponse.sendInternalError("Server error hashing entry", state.conn)
+        QuickResponse.sendInternalError("Server error hashing entry", state.conn)
         return
     }
     if (entry.getAuthString("Hash")!!.toString() != clientHash.toString()) {
@@ -293,33 +290,33 @@ fun commandAddEntry(state: ClientSession) {
     }
     entry.addAuthString("User-Signature", userSig)?.let {
         logError("commandAddEntry.addUserSig: error adding user signature - $it")
-        ServerResponse.sendInternalError("Error adding user sig to entry", state.conn)
+        QuickResponse.sendInternalError("Error adding user sig to entry", state.conn)
         return
     }
 
     val crKeyStr = entry.getFieldString("Contact-Request-Verification-Key")
     if (crKeyStr == null) {
         logError("commandAddEntry.dbCorruption: entry missing CRV Key in db, wid=$wid")
-        ServerResponse.sendInternalError("Error loading entry verification key", state.conn)
+        QuickResponse.sendInternalError("Error loading entry verification key", state.conn)
         return
     }
     val crKeyCS = CryptoString.fromString(crKeyStr)
     if (crKeyCS == null) {
         logError("commandAddEntry.dbCorruption: invalid previous CRV Key CS in db, wid=$wid")
-        ServerResponse.sendInternalError("Invalid previous entry verification key", state.conn)
+        QuickResponse.sendInternalError("Invalid previous entry verification key", state.conn)
         return
     }
     val crKey = VerificationKey.from(crKeyCS).getOrElse {
         logError("commandAddEntry.dbCorruption: error creating previous CRV Key, "+
                 "wid=$wid - $it")
-        ServerResponse.sendInternalError("Error creating previous entry verification key",
+        QuickResponse.sendInternalError("Error creating previous entry verification key",
             state.conn)
         return
     }
 
     val verified = entry.verifySignature("User-Signature", crKey).getOrElse {
         logError("commandAddEntry.verifyError: error verifying entry, wid=$wid - $it")
-        ServerResponse.sendInternalError("Error verifying entry", state.conn)
+        QuickResponse.sendInternalError("Error verifying entry", state.conn)
         return
     }
     if (!verified) {
@@ -335,7 +332,7 @@ fun commandAddEntry(state: ClientSession) {
     try { addEntry(db, entry) }
     catch (e: Exception) {
         logError("commandAddEntry.addEntry: error adding entry, wid=$wid - $e")
-        ServerResponse.sendInternalError("Error adding entry", state.conn)
+        QuickResponse.sendInternalError("Error adding entry", state.conn)
         return
     }
 

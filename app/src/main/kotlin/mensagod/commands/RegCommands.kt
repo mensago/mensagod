@@ -20,7 +20,7 @@ fun commandPreregister(state: ClientSession) {
 
     if (!state.requireLogin()) return
     if (!ServerTarget().isAuthorized(WIDActor(state.wid!!), AuthAction.Preregister)) {
-        ServerResponse.sendForbidden("Only admins can preregister accounts", state.conn)
+        QuickResponse.sendForbidden("Only admins can preregister accounts", state.conn)
         return
     }
 
@@ -33,7 +33,7 @@ fun commandPreregister(state: ClientSession) {
         try { resolveUserID(db, uid) }
         catch (e: Exception) {
             logError("commandPreregister.resolveUserID exception: $e")
-            ServerResponse.sendInternalError("uid lookup error", state.conn)
+            QuickResponse.sendInternalError("uid lookup error", state.conn)
             return
         }?.let{
             try { ServerResponse(408, "RESOURCE EXISTS", "user ID exists")
@@ -50,7 +50,7 @@ fun commandPreregister(state: ClientSession) {
         try { checkWorkspace(db, wid) }
         catch (e: Exception) {
             logError("commandPreregister.checkWorkspace exception: $e")
-            ServerResponse.sendInternalError("wid lookup error", state.conn)
+            QuickResponse.sendInternalError("wid lookup error", state.conn)
             return
         }?.let{
             try { ServerResponse(408, "RESOURCE EXISTS", "workspace ID exists")
@@ -73,7 +73,7 @@ fun commandPreregister(state: ClientSession) {
             }
             catch (e: Exception) {
                 logError("commandPreregister.checkWorkspace exception: $e")
-                ServerResponse.sendInternalError("wid lookup error", state.conn)
+                QuickResponse.sendInternalError("wid lookup error", state.conn)
                 return
             }
         } while (newWID == null)
@@ -88,7 +88,7 @@ fun commandPreregister(state: ClientSession) {
         ServerConfig.get().getInteger("security.diceware_wordcount")!!)
     val reghash = Argon2idPassword().updateHash(regcode).getOrElse {
         logError("commandPreregister.hashRegCode exception: $it")
-        ServerResponse.sendInternalError("registration code hashing error", state.conn)
+        QuickResponse.sendInternalError("registration code hashing error", state.conn)
         return
     }
 
@@ -99,14 +99,14 @@ fun commandPreregister(state: ClientSession) {
     }
     catch (e: Exception) {
         logError("commandPreregister.preregWorkspace exception: $e")
-        ServerResponse.sendInternalError("preregistration error", state.conn)
+        QuickResponse.sendInternalError("preregistration error", state.conn)
     }
 
     val lfs = LocalFS.get()
     val handle = lfs.entry(MServerPath("/ wsp $outWID"))
     handle.makeDirectory()?.let {
         logError("commandPreregister.makeWorkspace exception: $it")
-        ServerResponse.sendInternalError("preregistration workspace creation failure",
+        QuickResponse.sendInternalError("preregistration workspace creation failure",
             state.conn)
         return
     }
@@ -128,7 +128,7 @@ fun commandPreregister(state: ClientSession) {
 fun commandRegCode(state: ClientSession) {
 
     state.message.validate(setOf("Reg-Code", "Password-Hash", "Password-Algorithm"))?.let {
-        ServerResponse.sendBadRequest("Missing required field $it", state.conn)
+        QuickResponse.sendBadRequest("Missing required field $it", state.conn)
         return
     }
 
@@ -139,7 +139,7 @@ fun commandRegCode(state: ClientSession) {
 
     val regCodeLen = state.message.data["Reg-Code"]!!.codePoints().count()
     if (regCodeLen > 128 || regCodeLen < 16) {
-        ServerResponse.sendBadRequest("Invalid registration code", state.conn)
+        QuickResponse.sendBadRequest("Invalid registration code", state.conn)
         return
     }
 
@@ -148,7 +148,7 @@ fun commandRegCode(state: ClientSession) {
     // password, there will be a pretty decent baseline of security in place.
     val passLen = state.message.data["Password-Hash"]!!.codePoints().count()
     if (passLen > 128 || passLen < 16) {
-        ServerResponse.sendBadRequest("Invalid password hash", state.conn)
+        QuickResponse.sendBadRequest("Invalid password hash", state.conn)
         return
     }
 
@@ -170,7 +170,7 @@ fun commandRegCode(state: ClientSession) {
         checkRegCode(db, MAddress.fromParts(uid,domain), state.message.data["Reg-Code"]!!)
     } catch (e: Exception) {
         logError("Internal error commandRegCode.checkRegCode: $e")
-        ServerResponse.sendInternalError("commandRegCode.1", state.conn)
+        QuickResponse.sendInternalError("commandRegCode.1", state.conn)
         return
     }
 
@@ -192,20 +192,20 @@ fun commandRegCode(state: ClientSession) {
     }
     catch (e: Exception) {
         logError("Internal error commandRegCode.addWorkspace: $e")
-        ServerResponse.sendInternalError("commandRegCode.2", state.conn)
+        QuickResponse.sendInternalError("commandRegCode.2", state.conn)
         return
     }
 
     addDevice(db, regInfo.first, devid, devkey, devinfo, DeviceStatus.Registered)?.let {
         logError("commandRegCode.addDevice: $it")
-        ServerResponse.sendInternalError("commandRegCode.3", state.conn)
+        QuickResponse.sendInternalError("commandRegCode.3", state.conn)
         return
     }
 
     try { deletePrereg(db, WAddress.fromParts(regInfo.first, domain)) }
     catch (e: Exception) {
         logError("commandRegCode.deletePrereg: $e")
-        ServerResponse.sendInternalError("commandRegCode.4", state.conn)
+        QuickResponse.sendInternalError("commandRegCode.4", state.conn)
         return
     }
 

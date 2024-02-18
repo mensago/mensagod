@@ -14,7 +14,7 @@ import java.security.SecureRandom
 // DEVICE(Deice-ID, Device-Key, Client-Info)
 fun commandDevice(state: ClientSession) {
     if (state.loginState != LoginState.AwaitingDeviceID) {
-        ServerResponse.sendBadRequest("Session mismatch error", state.conn)
+        QuickResponse.sendBadRequest("Session mismatch error", state.conn)
         return
     }
 
@@ -25,7 +25,7 @@ fun commandDevice(state: ClientSession) {
     val db = DBConn()
     val devstatus = getDeviceStatus(db, state.wid!!, devid).getOrElse {
         logError("commandDevice.getDeviceStatus exception: $it")
-        ServerResponse.sendInternalError("Server can't get device status", state.conn)
+        QuickResponse.sendInternalError("Server can't get device status", state.conn)
         return
     }
 
@@ -47,7 +47,7 @@ fun commandDevice(state: ClientSession) {
             val success = try { challengeDevice(state, devkey) }
             catch (e: Exception) {
                 logError("commandDevice.challengeDevice exception: $e")
-                ServerResponse.sendInternalError("Error authenticating client device",
+                QuickResponse.sendInternalError("Error authenticating client device",
                     state.conn)
                 return
             }
@@ -55,7 +55,7 @@ fun commandDevice(state: ClientSession) {
             if (devinfo != null) {
                 updateDeviceInfo(db, state.wid!!, devid, devinfo)?.let {
                     logError("commandDevice.challengeDevice exception: $it")
-                    ServerResponse.sendInternalError("Error updating device info",
+                    QuickResponse.sendInternalError("Error updating device info",
                         state.conn)
                     return
                 }
@@ -65,7 +65,7 @@ fun commandDevice(state: ClientSession) {
         }
         DeviceStatus.NotRegistered -> {
             if (devinfo == null) {
-                ServerResponse.sendBadRequest("Device-Info field required for new devices",
+                QuickResponse.sendBadRequest("Device-Info field required for new devices",
                     state.conn)
                 return
             }
@@ -73,7 +73,7 @@ fun commandDevice(state: ClientSession) {
             // 1) Check to see if the workspace has any devices registered.
             val devCount = countDevices(db, state.wid!!).getOrElse {
                 logError("commandDevice.countDevices exception: $it")
-                ServerResponse.sendInternalError("Error checking device count",
+                QuickResponse.sendInternalError("Error checking device count",
                     state.conn)
                 return
             }
@@ -87,7 +87,7 @@ fun commandDevice(state: ClientSession) {
                     val out = resolveWID(db, state.wid!!)
                     if (out == null) {
                         logError("commandDevice.resolveWID returned null for wid ${state.wid!!}")
-                        ServerResponse.sendInternalError("Server error: workspace missing",
+                        QuickResponse.sendInternalError("Server error: workspace missing",
                             state.conn)
                         return
                     }
@@ -95,7 +95,7 @@ fun commandDevice(state: ClientSession) {
                 }
                 catch (e: Exception) {
                     logError("commandDevice.resolveWID exception: $e")
-                    ServerResponse.sendInternalError("Error looking up workspace address",
+                    QuickResponse.sendInternalError("Error looking up workspace address",
                         state.conn)
                     return
                 }
@@ -112,7 +112,7 @@ fun commandDevice(state: ClientSession) {
             }
             addDevice(db, state.wid!!, devid, devkey, devinfo, DeviceStatus.Registered)?.let {
                 logError("commandDevice.addDevice exception: $it")
-                ServerResponse.sendInternalError("Error adding device", state.conn)
+                QuickResponse.sendInternalError("Error adding device", state.conn)
                 return
             }
         }
@@ -125,14 +125,14 @@ fun commandDevice(state: ClientSession) {
     val widHandle = lfs.entry(widPath)
     val exists = widHandle.exists().getOrElse {
         logError("commandDevice.exists exception for $widPath: $it")
-        ServerResponse.sendInternalError("Error checking for workspace root directory",
+        QuickResponse.sendInternalError("Error checking for workspace root directory",
             state.conn)
         return
     }
     if (!exists) {
         lfs.entry(widPath).makeDirectory()?.let {
             logError("commandDevice.makeDirectory exception for $widPath: $it")
-            ServerResponse.sendInternalError("Error creating workspace root directory",
+            QuickResponse.sendInternalError("Error creating workspace root directory",
                 state.conn)
             return
         }
@@ -151,7 +151,7 @@ fun commandDevice(state: ClientSession) {
             logError("commandDevice.getKeyInfo error for ${state.wid}: $it")
             state.loginState = LoginState.NoSession
             state.wid = null
-            ServerResponse.sendInternalError("Error finding new device key information",
+            QuickResponse.sendInternalError("Error finding new device key information",
                 state.conn)
             return
         }
@@ -159,7 +159,7 @@ fun commandDevice(state: ClientSession) {
             logError("commandDevice.getKeyInfo missing for ${state.wid}")
             state.loginState = LoginState.NoSession
             state.wid = null
-            ServerResponse.sendInternalError("Error finding new device key information",
+            QuickResponse.sendInternalError("Error finding new device key information",
                 state.conn)
             return
         }
@@ -169,7 +169,7 @@ fun commandDevice(state: ClientSession) {
             logError("commandDevice.getFile exception for ${state.wid}: $e")
             state.loginState = LoginState.NoSession
             state.wid = null
-            ServerResponse.sendInternalError("Error opening device key information",
+            QuickResponse.sendInternalError("Error opening device key information",
                 state.conn)
             return
         }
@@ -178,7 +178,7 @@ fun commandDevice(state: ClientSession) {
             logError("commandDevice.readFile exception for ${state.wid}: $it")
             state.loginState = LoginState.NoSession
             state.wid = null
-            ServerResponse.sendInternalError("Error reading device key information",
+            QuickResponse.sendInternalError("Error reading device key information",
                 state.conn)
             return
         }.decodeToString()
@@ -192,7 +192,7 @@ fun commandDevice(state: ClientSession) {
     catch (e: Exception) {
         state.loginState = LoginState.NoSession
         state.wid = null
-        ServerResponse.sendInternalError("Error sending successful login information",
+        QuickResponse.sendInternalError("Error sending successful login information",
             state.conn)
         return
     }
@@ -212,16 +212,16 @@ fun commandDevice(state: ClientSession) {
 fun commandLogin(state: ClientSession) {
 
     if (state.loginState != LoginState.NoSession) {
-        ServerResponse.sendBadRequest("Session state mismatch", state.conn)
+        QuickResponse.sendBadRequest("Session state mismatch", state.conn)
         return
     }
 
     if (!state.message.hasField("Login-Type")) {
-        ServerResponse.sendBadRequest("Missing required field Login-Type", state.conn)
+        QuickResponse.sendBadRequest("Missing required field Login-Type", state.conn)
         return
     }
     if (state.message.data["Login-Type"] != "PLAIN") {
-        ServerResponse.sendBadRequest("Invalid Login-Type", state.conn)
+        QuickResponse.sendBadRequest("Invalid Login-Type", state.conn)
         return
     }
 
@@ -285,7 +285,7 @@ fun commandLogin(state: ClientSession) {
     // We got this far, so decrypt the challenge and send it to the client
     val orgPair = getEncryptionPair(db).getOrElse {
         logError("commandLogin.getEncryptionPair exception: $it")
-        ServerResponse.sendInternalError("Server can't process client login challenge",
+        QuickResponse.sendInternalError("Server can't process client login challenge",
             state.conn)
         return
     }
@@ -328,11 +328,11 @@ fun commandLogout(state: ClientSession) {
 // PASSWORD(Password-Hash)
 fun commandPassword(state: ClientSession) {
     if (!state.message.hasField("Password-Hash")) {
-        ServerResponse.sendBadRequest("Missing required field Password-Hash", state.conn)
+        QuickResponse.sendBadRequest("Missing required field Password-Hash", state.conn)
         return
     }
     if (state.loginState != LoginState.AwaitingPassword) {
-        ServerResponse.sendBadRequest("Session state mismatch", state.conn)
+        QuickResponse.sendBadRequest("Session state mismatch", state.conn)
         return
     }
 
@@ -340,7 +340,7 @@ fun commandPassword(state: ClientSession) {
     val match = try { checkPassword(db, state.wid!!, state.message.data["Password-Hash"]!!) }
     catch (e: Exception) {
         logError("commandPassword.checkPassword error: $e")
-        ServerResponse.sendInternalError("Internal error checking password", state.conn)
+        QuickResponse.sendInternalError("Internal error checking password", state.conn)
         return
     }
 
@@ -390,17 +390,17 @@ fun challengeDevice(state: ClientSession, devkey: CryptoString): Boolean {
     if (req.action == "CANCEL") throw CancelException()
 
     if (req.action != "DEVICE") {
-        ServerResponse.sendBadRequest("Session state mismatch", state.conn)
+        QuickResponse.sendBadRequest("Session state mismatch", state.conn)
         return false
     }
 
     val missingField = req.validate(setOf("Device-ID", "Device-Key", "Response"))
     if (missingField != null)  {
-        ServerResponse.sendBadRequest("Missing required field $missingField", state.conn)
+        QuickResponse.sendBadRequest("Missing required field $missingField", state.conn)
         return false
     }
     if (devkey.toString() != req.data["Device-Key"]) {
-        ServerResponse.sendBadRequest("Device key mismatch", state.conn)
+        QuickResponse.sendBadRequest("Device key mismatch", state.conn)
         return false
     }
 

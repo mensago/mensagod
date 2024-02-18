@@ -2,13 +2,10 @@ package mensagod.commands
 
 import libmensago.MServerPath
 import libmensago.ServerResponse
-import mensagod.ClientSession
-import mensagod.DBConn
-import mensagod.LocalFS
+import mensagod.*
 import mensagod.dbcmds.addKeyInfo
 import mensagod.dbcmds.getDeviceStatus
 import mensagod.dbcmds.updateDeviceStatus
-import mensagod.logError
 import org.apache.commons.io.FileUtils
 
 fun commandKeyPkg(state: ClientSession) {
@@ -20,14 +17,14 @@ fun commandKeyPkg(state: ClientSession) {
     val db = DBConn()
     val devStatus = getDeviceStatus(db, state.wid!!, devID).getOrElse {
         logError("commandKeyPkg.getDeviceState exception for ${state.wid!!}: $it")
-        ServerResponse.sendInternalError("Error getting device status",
+        QuickResponse.sendInternalError("Error getting device status",
             state.conn)
         return
     }
 
     when (devStatus) {
         DeviceStatus.Blocked -> {
-            ServerResponse.sendForbidden("Device has already been blocked", state.conn)
+            QuickResponse.sendForbidden("Device has already been blocked", state.conn)
             return
         }
         DeviceStatus.Registered -> {
@@ -57,7 +54,7 @@ fun commandKeyPkg(state: ClientSession) {
     val tempHandle = lfs.makeTempFile(state.wid!!, keyInfo.value.length.toLong())
         .getOrElse {
             logError("commandKeyPkg.makeTempFile exception for ${state.wid!!}: $it")
-            ServerResponse.sendInternalError("Error creating key info file", state.conn)
+            QuickResponse.sendInternalError("Error creating key info file", state.conn)
             return
         }
     try {
@@ -66,7 +63,7 @@ fun commandKeyPkg(state: ClientSession) {
         ostream.write(keyInfo.value.encodeToByteArray())
     } catch (e: Exception) {
         logError("commandKeyPkg.writeTempFile exception for ${state.wid!!}: $e")
-        ServerResponse.sendInternalError("Error saving key info file", state.conn)
+        QuickResponse.sendInternalError("Error saving key info file", state.conn)
         return
     }
 
@@ -74,29 +71,29 @@ fun commandKeyPkg(state: ClientSession) {
     val keyInfoHandle = lfs.entry(keyInfoPath)
     val exists = keyInfoHandle.exists().getOrElse {
         logError("commandKeyPkg.keyInfoDirExists exception for ${state.wid!!}: $it")
-        ServerResponse.sendInternalError("Error checking for key info directory", state.conn)
+        QuickResponse.sendInternalError("Error checking for key info directory", state.conn)
         return
     }
     if (!exists) {
         keyInfoHandle.makeDirectory()?.let {
             logError("commandKeyPkg.makeKeyInfoDir exception for ${state.wid!!}: $it")
-            ServerResponse.sendInternalError("Error creating key info directory", state.conn)
+            QuickResponse.sendInternalError("Error creating key info directory", state.conn)
             return
         }
     }
     tempHandle.moveTo(keyInfoPath)?.let {
         logError("commandKeyPkg.installKeyInfo exception for ${state.wid!!}: $it")
-        ServerResponse.sendInternalError("Error installing key info", state.conn)
+        QuickResponse.sendInternalError("Error installing key info", state.conn)
         return
     }
     addKeyInfo(db, state.wid!!, devID, tempHandle.path)?.let {
         logError("commandKeyPkg.addKeyInfo exception for ${state.wid!!}: $it")
-        ServerResponse.sendInternalError("Error adding key info to database", state.conn)
+        QuickResponse.sendInternalError("Error adding key info to database", state.conn)
         return
     }
     updateDeviceStatus(db, state.wid!!, devID, DeviceStatus.Approved)?.let {
         logError("commandKeyPkg.updateDeviceStatus exception for ${state.wid!!}: $it")
-        ServerResponse.sendInternalError("Error approving device", state.conn)
+        QuickResponse.sendInternalError("Error approving device", state.conn)
         return
     }
     ServerResponse(200, "OK")

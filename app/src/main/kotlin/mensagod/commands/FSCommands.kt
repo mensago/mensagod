@@ -25,16 +25,16 @@ fun commandDownload(state: ClientSession) {
     // The FileTarget class verifies that the path is, indeed, pointing to a file
     val fileTarget = FileTarget.fromPath(path)
     if (fileTarget == null) {
-        ServerResponse.sendBadRequest("Path must be for a file", state.conn)
+        QuickResponse.sendBadRequest("Path must be for a file", state.conn)
         return
     }
     if (!fileTarget.isAuthorized(WIDActor(state.wid!!), AuthAction.Read)) {
-        ServerResponse.sendForbidden("", state.conn)
+        QuickResponse.sendForbidden("", state.conn)
         return
     }
     val exists = handle.exists().getOrElse {
         logError("commandDownload: Error checking existence of $path: $it")
-        ServerResponse.sendInternalError("Error checking path existence", state.conn)
+        QuickResponse.sendInternalError("Error checking path existence", state.conn)
         return
     }
     if (!exists) {
@@ -46,17 +46,17 @@ fun commandDownload(state: ClientSession) {
     val offset = if (state.message.hasField("Offset")) {
         try { state.message.data["Offset"]!!.toLong() }
         catch (e: Exception) {
-            ServerResponse.sendBadRequest("Invalid value for Offset", state.conn)
+            QuickResponse.sendBadRequest("Invalid value for Offset", state.conn)
             return
         }
     } else 0L
     val fileSize = handle.size().getOrElse {
         logError("commandDownload: Error getting size of $path: $it")
-        ServerResponse.sendInternalError("Error getting file size", state.conn)
+        QuickResponse.sendInternalError("Error getting file size", state.conn)
         return
     }
     if (offset < 0 || offset > fileSize) {
-        ServerResponse.sendBadRequest("Offset out of range", state.conn)
+        QuickResponse.sendBadRequest("Offset out of range", state.conn)
         return
     }
 
@@ -75,7 +75,7 @@ fun commandDownload(state: ClientSession) {
     if (req.action == "CANCEL") return
 
     if (req.action != "DOWNLOAD" || !req.hasField("Size")) {
-        ServerResponse.sendBadRequest("Session mismatch", state.conn)
+        QuickResponse.sendBadRequest("Session mismatch", state.conn)
         return
     }
 
@@ -89,13 +89,13 @@ fun commandUpload(state: ClientSession) {
 
     if (!state.requireLogin()) return
     state.message.validate(setOf("Size", "Path", "Hash"))?.let{
-        ServerResponse.sendBadRequest("Missing required field $it", state.conn)
+        QuickResponse.sendBadRequest("Missing required field $it", state.conn)
         return
     }
 
     val clientHash = state.getCryptoString("Hash", true)
     if (clientHash == null) {
-        ServerResponse.sendBadRequest("Invalid value for Hash", state.conn)
+        QuickResponse.sendBadRequest("Invalid value for Hash", state.conn)
         return
     }
 
@@ -103,7 +103,7 @@ fun commandUpload(state: ClientSession) {
     val hasTempName = state.message.hasField("TempName")
     val hasOffset = state.message.hasField("Offset")
     if ( (hasTempName && !hasOffset) || (!hasTempName && hasOffset)) {
-        ServerResponse.sendBadRequest("Upload resume requires both TempName and Offset fields",
+        QuickResponse.sendBadRequest("Upload resume requires both TempName and Offset fields",
             state.conn)
         return
     }
@@ -114,13 +114,13 @@ fun commandUpload(state: ClientSession) {
         val handle = try { lfs.entry(replacesPath) }
         catch (e: SecurityException) {
             logError("Error opening path $replacesPath: $e")
-            ServerResponse.sendInternalError("commandUpload.1 error", state.conn)
+            QuickResponse.sendInternalError("commandUpload.1 error", state.conn)
             return
         }
 
         val exists = handle.exists().getOrElse {
             logError("Error checking existence of $replacesPath: $it")
-            ServerResponse.sendInternalError("commandUpload.2 error", state.conn)
+            QuickResponse.sendInternalError("commandUpload.2 error", state.conn)
             return
         }
         if (!exists) {
@@ -129,41 +129,41 @@ fun commandUpload(state: ClientSession) {
             return
         }
     } else if (state.message.hasField("Replaces")) {
-        ServerResponse.sendBadRequest("Invalid value for Replaces", state.conn)
+        QuickResponse.sendBadRequest("Invalid value for Replaces", state.conn)
         return
     }
 
     val fileSize = try { state.message.data["Size"]!!.toLong() }
     catch (e: Exception) {
-        ServerResponse.sendBadRequest("Invalid value for Size", state.conn)
+        QuickResponse.sendBadRequest("Invalid value for Size", state.conn)
         return
     }
 
     val uploadPath = state.getPath("Path", true)
     if (uploadPath == null) {
-        ServerResponse.sendBadRequest("Invalid value for field Path", state.conn)
+        QuickResponse.sendBadRequest("Invalid value for field Path", state.conn)
         return
     }
     // The DirectoryTarget constructor validates that the target path points to a directory
     val dirTarget = DirectoryTarget.fromPath(uploadPath)
     if (dirTarget == null) {
-        ServerResponse.sendBadRequest("Upload path must be a directory", state.conn)
+        QuickResponse.sendBadRequest("Upload path must be a directory", state.conn)
         return
     }
     if (!dirTarget.isAuthorized(WIDActor(state.wid!!), AuthAction.Create)) {
-        ServerResponse.sendForbidden("", state.conn)
+        QuickResponse.sendForbidden("", state.conn)
         return
     }
 
     val uploadPathHandle = try { lfs.entry(uploadPath) }
     catch (e: SecurityException) {
         logError("Error opening path $uploadPath: $e")
-        ServerResponse.sendInternalError("commandUpload.3 error", state.conn)
+        QuickResponse.sendInternalError("commandUpload.3 error", state.conn)
         return
     }
     val exists = uploadPathHandle.exists().getOrElse {
         logError("Error checking existence of $uploadPath: $it")
-        ServerResponse.sendInternalError("commandUpload.4 error", state.conn)
+        QuickResponse.sendInternalError("commandUpload.4 error", state.conn)
         return
     }
     if (!exists) {
@@ -175,17 +175,17 @@ fun commandUpload(state: ClientSession) {
     val resumeOffset: Long?
     if (hasTempName) {
         if (!MServerPath.validateFileName(state.message.data["TempName"]!!)) {
-            ServerResponse.sendBadRequest("Invalid value for field TempName", state.conn)
+            QuickResponse.sendBadRequest("Invalid value for field TempName", state.conn)
             return
         }
 
         resumeOffset = try { state.message.data["Offset"]!!.toLong() }
         catch (e: Exception) {
-            ServerResponse.sendBadRequest("Invalid value for field Offset", state.conn)
+            QuickResponse.sendBadRequest("Invalid value for field Offset", state.conn)
             return
         }
         if (resumeOffset!! < 1 || resumeOffset > fileSize) {
-            ServerResponse.sendBadRequest("Invalid value for field Offset", state.conn)
+            QuickResponse.sendBadRequest("Invalid value for field Offset", state.conn)
             return
         }
     } else resumeOffset = null
@@ -203,7 +203,7 @@ fun commandUpload(state: ClientSession) {
     val db = DBConn()
     val quotaInfo = getQuotaInfo(db, state.wid!!).getOrElse {
         logError("Error getting quota for wid ${state.wid!!}: $it")
-        ServerResponse.sendInternalError("Server error getting account quota info", state.conn)
+        QuickResponse.sendInternalError("Server error getting account quota info", state.conn)
         return
     }
 
@@ -245,7 +245,7 @@ fun commandUpload(state: ClientSession) {
                 .sendCatching(state.conn, "Client requested unsupported hash algorithm")
         } else {
             logError("commandUpload: Error hashing file: $it")
-            ServerResponse.sendInternalError("Server error hashing file", state.conn)
+            QuickResponse.sendInternalError("Server error hashing file", state.conn)
         }
         return
     }
@@ -261,7 +261,7 @@ fun commandUpload(state: ClientSession) {
 
     tempHandle.moveTo(uploadPath)?.let {
         logError("commandUpload: Error installing temp file: $it")
-        ServerResponse.sendInternalError("Server error finishing upload", state.conn)
+        QuickResponse.sendInternalError("Server error finishing upload", state.conn)
     }
 
     val unixTime = System.currentTimeMillis() / 1000L
@@ -275,7 +275,7 @@ fun commandUpload(state: ClientSession) {
     } else {
         modifyQuotaUsage(db, state.wid!!, fileSize).getOrElse {
             logError("commandUpload: Error adjusting quota usage: $it")
-            ServerResponse.sendInternalError("Server account quota error", state.conn)
+            QuickResponse.sendInternalError("Server account quota error", state.conn)
             return
         }
 
