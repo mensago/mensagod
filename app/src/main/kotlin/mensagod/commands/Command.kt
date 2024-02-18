@@ -14,6 +14,7 @@ fun processCommand(state: ClientSession) {
         "ADDENTRY" -> commandAddEntry(state)
         "DEVICE" -> commandDevice(state)
         "DOWNLOAD" -> commandDownload(state)
+        "GETCARD" -> commandGetCard(state)
         "GETWID" -> commandGetWID(state)
         "KEYPKG" -> commandKeyPkg(state)
         "LOGIN" -> commandLogin(state)

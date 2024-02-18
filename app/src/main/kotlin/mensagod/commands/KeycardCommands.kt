@@ -340,3 +340,55 @@ fun commandAddEntry(state: ClientSession) {
             "commandAddEntry: Couldn't send confirmation response for "+
                     "wid = ${state.wid}")
 }
+
+// GETCARD(Start-Index, Owner="", End-Index=0)
+fun commandGetCard(state: ClientSession) {
+
+    if (!state.message.hasField("Start-Index")) {
+        QuickResponse.sendBadRequest("Missing required field Start-Index", state.conn)
+        return
+    }
+    val startIndex = try { state.message.data["Start-Index"]!!.toInt() }
+    catch (e: Exception) {
+        QuickResponse.sendBadRequest("Bad value for field Start-Index", state.conn)
+        return
+    }
+    if (startIndex < 0) {
+        QuickResponse.sendBadRequest("Start-Index must be non-negative", state.conn)
+        return
+    }
+
+    val owner: WAddress?
+    if (state.message.hasField("Owner")) {
+        // The owner can be a Mensago address, a workspace address, or just a workspace ID, so
+        // resolving the owner can get... complicated. We'll go in order of ease of validation.
+
+        val resolved = resolveOwner(state.message.data["Owner"]!!)
+        if (resolved == null) {
+            QuickResponse.sendBadRequest("Bad value for field Owner", state.conn)
+            return
+        }
+        owner = resolved
+    }
+
+    val endIndex: Int?
+    if (state.message.hasField("End-Index")) {
+        val end = try { state.message.data["End-Index"]!!.toInt() }
+        catch (e: Exception) {
+            QuickResponse.sendBadRequest("Bad value for field End-Index", state.conn)
+            return
+        }
+        if (end < 0 || end < startIndex) {
+            QuickResponse.sendBadRequest("Start-Index must be non-negative and may not be " +
+                    "less than Start-Index", state.conn)
+            return
+        }
+        endIndex = end
+    }
+
+    // TODO: Finish implementing commandGetCard()
+}
+
+private fun resolveOwner(owner: String): WAddress? {
+    TODO("Implement resolveOwner($owner)")
+}
