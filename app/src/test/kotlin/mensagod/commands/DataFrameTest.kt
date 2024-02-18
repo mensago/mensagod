@@ -27,7 +27,7 @@ class DataFrameTest {
         val outStream = ByteArrayOutputStream(30)
         writeMessage(outStream, msg.encodeToByteArray())
 
-        val outmsg = readStringMessage(ByteArrayInputStream(outStream.toByteArray()))
+        val outmsg = readStringMessage(ByteArrayInputStream(outStream.toByteArray())).getOrThrow()
         assert(msg == outmsg)
     }
 
@@ -57,7 +57,7 @@ class DataFrameTest {
         assertEquals(FrameType.MultipartFrameStart, frame.type)
         assertEquals(sentMsg.length.toString(), frame.payload.decodeToString())
 
-        val totalSize = frame.getMultipartSize()
+        val totalSize = frame.getMultipartSize().getOrThrow()
         assertEquals(sentMsg.length, totalSize)
 
         val msgParts = mutableListOf<Byte>()
@@ -90,6 +90,7 @@ class DataFrameTest {
         writeMessage(outStream, sentMsg.encodeToByteArray())
 
         val receivedMsg = readStringMessage(ByteArrayInputStream(outStream.toByteArray()))
+            .getOrThrow()
         assert(sentMsg == receivedMsg)
     }
 }

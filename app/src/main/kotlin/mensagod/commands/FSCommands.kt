@@ -68,9 +68,8 @@ fun commandDownload(state: ClientSession) {
         return
     }
 
-    val req = try { ClientRequest.receive(state.conn.getInputStream()) }
-    catch (e: Exception) {
-        logDebug("commandDownload: error receiving client continue request: $e")
+    val req = ClientRequest.receive(state.conn.getInputStream()).getOrElse {
+        logDebug("commandDownload: error receiving client continue request: $it")
         return
     }
     if (req.action == "CANCEL") return

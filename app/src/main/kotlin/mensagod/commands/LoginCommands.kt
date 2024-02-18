@@ -386,7 +386,7 @@ fun challengeDevice(state: ClientSession, devkey: CryptoString): Boolean {
         mutableMapOf("Challenge" to encrypted.toString())).send(state.conn)
     // We purposely don't try to catch the send error, as that's part of the caller's responsibility
 
-    val req = ClientRequest.receive(state.conn.getInputStream())
+    val req = ClientRequest.receive(state.conn.getInputStream()).getOrThrow()
     if (req.action == "CANCEL") throw CancelException()
 
     if (req.action != "DEVICE") {

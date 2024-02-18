@@ -137,21 +137,27 @@ fun connectionWorker(conn: Socket) {
 
     var networkErrorCount = 0
     while(true) {
-        val req = try { ClientRequest.receive(istream) }
-        catch (e: SerializationException) {
-            // If there was a serialization problem, that means the client is having problems. For
-            // now, we'll just ignore this and move on unless it becomes a problem.
+        val result = ClientRequest.receive(istream)
+        if (result.isFailure) {
+            when (val ex = result.exceptionOrNull()) {
+                is SerializationException -> {
+                    // If there was a serialization problem, that means the client is having problems. For
+                    // now, we'll just ignore this and move on unless it becomes a problem.
+                }
+                is IllegalArgumentException -> {
+                    // Don't know why we'd get this error, so for now, just ignore and continue
+                }
+                is IOException -> {
+                    networkErrorCount++
+                    if (networkErrorCount >= gMaxNetworkErrors) break
+                }
+                else -> {
+                    logError("connectionWorker: Unhandled error receiving client request: $ex")
+                }
+            }
             continue
         }
-        catch (e: IllegalArgumentException) {
-            // Don't know why we'd get this error, so for now, just ignore and continue
-            continue
-        }
-        catch (e: IOException) {
-            networkErrorCount++
-            if (networkErrorCount >= gMaxNetworkErrors) break
-            continue
-        }
+        val req = result.getOrThrow()
         networkErrorCount = 0
         state.message = req
 

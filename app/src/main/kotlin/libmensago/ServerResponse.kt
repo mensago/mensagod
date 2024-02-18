@@ -64,7 +64,7 @@ class ServerResponse(@Required @SerialName("Code") var code: Int = 0,
         /** Reads a ServerResponse from a connection */
         fun receive(conn: InputStream): Result<ServerResponse> {
 
-            val jsonMsg = readStringMessage(conn)
+            val jsonMsg = readStringMessage(conn).getOrElse { return Result.failure(it) }
             val response = try {
                 Json.decodeFromString<ServerResponse>(jsonMsg)
             } catch (e: Exception) { return Result.failure(e) }

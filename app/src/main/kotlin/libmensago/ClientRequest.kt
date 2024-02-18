@@ -25,9 +25,12 @@ class ClientRequest(@SerialName("Action") var action: String,
      * @throws kotlinx.serialization.SerializationException encoding-specific errors
      * @throws IllegalArgumentException if the encoded input does not comply format's specification
      */
-    fun send(conn: OutputStream) {
-        val jsonStr = Json.encodeToString(this)
-        writeMessage(conn, jsonStr.encodeToByteArray())
+    fun send(conn: OutputStream): Throwable? {
+        return try {
+            val jsonStr = Json.encodeToString(this)
+            writeMessage(conn, jsonStr.encodeToByteArray())
+            null
+        } catch (e: Exception) { e }
     }
 
     /**
@@ -49,14 +52,13 @@ class ClientRequest(@SerialName("Action") var action: String,
          * @throws IllegalArgumentException if the encoded input does not comply format's specification
          * @throws java.io.IOException if there was a network error
          */
-        fun receive(conn: InputStream): ClientRequest {
-            val jsonMsg = try { readStringMessage(conn) }
-            catch (e: Exception) {
-                if (e is BadFrameException || e is SizeException || e is BadSessionException)
-                    throw java.io.IOException("SysMessage session error")
-                throw e
+        fun receive(conn: InputStream): Result<ClientRequest> {
+            val jsonMsg = readStringMessage(conn).getOrElse {
+                return Result.failure(java.io.IOException("SysMessage session error"))
             }
-            return Json.decodeFromString<ClientRequest>(jsonMsg)
+            val out = try { Json.decodeFromString<ClientRequest>(jsonMsg) }
+            catch (e: Exception) { return Result.failure(e) }
+            return Result.success(out)
         }
     }
 }

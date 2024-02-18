@@ -6,12 +6,11 @@ import java.io.OutputStream
 
 const val MAX_MSG_SIZE: Int = 65532
 
-/**
- * DataFrame is a structure for the lowest layer of network interaction. It represents a segment of
- * data. Depending on the type code for the instance, it may indicate that the data payload is
- * complete -- the SingleFrame type -- or it may be part of a larger set. In all cases a DataFrame
- * is required to be equal to or smaller than the permitted buffer size of 64KiB.
- */
+// DataFrame is a structure for the lowest layer of network interaction. It represents a segment of
+// data. Depending on the type code for the instance, it may indicate that the data payload is
+// complete -- the SingleFrame type -- or it may be part of a larger set. In all cases a DataFrame
+// is required to be equal to or smaller than the buffer size negotiated between the local host and
+// the remote host.
 class DataFrame {
 
     private var index = 0
@@ -25,37 +24,24 @@ class DataFrame {
     val payload: ByteArray
         get() { return buffer.sliceArray(IntRange(0, index - 1)) }
 
-    /**
-     * Returns the size of a multipart frame.
-     *
-     * @throws BadFrameException if the frame header is invalid or if the data is not an integer
-     * @throws FrameTypeException if called on a frame that is not MultipartFrameStart
-     */
-    fun getMultipartSize(): Int {
-        if (size < 1) throw BadFrameException("Invalid frame header")
-        if (type != FrameType.MultipartFrameStart) throw FrameTypeException()
+    fun getMultipartSize(): Result<Int> {
+        if (size < 1) return Result.failure(BadFrameException())
+        if (type != FrameType.MultipartFrameStart) return Result.failure(TypeException())
 
-        return try { payload.decodeToString().toInt() }
-        catch (e: NumberFormatException) { throw BadFrameException("Invalid start frame payload") }
+        return try { Result.success(payload.decodeToString().toInt()) }
+        catch (e: Exception) { Result.failure(e) }
     }
 
-    /**
-     * The lowest-level code for reading data from a socket, short of reading the socket directly.
-     *
-     * @throws BadFrameException when the frame header is invalid
-     * @throws SizeException if the amount of data read does not match the size specified in the frame header
-     * @throws java.io.IOException if there was a network error
-     */
-    fun read(conn: InputStream) {
+    fun read(conn: InputStream): Throwable? {
         // Invalidate internal data in case we error out
         index = 0
 
         val header = ByteArray(3)
         var bytesRead = conn.read(header)
-        if (bytesRead < 3) throw BadFrameException("Invalid frame header")
+        if (bytesRead < 3) return BadFrameException()
 
         type = FrameType.fromByte(header[0])
-        if (type == FrameType.InvalidFrame) throw BadFrameException("Bad frame type $type")
+        if (type == FrameType.InvalidFrame) return BadFrameException()
 
         // The size bytes are in network order (MSB), so this makes dealing with CPU architecture
         // much less of a headache regardless of what archictecture this is compiled for.
@@ -67,97 +53,73 @@ class DataFrame {
         val payloadSize = payloadMSB.or(payloadLSB)
 
         bytesRead = conn.read(buffer, 0, payloadSize)
-        if (bytesRead != payloadSize) throw SizeException()
+        if (bytesRead != payloadSize)
+            return SizeException()
 
         index = bytesRead
+
+        return null
     }
 }
 
-/**
- * The lowest-level code for writing data over a socket. It will accept up to 65532 bytes of data
- * as a message payload.
- * @throws SizeException if the payload is larger than the maximum message size
- * @throws java.io.IOException if there was a problem with the socket itself.
- */
-fun writeFrame(conn: OutputStream, frameType: FrameType, payload: ByteArray) {
-    if (payload.size > MAX_MSG_SIZE) throw SizeException()
+fun writeFrame(conn: OutputStream, frameType: FrameType, payload: ByteArray): Throwable? {
+    if (payload.size > MAX_MSG_SIZE) return SizeException()
 
     val header = ByteArray(3)
     header[0] = frameType.toByte()
     header[1] = payload.size.shr(8).and(255).toByte()
     header[2] = payload.size.and(255).toByte()
 
-    conn.write(header)
-    conn.write(payload)
+    try {
+        conn.write(header)
+        conn.write(payload)
+    } catch (e: Exception) { return e }
+
+    return null
 }
 
-/**
- * readMessage() is the protocol's main way of receiving data. Payloads can technically be up to
- * 2GiB in size, but data that large is not recommended to be sent this way.
- *
- * @throws BadFrameException when the frame header is invalid
- * @throws SizeException if the amount of data read does not match the size specified in the frame header
- * @throws BadSessionException if the client sends a multipart frame out of order.
- * @throws java.io.IOException if there was a network error
- */
-fun readMessage(conn: InputStream): ByteArray {
+fun readMessage(conn: InputStream): Result<ByteArray> {
     val out = mutableListOf<Byte>()
     val chunk = DataFrame()
 
-    chunk.read(conn)
+    chunk.read(conn).let { if (it != null) return Result.failure(it) }
     when (chunk.type) {
         FrameType.SingleFrame -> {
             out.addAll(chunk.payload.toList())
-            return out.toByteArray()
+            return Result.success(out.toByteArray())
         }
         FrameType.MultipartFrameStart -> {}
-        FrameType.MultipartFrameFinal -> throw BadSessionException()
-        else -> throw BadFrameException()
+        FrameType.MultipartFrameFinal -> return Result.failure(BadSessionException())
+        else -> return Result.failure(BadFrameException())
     }
 
     // We got this far, so we have a multipart message which we need to reassemble.
 
-    val totalSize = chunk.getMultipartSize()
+    val totalSize = chunk.getMultipartSize().getOrElse { return Result.failure(it) }
 
     var sizeRead = 0
     while (sizeRead < totalSize) {
-        chunk.read(conn)
+        chunk.read(conn).let { if (it != null) return Result.failure(it) }
         out.addAll(chunk.payload.toList())
         sizeRead += chunk.size
 
         if (chunk.type == FrameType.MultipartFrameFinal) break
     }
 
-    return if (sizeRead == totalSize) out.toByteArray()
-        else throw SizeException()
+    return if (sizeRead == totalSize) Result.success(out.toByteArray())
+    else Result.failure(SizeException())
 }
 
-/**
- * Reads a received message as a string.
- *
- * @throws BadFrameException when the frame header is invalid
- * @throws SizeException if the amount of data read does not match the size specified in the frame header
- * @throws BadSessionException if the client sends a multipart frame out of order.
- * @throws java.io.IOException if there was a network error
- */
-fun readStringMessage(conn: InputStream): String { return readMessage(conn).decodeToString() }
+fun readStringMessage(conn: InputStream): Result<String> {
+    val data = readMessage(conn).getOrElse { return Result.failure(it) }
+    return Result.success(data.decodeToString())
+}
 
-/**
- * writeMessage() is the protocol's main way of sending data. If the data is too large to fit into
- * an individual 64KiB frame, it is broken up and sent in parts. Messages can be up to 2GiB in size
- * but sending payloads that large is not recommended.
- *
- * @throws EmptyDataException if the payload is empty
- * @throws java.io.IOException if there was a network error
- */
-fun writeMessage(conn: OutputStream, msg: ByteArray) {
-    if (msg.isEmpty()) throw EmptyDataException()
+fun writeMessage(conn: OutputStream, msg: ByteArray): Throwable? {
+    if (msg.isEmpty()) return (EmptyDataException())
 
     // If the packet is small enough to fit into a single frame, just send it and be done.
-    if (msg.size < MAX_MSG_SIZE) {
-        writeFrame(conn, FrameType.SingleFrame, msg)
-        return
-    }
+    if (msg.size < MAX_MSG_SIZE) return writeFrame(conn, FrameType.SingleFrame, msg)
 
     // If the message is bigger than the max message length, then we will send it as a multipart
     // message. This takes more work internally, but the benefits at the application level are
@@ -168,7 +130,7 @@ fun writeMessage(conn: OutputStream, msg: ByteArray) {
     // total size in the payload as a string. All messages that follow contain the actual message
     // data.
 
-    writeFrame(conn, FrameType.MultipartFrameStart, msg.size.toString().encodeToByteArray())
+    writeFrame(conn, FrameType.MultipartFrameStart, msg.size.toString().toByteArray())
     var index = 0
 
     while (index + MAX_MSG_SIZE < msg.size) {
@@ -179,5 +141,5 @@ fun writeMessage(conn: OutputStream, msg: ByteArray) {
     }
 
     writeFrame(conn, FrameType.MultipartFrameFinal, msg.sliceArray(IntRange(index, msg.size - 1)))
+    return null
 }
-

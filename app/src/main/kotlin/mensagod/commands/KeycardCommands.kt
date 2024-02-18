@@ -220,9 +220,8 @@ fun commandAddEntry(state: ClientSession) {
     // thing validates before adding it to the database -- the integrity of the keycard tree is of
     // critical importance to the platform.
 
-    val req = try { ClientRequest.receive(state.conn.getInputStream()) }
-    catch (e: Exception) {
-        logError("commandAddEntry.receive2ndStage, wid=$wid - $e")
+    val req = ClientRequest.receive(state.conn.getInputStream()).getOrElse {
+        logError("commandAddEntry.receive2ndStage, wid=$wid - $it")
         return
     }
 
