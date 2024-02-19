@@ -154,6 +154,71 @@ class KeycardCmdTest {
             assertEquals(expectedSize, response.data["Card-Data"]!!.length)
         }.run()
 
-        // TODO: Finish implementing commandGetCardTest()
+        // Test Case #2: Get organization's current entry only
+        CommandTest("getCard.2",
+            SessionState(
+                ClientRequest("GETCARD", mutableMapOf("Start-Index" to "0")), null,
+                LoginState.NoSession), ::commandGetCard) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(104)
+            assert(response.checkFields(listOf(Pair("Item-Count", true), Pair("Total-Size", true))))
+            assertEquals("1", response.data["Item-Count"])
+
+            val db = DBConn()
+            val entries = getEntries(db, null, 0U).getOrThrow()
+            assertEquals(1, entries.size)
+            val expectedSize = entries[0].length + 48
+            assertEquals(expectedSize, response.data["Total-Size"]!!.toInt())
+
+            ClientRequest("TRANSFER", mutableMapOf()).send(socket.getOutputStream())
+            response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(response.data.containsKey("Card-Data"))
+            assertEquals(expectedSize, response.data["Card-Data"]!!.length)
+
+            val card = Keycard.fromString(response.data["Card-Data"]!!).getOrThrow()
+            assertEquals(1, card.entries.size)
+            assertEquals("Organization", card.entryType)
+            assertEquals(2, card.current!!.getFieldInteger("Index"))
+        }.run()
+
+        // Test Case #3: Get organization's first entry only
+        CommandTest("getCard.3",
+            SessionState(
+                ClientRequest("GETCARD", mutableMapOf(
+                    "Start-Index" to "1",
+                    "End-Index" to "1",
+                )), null, LoginState.NoSession), ::commandGetCard) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(104)
+            assert(response.checkFields(listOf(Pair("Item-Count", true), Pair("Total-Size", true))))
+            assertEquals("1", response.data["Item-Count"])
+
+            val db = DBConn()
+            val entries = getEntries(db, null, 1U, 1U).getOrThrow()
+            assertEquals(1, entries.size)
+            val expectedSize = entries[0].length + 48
+            assertEquals(expectedSize, response.data["Total-Size"]!!.toInt())
+
+            ClientRequest("TRANSFER", mutableMapOf()).send(socket.getOutputStream())
+            response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(response.data.containsKey("Card-Data"))
+            assertEquals(expectedSize, response.data["Card-Data"]!!.length)
+
+            val card = Keycard.fromString(response.data["Card-Data"]!!).getOrThrow()
+            assertEquals(1, card.entries.size)
+            assertEquals("Organization", card.entryType)
+            assertEquals(1, card.current!!.getFieldInteger("Index"))
+        }.run()
+    }
+
+    @Test
+    fun commandGetUserCardTest() {
+        // TODO: Implement commandGetUserCardTest()
     }
 }
