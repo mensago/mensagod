@@ -29,7 +29,8 @@ class KeycardCmdTest {
         setupTest("commands.addEntry")
 
         val db = DBConn()
-        val orgEntry = OrgEntry.fromString(getEntries(db, null, 0U)[0]).getOrThrow()
+        val orgEntry = OrgEntry.fromString(getEntries(db, null, 0U).getOrThrow()[0])
+            .getOrThrow()
         val crsPair = SigningPair.fromStrings(
             ADMIN_PROFILE_DATA["crsigning.public"]!!,
             ADMIN_PROFILE_DATA["crsigning.private"]!!).getOrThrow()
@@ -121,5 +122,15 @@ class KeycardCmdTest {
             response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(200)
         }.run()
+    }
+
+    @Test
+    fun commandGetCardTest() {
+        setupTest("commands.getCard")
+        val db = DBConn()
+        val entries = getEntries(db, null, 1U).getOrThrow()
+        entries.forEach { println(it) }
+
+        // TODO: Finish implementing commandGetCardTest()
     }
 }

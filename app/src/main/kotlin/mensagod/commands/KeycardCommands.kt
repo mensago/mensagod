@@ -126,9 +126,8 @@ fun commandAddEntry(state: ClientSession) {
 
     // Here we check to make sure that the entry submitted is allowed to follow the previous one.
     // This just means the new index == the old index +1 and that the chain of trust verifies
-    val tempEntryList = try { getEntries(db, wid, 0U) }
-    catch (e: Exception) {
-        logError("commandAddEntry.getCurrentEntry exception: $e")
+    val tempEntryList = getEntries(db, wid, 0U).getOrElse {
+        logError("commandAddEntry.getCurrentEntry exception: $it")
         QuickResponse.sendInternalError("Server can't get current keycard entry", state.conn)
         return
     }
@@ -170,9 +169,8 @@ fun commandAddEntry(state: ClientSession) {
 
         // This is the user's root entry, so the previous entry needs to be the org's current
         // keycard entry.
-        val tempOrgList = try { getEntries(db, null, 0U) }
-        catch (e: Exception) {
-            logError("commandAddEntry.getCurrentOrgEntry exception: $e")
+        val tempOrgList = getEntries(db, null, 0U).getOrElse {
+            logError("commandAddEntry.getCurrentOrgEntry exception: $it")
             QuickResponse.sendInternalError("Server can't get current org keycard entry",
                 state.conn)
             return
@@ -348,18 +346,13 @@ fun commandGetCard(state: ClientSession) {
         QuickResponse.sendBadRequest("Missing required field Start-Index", state.conn)
         return
     }
-    val startIndex = try { state.message.data["Start-Index"]!!.toInt() }
+    val startIndex = try { state.message.data["Start-Index"]!!.toUInt() }
     catch (e: Exception) {
         QuickResponse.sendBadRequest("Bad value for field Start-Index", state.conn)
         return
     }
-    if (startIndex < 0) {
-        QuickResponse.sendBadRequest("Start-Index must be non-negative", state.conn)
-        return
-    }
 
-    val owner: WAddress?
-    if (state.message.hasField("Owner")) {
+    val owner = if (state.message.hasField("Owner")) {
         // The owner can be a Mensago address, a workspace address, or just a workspace ID, so
         // resolving the owner can get... complicated. We'll go in order of ease of validation.
 
@@ -368,27 +361,66 @@ fun commandGetCard(state: ClientSession) {
             QuickResponse.sendBadRequest("Bad value for field Owner", state.conn)
             return
         }
-        owner = resolved
-    }
+        resolved
+    } else null
 
-    val endIndex: Int?
-    if (state.message.hasField("End-Index")) {
-        val end = try { state.message.data["End-Index"]!!.toInt() }
+
+    val endIndex = if (state.message.hasField("End-Index")) {
+        val end = try { state.message.data["End-Index"]!!.toUInt() }
         catch (e: Exception) {
             QuickResponse.sendBadRequest("Bad value for field End-Index", state.conn)
             return
         }
-        if (end < 0 || end < startIndex) {
-            QuickResponse.sendBadRequest("Start-Index must be non-negative and may not be " +
-                    "less than Start-Index", state.conn)
+        if (end < startIndex) {
+            QuickResponse.sendBadRequest("Start-Index may not be less than Start-Index",
+                state.conn)
             return
         }
-        endIndex = end
+        end
+    } else null
+
+    val db = DBConn()
+    val entries = getEntries(db, owner, startIndex, endIndex).getOrElse {
+        logError("commandGetCard: Error looking up entries: $it")
+        QuickResponse.sendInternalError("Error looking up entries", state.conn)
+        return
+    }
+    if (entries.isEmpty()) {
+        QuickResponse.sendNotFound("", state.conn)
+        return
     }
 
-    // TODO: Finish implementing commandGetCard()
+    // 56 is the combined length of the header and footer lines
+    val totalSize = entries.fold(0) { _, item -> item.length + 56 }
+    val response = ServerResponse(104, "TRANSFER", "", mutableMapOf(
+        "Item-Count" to entries.size.toString(),
+        "Total-Size" to totalSize.toString(),
+    ))
+    if (!response.sendCatching(state.conn, "commandGetCard: Failed to send entry count"))
+        return
+
+    val istream = try { state.conn.getInputStream() }
+    catch (e: Exception) {
+        logDebug("commandGetCard: error opening input stream: $e")
+        return
+    }
+    val req = ClientRequest.receive(istream).getOrElse {
+        logDebug("commandGetCard: error receiving client confirmation: $it")
+        return
+    }
+    if (req.action == "CANCEL") return
+    if (req.action != "TRANSFER") {
+        QuickResponse.sendBadRequest("Session mismatch", state.conn)
+        return
+    }
+
+    response.data["Card-Data"] = entries.joinToString {
+        "----- BEGIN ENTRY -----\r\n$it----- END ENTRY -----\r\n"
+    }
+    response.sendCatching(state.conn,
+        "commandGetCard: Failure sending card data to ${state.wid}")
 }
 
-private fun resolveOwner(owner: String): WAddress? {
+private fun resolveOwner(owner: String): RandomID? {
     TODO("Implement resolveOwner($owner)")
 }

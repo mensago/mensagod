@@ -1,6 +1,7 @@
 package mensagod.dbcmds
 
 import libkeycard.*
+import libmensago.NotConnectedException
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
 
@@ -41,32 +42,32 @@ fun addEntry(db: DBConn, entry: Entry) {
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun getEntries(db: DBConn, wid: RandomID?, startIndex: UInt = 1U, endIndex: UInt? = null):
-        MutableList<String> {
+        Result<MutableList<String>> {
     val owner = wid?.toString() ?: "organization"
 
     val out = mutableListOf<String>()
     if (startIndex == 0U) {
         val rs = db.query("""SELECT entry FROM keycards WHERE owner = ? 
-            ORDER BY index DESC LIMIT 1""", owner).getOrThrow()
-        if (!rs.next()) return out
+            ORDER BY index DESC LIMIT 1""", owner).getOrElse { return Result.failure(it) }
+        if (!rs.next()) return Result.success(out)
         out.add(rs.getString("entry"))
-        return out
+        return Result.success(out)
     }
 
     val rs = if (endIndex != null) {
-        if (endIndex < startIndex) return out
+        if (endIndex < startIndex) return Result.success(out)
 
         db.query("""SELECT entry FROM keycards WHERE owner = ? AND index >= ?
             AND index <= ? ORDER BY index""", owner, startIndex.toInt(), endIndex.toInt())
-            .getOrThrow()
+            .getOrElse { return Result.failure(it) }
     } else {
         // Given just a start index
         db.query("""SELECT entry FROM keycards WHERE owner = ? AND index >= ? """, owner,
-            startIndex.toInt()).getOrThrow()
+            startIndex.toInt()).getOrElse { return Result.failure(it) }
     }
 
     while (rs.next()) out.add(rs.getString("entry"))
-    return out
+    return Result.success(out)
 }
 
 /**
