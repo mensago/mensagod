@@ -130,7 +130,7 @@ class KeycardCmdTest {
         setupTest("commands.getOrgCard")
 
         // Test Case #1: Successfully get organization card
-        CommandTest("getCard.1",
+        CommandTest("getOrgCard.1",
             SessionState(
                 ClientRequest("GETCARD", mutableMapOf("Start-Index" to "1")), null,
                 LoginState.NoSession), ::commandGetCard) { port ->
@@ -155,7 +155,7 @@ class KeycardCmdTest {
         }.run()
 
         // Test Case #2: Get organization's current entry only
-        CommandTest("getCard.2",
+        CommandTest("getOrgCard.2",
             SessionState(
                 ClientRequest("GETCARD", mutableMapOf("Start-Index" to "0")), null,
                 LoginState.NoSession), ::commandGetCard) { port ->
@@ -185,7 +185,7 @@ class KeycardCmdTest {
         }.run()
 
         // Test Case #3: Get organization's first entry only
-        CommandTest("getCard.3",
+        CommandTest("getOrgCard.3",
             SessionState(
                 ClientRequest("GETCARD", mutableMapOf(
                     "Start-Index" to "1",
@@ -219,6 +219,23 @@ class KeycardCmdTest {
 
     @Test
     fun commandGetUserCardTest() {
+        setupTest("commands.getUserCard")
+
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+
+        // Test Case #1: Request nonexistent keycard
+        CommandTest("getUserCard.1",
+            SessionState(
+                ClientRequest("GETCARD", mutableMapOf(
+                    "Owner" to adminWID.toString(),
+                    "Start-Index" to "1",
+                )), null,
+                LoginState.NoSession), ::commandGetCard) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(404)
+        }.run()
+
         // TODO: Implement commandGetUserCardTest()
     }
 }
