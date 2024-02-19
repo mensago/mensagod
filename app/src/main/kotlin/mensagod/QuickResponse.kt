@@ -43,6 +43,18 @@ object QuickResponse {
         try { ServerResponse(300, "INTERNAL SERVER ERROR", info).send(conn) }
         catch (e: java.io.IOException) { /* Suppress network errors */ }
     }
+
+    /**
+     * Static method which sends a 300 INTERNAL SERVER ERROR message to the client. It
+     * suppresses network errors because we're already in an error state.
+     *
+     * @throws kotlinx.serialization.SerializationException encoding-specific errors
+     * @throws IllegalArgumentException if the encoded input does not comply format's specification
+     */
+    fun sendNotFound(info: String, conn: Socket) {
+        try { ServerResponse(404, "RESOURCE NOT FOUND", info).send(conn) }
+        catch (e: java.io.IOException) { /* Suppress network errors */ }
+    }
 }
 
 /**
