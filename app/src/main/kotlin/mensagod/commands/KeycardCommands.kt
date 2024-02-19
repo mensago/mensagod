@@ -393,7 +393,7 @@ fun commandGetCard(state: ClientSession) {
     }
 
     // 56 is the combined length of the header and footer lines
-    val totalSize = entries.fold(0) { _, item -> item.length + 56 }
+    val totalSize = entries.fold(0) { acc, item -> acc + item.length + 48 }
     val response = ServerResponse(104, "TRANSFER", "", mutableMapOf(
         "Item-Count" to entries.size.toString(),
         "Total-Size" to totalSize.toString(),
@@ -416,7 +416,9 @@ fun commandGetCard(state: ClientSession) {
         return
     }
 
-    response.data["Card-Data"] = entries.joinToString {
+    response.code = 200
+    response.status = "OK"
+    response.data["Card-Data"] = entries.joinToString("") {
         "----- BEGIN ENTRY -----\r\n$it----- END ENTRY -----\r\n"
     }
     response.sendCatching(state.conn,

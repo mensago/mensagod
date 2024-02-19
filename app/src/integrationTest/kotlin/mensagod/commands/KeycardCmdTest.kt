@@ -12,6 +12,7 @@ import mensagod.DBConn
 import mensagod.LoginState
 import mensagod.SessionState
 import mensagod.dbcmds.getEntries
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import testsupport.ADMIN_PROFILE_DATA
 import testsupport.assertReturnCode
@@ -125,11 +126,33 @@ class KeycardCmdTest {
     }
 
     @Test
-    fun commandGetCardTest() {
-        setupTest("commands.getCard")
-        val db = DBConn()
-        val entries = getEntries(db, null, 1U).getOrThrow()
-        entries.forEach { println(it) }
+    fun commandGetOrgCardTest() {
+        setupTest("commands.getOrgCard")
+
+        // Test Case #1: Successfully get organization card
+        CommandTest("getCard.1",
+            SessionState(
+                ClientRequest("GETCARD", mutableMapOf("Start-Index" to "1")), null,
+                LoginState.NoSession), ::commandGetCard) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(104)
+            assert(response.checkFields(listOf(Pair("Item-Count", true), Pair("Total-Size", true))))
+            assertEquals("2", response.data["Item-Count"])
+
+            val db = DBConn()
+            val entries = getEntries(db, null, 1U).getOrThrow()
+            assertEquals(2, entries.size)
+            val expectedSize = entries[0].length + entries[1].length + 96
+            assertEquals(expectedSize, response.data["Total-Size"]!!.toInt())
+
+            ClientRequest("TRANSFER", mutableMapOf()).send(socket.getOutputStream())
+            response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(response.data.containsKey("Card-Data"))
+            assertEquals(expectedSize, response.data["Card-Data"]!!.length)
+        }.run()
 
         // TODO: Finish implementing commandGetCardTest()
     }
