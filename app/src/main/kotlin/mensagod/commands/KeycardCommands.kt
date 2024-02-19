@@ -7,10 +7,7 @@ import libkeycard.*
 import libmensago.ClientRequest
 import libmensago.ServerResponse
 import mensagod.*
-import mensagod.dbcmds.addEntry
-import mensagod.dbcmds.getEntries
-import mensagod.dbcmds.getPrimarySigningPair
-import mensagod.dbcmds.resolveAddress
+import mensagod.dbcmds.*
 
 // ADDENTRY(Base-Entry)
 fun commandAddEntry(state: ClientSession) {
@@ -352,11 +349,17 @@ fun commandGetCard(state: ClientSession) {
         return
     }
 
+    val db = DBConn()
     val owner = if (state.message.hasField("Owner")) {
         // The owner can be a Mensago address, a workspace address, or just a workspace ID, so
         // resolving the owner can get... complicated. We'll go in order of ease of validation.
 
-        val resolved = resolveOwner(state.message.data["Owner"]!!)
+        val resolved = resolveOwner(db, state.message.data["Owner"]!!).getOrElse {
+            logError(
+                "commandGetCard: Error resolving owner ${state.message.data["Owner"]}: $it")
+            QuickResponse.sendInternalError("Error resolving owner", state.conn)
+            return
+        }
         if (resolved == null) {
             QuickResponse.sendBadRequest("Bad value for field Owner", state.conn)
             return
@@ -379,7 +382,6 @@ fun commandGetCard(state: ClientSession) {
         end
     } else null
 
-    val db = DBConn()
     val entries = getEntries(db, owner, startIndex, endIndex).getOrElse {
         logError("commandGetCard: Error looking up entries: $it")
         QuickResponse.sendInternalError("Error looking up entries", state.conn)
@@ -421,6 +423,23 @@ fun commandGetCard(state: ClientSession) {
         "commandGetCard: Failure sending card data to ${state.wid}")
 }
 
-private fun resolveOwner(owner: String): RandomID? {
-    TODO("Implement resolveOwner($owner)")
+/**
+ * Private method which takes a string and does whatever it takes to return the workspace ID for
+ * the supplied owner.
+ */
+private fun resolveOwner(db: DBConn, owner: String): Result<RandomID?> {
+    val wid = RandomID.fromString(owner)
+    if (wid != null)
+        return Result.success(wid)
+
+    val waddr = WAddress.fromString(owner)
+    if (waddr != null)
+        return Result.success(waddr.id)
+
+    val maddr = MAddress.fromString(owner)
+    if (maddr != null) {
+        val out = resolveUserID(db, maddr.userid).getOrElse { return Result.failure(it) }
+        return Result.success(out)
+    }
+    return Result.success(null)
 }

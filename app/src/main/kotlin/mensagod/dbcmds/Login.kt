@@ -113,7 +113,7 @@ fun preregWorkspace(db: DBConn, wid: RandomID, userID: UserID?, domain: Domain, 
         throw EmptyDataException("registration code hash may not be empty")
 
     if (userID != null) {
-        if (resolveUserID(db, userID) != null)
+        if (resolveUserID(db, userID).getOrThrow() != null)
             throw ResourceExistsException("User-ID $userID already exists")
         if (resolveWID(db, wid) != null)
             throw ResourceExistsException("Workspcae-ID $wid already exists")
