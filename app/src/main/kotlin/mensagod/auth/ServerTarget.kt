@@ -12,12 +12,12 @@ import java.net.Inet4Address
  */
 class ServerTarget: AuthTarget {
 
-    override fun getActions(actor: AuthActor, action: AuthAction): List<AuthAction> {
-        if (actor.getType() != AuthActorType.WID) return listOf()
+    override fun getActions(actor: AuthActor, action: AuthAction): Result<List<AuthAction>> {
+        if (actor.getType() != AuthActorType.WID) return Result.success(listOf())
         actor as WIDActor
 
-        if (actor.isAdmin())
-            return listOf(AuthAction.Preregister, AuthAction.Unregister)
+        if (actor.isAdmin().getOrElse { return Result.failure(it) })
+            return Result.success(listOf(AuthAction.Preregister, AuthAction.Unregister))
 
         val out = mutableListOf(AuthAction.Unregister)
         val regType = ServerConfig.get().getString("global.registration")!!
@@ -39,14 +39,14 @@ class ServerTarget: AuthTarget {
             }
         }
 
-        return out
+        return Result.success(out)
     }
 
-    override fun isAuthorized(actor: AuthActor, action: AuthAction): Boolean {
+    override fun isAuthorized(actor: AuthActor, action: AuthAction): Result<Boolean> {
         when (action) {
             AuthAction.Preregister -> {
                 // At this point only users may preregister a workspace
-                if (actor.getType() != AuthActorType.WID) return false
+                if (actor.getType() != AuthActorType.WID) return Result.success(false)
                 actor as WIDActor
 
                 // For the moment, only the administrator can preregister workspaces
@@ -54,9 +54,9 @@ class ServerTarget: AuthTarget {
                 val adminWID = resolveAddress(DBConn().connect().getOrThrow(), addr).getOrThrow()
                     ?: throw DatabaseCorruptionException("Administrator WID missing from database")
 
-                return actor.wid == adminWID
+                return Result.success(actor.wid == adminWID)
             }
-            else -> return false
+            else -> return Result.success(false)
         }
     }
 }

@@ -28,12 +28,12 @@ open class WIDActor(val wid: RandomID): AuthActor {
     override fun getType(): AuthActorType { return AuthActorType.WID }
     override fun toString(): String { return wid.toString() }
 
-    fun isAdmin(): Boolean {
+    fun isAdmin(): Result<Boolean> {
         val adminWID = resolveAddress(DBConn(), MAddress.fromString("admin/$gServerDomain")!!)
-            .getOrThrow()
+            .getOrElse { return Result.failure(it) }
         if (adminWID == null)
             logError("isAdmin couldn't find the admin's workspace ID")
-        return adminWID == wid
+        return Result.success(adminWID == wid)
     }
 }
 
@@ -67,6 +67,6 @@ enum class AuthAction {
  * intended to be subclassed to represent specific types of targets.
  */
 interface AuthTarget {
-    fun getActions(actor: AuthActor, action: AuthAction): List<AuthAction>
-    fun isAuthorized(actor: AuthActor, action: AuthAction): Boolean
+    fun getActions(actor: AuthActor, action: AuthAction): Result<List<AuthAction>>
+    fun isAuthorized(actor: AuthActor, action: AuthAction): Result<Boolean>
 }

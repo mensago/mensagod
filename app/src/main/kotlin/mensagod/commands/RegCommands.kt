@@ -19,7 +19,13 @@ import mensagod.dbcmds.*
 fun commandPreregister(state: ClientSession) {
 
     if (!state.requireLogin()) return
-    if (!ServerTarget().isAuthorized(WIDActor(state.wid!!), AuthAction.Preregister)) {
+    val isAuthorized = ServerTarget().isAuthorized(WIDActor(state.wid!!), AuthAction.Preregister)
+        .getOrElse {
+            logError("commandPreregister.checkAuth exception: $it")
+            QuickResponse.sendInternalError("authorization check error", state.conn)
+            return
+        }
+    if (!isAuthorized) {
         QuickResponse.sendForbidden("Only admins can preregister accounts", state.conn)
         return
     }

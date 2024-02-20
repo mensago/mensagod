@@ -28,7 +28,13 @@ fun commandDownload(state: ClientSession) {
         QuickResponse.sendBadRequest("Path must be for a file", state.conn)
         return
     }
-    if (!fileTarget.isAuthorized(WIDActor(state.wid!!), AuthAction.Read)) {
+    val isAuthorized = fileTarget.isAuthorized(WIDActor(state.wid!!), AuthAction.Read)
+        .getOrElse {
+            logError("commandDownload: Auth check error: $it")
+            QuickResponse.sendInternalError("Error checking authorization", state.conn)
+            return
+        }
+    if (!isAuthorized) {
         QuickResponse.sendForbidden("", state.conn)
         return
     }
@@ -150,7 +156,13 @@ fun commandUpload(state: ClientSession) {
         QuickResponse.sendBadRequest("Upload path must be a directory", state.conn)
         return
     }
-    if (!dirTarget.isAuthorized(WIDActor(state.wid!!), AuthAction.Create)) {
+    val isAuthorized = dirTarget.isAuthorized(WIDActor(state.wid!!), AuthAction.Create)
+        .getOrElse {
+            logError("commandUpload: Auth check error: $it")
+            QuickResponse.sendInternalError("Error checking authorization", state.conn)
+            return
+        }
+    if (!isAuthorized) {
         QuickResponse.sendForbidden("", state.conn)
         return
     }
