@@ -66,11 +66,9 @@ fun commandDownload(state: ClientSession) {
         return
     }
 
-    try {
-        ServerResponse(100, "CONTINUE", "",
-            mutableMapOf("Size" to fileSize.toString())).send(state.conn)
-    } catch (e: Exception) {
-        logDebug("commandDownload: Error sending continue message for wid ${state.wid!!}: $e")
+    ServerResponse(100, "CONTINUE", "",
+        mutableMapOf("Size" to fileSize.toString())).send(state.conn)?.let {
+        logDebug("commandDownload: Error sending continue message for wid ${state.wid!!}: $it")
         return
     }
 
@@ -232,11 +230,9 @@ fun commandUpload(state: ClientSession) {
         "${Instant.now().epochSecond}.$fileSize.${UUID.randomUUID().toString().lowercase()}"
     val tempPath = MServerPath.fromString("/ tmp ${state.wid!!} $tempName")!!
 
-    try {
-        ServerResponse(100, "CONTINUE", "", mutableMapOf("TempName" to tempName))
-            .send(state.conn)
-    } catch (e: Exception) {
-        logDebug("commandUpload: Error sending continue message for wid ${state.wid!!}: $e")
+    ServerResponse(100, "CONTINUE", "", mutableMapOf("TempName" to tempName))
+        .send(state.conn)?.let {
+        logDebug("commandUpload: Error sending continue message for wid ${state.wid!!}: $it")
         return
     }
 

@@ -203,12 +203,11 @@ fun commandAddEntry(state: ClientSession) {
         return
     }
 
-    try { ServerResponse(100, "CONTINUE", "", mutableMapOf(
+    ServerResponse(100, "CONTINUE", "", mutableMapOf(
                 "Organization-Signature" to entry.getAuthString("Organization-Signature")!!
                     .toString()))
-            .send(state.conn)
-    } catch (e: Exception) {
-        logError("commandAddEntry.sendContinue, wid=$wid - $e")
+            .send(state.conn)?.let {
+        logError("commandAddEntry.sendContinue, wid=$wid - $it")
         QuickResponse.sendInternalError("Error signing user entry", state.conn)
         return
     }

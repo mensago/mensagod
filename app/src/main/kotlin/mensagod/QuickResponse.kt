@@ -16,8 +16,7 @@ object QuickResponse {
      * @throws IllegalArgumentException if the encoded input does not comply format's specification
      */
     fun sendBadRequest(info: String, conn: Socket) {
-        try { ServerResponse(400, "BAD REQUEST", info).send(conn) }
-        catch (e: java.io.IOException) { /* Suppress network errors */ }
+        ServerResponse(400, "BAD REQUEST", info).send(conn)
     }
 
     /**
@@ -28,8 +27,7 @@ object QuickResponse {
      * @throws IllegalArgumentException if the encoded input does not comply format's specification
      */
     fun sendForbidden(info: String, conn: Socket) {
-        try { ServerResponse(403, "FORBIDDEN", info).send(conn) }
-        catch (e: java.io.IOException) { /* Suppress network errors */ }
+        ServerResponse(403, "FORBIDDEN", info).send(conn)
     }
 
     /**
@@ -40,8 +38,18 @@ object QuickResponse {
      * @throws IllegalArgumentException if the encoded input does not comply format's specification
      */
     fun sendInternalError(info: String, conn: Socket) {
-        try { ServerResponse(300, "INTERNAL SERVER ERROR", info).send(conn) }
-        catch (e: java.io.IOException) { /* Suppress network errors */ }
+        ServerResponse(300, "INTERNAL SERVER ERROR", info).send(conn)
+    }
+
+    /**
+     * Static method which sends a 404 NOT FOUNDmessage to the client. It suppresses network errors
+     * because we're already in an error state.
+     *
+     * @throws kotlinx.serialization.SerializationException encoding-specific errors
+     * @throws IllegalArgumentException if the encoded input does not comply format's specification
+     */
+    fun sendNotFound(info: String, conn: Socket) {
+        ServerResponse(404, "RESOURCE NOT FOUND", info).send(conn)
     }
 }
 

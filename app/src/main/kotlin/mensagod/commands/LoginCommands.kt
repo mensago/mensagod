@@ -192,8 +192,7 @@ fun commandDevice(state: ClientSession) {
     }
 
     response.data["Is-Admin"] = if (state.isAdmin()) "True" else "False"
-    try { response.send(state.conn) }
-    catch (e: Exception) {
+    response.send(state.conn)?.let {
         state.loginState = LoginState.NoSession
         state.wid = null
         QuickResponse.sendInternalError("Error sending successful login information",
@@ -239,8 +238,7 @@ fun commandLogin(state: ClientSession) {
         return
     }
     if (status == null) {
-        try { ServerResponse(404, "NOT FOUND").send(state.conn) }
-        catch (e: Exception) { logDebug("commandLogin.1 error: $e") }
+        QuickResponse.sendNotFound("", state.conn)
         return
     }
 
@@ -249,43 +247,34 @@ fun commandLogin(state: ClientSession) {
             // This is fine. Everything is fine. 😉
         }
         WorkspaceStatus.Archived -> {
-            try { ServerResponse(404, "NOT FOUND").send(state.conn) }
-            catch (e: Exception) { logDebug("commandLogin.2 error: $e") }
+            QuickResponse.sendNotFound("", state.conn)
             return
         }
         WorkspaceStatus.Disabled -> {
-            try {
-                ServerResponse(407, "UNAVAILABLE", "Account disabled")
-                .send(state.conn)
-            }
-            catch (e: Exception) { logDebug("commandLogin.3 error: $e") }
+            ServerResponse(407, "UNAVAILABLE", "Account disabled")
+                .sendCatching(state.conn, "commandLogin.3 error")
             return
         }
         WorkspaceStatus.Pending -> {
-            try {
-                ServerResponse(101, "PENDING",
-                    "Registration awaiting administrator approval").send(state.conn)
-            } catch (e: Exception) { logDebug("commandLogin.4 error: $e") }
+            ServerResponse(101, "PENDING",
+                "Registration awaiting administrator approval")
+                .sendCatching(state.conn, "commandLogin.4 error")
             return
         }
         WorkspaceStatus.Preregistered -> {
-            try {
-                ServerResponse(416, "PROCESS INCOMPLETE",
-                    "Workspace requires usage of registration code").send(state.conn)
-            } catch (e: Exception) { logDebug("commandLogin.5 error: $e") }
+            ServerResponse(416, "PROCESS INCOMPLETE",
+                "Workspace requires use of registration code")
+                .sendCatching(state.conn, "commandLogin.5 error")
             return
         }
         WorkspaceStatus.Suspended -> {
-            try {
-                ServerResponse(407, "UNAVAILABLE", "Account suspended")
-                    .send(state.conn)
-            }
-            catch (e: Exception) { logDebug("commandLogin.6 error: $e") }
+            ServerResponse(407, "UNAVAILABLE", "Account suspended")
+                .sendCatching(state.conn, "commandLogin.6 error")
             return
         }
         WorkspaceStatus.Unpaid -> {
-            try { ServerResponse(406, "PAYMENT REQUIRED").send(state.conn) }
-            catch (e: Exception) { logDebug("commandLogin.7 error: $e") }
+            ServerResponse(406, "PAYMENT REQUIRED")
+                .sendCatching(state.conn, "commandLogin.7 error")
             return
         }
     }
@@ -300,7 +289,7 @@ fun commandLogin(state: ClientSession) {
 
     val decrypted = orgPair.decrypt(challenge).getOrElse {
         ServerResponse(306, "KEY FAILURE", "Client challenge decryption failure")
-            .send(state.conn)
+            .sendCatching(state.conn, "commandLogin key failure message send error")
         return
     }.decodeToString()
 
@@ -311,21 +300,17 @@ fun commandLogin(state: ClientSession) {
         return
     }
     if (passInfo == null) {
-        try { ServerResponse(404, "NOT FOUND", "Password information not found")
-            .send(state.conn) }
-        catch (e: Exception) { logDebug("commandLogin.8 error: $e") }
+        QuickResponse.sendNotFound("Password information not found", state.conn)
         return
     }
 
     state.wid = wid
-    try {
-        ServerResponse(100, "CONTINUE", "", mutableMapOf(
-            "Response" to decrypted,
-            "Password-Algorithm" to passInfo.algorithm,
-            "Password-Salt" to passInfo.salt,
-            "Password-Parameters" to passInfo.parameters,
-        )).send(state.conn)
-    } catch (e: Exception) { logDebug("commandLogin success message send error: $e") }
+    ServerResponse(100, "CONTINUE", "", mutableMapOf(
+        "Response" to decrypted,
+        "Password-Algorithm" to passInfo.algorithm,
+        "Password-Salt" to passInfo.salt,
+        "Password-Parameters" to passInfo.parameters,
+    )).sendCatching(state.conn, "commandLogin success message send error")
 }
 
 // LOGOUT()
@@ -333,9 +318,8 @@ fun commandLogout(state: ClientSession) {
     state.loginState = LoginState.NoSession
     state.wid = null
 
-    try {
-        ServerResponse(200, "OK").send(state.conn)
-    } catch (e: Exception) { logDebug("commandLogout success message send error: $e") }
+    ServerResponse(200, "OK").sendCatching(state.conn,
+        "commandLogout success message send error")
 }
 
 // PASSWORD(Password-Hash)
@@ -359,14 +343,14 @@ fun commandPassword(state: ClientSession) {
     if (!match) {
         val delay = ServerConfig.get().getInteger("security.failure_delay_sec")!!
         Thread.sleep(delay * 1000L)
-        try {
-            ServerResponse(402, "AUTHENTICATION FAILURE").send(state.conn)
-        } catch (e: Exception) { logDebug("commandPassword auth fail message send error: $e") }
+        ServerResponse(402, "AUTHENTICATION FAILURE").sendCatching(state.conn,
+            "commandPassword auth fail message send error")
         return
     }
 
     state.loginState = LoginState.AwaitingDeviceID
-    ServerResponse(100, "CONTINUE").send(state.conn)
+    ServerResponse(100, "CONTINUE").sendCatching(state.conn,
+        "commandPassword continue message failure")
 }
 
 /**
@@ -395,8 +379,8 @@ fun challengeDevice(state: ClientSession, devkey: CryptoString): Result<Boolean>
     val challenge = Base85.rfc1924Encoder.encode(rawBytes)
     val encrypted = realKey.encrypt(challenge.toByteArray()).getOrElse { return Result.failure(it) }
     ServerResponse(100, "CONTINUE", "",
-        mutableMapOf("Challenge" to encrypted.toString())).send(state.conn)
-    // We purposely don't try to catch the send error, as that's part of the caller's responsibility
+        mutableMapOf("Challenge" to encrypted.toString()))
+        .send(state.conn)?.let { return Result.failure(it) }
 
     val req = ClientRequest.receive(state.conn.getInputStream())
         .getOrElse { return Result.failure(it) }

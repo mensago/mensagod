@@ -41,11 +41,9 @@ fun commandPreregister(state: ClientSession) {
             QuickResponse.sendInternalError("uid lookup error", state.conn)
             return
         }?.let{
-            try { ServerResponse(408, "RESOURCE EXISTS", "user ID exists")
-                .send(state.conn) }
-            catch (e: Exception) {
-                logDebug("commandPreregister.resolveUserID exists send error: $e")
-            }
+            ServerResponse(408, "RESOURCE EXISTS", "user ID exists")
+                .sendCatching(state.conn,
+                    "commandPreregister.resolveUserID exists send error")
             return
         }
         uid
@@ -126,8 +124,7 @@ fun commandPreregister(state: ClientSession) {
         "Reg-Code" to regcode,
     ))
     if (outUID != null) resp.data["User-ID"] = outUID.toString()
-    try { resp.send(state.conn) }
-    catch (e: Exception) { logDebug("commandRegCode success message send error: $e") }
+    resp.sendCatching(state.conn, "commandRegCode success message send error")
 }
 
 // REGCODE(User-ID, Reg-Code, Password-Hash, Password-Algorithm, Device-ID, Device-Key,
@@ -170,7 +167,8 @@ fun commandRegCode(state: ClientSession) {
     if (!getSupportedAsymmetricAlgorithms().contains(devkey.prefix)) {
         ServerResponse(309, "ENCRYPTION TYPE NOT SUPPORTED",
             "Supported: "+ getSupportedAsymmetricAlgorithms().joinToString(","))
-                .send(state.conn)
+                .sendCatching(state.conn,
+                    "commandRegCode: failed to send bad encryption message")
         return
     }
 
@@ -183,7 +181,8 @@ fun commandRegCode(state: ClientSession) {
         }
 
     if (regInfo == null) {
-        ServerResponse(401, "UNAUTHORIZED").send(state.conn)
+        ServerResponse(401, "UNAUTHORIZED").sendCatching(state.conn,
+            "commandRegCode: Failed to send unauthorized message")
         return
     }
 
@@ -214,11 +213,11 @@ fun commandRegCode(state: ClientSession) {
         return
     }
 
-    try {
-        ServerResponse(201, "REGISTERED", "", mutableMapOf(
-            "Workspace-ID" to regInfo.first.toString(),
-            "User-ID" to uid.toString(),
-            "Domain" to domain.toString(),
-        )).send(state.conn)
-    } catch (e: Exception) { logDebug("commandRegCode success message send error: $e") }
+    ServerResponse(201, "REGISTERED", "", mutableMapOf(
+        "Workspace-ID" to regInfo.first.toString(),
+        "User-ID" to uid.toString(),
+        "Domain" to domain.toString(),
+    )).send(state.conn)?.let {
+        logDebug("commandRegCode success message send error: $it")
+    }
 }
