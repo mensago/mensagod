@@ -30,6 +30,7 @@ open class WIDActor(val wid: RandomID): AuthActor {
 
     fun isAdmin(): Boolean {
         val adminWID = resolveAddress(DBConn(), MAddress.fromString("admin/$gServerDomain")!!)
+            .getOrThrow()
         if (adminWID == null)
             logError("isAdmin couldn't find the admin's workspace ID")
         return adminWID == wid

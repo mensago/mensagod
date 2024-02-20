@@ -51,7 +51,7 @@ class ServerTarget: AuthTarget {
 
                 // For the moment, only the administrator can preregister workspaces
                 val addr = MAddress.fromParts(UserID.fromString("admin")!!, gServerDomain)
-                val adminWID = resolveAddress(DBConn().connect().getOrThrow(), addr)
+                val adminWID = resolveAddress(DBConn().connect().getOrThrow(), addr).getOrThrow()
                     ?: throw DatabaseCorruptionException("Administrator WID missing from database")
 
                 return actor.wid == adminWID

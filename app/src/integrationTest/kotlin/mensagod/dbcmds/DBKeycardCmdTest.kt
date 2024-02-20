@@ -89,10 +89,12 @@ class DBKeycardCmdTest {
 
         // Using support instead of admin because we don't have to go through the registration
         // process for admin this way.
-        assertNotNull(resolveAddress(db, MAddress.fromString("support/example.com")!!))
+        assertNotNull(resolveAddress(db, MAddress.fromString("support/example.com")!!)
+            .getOrThrow())
 
         // admin hasn't been registered yet, so this one should be null
-        assertNull(resolveAddress(db, MAddress.fromString("admin/example.com")!!))
+        assertNull(resolveAddress(db, MAddress.fromString("admin/example.com")!!)
+            .getOrThrow())
 
         val supportWID = RandomID.fromString(setupData["support_wid"])!!
         assertEquals("example.com", resolveWID(db, supportWID)?.domain.toString())

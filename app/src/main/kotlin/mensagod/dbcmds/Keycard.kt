@@ -89,26 +89,28 @@ fun isDomainLocal(db: DBConn, domain: Domain): Result<Boolean> {
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun resolveAddress(db: DBConn, addr: MAddress): RandomID? {
+fun resolveAddress(db: DBConn, addr: MAddress): Result<RandomID?> {
 
     // If the address is a workspace address, all we have to do is confirm the workspace exists --
     // workspace IDs are unique across an organization, not just a domain.
     if (addr.userid.type == IDType.WorkspaceID) {
-        if (db.exists("""SELECT wtype FROM workspaces WHERE wid=?""", addr.userid.value)
-                .getOrThrow() ||
-            db.exists("""SELECT wid FROM aliases WHERE wid=?""", addr.userid.value)
-                .getOrThrow()) {
-            return addr.userid.toWID()!!
-        }
-        return null
+        val inWorkspaces = db.exists("""SELECT wtype FROM workspaces WHERE wid=?""",
+            addr.userid.value).getOrElse { return Result.failure(it) }
+        val inAliases = db.exists("""SELECT wid FROM aliases WHERE wid=?""", addr.userid.value)
+            .getOrElse { return Result.failure(it) }
+        return if (inWorkspaces || inAliases)
+                Result.success(addr.userid.toWID()!!)
+            else Result.success(null)
     }
 
     val rs = db.query("""SELECT wid FROM workspaces WHERE uid=?""", addr.userid.value)
-        .getOrThrow()
-    if (!rs.next()) return null
+        .getOrElse { return Result.failure(it) }
+    if (!rs.next()) return Result.success(null)
 
-    return RandomID.fromString(rs.getString("wid"))
-        ?: throw DatabaseCorruptionException("Bad wid '${rs.getString("wid")}' for address $addr")
+    RandomID.fromString(rs.getString("wid"))?.let { return Result.success(it) }
+    return Result.failure(
+        DatabaseCorruptionException("Bad wid '${rs.getString("wid")}' for address $addr")
+    )
 }
 
 /**

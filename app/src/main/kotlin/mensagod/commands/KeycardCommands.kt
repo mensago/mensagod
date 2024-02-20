@@ -86,7 +86,12 @@ fun commandAddEntry(state: ClientSession) {
         // Admin, support, and abuse can't change their user IDs
         listOf("admin", "support", "abuse").forEach {
             val specialAddr = MAddress.fromParts(UserID.fromString(it)!!, gServerDomain)
-            val specialWID = resolveAddress(db, specialAddr)
+            val specialWID = resolveAddress(db, specialAddr).getOrElse { e ->
+                logError("commandAddEntry.resolveAddress exception: $e")
+                QuickResponse.sendInternalError("Server error resolving a special address",
+                    state.conn)
+                return
+            }
             if (specialWID == null) {
                 logError("commandAddEntry: error resolving address ")
                 QuickResponse.sendInternalError("Internal error in server error handling",

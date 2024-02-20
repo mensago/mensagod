@@ -17,9 +17,8 @@ fun commandGetWID(state: ClientSession) {
     val domain = state.getDomain("Domain", false, gServerDomain) ?: return
     val address = MAddress.fromParts(uid, domain)
 
-    val wid = try { resolveAddress(db, address) }
-    catch (e: Exception) {
-        logError("commandGetWID::resolveAddress error: $e")
+    val wid = resolveAddress(db, address).getOrElse {
+        logError("commandGetWID::resolveAddress error: $it")
         QuickResponse.sendInternalError("", state.conn)
     }
 
