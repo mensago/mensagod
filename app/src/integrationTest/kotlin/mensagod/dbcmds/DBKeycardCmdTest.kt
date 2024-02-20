@@ -97,8 +97,10 @@ class DBKeycardCmdTest {
             .getOrThrow())
 
         val supportWID = RandomID.fromString(setupData["support_wid"])!!
-        assertEquals("example.com", resolveWID(db, supportWID)?.domain.toString())
-        assertNull(resolveWID(db,
-            RandomID.fromString("00000000-0000-0000-0000-000000000000")!!))
+        assertEquals("example.com", resolveWID(db, supportWID).getOrThrow()
+            ?.domain.toString())
+
+        val zeroWID = RandomID.fromString("00000000-0000-0000-0000-000000000000")!!
+        assertNull(resolveWID(db, zeroWID).getOrThrow())
     }
 }

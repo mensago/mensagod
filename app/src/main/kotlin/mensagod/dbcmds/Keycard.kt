@@ -119,12 +119,12 @@ fun resolveAddress(db: DBConn, addr: MAddress): Result<RandomID?> {
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun resolveWID(db: DBConn, wid: RandomID): WAddress? {
-    val rs = db.query("""SELECT domain FROM workspaces WHERE wid=?""", wid).getOrThrow()
-    if (!rs.next()) return null
+fun resolveWID(db: DBConn, wid: RandomID): Result<WAddress?> {
+    val rs = db.query("""SELECT domain FROM workspaces WHERE wid=?""", wid)
+        .getOrElse { return Result.failure(it) }
+    if (!rs.next()) return Result.success(null)
 
-    val dom = Domain.fromString(rs.getString("domain"))
-        ?: throw DatabaseCorruptionException("Bad domain '${rs.getString("domain")}' "+
-            "for workspace ID $wid")
-    return WAddress.fromParts(wid, dom)
+    val dom = Domain.fromString(rs.getString("domain")) ?: return Result.failure(
+        DatabaseCorruptionException("Bad domain '${rs.getString("domain")}' for workspace ID $wid"))
+    return Result.success(WAddress.fromParts(wid, dom))
 }

@@ -120,14 +120,14 @@ fun preregWorkspace(db: DBConn, wid: RandomID, userID: UserID?, domain: Domain, 
     if (userID != null) {
         if (resolveUserID(db, userID) != null)
             return ResourceExistsException("User-ID $userID already exists")
-        if (resolveWID(db, wid) != null)
+        if (resolveWID(db, wid).getOrElse { return it } != null)
             return ResourceExistsException("Workspcae-ID $wid already exists")
 
         return db.execute("""INSERT INTO prereg(wid, uid, domain, regcode) VALUES(?,?,?,?)""",
             wid, userID, domain, reghash).exceptionOrNull()
     }
 
-    if (resolveWID(db, wid) != null)
+    if (resolveWID(db, wid).getOrElse { return it } != null)
         return ResourceExistsException("Workspace-ID $wid already exists")
     return db.execute("""INSERT INTO prereg(wid, domain, regcode) VALUES(?,?,?)""", wid, domain,
         reghash).exceptionOrNull()

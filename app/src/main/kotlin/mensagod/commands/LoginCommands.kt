@@ -84,7 +84,12 @@ fun commandDevice(state: ClientSession) {
                 // Feature: DeviceManagement
 
                 val recipient = try {
-                    val out = resolveWID(db, state.wid!!)
+                    val out = resolveWID(db, state.wid!!).getOrElse {
+                        logError("commandDevice.resolveWID exception: $it")
+                        QuickResponse.sendInternalError("Error resolving workspace ID",
+                            state.conn)
+                        return
+                    }
                     if (out == null) {
                         logError("commandDevice.resolveWID returned null for wid ${state.wid!!}")
                         QuickResponse.sendInternalError("Server error: workspace missing",
