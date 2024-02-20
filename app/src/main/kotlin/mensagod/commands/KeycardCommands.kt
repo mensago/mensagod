@@ -329,9 +329,8 @@ fun commandAddEntry(state: ClientSession) {
 
     // Wow. We actually made it! YAY
 
-    try { addEntry(db, entry) }
-    catch (e: Exception) {
-        logError("commandAddEntry.addEntry: error adding entry, wid=$wid - $e")
+    addEntry(db, entry)?.let {
+        logError("commandAddEntry.addEntry: error adding entry, wid=$wid - $it")
         QuickResponse.sendInternalError("Error adding entry", state.conn)
         return
     }

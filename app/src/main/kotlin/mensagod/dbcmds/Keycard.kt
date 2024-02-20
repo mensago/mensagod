@@ -1,6 +1,7 @@
 package mensagod.dbcmds
 
 import libkeycard.*
+import libmensago.NotConnectedException
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
 
@@ -11,15 +12,15 @@ import mensagod.DatabaseCorruptionException
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun addEntry(db: DBConn, entry: Entry) {
+fun addEntry(db: DBConn, entry: Entry): Throwable? {
     val owner = if (entry.getFieldString("Type") == "Organization") "organization"
         else entry.getFieldString("Workspace-ID")!!
 
-    db.execute("""INSERT INTO keycards(owner, creationtime, index, entry, fingerprint)
+    return db.execute("""INSERT INTO keycards(owner, creationtime, index, entry, fingerprint)
         VALUES(?,?,?,?,?)""",
         owner, entry.getFieldString("Timestamp")!!,
         entry.getFieldInteger("Index")!!, entry.getFullText(null).getOrThrow(),
-        entry.getAuthString("Hash")!!).getOrThrow()
+        entry.getAuthString("Hash")!!).exceptionOrNull()
 }
 
 /**

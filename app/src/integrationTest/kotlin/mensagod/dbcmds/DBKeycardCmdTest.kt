@@ -44,7 +44,7 @@ class DBKeycardCmdTest {
             hash()?.let { throw it }
             sign("User-Signature", crsPair)?.let { throw it }
         }
-        addEntry(db, rootEntry)
+        addEntry(db, rootEntry)?.let { throw it }
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         val userEntries = getEntries(db, adminWID)
