@@ -192,8 +192,6 @@ class LocalFS private constructor(val basePath: Path) {
     /**
      * Gets a handle in the local filesystem for the path specified. Note that getting a handle to
      * a file or directory doesn't necessarily mean that said entity actually exists.
-     *
-     * @throws SecurityException - if a security manager exists and denies read access to the file
      */
     fun entry(path: MServerPath): LocalFSHandle {
         val localpath = convertToLocal(path)
