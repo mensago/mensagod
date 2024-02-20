@@ -63,7 +63,7 @@ class DBLoginCmdTest {
             preregWorkspace(db, newWID, newUID, domain, testHash)
         }
 
-        deletePrereg(db, WAddress.fromParts(newWID, domain))
+        deletePrereg(db, WAddress.fromParts(newWID, domain))?.let { throw it }
         preregWorkspace(db, newWID, newUID, domain, testHash)
 
         preregWorkspace(db, newWID2, null, domain, testHash)

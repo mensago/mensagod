@@ -201,9 +201,8 @@ fun commandRegCode(state: ClientSession) {
         return
     }
 
-    try { deletePrereg(db, WAddress.fromParts(regInfo.first, domain)) }
-    catch (e: Exception) {
-        logError("commandRegCode.deletePrereg: $e")
+    deletePrereg(db, WAddress.fromParts(regInfo.first, domain))?.let {
+        logError("commandRegCode.deletePrereg: $it")
         QuickResponse.sendInternalError("commandRegCode.4", state.conn)
         return
     }

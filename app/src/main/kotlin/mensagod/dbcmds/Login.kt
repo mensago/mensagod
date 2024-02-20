@@ -80,8 +80,9 @@ fun checkRegCode(db: DBConn, addr: MAddress, regcode: String): Result<Pair<Rando
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun deletePrereg(db: DBConn, addr: WAddress) {
-    db.execute("DELETE FROM prereg WHERE wid=? AND domain=?", addr.id, addr.domain).getOrThrow()
+fun deletePrereg(db: DBConn, addr: WAddress): Throwable? {
+    return db.execute("DELETE FROM prereg WHERE wid=? AND domain=?", addr.id, addr.domain)
+        .exceptionOrNull()
 }
 
 /**

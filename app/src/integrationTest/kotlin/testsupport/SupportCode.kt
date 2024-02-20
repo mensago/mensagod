@@ -331,7 +331,7 @@ fun setupAdmin(db: DBConn) {
         "argon2id", "anXvadxtNJAYa2cUQFqKSQ", "m=65536,t=2,p=1",
         WorkspaceStatus.Active,WorkspaceType.Individual)
     addDevice(db, adminWID, devid, devkey, fakeInfo, DeviceStatus.Registered)?.let { throw it }
-    deletePrereg(db, WAddress.fromParts(adminWID, gServerDomain))
+    deletePrereg(db, WAddress.fromParts(adminWID, gServerDomain))?.let { throw it }
 }
 
 /**
@@ -347,7 +347,7 @@ fun setupUser(db: DBConn) {
         "argon2id", "ejzAtaom5H1y6wnLHvrb7g", "m=65536,t=2,p=1",
         WorkspaceStatus.Active,WorkspaceType.Individual)
     addDevice(db, userWID, devid, devkey, fakeInfo, DeviceStatus.Registered)?.let { throw it }
-    deletePrereg(db, WAddress.fromParts(userWID, gServerDomain))
+    deletePrereg(db, WAddress.fromParts(userWID, gServerDomain))?.let { throw it }
 }
 
 /**
