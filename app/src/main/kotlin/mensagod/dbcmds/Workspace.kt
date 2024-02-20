@@ -143,6 +143,7 @@ fun resolveUserID(db: DBConn, uid: UserID): Result<RandomID?> {
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun setWorkspaceStatus(db: DBConn, wid: RandomID, status: WorkspaceStatus) {
-    db.execute("""UPDATE workspaces SET status=? WHERE wid=?""", status, wid).getOrThrow()
+fun setWorkspaceStatus(db: DBConn, wid: RandomID, status: WorkspaceStatus): Throwable? {
+    return db.execute("""UPDATE workspaces SET status=? WHERE wid=?""", status, wid)
+        .exceptionOrNull()
 }

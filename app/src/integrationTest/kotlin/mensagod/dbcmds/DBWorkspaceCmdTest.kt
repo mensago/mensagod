@@ -40,7 +40,7 @@ class DBWorkspaceCmdTest {
         assertEquals("active", rs.getString("status"))
         assertEquals("individual", rs.getString("wtype"))
 
-        setWorkspaceStatus(db, adminWID, WorkspaceStatus.Archived)
+        setWorkspaceStatus(db, adminWID, WorkspaceStatus.Archived)?.let{ throw it }
         assertEquals(WorkspaceStatus.Archived, checkWorkspace(db, adminWID).getOrThrow())
         assertThrows<ResourceExistsException> {
             addWorkspace(db, adminWID, adminUID, gServerDomain, "somepasshash",
