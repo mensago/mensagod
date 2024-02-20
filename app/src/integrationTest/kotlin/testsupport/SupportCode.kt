@@ -151,7 +151,7 @@ fun makeTestFolder(name: String): String {
         topdir.mkdirs()
     File(topdirStr).mkdirs()
 
-    LocalFS.initialize(topdir.toString())
+    LocalFS.initialize(topdir.toString())?.let { throw it }
 
     return topdir.toString()
 }
@@ -371,7 +371,7 @@ class SetupData(val config: ServerConfig, val serverSetupData: Map<String, Strin
 fun setupTest(name: String): SetupData {
     val testpath = makeTestFolder(name)
     initLogging(Paths.get(testpath, "log.txt"), true)
-    LocalFS.initialize(Paths.get(testpath, "topdir").toString())
+    LocalFS.initialize(Paths.get(testpath, "topdir").toString())?.let { throw it }
     val lfs = LocalFS.get()
     listOf("wsp","out","tmp","keys").forEach { lfs.entry(MServerPath("/ $it")).makeDirectory() }
 

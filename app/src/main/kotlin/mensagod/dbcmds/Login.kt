@@ -4,9 +4,11 @@ import keznacl.Argon2idPassword
 import keznacl.EmptyDataException
 import keznacl.PasswordInfo
 import libkeycard.*
+import libmensago.NotConnectedException
 import libmensago.ResourceExistsException
 import libmensago.ResourceNotFoundException
-import mensagod.*
+import mensagod.DBConn
+import mensagod.DatabaseCorruptionException
 
 /**
  * checkPassword checks a password against the one stored in the database. It returns true if the
@@ -16,16 +18,16 @@ import mensagod.*
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun checkPassword(db: DBConn, wid: RandomID, password: String): Boolean {
+fun checkPassword(db: DBConn, wid: RandomID, password: String): Result<Boolean> {
     val rs = db.query("""SELECT password FROM workspaces WHERE wid=?""", wid).getOrThrow()
-    if (!rs.next()) throw ResourceNotFoundException()
+    if (!rs.next()) return Result.failure(ResourceNotFoundException())
 
     val hasher = Argon2idPassword()
     hasher.setFromHash(rs.getString("password"))?.let {
-        throw DatabaseCorruptionException("Bad argon2id hash for $wid")
+        return Result.failure(DatabaseCorruptionException("Bad argon2id hash for $wid"))
     }
 
-    return hasher.verify(password)
+    return Result.success(hasher.verify(password))
 }
 
 /**
