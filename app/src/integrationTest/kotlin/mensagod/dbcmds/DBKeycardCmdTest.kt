@@ -20,7 +20,8 @@ class DBKeycardCmdTest {
         setupTest("dbcmds.addEntries")
         val db = DBConn()
         val osPair = getPrimarySigningPair(db).getOrThrow()
-        val orgEntry = OrgEntry.fromString(getEntries(db, null, 0U)[0]).getOrThrow()
+        val orgEntry = OrgEntry.fromString(getEntries(db, null, 0U).getOrThrow()[0])
+            .getOrThrow()
         val crsPair = SigningPair.fromStrings(
             ADMIN_PROFILE_DATA["signing.public"]!!,
             ADMIN_PROFILE_DATA["signing.private"]!!).getOrThrow()
@@ -47,7 +48,7 @@ class DBKeycardCmdTest {
         addEntry(db, rootEntry)?.let { throw it }
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
-        val userEntries = getEntries(db, adminWID)
+        val userEntries = getEntries(db, adminWID).getOrThrow()
         assertEquals(1, userEntries.size)
     }
 
@@ -55,24 +56,24 @@ class DBKeycardCmdTest {
         setupTest("dbcmds.getEntries")
         val db = DBConn()
 
-        val currentEntryList = getEntries(db, null, 0U)
+        val currentEntryList = getEntries(db, null, 0U).getOrThrow()
         assertEquals(1, currentEntryList.size)
         val current = OrgEntry.fromString(currentEntryList[0]).getOrThrow()
         assertEquals(2, current.getFieldInteger("Index")!!)
 
-        val rootEntryList = getEntries(db, null, 1U, 1U)
+        val rootEntryList = getEntries(db, null, 1U, 1U).getOrThrow()
         assertEquals(1, rootEntryList.size)
         val root = OrgEntry.fromString(rootEntryList[0]).getOrThrow()
         assertEquals(1, root.getFieldInteger("Index")!!)
 
-        val allEntriesList = getEntries(db, null)
+        val allEntriesList = getEntries(db, null).getOrThrow()
         assertEquals(2, allEntriesList.size)
         val first = OrgEntry.fromString(allEntriesList[0]).getOrThrow()
         assertEquals(1, first.getFieldInteger("Index")!!)
         val second = OrgEntry.fromString(allEntriesList[1]).getOrThrow()
         assertEquals(2, second.getFieldInteger("Index")!!)
 
-        val secondEntryList = getEntries(db, null, 2U)
+        val secondEntryList = getEntries(db, null, 2U).getOrThrow()
         assertEquals(1, secondEntryList.size)
         val secondOnly = OrgEntry.fromString(secondEntryList[0]).getOrThrow()
         assertEquals(2, secondOnly.getFieldInteger("Index")!!)
