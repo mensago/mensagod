@@ -296,7 +296,12 @@ fun commandLogin(state: ClientSession) {
         return
     }.decodeToString()
 
-    val passInfo = getPasswordInfo(db, wid)
+    val passInfo = getPasswordInfo(db, wid).getOrElse {
+        logError("commandLogin.getPasswordInfo exception: $it")
+        QuickResponse.sendInternalError("Server error getting password information",
+            state.conn)
+        return
+    }
     if (passInfo == null) {
         try { ServerResponse(404, "NOT FOUND", "Password information not found")
             .send(state.conn) }

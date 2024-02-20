@@ -91,16 +91,16 @@ fun deletePrereg(db: DBConn, addr: WAddress): Throwable? {
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun getPasswordInfo(db: DBConn, wid: RandomID): PasswordInfo? {
+fun getPasswordInfo(db: DBConn, wid: RandomID): Result<PasswordInfo?> {
     val rs = db.query("""SELECT passtype,salt,passparams FROM workspaces WHERE wid=?""", wid)
-        .getOrThrow()
+        .getOrElse { return Result.failure(it) }
     if (rs.next()) {
         val type = rs.getString("passtype")
         val salt = rs.getString("salt")
         val params = rs.getString("passparams")
-        return PasswordInfo(type, salt, params)
+        return Result.success(PasswordInfo(type, salt, params))
     }
-    return null
+    return Result.success(null)
 }
 
 /**
