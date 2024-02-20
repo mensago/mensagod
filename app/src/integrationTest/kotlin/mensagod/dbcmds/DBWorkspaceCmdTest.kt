@@ -67,9 +67,8 @@ class DBWorkspaceCmdTest {
             ).getOrThrow()
         )
 
-        assertNotNull(resolveUserID(db, UserID.fromString("support")!!))
-        assertNull(resolveUserID(db,
-                UserID.fromString("00000000-0000-0000-0000-000000000000")!!
-        ))
+        assertNotNull(resolveUserID(db, UserID.fromString("support")!!).getOrThrow())
+        val zeroUID = UserID.fromString("00000000-0000-0000-0000-000000000000")!!
+        assertNull(resolveUserID(db, zeroUID).getOrThrow())
     }
 }

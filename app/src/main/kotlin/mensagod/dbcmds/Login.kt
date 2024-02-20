@@ -118,9 +118,11 @@ fun preregWorkspace(db: DBConn, wid: RandomID, userID: UserID?, domain: Domain, 
         return EmptyDataException("registration code hash may not be empty")
 
     if (userID != null) {
-        if (resolveUserID(db, userID) != null)
+        val resolvedWID = resolveUserID(db, userID).getOrElse { return it }
+        if (resolvedWID != null)
             return ResourceExistsException("User-ID $userID already exists")
-        if (resolveWID(db, wid).getOrElse { return it } != null)
+        val resolvedWAddr = resolveWID(db, wid).getOrElse { return it }
+        if (resolvedWAddr != null)
             return ResourceExistsException("Workspcae-ID $wid already exists")
 
         return db.execute("""INSERT INTO prereg(wid, uid, domain, regcode) VALUES(?,?,?,?)""",

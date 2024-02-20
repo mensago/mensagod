@@ -30,9 +30,8 @@ fun commandPreregister(state: ClientSession) {
 
     val db = DBConn()
     val outUID = if (uid != null) {
-        try { resolveUserID(db, uid) }
-        catch (e: Exception) {
-            logError("commandPreregister.resolveUserID exception: $e")
+        resolveUserID(db, uid).getOrElse {
+            logError("commandPreregister.resolveUserID exception: $it")
             QuickResponse.sendInternalError("uid lookup error", state.conn)
             return
         }?.let{
