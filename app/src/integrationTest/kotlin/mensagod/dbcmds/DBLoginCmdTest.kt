@@ -10,7 +10,6 @@ import mensagod.DBConn
 import mensagod.gServerDomain
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import testsupport.ADMIN_PROFILE_DATA
 import testsupport.setupTest
 
@@ -43,14 +42,13 @@ class DBLoginCmdTest {
         val supportWID = RandomID.fromString(setupData.serverSetupData["support_wid"])!!
         val supportUID = UserID.fromString("support")
         val domain = gServerDomain
-        assertThrows<ResourceExistsException> {
-            preregWorkspace(db, supportWID, null, domain, "foo")
-        }
-        assertThrows<ResourceExistsException> {
-            preregWorkspace(db, supportWID, supportUID, domain, "bar")
-        }
+        assert(preregWorkspace(db, supportWID, null, domain, "foo")
+                is ResourceExistsException)
 
-        preregWorkspace(db, newWID, newUID, domain, testHash)
+        assert(preregWorkspace(db, supportWID, supportUID, domain, "bar")
+                is ResourceExistsException)
+
+        preregWorkspace(db, newWID, newUID, domain, testHash)?.let { throw it }
         var rs = db.query("SELECT wid,uid,domain,regcode FROM prereg WHERE wid=?", newWID)
             .getOrThrow()
         assert(rs.next())
@@ -59,14 +57,12 @@ class DBLoginCmdTest {
         assertEquals(domain.toString(), rs.getString("domain"))
         assertEquals(testHash, rs.getString("regcode"))
 
-        assertThrows<ResourceExistsException> {
-            preregWorkspace(db, newWID, newUID, domain, testHash)
-        }
+        assert(preregWorkspace(db, newWID, newUID, domain, testHash) is ResourceExistsException)
 
         deletePrereg(db, WAddress.fromParts(newWID, domain))?.let { throw it }
-        preregWorkspace(db, newWID, newUID, domain, testHash)
+        preregWorkspace(db, newWID, newUID, domain, testHash)?.let { throw it }
 
-        preregWorkspace(db, newWID2, null, domain, testHash)
+        preregWorkspace(db, newWID2, null, domain, testHash)?.let { throw it }
         rs = db.query("SELECT wid,uid,domain,regcode FROM prereg WHERE wid=?", newWID2)
             .getOrThrow()
         assert(rs.next())

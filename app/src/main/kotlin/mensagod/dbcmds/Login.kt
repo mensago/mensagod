@@ -111,23 +111,24 @@ fun getPasswordInfo(db: DBConn, wid: RandomID): Result<PasswordInfo?> {
  * @throws ResourceExistsException if the user ID or workspace ID given already exist.
  * @throws EmptyDataException if the registration code hash string is empty
  */
-fun preregWorkspace(db: DBConn, wid: RandomID, userID: UserID?, domain: Domain, reghash: String) {
+fun preregWorkspace(db: DBConn, wid: RandomID, userID: UserID?, domain: Domain, reghash: String):
+    Throwable? {
+
     if (reghash.isEmpty())
-        throw EmptyDataException("registration code hash may not be empty")
+        return EmptyDataException("registration code hash may not be empty")
 
     if (userID != null) {
         if (resolveUserID(db, userID) != null)
-            throw ResourceExistsException("User-ID $userID already exists")
+            return ResourceExistsException("User-ID $userID already exists")
         if (resolveWID(db, wid) != null)
-            throw ResourceExistsException("Workspcae-ID $wid already exists")
+            return ResourceExistsException("Workspcae-ID $wid already exists")
 
-        db.execute("""INSERT INTO prereg(wid, uid, domain, regcode) VALUES(?,?,?,?)""",
-            wid, userID, domain, reghash).getOrThrow()
-        return
+        return db.execute("""INSERT INTO prereg(wid, uid, domain, regcode) VALUES(?,?,?,?)""",
+            wid, userID, domain, reghash).exceptionOrNull()
     }
 
     if (resolveWID(db, wid) != null)
-        throw ResourceExistsException("Workspace-ID $wid already exists")
-    db.execute("""INSERT INTO prereg(wid, domain, regcode) VALUES(?,?,?)""", wid, domain,
-        reghash).getOrThrow()
+        return ResourceExistsException("Workspace-ID $wid already exists")
+    return db.execute("""INSERT INTO prereg(wid, domain, regcode) VALUES(?,?,?)""", wid, domain,
+        reghash).exceptionOrNull()
 }

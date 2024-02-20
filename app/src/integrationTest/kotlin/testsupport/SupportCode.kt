@@ -305,7 +305,7 @@ fun preregUser(db: DBConn, uid: String? = null, regcode: String? = null, reghash
 
     val outWID = RandomID.fromString(wid) ?: RandomID.generate()
     val outUID = UserID.fromString(uid)
-    preregWorkspace(db, outWID, outUID, gServerDomain, rhash)
+    preregWorkspace(db, outWID, outUID, gServerDomain, rhash)?.let { throw it }
     LocalFS.get().entry(MServerPath("/ wsp $outWID")).makeDirectory()
 
     return mapOf(
