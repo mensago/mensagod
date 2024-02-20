@@ -47,9 +47,8 @@ fun commandPreregister(state: ClientSession) {
     } else null
 
     val outWID = if (wid != null) {
-        try { checkWorkspace(db, wid) }
-        catch (e: Exception) {
-            logError("commandPreregister.checkWorkspace exception: $e")
+        checkWorkspace(db, wid).getOrElse {
+            logError("commandPreregister.checkWorkspace exception: $it")
             QuickResponse.sendInternalError("wid lookup error", state.conn)
             return
         }?.let{
@@ -66,7 +65,12 @@ fun commandPreregister(state: ClientSession) {
         do {
             newWID = try {
                 val tempWID = RandomID.generate()
-                if (checkWorkspace(db, tempWID) == null)
+                val status = checkWorkspace(db, tempWID).getOrElse {
+                    logError("commandPreregister.checkWorkspace(newWID) exception: $it")
+                    QuickResponse.sendInternalError("new wid lookup error", state.conn)
+                    return
+                }
+                if (status == null)
                     tempWID
                 else
                     null
@@ -178,19 +182,17 @@ fun commandRegCode(state: ClientSession) {
         return
     }
 
-    try {
-        addWorkspace(db, regInfo.first, regInfo.second, domain,
-            state.message.data["Password-Hash"]!!, state.message.data["Password-Algorithm"]!!,
-                state.message.data["Salt"] ?: "",
+    addWorkspace(db, regInfo.first, regInfo.second, domain, state.message.data["Password-Hash"]!!,
+        state.message.data["Password-Algorithm"]!!,state.message.data["Salt"] ?: "",
                 state.message.data["Password-Parameters"] ?: "", WorkspaceStatus.Active,
-                WorkspaceType.Individual)
-    }
-    catch (e: ResourceExistsException) {
-        ServerResponse(408, "RESOURCE EXISTS", "workspace is already registered")
-        return
-    }
-    catch (e: Exception) {
-        logError("Internal error commandRegCode.addWorkspace: $e")
+                WorkspaceType.Individual)?.let {
+        if (it is ResourceExistsException) {
+            ServerResponse(408, "RESOURCE EXISTS",
+                "workspace is already registered").sendCatching(state.conn,
+                "Failed to send workspace-exists message")
+            return
+        }
+        logError("Internal error commandRegCode.addWorkspace: $it")
         QuickResponse.sendInternalError("commandRegCode.2", state.conn)
         return
     }

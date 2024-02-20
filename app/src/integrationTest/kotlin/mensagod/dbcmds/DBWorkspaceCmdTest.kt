@@ -27,7 +27,7 @@ class DBWorkspaceCmdTest {
         val adminUID = UserID.fromString("admin")!!
         addWorkspace(db, adminWID, adminUID, gServerDomain, "somepasshash",
             "passalgorithm", "salt", "passparams", WorkspaceStatus.Active,
-            WorkspaceType.Individual)
+            WorkspaceType.Individual)?.let { throw it }
 
         val rs = db.query("""SELECT * FROM workspaces WHERE wid=?""", adminWID).getOrThrow()
         assert(rs.next())
@@ -41,11 +41,11 @@ class DBWorkspaceCmdTest {
         assertEquals("individual", rs.getString("wtype"))
 
         setWorkspaceStatus(db, adminWID, WorkspaceStatus.Archived)
-        assertEquals(WorkspaceStatus.Archived, checkWorkspace(db, adminWID))
+        assertEquals(WorkspaceStatus.Archived, checkWorkspace(db, adminWID).getOrThrow())
         assertThrows<ResourceExistsException> {
             addWorkspace(db, adminWID, adminUID, gServerDomain, "somepasshash",
                 "passalgorithm", "salt", "passparams", WorkspaceStatus.Active,
-                WorkspaceType.Individual)
+                WorkspaceType.Individual)?.let { throw it }
         }
     }
 
@@ -59,12 +59,12 @@ class DBWorkspaceCmdTest {
 
         assertEquals(
             WorkspaceStatus.Active,
-            checkWorkspace(db, RandomID.fromString(serverData["support_wid"])!!)
+            checkWorkspace(db, RandomID.fromString(serverData["support_wid"])!!).getOrThrow()
         )
         assertNull(
             checkWorkspace(db,
                 RandomID.fromString("00000000-0000-0000-0000-000000000000")!!
-            )
+            ).getOrThrow()
         )
 
         assertNotNull(resolveUserID(db, UserID.fromString("support")!!))

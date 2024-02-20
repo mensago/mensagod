@@ -7,6 +7,7 @@ import libkeycard.RandomID
 import libkeycard.UserID
 import libmensago.ClientRequest
 import libmensago.MServerPath
+import libmensago.NotConnectedException
 import libmensago.ServerResponse
 import mensagod.dbcmds.resolveAddress
 import org.apache.commons.io.FileUtils
@@ -171,6 +172,7 @@ class ClientSession(val conn: Socket): SessionState() {
      */
     fun isAdmin(): Boolean {
         val adminWID = resolveAddress(DBConn(), MAddress.fromString("admin/$gServerDomain")!!)
+            .getOrThrow()
             ?: throw DatabaseCorruptionException("isAdmin couldn't find the admin's workspace ID")
         return adminWID == wid
     }

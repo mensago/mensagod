@@ -234,7 +234,11 @@ fun commandLogin(state: ClientSession) {
     val challenge = state.getCryptoString("Challenge", true) ?: return
 
     val db = DBConn()
-    val status = checkWorkspace(db, wid)
+    val status = checkWorkspace(db, wid).getOrElse {
+        logError("commandLogin.checkWorkspace exception for ${state.wid}: $it")
+        QuickResponse.sendInternalError("Error checking workspace ID", state.conn)
+        return
+    }
     if (status == null) {
         try { ServerResponse(404, "NOT FOUND").send(state.conn) }
         catch (e: Exception) { logDebug("commandLogin.1 error: $e") }
