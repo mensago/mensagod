@@ -44,9 +44,8 @@ fun commandDevice(state: ClientSession) {
             // The device is part of the workspace, so now we issue undergo a challenge-response
             // to ensure that the device really is authorized and the key wasn't stolen by an
             // impostor
-            val success = try { challengeDevice(state, devkey) }
-            catch (e: Exception) {
-                logError("commandDevice.challengeDevice exception: $e")
+            val success = challengeDevice(state, devkey).getOrElse {
+                logError("commandDevice.challengeDevice exception: $it")
                 QuickResponse.sendInternalError("Error authenticating client device",
                     state.conn)
                 return
@@ -380,7 +379,7 @@ fun commandPassword(state: ClientSession) {
  * @throws IllegalArgumentException if the encoded input does not comply format's specification
  * @throws java.io.IOException if there was a network error
  */
-fun challengeDevice(state: ClientSession, devkey: CryptoString): Boolean {
+fun challengeDevice(state: ClientSession, devkey: CryptoString): Result<Boolean> {
     // 1) Generate a 32-byte random string of bytes
     // 2) Encode string in base85
     // 3) Encrypt said string, encode in base85, and return it as part of 100 CONTINUE response
@@ -388,34 +387,35 @@ fun challengeDevice(state: ClientSession, devkey: CryptoString): Boolean {
     // 5) If strings don't match, respond to client with 402 Authentication Failure and return false
     // 6) If strings match respond to client with 200 OK and return true/nil
 
-    val realKey = EncryptionKey.from(devkey).getOrThrow()
+    val realKey = EncryptionKey.from(devkey).getOrElse { return Result.failure(it) }
 
     val rng = SecureRandom()
     val rawBytes = ByteArray(32)
     rng.nextBytes(rawBytes)
     val challenge = Base85.rfc1924Encoder.encode(rawBytes)
-    val encrypted = realKey.encrypt(challenge.toByteArray()).getOrThrow()
+    val encrypted = realKey.encrypt(challenge.toByteArray()).getOrElse { return Result.failure(it) }
     ServerResponse(100, "CONTINUE", "",
         mutableMapOf("Challenge" to encrypted.toString())).send(state.conn)
     // We purposely don't try to catch the send error, as that's part of the caller's responsibility
 
-    val req = ClientRequest.receive(state.conn.getInputStream()).getOrThrow()
-    if (req.action == "CANCEL") throw CancelException()
+    val req = ClientRequest.receive(state.conn.getInputStream())
+        .getOrElse { return Result.failure(it) }
+    if (req.action == "CANCEL") return Result.failure(CancelException())
 
     if (req.action != "DEVICE") {
         QuickResponse.sendBadRequest("Session state mismatch", state.conn)
-        return false
+        return Result.success(false)
     }
 
     val missingField = req.validate(setOf("Device-ID", "Device-Key", "Response"))
     if (missingField != null)  {
         QuickResponse.sendBadRequest("Missing required field $missingField", state.conn)
-        return false
+        return Result.success(false)
     }
     if (devkey.toString() != req.data["Device-Key"]) {
         QuickResponse.sendBadRequest("Device key mismatch", state.conn)
-        return false
+        return Result.success(false)
     }
 
-    return challenge == req.data["Response"]
+    return Result.success(challenge == req.data["Response"])
 }
