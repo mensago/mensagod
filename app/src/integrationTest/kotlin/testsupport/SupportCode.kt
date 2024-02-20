@@ -12,7 +12,6 @@ import mensagod.*
 import mensagod.commands.DeviceStatus
 import mensagod.dbcmds.*
 import org.apache.commons.io.FileUtils
-import org.junit.jupiter.api.Assertions.assertEquals
 import java.io.File
 import java.net.ProtocolException
 import java.nio.file.Paths
@@ -409,14 +408,6 @@ fun makeTestFile(fileDir: String, fileName: String? = null,
 
 fun ServerResponse.assertReturnCode(c: Int) {
     if (code != c) throw ProtocolException(this.toString())
-}
-
-fun ServerResponse.assertFields(fields: List<Pair<String, String>>) {
-    fields.forEach {
-        if (!data.containsKey(it.first))
-            throw ResourceNotFoundException("Missing field ${it.first}")
-        assertEquals(it.second, data[it.first])
-    }
 }
 
 fun ServerResponse.assertField(field: String, validator: (v: String) -> Boolean) {
