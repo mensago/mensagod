@@ -29,7 +29,8 @@ class KeycardCmdTest {
         setupTest("commands.addEntry")
 
         val db = DBConn()
-        val orgEntry = OrgEntry.fromString(getEntries(db, null, 0U)[0]).getOrThrow()
+        val orgEntry = OrgEntry.fromString(getEntries(db, null, 0U).getOrThrow()[0])
+            .getOrThrow()
         val crsPair = SigningPair.fromStrings(
             ADMIN_PROFILE_DATA["crsigning.public"]!!,
             ADMIN_PROFILE_DATA["crsigning.private"]!!).getOrThrow()
