@@ -191,7 +191,15 @@ fun commandDevice(state: ClientSession) {
         response.data["Key-Info"] = keyInfo
     }
 
-    response.data["Is-Admin"] = if (state.isAdmin()) "True" else "False"
+    val isAdmin = state.isAdmin().getOrElse {
+        logError("commandDevice.isAdmin exception for ${state.wid}: $it")
+        state.loginState = LoginState.NoSession
+        state.wid = null
+        QuickResponse.sendInternalError("Error checking for admin privileges",
+            state.conn)
+        return
+    }
+    response.data["Is-Admin"] = if (isAdmin) "True" else "False"
     response.send(state.conn)?.let {
         state.loginState = LoginState.NoSession
         state.wid = null

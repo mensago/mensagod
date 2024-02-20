@@ -165,11 +165,12 @@ class ClientSession(val conn: Socket): SessionState() {
      * @throws NotConnectedException if not connected to the database
      * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
      */
-    fun isAdmin(): Boolean {
+    fun isAdmin(): Result<Boolean> {
         val adminWID = resolveAddress(DBConn(), MAddress.fromString("admin/$gServerDomain")!!)
-            .getOrThrow()
-            ?: throw DatabaseCorruptionException("isAdmin couldn't find the admin's workspace ID")
-        return adminWID == wid
+            .getOrElse { return Result.failure(it) }
+            ?: return Result.failure(DatabaseCorruptionException(
+                "isAdmin couldn't find the admin's workspace ID"))
+        return Result.success(adminWID == wid)
     }
 
     /**
