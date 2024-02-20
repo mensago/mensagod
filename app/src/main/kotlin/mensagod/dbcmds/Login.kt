@@ -39,39 +39,39 @@ fun checkPassword(db: DBConn, wid: RandomID, password: String): Result<Boolean> 
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun checkRegCode(db: DBConn, addr: MAddress, regcode: String): Pair<RandomID, UserID?>? {
+fun checkRegCode(db: DBConn, addr: MAddress, regcode: String): Result<Pair<RandomID, UserID?>?> {
     val rs = if (addr.isWorkspace) {
         db.query(
             """SELECT uid,regcode FROM prereg WHERE wid=? AND domain=?""",
             addr.userid, addr.domain
-        ).getOrThrow()
+        ).getOrElse { return Result.failure(it) }
     } else {
         db.query("""SELECT wid,regcode FROM prereg WHERE uid=? AND domain=?""",
             addr.userid, addr.domain).getOrThrow()
     }
-    if (!rs.next()) return null
+    if (!rs.next()) return Result.success(null)
 
     val rawHash = rs.getString("regcode")
     if (rawHash.isEmpty()) {
-        throw DatabaseCorruptionException(
-            "Prereg entry missing regcode for workspace $addr")
+        return Result.failure(DatabaseCorruptionException(
+            "Prereg entry missing regcode for workspace $addr"))
     }
     val regHash = Argon2idPassword()
     regHash.setFromHash(rawHash)?.let {
-        throw DatabaseCorruptionException(
-            "Prereg entry has bad regcode for workspace $addr")
+        return Result.failure(DatabaseCorruptionException(
+            "Prereg entry has bad regcode for workspace $addr"))
     }
-    if (!regHash.verify(regcode)) return null
+    if (!regHash.verify(regcode)) return Result.success(null)
 
     if (addr.isWorkspace) {
         val outUID = UserID.fromString(rs.getString("uid"))
-        return Pair(addr.userid.toWID()!!, outUID)
+        return Result.success(Pair(addr.userid.toWID()!!, outUID))
     }
 
     val outWID = RandomID.fromString(rs.getString("wid"))
-        ?: throw DatabaseCorruptionException(
-            "Bad prereg workspace ID ${rs.getString("wid")}")
-    return Pair(outWID, addr.userid)
+        ?: return Result.failure(DatabaseCorruptionException(
+                "Bad prereg workspace ID ${rs.getString("wid")}"))
+    return Result.success(Pair(outWID, addr.userid))
 }
 
 /**

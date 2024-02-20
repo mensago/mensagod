@@ -166,13 +166,12 @@ fun commandRegCode(state: ClientSession) {
     }
 
     val db = DBConn()
-    val regInfo = try {
-        checkRegCode(db, MAddress.fromParts(uid,domain), state.message.data["Reg-Code"]!!)
-    } catch (e: Exception) {
-        logError("Internal error commandRegCode.checkRegCode: $e")
-        QuickResponse.sendInternalError("commandRegCode.1", state.conn)
-        return
-    }
+    val regInfo = checkRegCode(db, MAddress.fromParts(uid,domain), state.message.data["Reg-Code"]!!)
+        .getOrElse {
+            logError("Internal error commandRegCode.checkRegCode: $it")
+            QuickResponse.sendInternalError("commandRegCode.1", state.conn)
+            return
+        }
 
     if (regInfo == null) {
         ServerResponse(401, "UNAUTHORIZED").send(state.conn)

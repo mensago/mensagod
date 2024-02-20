@@ -74,14 +74,15 @@ class DBLoginCmdTest {
         assertNull(rs.getString("uid"))
         assertEquals(domain.toString(), rs.getString("domain"))
 
-        var regInfo = checkRegCode(db, MAddress.fromParts(newUID, domain), testCode)!!
+        var regInfo = checkRegCode(db, MAddress.fromParts(newUID, domain), testCode).getOrThrow()!!
         assertEquals(newWID, regInfo.first)
         assertEquals(newUID, regInfo.second)
 
-        regInfo = checkRegCode(db, MAddress.fromParts(UserID.fromWID(newWID), domain), testCode)!!
+        regInfo = checkRegCode(db, MAddress.fromParts(UserID.fromWID(newWID), domain), testCode)
+            .getOrThrow()!!
         assertEquals(newWID, regInfo.first)
         assertEquals(newUID, regInfo.second)
 
-        assertNull(checkRegCode(db, MAddress.fromParts(newUID, domain), "baz"))
+        assertNull(checkRegCode(db, MAddress.fromParts(newUID, domain), "baz").getOrThrow())
     }
 }
