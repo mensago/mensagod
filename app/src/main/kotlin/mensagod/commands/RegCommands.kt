@@ -200,8 +200,17 @@ fun commandRegCode(state: ClientSession) {
         return
     }
 
+    // Although we have been given a password hash, we still need to hash it on this side, as well,
+    // so that if the client foolishly presented us with a cleartext password, the client's
+    // password isn't stored in cleartext in the database.
+    val serverHash = Argon2idPassword().updateHash(state.message.data["Password-Hash"]!!)
+        .getOrElse {
+            logError("Internal error commandRegCode.hashPassword: $it")
+            QuickResponse.sendInternalError("Server error hashing password", state.conn)
+            return
+        }
     addWorkspace(
-        db, regInfo.first, regInfo.second, domain, state.message.data["Password-Hash"]!!,
+        db, regInfo.first, regInfo.second, domain, serverHash,
         state.message.data["Password-Algorithm"]!!, state.message.data["Password-Salt"] ?: "",
         state.message.data["Password-Parameters"] ?: "", WorkspaceStatus.Active,
         WorkspaceType.Individual
