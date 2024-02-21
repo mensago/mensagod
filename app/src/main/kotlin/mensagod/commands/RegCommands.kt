@@ -40,10 +40,12 @@ fun commandPreregister(state: ClientSession) {
             logError("commandPreregister.resolveUserID exception: $it")
             QuickResponse.sendInternalError("uid lookup error", state.conn)
             return
-        }?.let{
+        }?.let {
             ServerResponse(408, "RESOURCE EXISTS", "user ID exists")
-                .sendCatching(state.conn,
-                    "commandPreregister.resolveUserID exists send error")
+                .sendCatching(
+                    state.conn,
+                    "commandPreregister.resolveUserID exists send error"
+                )
             return
         }
         uid
@@ -54,10 +56,11 @@ fun commandPreregister(state: ClientSession) {
             logError("commandPreregister.checkWorkspace exception: $it")
             QuickResponse.sendInternalError("wid lookup error", state.conn)
             return
-        }?.let{
-            try { ServerResponse(408, "RESOURCE EXISTS", "workspace ID exists")
-                .send(state.conn) }
-            catch (e: Exception) {
+        }?.let {
+            try {
+                ServerResponse(408, "RESOURCE EXISTS", "workspace ID exists")
+                    .send(state.conn)
+            } catch (e: Exception) {
                 logDebug("commandPreregister.checkWorkspace exists send error: $e")
             }
             return
@@ -77,8 +80,7 @@ fun commandPreregister(state: ClientSession) {
                     tempWID
                 else
                     null
-            }
-            catch (e: Exception) {
+            } catch (e: Exception) {
                 logError("commandPreregister.checkWorkspace exception: $e")
                 QuickResponse.sendInternalError("wid lookup error", state.conn)
                 return
@@ -92,7 +94,8 @@ fun commandPreregister(state: ClientSession) {
     // Now that we've gone through the pain of covering for missing arguments and validating the
     // ones that actually exist, preregister the account.
     val regcode = gRegCodeGenerator.getPassphrase(
-        ServerConfig.get().getInteger("security.diceware_wordcount")!!)
+        ServerConfig.get().getInteger("security.diceware_wordcount")!!
+    )
     val reghash = Argon2idPassword().updateHash(regcode).getOrElse {
         logError("commandPreregister.hashRegCode exception: $it")
         QuickResponse.sendInternalError("registration code hashing error", state.conn)
@@ -113,16 +116,20 @@ fun commandPreregister(state: ClientSession) {
     val handle = lfs.entry(MServerPath("/ wsp $outWID"))
     handle.makeDirectory()?.let {
         logError("commandPreregister.makeWorkspace exception: $it")
-        QuickResponse.sendInternalError("preregistration workspace creation failure",
-            state.conn)
+        QuickResponse.sendInternalError(
+            "preregistration workspace creation failure",
+            state.conn
+        )
         return
     }
 
-    val resp = ServerResponse(200, "OK", "", mutableMapOf(
-        "Workspace-ID" to outWID.toString(),
-        "Domain" to outDom.toString(),
-        "Reg-Code" to regcode,
-    ))
+    val resp = ServerResponse(
+        200, "OK", "", mutableMapOf(
+            "Workspace-ID" to outWID.toString(),
+            "Domain" to outDom.toString(),
+            "Reg-Code" to regcode,
+        )
+    )
     if (outUID != null) resp.data["User-ID"] = outUID.toString()
     resp.sendCatching(state.conn, "commandRegCode success message send error")
 }
@@ -165,35 +172,48 @@ fun commandRegCode(state: ClientSession) {
     }
 
     if (!getSupportedAsymmetricAlgorithms().contains(devkey.prefix)) {
-        ServerResponse(309, "ENCRYPTION TYPE NOT SUPPORTED",
-            "Supported: "+ getSupportedAsymmetricAlgorithms().joinToString(","))
-                .sendCatching(state.conn,
-                    "commandRegCode: failed to send bad encryption message")
+        ServerResponse(
+            309, "ENCRYPTION TYPE NOT SUPPORTED",
+            "Supported: " + getSupportedAsymmetricAlgorithms().joinToString(",")
+        )
+            .sendCatching(
+                state.conn,
+                "commandRegCode: failed to send bad encryption message"
+            )
         return
     }
 
     val db = DBConn()
-    val regInfo = checkRegCode(db, MAddress.fromParts(uid,domain), state.message.data["Reg-Code"]!!)
-        .getOrElse {
-            logError("Internal error commandRegCode.checkRegCode: $it")
-            QuickResponse.sendInternalError("commandRegCode.1", state.conn)
-            return
-        }
+    val regInfo =
+        checkRegCode(db, MAddress.fromParts(uid, domain), state.message.data["Reg-Code"]!!)
+            .getOrElse {
+                logError("Internal error commandRegCode.checkRegCode: $it")
+                QuickResponse.sendInternalError("commandRegCode.1", state.conn)
+                return
+            }
 
     if (regInfo == null) {
-        ServerResponse(401, "UNAUTHORIZED").sendCatching(state.conn,
-            "commandRegCode: Failed to send unauthorized message")
+        ServerResponse(401, "UNAUTHORIZED").sendCatching(
+            state.conn,
+            "commandRegCode: Failed to send unauthorized message"
+        )
         return
     }
 
-    addWorkspace(db, regInfo.first, regInfo.second, domain, state.message.data["Password-Hash"]!!,
-        state.message.data["Password-Algorithm"]!!,state.message.data["Salt"] ?: "",
-                state.message.data["Password-Parameters"] ?: "", WorkspaceStatus.Active,
-                WorkspaceType.Individual)?.let {
+    addWorkspace(
+        db, regInfo.first, regInfo.second, domain, state.message.data["Password-Hash"]!!,
+        state.message.data["Password-Algorithm"]!!, state.message.data["Password-Salt"] ?: "",
+        state.message.data["Password-Parameters"] ?: "", WorkspaceStatus.Active,
+        WorkspaceType.Individual
+    )?.let {
         if (it is ResourceExistsException) {
-            ServerResponse(408, "RESOURCE EXISTS",
-                "workspace is already registered").sendCatching(state.conn,
-                "Failed to send workspace-exists message")
+            ServerResponse(
+                408, "RESOURCE EXISTS",
+                "workspace is already registered"
+            ).sendCatching(
+                state.conn,
+                "Failed to send workspace-exists message"
+            )
             return
         }
         logError("Internal error commandRegCode.addWorkspace: $it")
@@ -213,11 +233,13 @@ fun commandRegCode(state: ClientSession) {
         return
     }
 
-    ServerResponse(201, "REGISTERED", "", mutableMapOf(
-        "Workspace-ID" to regInfo.first.toString(),
-        "User-ID" to uid.toString(),
-        "Domain" to domain.toString(),
-    )).send(state.conn)?.let {
+    ServerResponse(
+        201, "REGISTERED", "", mutableMapOf(
+            "Workspace-ID" to regInfo.first.toString(),
+            "User-ID" to uid.toString(),
+            "Domain" to domain.toString(),
+        )
+    ).send(state.conn)?.let {
         logDebug("commandRegCode success message send error: $it")
     }
 }
