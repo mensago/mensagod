@@ -83,6 +83,8 @@ class Server private constructor(val config: ServerConfig) {
             initLogging(logLocation, false)
             DBConn.initialize(config)?.let { return Result.failure(it) }
 
+            LocalFS.initialize(config.getString("global.top_dir")!!)
+
             val out = Server(config)
             out.clientPool.capacity = config.getInteger("performance.max_client_threads")!!
 
