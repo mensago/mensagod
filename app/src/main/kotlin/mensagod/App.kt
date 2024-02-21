@@ -22,11 +22,13 @@ import kotlin.system.exitProcess
  * connects.
  */
 @Serializable
-data class ServerGreeting(@SerialName("Name") val name: String,
-                          @SerialName("Version") val version: String,
-                          @SerialName("Code") val code: Int,
-                          @SerialName("Status") val status: String,
-                          @SerialName("Date") val date: String)
+data class ServerGreeting(
+    @SerialName("Name") val name: String,
+    @SerialName("Version") val version: String,
+    @SerialName("Code") val code: Int,
+    @SerialName("Status") val status: String,
+    @SerialName("Date") val date: String
+)
 
 /**
  * The Server class encapsulates the the top level of abstraction for the server and houses the
@@ -41,16 +43,18 @@ class Server private constructor(val config: ServerConfig) {
 
         // Main listener loop
 
-        val listener = try { ServerSocket(config.getInteger("network.port")!!) }
-        catch (e: IOException) {
+        val listener = try {
+            ServerSocket(config.getInteger("network.port")!!)
+        } catch (e: IOException) {
             println("Unable to open network connection:\n$e")
             exitProcess(-1)
         }
         println("Listening on port ${config.getInteger("network.port")}")
 
         while (true) {
-            val conn = try { listener.accept() }
-            catch (e: IOException) {
+            val conn = try {
+                listener.accept()
+            } catch (e: IOException) {
                 logWarn("Failure to accept connection: $e")
                 continue
             }
@@ -95,22 +99,27 @@ class Server private constructor(val config: ServerConfig) {
  */
 fun sendGreeting(conn: Socket, code: Int, status: String): Boolean {
     val now = Instant.now().let { it.minusNanos(it.nano.toLong()) }
-    val greeting = ServerGreeting("Mensago", "0.1", code, status,
-        DateTimeFormatter.ISO_INSTANT.format(now))
-    val greetingJSON = try { Json.encodeToString(greeting) + "\r\n" }
-    catch (e: SerializationException) {
+    val greeting = ServerGreeting(
+        "Mensago", "0.1", code, status,
+        DateTimeFormatter.ISO_INSTANT.format(now)
+    )
+    val greetingJSON = try {
+        Json.encodeToString(greeting) + "\r\n"
+    } catch (e: SerializationException) {
         logError("Unable to serialize unavailability greeting")
         return false
     }
 
-    val ostream = try { conn.getOutputStream() }
-    catch (e: IOException) {
+    val ostream = try {
+        conn.getOutputStream()
+    } catch (e: IOException) {
         logError("Unable to open client socket for writing")
         return false
     }
 
-    try { ostream.write(greetingJSON.encodeToByteArray()) }
-    catch (e: Exception) {
+    try {
+        ostream.write(greetingJSON.encodeToByteArray())
+    } catch (e: Exception) {
         // At this point, it doesn't really matter if we fail out anyway :(
         return false
     }
@@ -128,15 +137,16 @@ fun connectionWorker(conn: Socket) {
         return
     }
 
-    val istream = try { conn.getInputStream() }
-    catch (e: IOException) {
+    val istream = try {
+        conn.getInputStream()
+    } catch (e: IOException) {
         logError("Failed to open input stream for client: $e")
         conn.close()
         return
     }
 
     var networkErrorCount = 0
-    while(true) {
+    while (true) {
         val result = ClientRequest.receive(istream)
         if (result.isFailure) {
             when (val ex = result.exceptionOrNull()) {
@@ -144,13 +154,16 @@ fun connectionWorker(conn: Socket) {
                     // If there was a serialization problem, that means the client is having problems. For
                     // now, we'll just ignore this and move on unless it becomes a problem.
                 }
+
                 is IllegalArgumentException -> {
                     // Don't know why we'd get this error, so for now, just ignore and continue
                 }
+
                 is IOException -> {
                     networkErrorCount++
                     if (networkErrorCount >= gMaxNetworkErrors) break
                 }
+
                 else -> {
                     logError("connectionWorker: Unhandled error receiving client request: $ex")
                 }
@@ -163,8 +176,11 @@ fun connectionWorker(conn: Socket) {
 
         if (req.action.uppercase() == "QUIT") break
 
-        try { processCommand(state) }
-        catch (e: IOException) { networkErrorCount++ }
+        try {
+            processCommand(state)
+        } catch (e: IOException) {
+            networkErrorCount++
+        }
 
         if (state.isTerminating) break
     }
@@ -177,8 +193,7 @@ fun main() {
         try {
             logError("Initialization failure: $it")
             println("Initialization failure. Please check the log for more details.")
-        }
-        catch (e: Exception) {
+        } catch (e: Exception) {
             println("Initialization failure: $it")
         }
         return
