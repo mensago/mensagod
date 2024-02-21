@@ -38,14 +38,19 @@ class LoginCmdTest {
         val encInfo = userKey.encrypt(devInfo.toString().encodeToByteArray()).getOrThrow()
 
         // Test Case #1: Successfully complete first device auth phase
-        CommandTest("device.1",
+        CommandTest(
+            "device.1",
             SessionState(
-                ClientRequest("DEVICE", mutableMapOf(
-                "Device-ID" to ADMIN_PROFILE_DATA["devid"]!!,
-                "Device-Key" to ADMIN_PROFILE_DATA["device.public"]!!,
-                "Device-Info" to encInfo.toString(),
-            )), adminWID,
-                LoginState.AwaitingDeviceID), ::commandDevice) { port ->
+                ClientRequest(
+                    "DEVICE", mutableMapOf(
+                        "Device-ID" to ADMIN_PROFILE_DATA["devid"]!!,
+                        "Device-Key" to ADMIN_PROFILE_DATA["device.public"]!!,
+                        "Device-Info" to encInfo.toString(),
+                    )
+                ), adminWID,
+                LoginState.AwaitingDeviceID
+            ), ::commandDevice
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(100)
@@ -57,16 +62,19 @@ class LoginCmdTest {
 
             val devPair = EncryptionPair.fromStrings(
                 ADMIN_PROFILE_DATA["device.public"]!!,
-                ADMIN_PROFILE_DATA["device.private"]!!).getOrThrow()
+                ADMIN_PROFILE_DATA["device.private"]!!
+            ).getOrThrow()
             val challStr = CryptoString.fromString(response.data["Challenge"]!!)!!
             val challDecrypted = devPair.decrypt(challStr).getOrThrow().decodeToString()
 
-            val req = ClientRequest("DEVICE", mutableMapOf(
-                "Device-ID" to ADMIN_PROFILE_DATA["devid"]!!,
-                "Device-Key" to ADMIN_PROFILE_DATA["device.public"]!!,
-                "Device-Info" to encInfo.toString(),
-                "Response" to challDecrypted,
-            ))
+            val req = ClientRequest(
+                "DEVICE", mutableMapOf(
+                    "Device-ID" to ADMIN_PROFILE_DATA["devid"]!!,
+                    "Device-Key" to ADMIN_PROFILE_DATA["device.public"]!!,
+                    "Device-Info" to encInfo.toString(),
+                    "Response" to challDecrypted,
+                )
+            )
             req.send(socket.getOutputStream())
             response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(200)
@@ -89,24 +97,31 @@ class LoginCmdTest {
         val encrypted = serverKey.encrypt(challenge.encodeToByteArray()).getOrThrow()
 
         // Test Case #1: Successfully log in in as admin
-        CommandTest("login.1",
-            SessionState(
-                ClientRequest("LOGIN", mutableMapOf(
-                "Login-Type" to "PLAIN",
-                "Workspace-ID" to adminWID.toString(),
-                "Challenge" to encrypted.toString(),
-            )), null,
-                LoginState.NoSession), ::commandLogin) { port ->
+        var session = SessionState(
+            ClientRequest(
+                "LOGIN", mutableMapOf(
+                    "Login-Type" to "PLAIN",
+                    "Workspace-ID" to adminWID.toString(),
+                    "Challenge" to encrypted.toString(),
+                )
+            ), null,
+            LoginState.NoSession
+        )
+        CommandTest("login.1", session, ::commandLogin) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
             response.assertReturnCode(100)
-            assert(response.checkFields(listOf(
-                Pair("Response", true),
-                Pair("Password-Algorithm", true),
-                Pair("Password-Salt", true),
-                Pair("Password-Parameters", true),
-            )))
+            assert(
+                response.checkFields(
+                    listOf(
+                        Pair("Response", true),
+                        Pair("Password-Algorithm", true),
+                        Pair("Password-Salt", true),
+                        Pair("Password-Parameters", true),
+                    )
+                )
+            )
             assertEquals(challenge, response.data["Response"])
             assertEquals("argon2id", response.data["Password-Algorithm"])
             assertEquals("anXvadxtNJAYa2cUQFqKSQ", response.data["Password-Salt"])
@@ -114,14 +129,19 @@ class LoginCmdTest {
         }.run()
 
         // Test Case #2: Login-Type missing
-        CommandTest("login.2",
+        CommandTest(
+            "login.2",
             SessionState(
-                ClientRequest("LOGIN", mutableMapOf(
-                // Leave out Login-Type
-                "Workspace-ID" to adminWID.toString(),
-                "Challenge" to encrypted.toString(),
-            )), null,
-                LoginState.NoSession), ::commandLogin) { port ->
+                ClientRequest(
+                    "LOGIN", mutableMapOf(
+                        // Leave out Login-Type
+                        "Workspace-ID" to adminWID.toString(),
+                        "Challenge" to encrypted.toString(),
+                    )
+                ), null,
+                LoginState.NoSession
+            ), ::commandLogin
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
@@ -132,14 +152,19 @@ class LoginCmdTest {
         val badChallenge = EncryptionPair.generate().getOrThrow()
             .encrypt(challenge.encodeToByteArray()).getOrThrow()
 
-        CommandTest("login.3",
+        CommandTest(
+            "login.3",
             SessionState(
-                ClientRequest("LOGIN", mutableMapOf(
-                "Login-Type" to "PLAIN",
-                "Workspace-ID" to adminWID.toString(),
-                "Challenge" to badChallenge.toString(),
-            )), null,
-                LoginState.NoSession), ::commandLogin) { port ->
+                ClientRequest(
+                    "LOGIN", mutableMapOf(
+                        "Login-Type" to "PLAIN",
+                        "Workspace-ID" to adminWID.toString(),
+                        "Challenge" to badChallenge.toString(),
+                    )
+                ), null,
+                LoginState.NoSession
+            ), ::commandLogin
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
@@ -147,14 +172,19 @@ class LoginCmdTest {
         }.run()
 
         // Test Case #4: Bad login state
-        CommandTest("login.4",
+        CommandTest(
+            "login.4",
             SessionState(
-                ClientRequest("LOGIN", mutableMapOf(
-                "Login-Type" to "PLAIN",
-                "Workspace-ID" to adminWID.toString(),
-                "Challenge" to challenge,
-            )), null,
-                LoginState.LoggedIn), ::commandLogin) { port ->
+                ClientRequest(
+                    "LOGIN", mutableMapOf(
+                        "Login-Type" to "PLAIN",
+                        "Workspace-ID" to adminWID.toString(),
+                        "Challenge" to challenge,
+                    )
+                ), null,
+                LoginState.LoggedIn
+            ), ::commandLogin
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
@@ -165,10 +195,13 @@ class LoginCmdTest {
     @Test
     fun logoutTest() {
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
-        CommandTest("logout.1",
+        CommandTest(
+            "logout.1",
             SessionState(
                 ClientRequest("LOGOUT"), adminWID,
-                LoginState.LoggedIn), ::commandLogout) { port ->
+                LoginState.LoggedIn
+            ), ::commandLogout
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
@@ -183,12 +216,17 @@ class LoginCmdTest {
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
         // Test Case #1: Successful password auth as admin
-        CommandTest("password.1",
+        CommandTest(
+            "password.1",
             SessionState(
-                ClientRequest("PASSWORD", mutableMapOf(
-                "Password-Hash" to ADMIN_PROFILE_DATA["password"]!!,
-            )), adminWID,
-                LoginState.AwaitingPassword), ::commandPassword) { port ->
+                ClientRequest(
+                    "PASSWORD", mutableMapOf(
+                        "Password-Hash" to ADMIN_PROFILE_DATA["password"]!!,
+                    )
+                ), adminWID,
+                LoginState.AwaitingPassword
+            ), ::commandPassword
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
@@ -197,12 +235,17 @@ class LoginCmdTest {
         }.run()
 
         // Test Case #2: Password auth failure as admin
-        CommandTest("password.2",
+        CommandTest(
+            "password.2",
             SessionState(
-                ClientRequest("PASSWORD", mutableMapOf(
-                "Password-Hash" to "foobar",
-            )), adminWID,
-                LoginState.AwaitingPassword), ::commandPassword) { port ->
+                ClientRequest(
+                    "PASSWORD", mutableMapOf(
+                        "Password-Hash" to "foobar",
+                    )
+                ), adminWID,
+                LoginState.AwaitingPassword
+            ), ::commandPassword
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
