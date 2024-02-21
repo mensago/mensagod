@@ -83,7 +83,12 @@ fun commandAddEntry(state: ClientSession) {
         // Admin, support, and abuse can't change their user IDs
         listOf("admin", "support", "abuse").forEach {
             val specialAddr = MAddress.fromParts(UserID.fromString(it)!!, gServerDomain)
-            val specialWID = resolveAddress(db, specialAddr)
+            val specialWID = resolveAddress(db, specialAddr).getOrElse { e ->
+                logError("commandAddEntry.resolveAddress exception: $e")
+                QuickResponse.sendInternalError("Server error resolving a special address",
+                    state.conn)
+                return
+            }
             if (specialWID == null) {
                 logError("commandAddEntry: error resolving address ")
                 QuickResponse.sendInternalError("Internal error in server error handling",
@@ -195,12 +200,11 @@ fun commandAddEntry(state: ClientSession) {
         return
     }
 
-    try { ServerResponse(100, "CONTINUE", "", mutableMapOf(
+    ServerResponse(100, "CONTINUE", "", mutableMapOf(
                 "Organization-Signature" to entry.getAuthString("Organization-Signature")!!
                     .toString()))
-            .send(state.conn)
-    } catch (e: Exception) {
-        logError("commandAddEntry.sendContinue, wid=$wid - $e")
+            .send(state.conn)?.let {
+        logError("commandAddEntry.sendContinue, wid=$wid - $it")
         QuickResponse.sendInternalError("Error signing user entry", state.conn)
         return
     }
@@ -324,9 +328,8 @@ fun commandAddEntry(state: ClientSession) {
 
     // Wow. We actually made it! YAY
 
-    try { addEntry(db, entry) }
-    catch (e: Exception) {
-        logError("commandAddEntry.addEntry: error adding entry, wid=$wid - $e")
+    addEntry(db, entry)?.let {
+        logError("commandAddEntry.addEntry: error adding entry, wid=$wid - $it")
         QuickResponse.sendInternalError("Error adding entry", state.conn)
         return
     }

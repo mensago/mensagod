@@ -80,15 +80,16 @@ enum class WorkspaceStatus {
  */
 fun addWorkspace(db: DBConn, wid: RandomID, uid: UserID?, domain: Domain, passhash: String,
                  algorithm: String, salt: String, passParams: String, status: WorkspaceStatus,
-                 wtype: WorkspaceType) {
+                 wtype: WorkspaceType): Throwable? {
 
-    val wStatus = checkWorkspace(db, wid)
+    val wStatus = checkWorkspace(db, wid).getOrElse { return it }
 
     if (wStatus != null && wStatus != WorkspaceStatus.Preregistered)
-        throw ResourceExistsException("$wid exists")
-    db.execute("""INSERT INTO workspaces(wid, uid, domain, password, passtype, salt, passparams,
-        status, wtype) VALUES(?,?,?,?,?,?,?,?,?)""",
-        wid, uid ?: "", domain, passhash, algorithm, salt, passParams, status, wtype).getOrThrow()
+        return ResourceExistsException("$wid exists")
+    return db.execute("""INSERT INTO workspaces(wid, uid, domain, password, passtype, salt,
+        passparams, status, wtype) VALUES(?,?,?,?,?,?,?,?,?)""",
+        wid, uid ?: "", domain, passhash, algorithm, salt, passParams, status, wtype)
+        .exceptionOrNull()
 }
 
 /**
@@ -98,18 +99,21 @@ fun addWorkspace(db: DBConn, wid: RandomID, uid: UserID?, domain: Domain, passha
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun checkWorkspace(db: DBConn, wid: RandomID): WorkspaceStatus? {
-    var rs = db.query("""SELECT status FROM workspaces WHERE wid=?""", wid).getOrThrow()
+fun checkWorkspace(db: DBConn, wid: RandomID): Result<WorkspaceStatus?> {
+    var rs = db.query("""SELECT status FROM workspaces WHERE wid=?""", wid)
+        .getOrElse { return Result.failure(it) }
     if (rs.next()) {
         val stat = rs.getString("status")
-        return WorkspaceStatus.fromString(stat)
-            ?: throw DatabaseCorruptionException("Bad workspace status '$stat' for workspace $wid")
+        val out = WorkspaceStatus.fromString(stat) ?: return Result.failure(
+            DatabaseCorruptionException("Bad workspace status '$stat' for workspace $wid"))
+        return Result.success(out)
     }
-    rs = db.query("""SELECT wid FROM prereg WHERE wid=?""", wid).getOrThrow()
+    rs = db.query("""SELECT wid FROM prereg WHERE wid=?""", wid)
+        .getOrElse { return Result.failure(it) }
     if (rs.next())
-        return WorkspaceStatus.Preregistered
+        return Result.success(WorkspaceStatus.Preregistered)
 
-    return null
+    return Result.success(null)
 }
 
 /**
@@ -121,18 +125,15 @@ fun checkWorkspace(db: DBConn, wid: RandomID): WorkspaceStatus? {
  */
 fun resolveUserID(db: DBConn, uid: UserID): Result<RandomID?> {
     for (table in listOf("workspaces", "prereg")) {
-        val rs = db.query("""SELECT wid FROM $table WHERE uid=?""", uid).getOrThrow()
+        val rs = db.query("""SELECT wid FROM $table WHERE uid=?""", uid)
+            .getOrElse { return Result.failure(it) }
         if (rs.next()) {
             val widStr = rs.getString("wid")
-            val out = RandomID.fromString(widStr)
-            return if (out == null)
-                    Result.failure(
-                        DatabaseCorruptionException("Bad workspace ID '$widStr' for userID $uid")
-                    )
-                else Result.success(RandomID.fromString(widStr))
+            val out = RandomID.fromString(widStr) ?: return Result.failure(
+                DatabaseCorruptionException("Bad workspace ID '$widStr' for userID $uid"))
+            return Result.success(out)
         }
     }
-
     return Result.success(null)
 }
 
@@ -142,6 +143,7 @@ fun resolveUserID(db: DBConn, uid: UserID): Result<RandomID?> {
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun setWorkspaceStatus(db: DBConn, wid: RandomID, status: WorkspaceStatus) {
-    db.execute("""UPDATE workspaces SET status=? WHERE wid=?""", status, wid).getOrThrow()
+fun setWorkspaceStatus(db: DBConn, wid: RandomID, status: WorkspaceStatus): Throwable? {
+    return db.execute("""UPDATE workspaces SET status=? WHERE wid=?""", status, wid)
+        .exceptionOrNull()
 }

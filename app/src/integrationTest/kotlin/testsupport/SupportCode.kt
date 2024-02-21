@@ -12,7 +12,6 @@ import mensagod.*
 import mensagod.commands.DeviceStatus
 import mensagod.dbcmds.*
 import org.apache.commons.io.FileUtils
-import org.junit.jupiter.api.Assertions.assertEquals
 import java.io.File
 import java.net.ProtocolException
 import java.nio.file.Paths
@@ -151,7 +150,7 @@ fun makeTestFolder(name: String): String {
         topdir.mkdirs()
     File(topdirStr).mkdirs()
 
-    LocalFS.initialize(topdir.toString())
+    LocalFS.initialize(topdir.toString())?.let { throw it }
 
     return topdir.toString()
 }
@@ -306,7 +305,7 @@ fun preregUser(db: DBConn, uid: String? = null, regcode: String? = null, reghash
 
     val outWID = RandomID.fromString(wid) ?: RandomID.generate()
     val outUID = UserID.fromString(uid)
-    preregWorkspace(db, outWID, outUID, gServerDomain, rhash)
+    preregWorkspace(db, outWID, outUID, gServerDomain, rhash)?.let { throw it }
     LocalFS.get().entry(MServerPath("/ wsp $outWID")).makeDirectory()
 
     return mapOf(
@@ -329,9 +328,9 @@ fun setupAdmin(db: DBConn) {
     val fakeInfo = CryptoString.fromString("XSALSA20:ABCDEFG1234567890")!!
     addWorkspace(db, adminWID, adminUID, gServerDomain, ADMIN_PROFILE_DATA["passhash"]!!,
         "argon2id", "anXvadxtNJAYa2cUQFqKSQ", "m=65536,t=2,p=1",
-        WorkspaceStatus.Active,WorkspaceType.Individual)
+        WorkspaceStatus.Active,WorkspaceType.Individual)?.let { throw it }
     addDevice(db, adminWID, devid, devkey, fakeInfo, DeviceStatus.Registered)?.let { throw it }
-    deletePrereg(db, WAddress.fromParts(adminWID, gServerDomain))
+    deletePrereg(db, WAddress.fromParts(adminWID, gServerDomain))?.let { throw it }
 }
 
 /**
@@ -345,9 +344,9 @@ fun setupUser(db: DBConn) {
     val fakeInfo = CryptoString.fromString("XSALSA20:abcdefg1234567890")!!
     addWorkspace(db, userWID, userUID, gServerDomain, USER_PROFILE_DATA["passhash"]!!,
         "argon2id", "ejzAtaom5H1y6wnLHvrb7g", "m=65536,t=2,p=1",
-        WorkspaceStatus.Active,WorkspaceType.Individual)
+        WorkspaceStatus.Active,WorkspaceType.Individual)?.let { throw it }
     addDevice(db, userWID, devid, devkey, fakeInfo, DeviceStatus.Registered)?.let { throw it }
-    deletePrereg(db, WAddress.fromParts(userWID, gServerDomain))
+    deletePrereg(db, WAddress.fromParts(userWID, gServerDomain))?.let { throw it }
 }
 
 /**
@@ -371,7 +370,7 @@ class SetupData(val config: ServerConfig, val serverSetupData: Map<String, Strin
 fun setupTest(name: String): SetupData {
     val testpath = makeTestFolder(name)
     initLogging(Paths.get(testpath, "log.txt"), true)
-    LocalFS.initialize(Paths.get(testpath, "topdir").toString())
+    LocalFS.initialize(Paths.get(testpath, "topdir").toString())?.let { throw it }
     val lfs = LocalFS.get()
     listOf("wsp","out","tmp","keys").forEach { lfs.entry(MServerPath("/ $it")).makeDirectory() }
 
@@ -409,14 +408,6 @@ fun makeTestFile(fileDir: String, fileName: String? = null,
 
 fun ServerResponse.assertReturnCode(c: Int) {
     if (code != c) throw ProtocolException(this.toString())
-}
-
-fun ServerResponse.assertFields(fields: List<Pair<String, String>>) {
-    fields.forEach {
-        if (!data.containsKey(it.first))
-            throw ResourceNotFoundException("Missing field ${it.first}")
-        assertEquals(it.second, data[it.first])
-    }
 }
 
 fun ServerResponse.assertField(field: String, validator: (v: String) -> Boolean) {

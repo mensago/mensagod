@@ -19,7 +19,13 @@ import mensagod.dbcmds.*
 fun commandPreregister(state: ClientSession) {
 
     if (!state.requireLogin()) return
-    if (!ServerTarget().isAuthorized(WIDActor(state.wid!!), AuthAction.Preregister)) {
+    val isAuthorized = ServerTarget().isAuthorized(WIDActor(state.wid!!), AuthAction.Preregister)
+        .getOrElse {
+            logError("commandPreregister.checkAuth exception: $it")
+            QuickResponse.sendInternalError("authorization check error", state.conn)
+            return
+        }
+    if (!isAuthorized) {
         QuickResponse.sendForbidden("Only admins can preregister accounts", state.conn)
         return
     }
@@ -35,20 +41,17 @@ fun commandPreregister(state: ClientSession) {
             QuickResponse.sendInternalError("uid lookup error", state.conn)
             return
         }?.let{
-            try { ServerResponse(408, "RESOURCE EXISTS", "user ID exists")
-                .send(state.conn) }
-            catch (e: Exception) {
-                logDebug("commandPreregister.resolveUserID exists send error: $e")
-            }
+            ServerResponse(408, "RESOURCE EXISTS", "user ID exists")
+                .sendCatching(state.conn,
+                    "commandPreregister.resolveUserID exists send error")
             return
         }
         uid
     } else null
 
     val outWID = if (wid != null) {
-        try { checkWorkspace(db, wid) }
-        catch (e: Exception) {
-            logError("commandPreregister.checkWorkspace exception: $e")
+        checkWorkspace(db, wid).getOrElse {
+            logError("commandPreregister.checkWorkspace exception: $it")
             QuickResponse.sendInternalError("wid lookup error", state.conn)
             return
         }?.let{
@@ -65,7 +68,12 @@ fun commandPreregister(state: ClientSession) {
         do {
             newWID = try {
                 val tempWID = RandomID.generate()
-                if (checkWorkspace(db, tempWID) == null)
+                val status = checkWorkspace(db, tempWID).getOrElse {
+                    logError("commandPreregister.checkWorkspace(newWID) exception: $it")
+                    QuickResponse.sendInternalError("new wid lookup error", state.conn)
+                    return
+                }
+                if (status == null)
                     tempWID
                 else
                     null
@@ -91,13 +99,13 @@ fun commandPreregister(state: ClientSession) {
         return
     }
 
-    try { preregWorkspace(db, outWID, outUID, outDom, reghash) }
-    catch (e: ResourceExistsException) {
-        ServerResponse(408, "RESOURCE EXISTS")
-        return
-    }
-    catch (e: Exception) {
-        logError("commandPreregister.preregWorkspace exception: $e")
+    preregWorkspace(db, outWID, outUID, outDom, reghash)?.let {
+        if (it is ResourceExistsException) {
+            ServerResponse(408, "RESOURCE EXISTS")
+                .sendCatching(state.conn, "commandPreregister error sending resource exists")
+            return
+        }
+        logError("commandPreregister.preregWorkspace exception: $it")
         QuickResponse.sendInternalError("preregistration error", state.conn)
     }
 
@@ -116,8 +124,7 @@ fun commandPreregister(state: ClientSession) {
         "Reg-Code" to regcode,
     ))
     if (outUID != null) resp.data["User-ID"] = outUID.toString()
-    try { resp.send(state.conn) }
-    catch (e: Exception) { logDebug("commandRegCode success message send error: $e") }
+    resp.sendCatching(state.conn, "commandRegCode success message send error")
 }
 
 // REGCODE(User-ID, Reg-Code, Password-Hash, Password-Algorithm, Device-ID, Device-Key,
@@ -160,37 +167,36 @@ fun commandRegCode(state: ClientSession) {
     if (!getSupportedAsymmetricAlgorithms().contains(devkey.prefix)) {
         ServerResponse(309, "ENCRYPTION TYPE NOT SUPPORTED",
             "Supported: "+ getSupportedAsymmetricAlgorithms().joinToString(","))
-                .send(state.conn)
+                .sendCatching(state.conn,
+                    "commandRegCode: failed to send bad encryption message")
         return
     }
 
     val db = DBConn()
-    val regInfo = try {
-        checkRegCode(db, MAddress.fromParts(uid,domain), state.message.data["Reg-Code"]!!)
-    } catch (e: Exception) {
-        logError("Internal error commandRegCode.checkRegCode: $e")
-        QuickResponse.sendInternalError("commandRegCode.1", state.conn)
-        return
-    }
+    val regInfo = checkRegCode(db, MAddress.fromParts(uid,domain), state.message.data["Reg-Code"]!!)
+        .getOrElse {
+            logError("Internal error commandRegCode.checkRegCode: $it")
+            QuickResponse.sendInternalError("commandRegCode.1", state.conn)
+            return
+        }
 
     if (regInfo == null) {
-        ServerResponse(401, "UNAUTHORIZED").send(state.conn)
+        ServerResponse(401, "UNAUTHORIZED").sendCatching(state.conn,
+            "commandRegCode: Failed to send unauthorized message")
         return
     }
 
-    try {
-        addWorkspace(db, regInfo.first, regInfo.second, domain,
-            state.message.data["Password-Hash"]!!, state.message.data["Password-Algorithm"]!!,
-                state.message.data["Salt"] ?: "",
+    addWorkspace(db, regInfo.first, regInfo.second, domain, state.message.data["Password-Hash"]!!,
+        state.message.data["Password-Algorithm"]!!,state.message.data["Salt"] ?: "",
                 state.message.data["Password-Parameters"] ?: "", WorkspaceStatus.Active,
-                WorkspaceType.Individual)
-    }
-    catch (e: ResourceExistsException) {
-        ServerResponse(408, "RESOURCE EXISTS", "workspace is already registered")
-        return
-    }
-    catch (e: Exception) {
-        logError("Internal error commandRegCode.addWorkspace: $e")
+                WorkspaceType.Individual)?.let {
+        if (it is ResourceExistsException) {
+            ServerResponse(408, "RESOURCE EXISTS",
+                "workspace is already registered").sendCatching(state.conn,
+                "Failed to send workspace-exists message")
+            return
+        }
+        logError("Internal error commandRegCode.addWorkspace: $it")
         QuickResponse.sendInternalError("commandRegCode.2", state.conn)
         return
     }
@@ -201,18 +207,17 @@ fun commandRegCode(state: ClientSession) {
         return
     }
 
-    try { deletePrereg(db, WAddress.fromParts(regInfo.first, domain)) }
-    catch (e: Exception) {
-        logError("commandRegCode.deletePrereg: $e")
+    deletePrereg(db, WAddress.fromParts(regInfo.first, domain))?.let {
+        logError("commandRegCode.deletePrereg: $it")
         QuickResponse.sendInternalError("commandRegCode.4", state.conn)
         return
     }
 
-    try {
-        ServerResponse(201, "REGISTERED", "", mutableMapOf(
-            "Workspace-ID" to regInfo.first.toString(),
-            "User-ID" to uid.toString(),
-            "Domain" to domain.toString(),
-        )).send(state.conn)
-    } catch (e: Exception) { logDebug("commandRegCode success message send error: $e") }
+    ServerResponse(201, "REGISTERED", "", mutableMapOf(
+        "Workspace-ID" to regInfo.first.toString(),
+        "User-ID" to uid.toString(),
+        "Domain" to domain.toString(),
+    )).send(state.conn)?.let {
+        logDebug("commandRegCode success message send error: $it")
+    }
 }

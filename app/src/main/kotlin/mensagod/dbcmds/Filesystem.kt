@@ -3,8 +3,11 @@ package mensagod.dbcmds
 import keznacl.BadValueException
 import libkeycard.RandomID
 import libmensago.MServerPath
+import libmensago.NotConnectedException
 import libmensago.ResourceNotFoundException
-import mensagod.*
+import mensagod.DBConn
+import mensagod.LocalFS
+import mensagod.ServerConfig
 import java.io.IOException
 
 /**
@@ -23,8 +26,7 @@ private fun addQuotaFromDisk(db: DBConn, wid: RandomID): Result<Pair<Long, Long>
     val userWidPath = MServerPath("/ wsp $wid")
     val handle = LocalFS.get().entry(userWidPath)
     if (!handle.exists().getOrElse { return Result.failure(it) }) {
-        val status = try { checkWorkspace(db, wid) }
-        catch (e: Exception) { return Result.failure(e) }
+        val status = checkWorkspace(db, wid).getOrElse { return Result.failure(it) }
         if (status == null) return Result.failure(ResourceNotFoundException())
     }
 

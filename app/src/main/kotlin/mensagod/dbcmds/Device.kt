@@ -4,6 +4,7 @@ import keznacl.CryptoString
 import libkeycard.RandomID
 import libkeycard.Timestamp
 import libmensago.MServerPath
+import libmensago.NotConnectedException
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
 import mensagod.commands.DeviceStatus

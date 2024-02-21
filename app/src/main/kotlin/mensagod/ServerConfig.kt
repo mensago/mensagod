@@ -79,7 +79,8 @@ class ServerConfig {
     fun getString(key: String): String? { return getValue(key) as String? }
 
     /**
-     * Reverts a field to its default value.
+     * Reverts a field to its default value. This method actually throws exceptions, unlike most
+     * of the class.
      *
      * @throws BadValueException If the key specified is invalid.
      */

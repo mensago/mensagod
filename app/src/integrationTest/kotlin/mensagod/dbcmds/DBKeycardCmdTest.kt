@@ -45,7 +45,7 @@ class DBKeycardCmdTest {
             hash()?.let { throw it }
             sign("User-Signature", crsPair)?.let { throw it }
         }
-        addEntry(db, rootEntry)
+        addEntry(db, rootEntry)?.let { throw it }
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         val userEntries = getEntries(db, adminWID).getOrThrow()
@@ -89,14 +89,18 @@ class DBKeycardCmdTest {
 
         // Using support instead of admin because we don't have to go through the registration
         // process for admin this way.
-        assertNotNull(resolveAddress(db, MAddress.fromString("support/example.com")!!))
+        assertNotNull(resolveAddress(db, MAddress.fromString("support/example.com")!!)
+            .getOrThrow())
 
         // admin hasn't been registered yet, so this one should be null
-        assertNull(resolveAddress(db, MAddress.fromString("admin/example.com")!!))
+        assertNull(resolveAddress(db, MAddress.fromString("admin/example.com")!!)
+            .getOrThrow())
 
         val supportWID = RandomID.fromString(setupData["support_wid"])!!
-        assertEquals("example.com", resolveWID(db, supportWID)?.domain.toString())
-        assertNull(resolveWID(db,
-            RandomID.fromString("00000000-0000-0000-0000-000000000000")!!))
+        assertEquals("example.com", resolveWID(db, supportWID).getOrThrow()
+            ?.domain.toString())
+
+        val zeroWID = RandomID.fromString("00000000-0000-0000-0000-000000000000")!!
+        assertNull(resolveWID(db, zeroWID).getOrThrow())
     }
 }

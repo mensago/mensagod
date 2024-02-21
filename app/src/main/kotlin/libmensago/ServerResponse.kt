@@ -29,9 +29,12 @@ class ServerResponse(@Required @SerialName("Code") var code: Int = 0,
      * @throws IllegalArgumentException if the encoded input does not comply format's specification
      * @throws java.io.IOException if there was a network error
      */
-    fun send(conn: Socket) {
-        val jsonStr = Json.encodeToString(this)
-        writeMessage(conn.getOutputStream(), jsonStr.encodeToByteArray())
+    fun send(conn: Socket): Throwable? {
+        return try {
+            val jsonStr = Json.encodeToString(this)
+            writeMessage(conn.getOutputStream(), jsonStr.encodeToByteArray())
+            null
+        } catch (e: Exception) { e }
     }
 
     /** Returns a CmdStatus object based on the contents of the server response */

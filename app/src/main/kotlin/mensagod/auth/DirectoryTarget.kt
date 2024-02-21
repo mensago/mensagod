@@ -17,33 +17,35 @@ import libmensago.MServerPath
  */
 class DirectoryTarget private constructor(private val path: MServerPath): AuthTarget {
 
-    override fun getActions(actor: AuthActor, action: AuthAction): List<AuthAction> {
-        if (actor.getType() != AuthActorType.WID) return listOf()
+    override fun getActions(actor: AuthActor, action: AuthAction): Result<List<AuthAction>> {
+        if (actor.getType() != AuthActorType.WID) return Result.success(listOf())
         actor as WIDActor
 
-        if (actor.isAdmin() || isKeysDirectory(actor.wid) || ownsPath(actor.wid))
-            return listOf(AuthAction.Create, AuthAction.Delete, AuthAction.Access)
+        if (actor.isAdmin().getOrElse { return Result.failure(it) } ||
+            isKeysDirectory(actor.wid) || ownsPath(actor.wid))
+            return Result.success(listOf(AuthAction.Create, AuthAction.Delete, AuthAction.Access))
 
-        return listOf()
+        return Result.success(listOf())
     }
 
-    override fun isAuthorized(actor: AuthActor, action: AuthAction): Boolean {
+    override fun isAuthorized(actor: AuthActor, action: AuthAction): Result<Boolean> {
         when (action) {
             AuthAction.Create, AuthAction.Delete, AuthAction.Access -> {
-                if (actor.getType() != AuthActorType.WID) return false
+                if (actor.getType() != AuthActorType.WID) return Result.success(false)
                 actor as WIDActor
 
                 // Admins can access all directories
-                if (actor.isAdmin()) return true
+                if (actor.isAdmin().getOrElse { return Result.failure(it) })
+                    return Result.success(true)
 
                 // Users have admin access over their identity workspaces and their corresponding
                 // key directories
-                if (isKeysDirectory(actor.wid)) return true
-                if (ownsPath(actor.wid)) return true
+                if (isKeysDirectory(actor.wid)) return Result.success(true)
+                if (ownsPath(actor.wid)) return Result.success(true)
             }
-            else -> return false
+            else -> return Result.success(false)
         }
-        return false
+        return Result.success(false)
     }
 
     private fun isKeysDirectory(wid: RandomID): Boolean { return path.toString() == "/ keys $wid" }

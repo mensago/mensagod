@@ -9,7 +9,7 @@ import mensagod.dbcmds.resolveAddress
 fun commandGetWID(state: ClientSession) {
     if (!state.message.hasField("User-ID")) {
         ServerResponse(400, "BAD REQUEST", "Required field missing")
-            .send(state.conn)
+            .sendCatching(state.conn, "commandGetWID: required field error message failure")
     }
 
     val db = DBConn()
@@ -17,19 +17,18 @@ fun commandGetWID(state: ClientSession) {
     val domain = state.getDomain("Domain", false, gServerDomain) ?: return
     val address = MAddress.fromParts(uid, domain)
 
-    val wid = try { resolveAddress(db, address) }
-    catch (e: Exception) {
-        logError("commandGetWID::resolveAddress error: $e")
+    val wid = resolveAddress(db, address).getOrElse {
+        logError("commandGetWID::resolveAddress error: $it")
         QuickResponse.sendInternalError("", state.conn)
     }
 
     ServerResponse(200, "OK", "", mutableMapOf("Workspace-ID" to wid.toString()))
-        .send(state.conn)
+        .sendCatching(state.conn, "commandGetWID: success message failure")
 }
 
 /** Command used when the client's command isn't recognized */
 fun commandUnrecognized(state: ClientSession) {
     ServerResponse(400, "BAD REQUEST",
         "Unrecognized command '${state.message.action}'")
-        .send(state.conn)
+        .sendCatching(state.conn, "commandUnrecognized message send error")
 }

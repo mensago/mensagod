@@ -126,8 +126,8 @@ class LocalFSHandle(mpath: MServerPath, private var file: File) {
     fun moveTo(destPath: MServerPath): Throwable? {
         val lfs = LocalFS.get()
         val localDest = lfs.convertToLocal(destPath)
-        if (!localDest.exists()) throw ResourceNotFoundException("$destPath doesn't exist")
-        if (!localDest.isDirectory()) throw TypeException("$destPath is not a directory")
+        if (!localDest.exists()) return ResourceNotFoundException("$destPath doesn't exist")
+        if (!localDest.isDirectory()) return TypeException("$destPath is not a directory")
 
         val destFile = File(localDest.toString())
         try { FileUtils.moveFileToDirectory(file, destFile, false) }
@@ -192,8 +192,6 @@ class LocalFS private constructor(val basePath: Path) {
     /**
      * Gets a handle in the local filesystem for the path specified. Note that getting a handle to
      * a file or directory doesn't necessarily mean that said entity actually exists.
-     *
-     * @throws SecurityException - if a security manager exists and denies read access to the file
      */
     fun entry(path: MServerPath): LocalFSHandle {
         val localpath = convertToLocal(path)
@@ -252,10 +250,11 @@ class LocalFS private constructor(val basePath: Path) {
     }
 
     companion object {
-        fun initialize(basePath: String) {
+        fun initialize(basePath: String): Throwable? {
             val p = Paths.get(basePath)
-            if (!p.exists()) throw ResourceNotFoundException("Directory $basePath does not exist")
+            if (!p.exists()) return ResourceNotFoundException("Directory $basePath does not exist")
             localFSSingleton = LocalFS(p)
+            return null
         }
 
         fun get(): LocalFS { return localFSSingleton!! }

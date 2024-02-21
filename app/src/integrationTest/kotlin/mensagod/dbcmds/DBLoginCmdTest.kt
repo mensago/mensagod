@@ -10,7 +10,6 @@ import mensagod.DBConn
 import mensagod.gServerDomain
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import testsupport.ADMIN_PROFILE_DATA
 import testsupport.setupTest
 
@@ -20,12 +19,12 @@ class DBLoginCmdTest {
     fun checkPasswordTest() {
         setupTest("dbcmds.checkPassword")
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
-        assert(checkPassword(DBConn(), adminWID, ADMIN_PROFILE_DATA["password"]!!))
-        assertFalse(checkPassword(DBConn(), adminWID, "foobar"))
-        assertThrows<ResourceNotFoundException> {
-            val badWID = RandomID.fromString("be8e1ae7-1915-4d82-bb21-fa5565788cef")!!
-            checkPassword(DBConn(), badWID, "foobar")
-        }
+        assert(checkPassword(DBConn(), adminWID, ADMIN_PROFILE_DATA["password"]!!).getOrThrow())
+        assertFalse(checkPassword(DBConn(), adminWID, "foobar").getOrThrow())
+        val badWID = RandomID.fromString("be8e1ae7-1915-4d82-bb21-fa5565788cef")!!
+        val error = checkPassword(DBConn(), badWID, "foobar")
+        assert(error.isFailure)
+        assert(error.exceptionOrNull() is ResourceNotFoundException)
     }
 
     @Test
@@ -43,14 +42,13 @@ class DBLoginCmdTest {
         val supportWID = RandomID.fromString(setupData.serverSetupData["support_wid"])!!
         val supportUID = UserID.fromString("support")
         val domain = gServerDomain
-        assertThrows<ResourceExistsException> {
-            preregWorkspace(db, supportWID, null, domain, "foo")
-        }
-        assertThrows<ResourceExistsException> {
-            preregWorkspace(db, supportWID, supportUID, domain, "bar")
-        }
+        assert(preregWorkspace(db, supportWID, null, domain, "foo")
+                is ResourceExistsException)
 
-        preregWorkspace(db, newWID, newUID, domain, testHash)
+        assert(preregWorkspace(db, supportWID, supportUID, domain, "bar")
+                is ResourceExistsException)
+
+        preregWorkspace(db, newWID, newUID, domain, testHash)?.let { throw it }
         var rs = db.query("SELECT wid,uid,domain,regcode FROM prereg WHERE wid=?", newWID)
             .getOrThrow()
         assert(rs.next())
@@ -59,14 +57,12 @@ class DBLoginCmdTest {
         assertEquals(domain.toString(), rs.getString("domain"))
         assertEquals(testHash, rs.getString("regcode"))
 
-        assertThrows<ResourceExistsException> {
-            preregWorkspace(db, newWID, newUID, domain, testHash)
-        }
+        assert(preregWorkspace(db, newWID, newUID, domain, testHash) is ResourceExistsException)
 
-        deletePrereg(db, WAddress.fromParts(newWID, domain))
-        preregWorkspace(db, newWID, newUID, domain, testHash)
+        deletePrereg(db, WAddress.fromParts(newWID, domain))?.let { throw it }
+        preregWorkspace(db, newWID, newUID, domain, testHash)?.let { throw it }
 
-        preregWorkspace(db, newWID2, null, domain, testHash)
+        preregWorkspace(db, newWID2, null, domain, testHash)?.let { throw it }
         rs = db.query("SELECT wid,uid,domain,regcode FROM prereg WHERE wid=?", newWID2)
             .getOrThrow()
         assert(rs.next())
@@ -74,14 +70,15 @@ class DBLoginCmdTest {
         assertNull(rs.getString("uid"))
         assertEquals(domain.toString(), rs.getString("domain"))
 
-        var regInfo = checkRegCode(db, MAddress.fromParts(newUID, domain), testCode)!!
+        var regInfo = checkRegCode(db, MAddress.fromParts(newUID, domain), testCode).getOrThrow()!!
         assertEquals(newWID, regInfo.first)
         assertEquals(newUID, regInfo.second)
 
-        regInfo = checkRegCode(db, MAddress.fromParts(UserID.fromWID(newWID), domain), testCode)!!
+        regInfo = checkRegCode(db, MAddress.fromParts(UserID.fromWID(newWID), domain), testCode)
+            .getOrThrow()!!
         assertEquals(newWID, regInfo.first)
         assertEquals(newUID, regInfo.second)
 
-        assertNull(checkRegCode(db, MAddress.fromParts(newUID, domain), "baz"))
+        assertNull(checkRegCode(db, MAddress.fromParts(newUID, domain), "baz").getOrThrow())
     }
 }

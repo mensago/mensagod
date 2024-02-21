@@ -12,15 +12,15 @@ import mensagod.DatabaseCorruptionException
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun addEntry(db: DBConn, entry: Entry) {
+fun addEntry(db: DBConn, entry: Entry): Throwable? {
     val owner = if (entry.getFieldString("Type") == "Organization") "organization"
         else entry.getFieldString("Workspace-ID")!!
 
-    db.execute("""INSERT INTO keycards(owner, creationtime, index, entry, fingerprint)
+    return db.execute("""INSERT INTO keycards(owner, creationtime, index, entry, fingerprint)
         VALUES(?,?,?,?,?)""",
         owner, entry.getFieldString("Timestamp")!!,
         entry.getFieldInteger("Index")!!, entry.getFullText(null).getOrThrow(),
-        entry.getAuthString("Hash")!!).getOrThrow()
+        entry.getAuthString("Hash")!!).exceptionOrNull()
 }
 
 /**
@@ -89,26 +89,28 @@ fun isDomainLocal(db: DBConn, domain: Domain): Result<Boolean> {
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun resolveAddress(db: DBConn, addr: MAddress): RandomID? {
+fun resolveAddress(db: DBConn, addr: MAddress): Result<RandomID?> {
 
     // If the address is a workspace address, all we have to do is confirm the workspace exists --
     // workspace IDs are unique across an organization, not just a domain.
     if (addr.userid.type == IDType.WorkspaceID) {
-        if (db.exists("""SELECT wtype FROM workspaces WHERE wid=?""", addr.userid.value)
-                .getOrThrow() ||
-            db.exists("""SELECT wid FROM aliases WHERE wid=?""", addr.userid.value)
-                .getOrThrow()) {
-            return addr.userid.toWID()!!
-        }
-        return null
+        val inWorkspaces = db.exists("""SELECT wtype FROM workspaces WHERE wid=?""",
+            addr.userid.value).getOrElse { return Result.failure(it) }
+        val inAliases = db.exists("""SELECT wid FROM aliases WHERE wid=?""", addr.userid.value)
+            .getOrElse { return Result.failure(it) }
+        return if (inWorkspaces || inAliases)
+                Result.success(addr.userid.toWID()!!)
+            else Result.success(null)
     }
 
     val rs = db.query("""SELECT wid FROM workspaces WHERE uid=?""", addr.userid.value)
-        .getOrThrow()
-    if (!rs.next()) return null
+        .getOrElse { return Result.failure(it) }
+    if (!rs.next()) return Result.success(null)
 
-    return RandomID.fromString(rs.getString("wid"))
-        ?: throw DatabaseCorruptionException("Bad wid '${rs.getString("wid")}' for address $addr")
+    RandomID.fromString(rs.getString("wid"))?.let { return Result.success(it) }
+    return Result.failure(
+        DatabaseCorruptionException("Bad wid '${rs.getString("wid")}' for address $addr")
+    )
 }
 
 /**
@@ -117,12 +119,12 @@ fun resolveAddress(db: DBConn, addr: MAddress): RandomID? {
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun resolveWID(db: DBConn, wid: RandomID): WAddress? {
-    val rs = db.query("""SELECT domain FROM workspaces WHERE wid=?""", wid).getOrThrow()
-    if (!rs.next()) return null
+fun resolveWID(db: DBConn, wid: RandomID): Result<WAddress?> {
+    val rs = db.query("""SELECT domain FROM workspaces WHERE wid=?""", wid)
+        .getOrElse { return Result.failure(it) }
+    if (!rs.next()) return Result.success(null)
 
-    val dom = Domain.fromString(rs.getString("domain"))
-        ?: throw DatabaseCorruptionException("Bad domain '${rs.getString("domain")}' "+
-            "for workspace ID $wid")
-    return WAddress.fromParts(wid, dom)
+    val dom = Domain.fromString(rs.getString("domain")) ?: return Result.failure(
+        DatabaseCorruptionException("Bad domain '${rs.getString("domain")}' for workspace ID $wid"))
+    return Result.success(WAddress.fromParts(wid, dom))
 }
