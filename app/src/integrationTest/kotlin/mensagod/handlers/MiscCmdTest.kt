@@ -1,4 +1,4 @@
-package mensagod.commands
+package mensagod.handlers
 
 import libmensago.ClientRequest
 import libmensago.ServerResponse

@@ -1,4 +1,4 @@
-package mensagod.commands
+package mensagod.handlers
 
 import keznacl.CryptoString
 import keznacl.VerificationKey

@@ -5,7 +5,7 @@ import libkeycard.RandomID
 import libmensago.MServerPath
 import mensagod.DBConn
 import mensagod.ServerConfig
-import mensagod.commands.DeviceStatus
+import mensagod.handlers.DeviceStatus
 import mensagod.resetDB
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -39,7 +39,8 @@ class DBDeviceCmdTest {
         assertEquals(0, countDevices(db, adminWID).getOrThrow())
 
         val devKey = CryptoString.fromString(
-            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN")!!
+            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN"
+        )!!
         val fakeInfo = CryptoString.fromString("AES256:ABCDEFG123456789")!!
         addDevice(db, adminWID, devid, devKey, fakeInfo, DeviceStatus.Pending)?.let { throw it }
         assertEquals(1, countDevices(db, adminWID).getOrThrow())
@@ -80,7 +81,8 @@ class DBDeviceCmdTest {
         assertEquals(0, getDeviceInfo(db, adminWID, null).getOrThrow().size)
 
         val devKey = CryptoString.fromString(
-            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN")!!
+            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN"
+        )!!
         val fakeInfo = CryptoString.fromString("AES256:ABCDEFG123456789")!!
         addDevice(db, adminWID, devid, devKey, fakeInfo, DeviceStatus.Pending)?.let { throw it }
 
@@ -105,7 +107,8 @@ class DBDeviceCmdTest {
         assertEquals(fakeInfo2, getDeviceInfo(db, adminWID, devid).getOrThrow()[0].second)
 
         val devKey2 = CryptoString.fromString(
-            "CURVE25519:mO?WWA-k2B2O|Z%fA`~s3^\$iiN{5R->#jxO@cy6{")!!
+            "CURVE25519:mO?WWA-k2B2O|Z%fA`~s3^\$iiN{5R->#jxO@cy6{"
+        )!!
         updateDeviceKey(db, adminWID, devid, devKey2)?.let { throw it }
         assertEquals(devKey2, getDeviceKey(db, adminWID, devid).getOrThrow())
         assertNull(getDeviceKey(db, adminWID, badID).getOrThrow())
@@ -130,8 +133,10 @@ class DBDeviceCmdTest {
         assertNull(getKeyInfo(db, adminWID, devid).getOrThrow())
         addKeyInfo(db, adminWID, devid, testPath)?.let { throw it }
 
-        val rs = db.query("""SELECT wid,devid,path FROM keyinfo WHERE wid=? AND devid=?""",
-            adminWID, devid).getOrThrow()
+        val rs = db.query(
+            """SELECT wid,devid,path FROM keyinfo WHERE wid=? AND devid=?""",
+            adminWID, devid
+        ).getOrThrow()
         assert(rs.next())
         assertEquals(adminWID.toString(), rs.getString("wid"))
         assertEquals(devid.toString(), rs.getString("devid"))

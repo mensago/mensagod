@@ -1,4 +1,4 @@
-package mensagod.commands
+package mensagod.handlers
 
 import keznacl.UnsupportedAlgorithmException
 import libkeycard.RandomID
@@ -44,14 +44,17 @@ fun commandDownload(state: ClientSession) {
         return
     }
     if (!exists) {
-        ServerResponse(404, "RESOURCE NOT FOUND").sendCatching(state.conn,
-            "Error sending 404 error to client for wid ${state.wid}")
+        ServerResponse(404, "RESOURCE NOT FOUND").sendCatching(
+            state.conn,
+            "Error sending 404 error to client for wid ${state.wid}"
+        )
         return
     }
 
     val offset = if (state.message.hasField("Offset")) {
-        try { state.message.data["Offset"]!!.toLong() }
-        catch (e: Exception) {
+        try {
+            state.message.data["Offset"]!!.toLong()
+        } catch (e: Exception) {
             QuickResponse.sendBadRequest("Invalid value for Offset", state.conn)
             return
         }
@@ -66,8 +69,10 @@ fun commandDownload(state: ClientSession) {
         return
     }
 
-    ServerResponse(100, "CONTINUE", "",
-        mutableMapOf("Size" to fileSize.toString())).send(state.conn)?.let {
+    ServerResponse(
+        100, "CONTINUE", "",
+        mutableMapOf("Size" to fileSize.toString())
+    ).send(state.conn)?.let {
         logDebug("commandDownload: Error sending continue message for wid ${state.wid!!}: $it")
         return
     }
@@ -92,7 +97,7 @@ fun commandDownload(state: ClientSession) {
 fun commandUpload(state: ClientSession) {
 
     if (!state.requireLogin()) return
-    state.message.validate(setOf("Size", "Path", "Hash"))?.let{
+    state.message.validate(setOf("Size", "Path", "Hash"))?.let {
         QuickResponse.sendBadRequest("Missing required field $it", state.conn)
         return
     }
@@ -106,17 +111,20 @@ fun commandUpload(state: ClientSession) {
     // Both TempName and Offset must be present when resuming
     val hasTempName = state.message.hasField("TempName")
     val hasOffset = state.message.hasField("Offset")
-    if ( (hasTempName && !hasOffset) || (!hasTempName && hasOffset)) {
-        QuickResponse.sendBadRequest("Upload resume requires both TempName and Offset fields",
-            state.conn)
+    if ((hasTempName && !hasOffset) || (!hasTempName && hasOffset)) {
+        QuickResponse.sendBadRequest(
+            "Upload resume requires both TempName and Offset fields",
+            state.conn
+        )
         return
     }
 
     val lfs = LocalFS.get()
     val replacesPath = state.getPath("Replaces", false)
     if (replacesPath != null) {
-        val handle = try { lfs.entry(replacesPath) }
-        catch (e: SecurityException) {
+        val handle = try {
+            lfs.entry(replacesPath)
+        } catch (e: SecurityException) {
             logError("Error opening path $replacesPath: $e")
             QuickResponse.sendInternalError("commandUpload.1 error", state.conn)
             return
@@ -137,8 +145,9 @@ fun commandUpload(state: ClientSession) {
         return
     }
 
-    val fileSize = try { state.message.data["Size"]!!.toLong() }
-    catch (e: Exception) {
+    val fileSize = try {
+        state.message.data["Size"]!!.toLong()
+    } catch (e: Exception) {
         QuickResponse.sendBadRequest("Invalid value for Size", state.conn)
         return
     }
@@ -165,8 +174,9 @@ fun commandUpload(state: ClientSession) {
         return
     }
 
-    val uploadPathHandle = try { lfs.entry(uploadPath) }
-    catch (e: SecurityException) {
+    val uploadPathHandle = try {
+        lfs.entry(uploadPath)
+    } catch (e: SecurityException) {
         logError("Error opening path $uploadPath: $e")
         QuickResponse.sendInternalError("commandUpload.3 error", state.conn)
         return
@@ -189,8 +199,9 @@ fun commandUpload(state: ClientSession) {
             return
         }
 
-        resumeOffset = try { state.message.data["Offset"]!!.toLong() }
-        catch (e: Exception) {
+        resumeOffset = try {
+            state.message.data["Offset"]!!.toLong()
+        } catch (e: Exception) {
             QuickResponse.sendBadRequest("Invalid value for field Offset", state.conn)
             return
         }
@@ -202,8 +213,10 @@ fun commandUpload(state: ClientSession) {
 
     val config = ServerConfig.get()
     if (fileSize > config.getInteger("performance.max_file_size")!! * 0x10_000) {
-        ServerResponse(414, "LIMIT REACHED",
-            "File size greater than max allowed on server")
+        ServerResponse(
+            414, "LIMIT REACHED",
+            "File size greater than max allowed on server"
+        )
             .sendCatching(state.conn, "Client requested file larger than configured max")
         return
     }
@@ -218,8 +231,10 @@ fun commandUpload(state: ClientSession) {
     }
 
     if (quotaInfo.second > 0 && quotaInfo.first + fileSize > quotaInfo.second) {
-        ServerResponse(409, "QUOTA INSUFFICIENT",
-            "Your account lacks sufficient space for the file")
+        ServerResponse(
+            409, "QUOTA INSUFFICIENT",
+            "Your account lacks sufficient space for the file"
+        )
             .sendCatching(state.conn, "Client requested file larger than free space")
         return
     }
@@ -232,24 +247,28 @@ fun commandUpload(state: ClientSession) {
 
     ServerResponse(100, "CONTINUE", "", mutableMapOf("TempName" to tempName))
         .send(state.conn)?.let {
-        logDebug("commandUpload: Error sending continue message for wid ${state.wid!!}: $it")
-        return
-    }
+            logDebug("commandUpload: Error sending continue message for wid ${state.wid!!}: $it")
+            return
+        }
 
     val tempHandle = lfs.entry(tempPath)
     state.readFileData(fileSize, tempHandle, resumeOffset)?.let {
         // Transfer was interrupted. We won't delete the file--we will leave it so the client can
         // attempt to resume the upload later.
-        ServerResponse(305, "INTERRUPTED",
-            "Interruption source: $it")
+        ServerResponse(
+            305, "INTERRUPTED",
+            "Interruption source: $it"
+        )
             .sendCatching(state.conn, "Upload interrupted for wid ${state.wid}")
         return
     }
 
     val serverHash = tempHandle.hashFile(clientHash.prefix).getOrElse {
         if (it is UnsupportedAlgorithmException) {
-            ServerResponse(309, "UNSUPPORTED ALGORITHM",
-                "Hash algorithm ${clientHash.prefix} not unsupported")
+            ServerResponse(
+                309, "UNSUPPORTED ALGORITHM",
+                "Hash algorithm ${clientHash.prefix} not unsupported"
+            )
                 .sendCatching(state.conn, "Client requested unsupported hash algorithm")
         } else {
             logError("commandUpload: Error hashing file: $it")
@@ -262,8 +281,10 @@ fun commandUpload(state: ClientSession) {
         tempHandle.delete()?.let {
             logError("commandUpload: Error deleting invalid temp file: $it")
         }
-        ServerResponse(410, "HASH MISMATCH").sendCatching(state.conn,
-            "Hash mismatch on uploaded file")
+        ServerResponse(410, "HASH MISMATCH").sendCatching(
+            state.conn,
+            "Hash mismatch on uploaded file"
+        )
         return
     }
 
@@ -276,10 +297,12 @@ fun commandUpload(state: ClientSession) {
     if (replacesPath != null) {
         lfs.withLock(replacesPath) { lfs.entry(it).delete() }
 
-        addUpdateRecord(db, state.wid!!, UpdateRecord(
-            RandomID.generate(), UpdateType.Replace, "$replacesPath:$uploadPath",
-            unixTime.toString(), state.devid!!
-        ))
+        addUpdateRecord(
+            db, state.wid!!, UpdateRecord(
+                RandomID.generate(), UpdateType.Replace, "$replacesPath:$uploadPath",
+                unixTime.toString(), state.devid!!
+            )
+        )
     } else {
         modifyQuotaUsage(db, state.wid!!, fileSize).getOrElse {
             logError("commandUpload: Error adjusting quota usage: $it")
@@ -287,15 +310,19 @@ fun commandUpload(state: ClientSession) {
             return
         }
 
-        addUpdateRecord(db, state.wid!!, UpdateRecord(
-            RandomID.generate(), UpdateType.Create, uploadPath.toString(),
-            unixTime.toString(), state.devid!!
-        ))
+        addUpdateRecord(
+            db, state.wid!!, UpdateRecord(
+                RandomID.generate(), UpdateType.Create, uploadPath.toString(),
+                unixTime.toString(), state.devid!!
+            )
+        )
     }
 
     val ok = ServerResponse(200, "OK")
     ok.data["FileName"] = tempHandle.path.basename()
-    ok.sendCatching(state.conn,
-        "commandUpload: Couldn't send confirmation response for wid = ${state.wid}")
+    ok.sendCatching(
+        state.conn,
+        "commandUpload: Couldn't send confirmation response for wid = ${state.wid}"
+    )
 }
 

@@ -1,4 +1,4 @@
-package mensagod.commands
+package mensagod.handlers
 
 import keznacl.Argon2idPassword
 import keznacl.getSupportedAsymmetricAlgorithms

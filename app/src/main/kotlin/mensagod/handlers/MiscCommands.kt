@@ -1,4 +1,4 @@
-package mensagod.commands
+package mensagod.handlers
 
 import libkeycard.MAddress
 import libmensago.ServerResponse
@@ -28,7 +28,9 @@ fun commandGetWID(state: ClientSession) {
 
 /** Command used when the client's command isn't recognized */
 fun commandUnrecognized(state: ClientSession) {
-    ServerResponse(400, "BAD REQUEST",
-        "Unrecognized command '${state.message.action}'")
+    ServerResponse(
+        400, "BAD REQUEST",
+        "Unrecognized command '${state.message.action}'"
+    )
         .sendCatching(state.conn, "commandUnrecognized message send error")
 }

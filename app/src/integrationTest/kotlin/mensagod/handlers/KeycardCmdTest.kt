@@ -1,4 +1,4 @@
-package mensagod.commands
+package mensagod.handlers
 
 import keznacl.CryptoString
 import keznacl.SigningPair
@@ -28,7 +28,7 @@ class KeycardCmdTest {
 
     @Test
     fun commandAddEntryTest() {
-        setupTest("commands.addEntry")
+        setupTest("handlers.addEntry")
 
         val db = DBConn()
         val orgEntry = OrgEntry.fromString(getEntries(db, null, 0U).getOrThrow()[0])
@@ -155,7 +155,7 @@ class KeycardCmdTest {
 
     @Test
     fun commandGetOrgCardTest() {
-        setupTest("commands.getOrgCard")
+        setupTest("handlers.getOrgCard")
 
         // Test Case #1: Successfully get organization card
         CommandTest(
@@ -258,7 +258,7 @@ class KeycardCmdTest {
 
     @Test
     fun commandIsCurrentTest() {
-        setupTest("commands.getUserCard")
+        setupTest("handlers.getUserCard")
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
@@ -319,7 +319,7 @@ class KeycardCmdTest {
 
     @Test
     fun commandGetUserCardTest() {
-        setupTest("commands.getUserCard")
+        setupTest("handlers.getUserCard")
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 

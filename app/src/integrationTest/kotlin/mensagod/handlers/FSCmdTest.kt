@@ -1,4 +1,4 @@
-package mensagod.commands
+package mensagod.handlers
 
 import keznacl.hash
 import keznacl.hashFile
@@ -25,7 +25,7 @@ class FSCmdTest {
 
     @Test
     fun downloadTest() {
-        val setupData = setupTest("commands.downloadTest")
+        val setupData = setupTest("handlers.downloadTest")
         ServerConfig.load().getOrThrow()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
@@ -37,20 +37,27 @@ class FSCmdTest {
         val testFilePath = Paths.get(adminTopPath.toString(), fileInfo.first)
         val fileHash = hashFile(testFilePath.toString()).getOrThrow()
 
-        CommandTest("download.1",
+        CommandTest(
+            "download.1",
             SessionState(
-                ClientRequest("DOWNLOAD", mutableMapOf(
-                "Path" to "/ wsp $adminWID ${fileInfo.first}",
-            )), adminWID, LoginState.LoggedIn, devid), ::commandDownload) { port ->
+                ClientRequest(
+                    "DOWNLOAD", mutableMapOf(
+                        "Path" to "/ wsp $adminWID ${fileInfo.first}",
+                    )
+                ), adminWID, LoginState.LoggedIn, devid
+            ), ::commandDownload
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(100)
             response.assertField("Size") { it == "1024" }
 
-            ClientRequest("DOWNLOAD", mutableMapOf(
-                "Path" to "/ wsp $adminWID ${fileInfo.first}",
-                "Size" to response.data["Size"]!!,
-            )).send(socket.getOutputStream())
+            ClientRequest(
+                "DOWNLOAD", mutableMapOf(
+                    "Path" to "/ wsp $adminWID ${fileInfo.first}",
+                    "Size" to response.data["Size"]!!,
+                )
+            ).send(socket.getOutputStream())
 
             val buffer = ByteArray(response.data["Size"]!!.toInt())
             val istream = socket.getInputStream()
@@ -62,21 +69,28 @@ class FSCmdTest {
         }.run()
 
         // Test Case #2: Successful resume
-        CommandTest("download.2",
+        CommandTest(
+            "download.2",
             SessionState(
-                ClientRequest("DOWNLOAD", mutableMapOf(
-                "Path" to "/ wsp $adminWID ${fileInfo.first}",
-                "Offset" to "512",
-            )), adminWID, LoginState.LoggedIn, devid), ::commandDownload) { port ->
+                ClientRequest(
+                    "DOWNLOAD", mutableMapOf(
+                        "Path" to "/ wsp $adminWID ${fileInfo.first}",
+                        "Offset" to "512",
+                    )
+                ), adminWID, LoginState.LoggedIn, devid
+            ), ::commandDownload
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(100)
             response.assertField("Size") { it == "1024" }
 
-            ClientRequest("DOWNLOAD", mutableMapOf(
-                "Path" to "/ wsp $adminWID ${fileInfo.first}",
-                "Size" to response.data["Size"]!!,
-            )).send(socket.getOutputStream())
+            ClientRequest(
+                "DOWNLOAD", mutableMapOf(
+                    "Path" to "/ wsp $adminWID ${fileInfo.first}",
+                    "Size" to response.data["Size"]!!,
+                )
+            ).send(socket.getOutputStream())
 
             val buffer = ByteArray(response.data["Size"]!!.toInt())
             val istream = socket.getInputStream()
@@ -88,7 +102,7 @@ class FSCmdTest {
 
     @Test
     fun uploadTest() {
-        val setupData = setupTest("commands.uploadTest")
+        val setupData = setupTest("handlers.uploadTest")
         ServerConfig.load().getOrThrow()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
@@ -99,13 +113,18 @@ class FSCmdTest {
         val fileHash = hash(fileData).getOrThrow()
         val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
 
-        CommandTest("upload.1",
+        CommandTest(
+            "upload.1",
             SessionState(
-                ClientRequest("UPLOAD", mutableMapOf(
-                "Size" to "1024",
-                "Hash" to fileHash.toString(),
-                "Path" to "/ wsp $adminWID",
-            )), adminWID, LoginState.LoggedIn, devid), ::commandUpload) { port ->
+                ClientRequest(
+                    "UPLOAD", mutableMapOf(
+                        "Size" to "1024",
+                        "Hash" to fileHash.toString(),
+                        "Path" to "/ wsp $adminWID",
+                    )
+                ), adminWID, LoginState.LoggedIn, devid
+            ), ::commandUpload
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(100)
@@ -120,23 +139,31 @@ class FSCmdTest {
         // Test Case #2: Successful resume
 
         // Wow. Creating a temporary file which simulates interruption is a lot of work. :(
-        val adminTempPath = Paths.get(setupData.testPath, "topdir", "tmp",
-            adminWID.toString())
+        val adminTempPath = Paths.get(
+            setupData.testPath, "topdir", "tmp",
+            adminWID.toString()
+        )
         adminTempPath.toFile().mkdirs()
-        val tempName = "${Instant.now().epochSecond}.1024.${UUID.randomUUID().toString().lowercase()}"
+        val tempName =
+            "${Instant.now().epochSecond}.1024.${UUID.randomUUID().toString().lowercase()}"
         val tempFile = Paths.get(adminTempPath.toString(), tempName).toFile()
         tempFile.createNewFile()
         tempFile.writeText("0".repeat(512))
 
-        CommandTest("upload.2",
+        CommandTest(
+            "upload.2",
             SessionState(
-                ClientRequest("UPLOAD", mutableMapOf(
-                "Size" to "1024",
-                "Hash" to fileHash.toString(),
-                "Path" to "/ wsp $adminWID",
-                "TempName" to tempName,
-                "Offset" to "512",
-            )), adminWID, LoginState.LoggedIn, devid), ::commandUpload) { port ->
+                ClientRequest(
+                    "UPLOAD", mutableMapOf(
+                        "Size" to "1024",
+                        "Hash" to fileHash.toString(),
+                        "Path" to "/ wsp $adminWID",
+                        "TempName" to tempName,
+                        "Offset" to "512",
+                    )
+                ), adminWID, LoginState.LoggedIn, devid
+            ), ::commandUpload
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(100)
@@ -157,7 +184,7 @@ class FSCmdTest {
 
     @Test
     fun uploadReplaceTest() {
-        val setupData = setupTest("commands.uploadReplaceTest")
+        val setupData = setupTest("handlers.uploadReplaceTest")
         ServerConfig.load().getOrThrow()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
@@ -169,14 +196,19 @@ class FSCmdTest {
         val fileHash = hash(fileData).getOrThrow()
         val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
 
-        CommandTest("uploadReplace.1",
+        CommandTest(
+            "uploadReplace.1",
             SessionState(
-                ClientRequest("UPLOAD", mutableMapOf(
-                "Size" to "1024",
-                "Hash" to fileHash.toString(),
-                "Path" to "/ wsp $adminWID",
-                "Replaces" to "/ wsp $adminWID ${replacedInfo.first}"
-            )), adminWID, LoginState.LoggedIn, devid), ::commandUpload) { port ->
+                ClientRequest(
+                    "UPLOAD", mutableMapOf(
+                        "Size" to "1024",
+                        "Hash" to fileHash.toString(),
+                        "Path" to "/ wsp $adminWID",
+                        "Replaces" to "/ wsp $adminWID ${replacedInfo.first}"
+                    )
+                ), adminWID, LoginState.LoggedIn, devid
+            ), ::commandUpload
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(100)
 
@@ -194,7 +226,7 @@ class FSCmdTest {
 
     @Test
     fun uploadErrorsTest() {
-        val setupData = setupTest("commands.uploadErrorsTest")
+        val setupData = setupTest("handlers.uploadErrorsTest")
         ServerConfig.load().getOrThrow()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
@@ -207,25 +239,35 @@ class FSCmdTest {
         setQuota(DBConn(), adminWID, 8192)
 
         // Test Case #1: Quota limit
-        CommandTest("uploadErrors.1",
+        CommandTest(
+            "uploadErrors.1",
             SessionState(
-                ClientRequest("UPLOAD", mutableMapOf(
-                "Size" to "10240",
-                "Hash" to fileHash.toString(),
-                "Path" to "/ wsp $adminWID",
-            )), adminWID, LoginState.LoggedIn, devid), ::commandUpload) { port ->
+                ClientRequest(
+                    "UPLOAD", mutableMapOf(
+                        "Size" to "10240",
+                        "Hash" to fileHash.toString(),
+                        "Path" to "/ wsp $adminWID",
+                    )
+                ), adminWID, LoginState.LoggedIn, devid
+            ), ::commandUpload
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(409)
         }.run()
 
         // Test Case #2: Hash mismatch
-        CommandTest("uploadErrors.2",
+        CommandTest(
+            "uploadErrors.2",
             SessionState(
-                ClientRequest("UPLOAD", mutableMapOf(
-                "Size" to "1024",
-                "Hash" to "BLAKE2B-256:asdcvbed",
-                "Path" to "/ wsp $adminWID",
-            )), adminWID, LoginState.LoggedIn, devid), ::commandUpload) { port ->
+                ClientRequest(
+                    "UPLOAD", mutableMapOf(
+                        "Size" to "1024",
+                        "Hash" to "BLAKE2B-256:asdcvbed",
+                        "Path" to "/ wsp $adminWID",
+                    )
+                ), adminWID, LoginState.LoggedIn, devid
+            ), ::commandUpload
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(100)
 
@@ -235,13 +277,18 @@ class FSCmdTest {
         }.run()
 
         // Test Case #3: Destination doesn't exist
-        CommandTest("uploadErrors.3",
+        CommandTest(
+            "uploadErrors.3",
             SessionState(
-                ClientRequest("UPLOAD", mutableMapOf(
-                "Size" to "1024",
-                "Hash" to fileHash.toString(),
-                "Path" to "/ wsp $adminWID 12db8776-cc91-4ed9-8dbc-efcc3bf904ac",
-            )), adminWID, LoginState.LoggedIn, devid), ::commandUpload) { port ->
+                ClientRequest(
+                    "UPLOAD", mutableMapOf(
+                        "Size" to "1024",
+                        "Hash" to fileHash.toString(),
+                        "Path" to "/ wsp $adminWID 12db8776-cc91-4ed9-8dbc-efcc3bf904ac",
+                    )
+                ), adminWID, LoginState.LoggedIn, devid
+            ), ::commandUpload
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(404)
         }.run()

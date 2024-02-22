@@ -9,8 +9,8 @@ import libmensago.MServerPath
 import libmensago.ResourceNotFoundException
 import libmensago.ServerResponse
 import mensagod.*
-import mensagod.commands.DeviceStatus
 import mensagod.dbcmds.*
+import mensagod.handlers.DeviceStatus
 import org.apache.commons.io.FileUtils
 import java.io.File
 import java.net.ProtocolException
@@ -135,14 +135,16 @@ val USER_PROFILE_DATA = mutableMapOf(
 fun getPathForTest(testName: String): String? {
     return try {
         Paths.get("build", "testfiles", testName).toAbsolutePath().toString()
-    } catch (e: Exception) { null }
+    } catch (e: Exception) {
+        null
+    }
 }
 
 /** Creates a new test folder for file-based tests and returns the top-level path created. */
 fun makeTestFolder(name: String): String {
 
     val testdirStr = getPathForTest(name)!!
-    val topdirStr = Paths.get(testdirStr,"topdir").toString()
+    val topdirStr = Paths.get(testdirStr, "topdir").toString()
     val topdir = File(testdirStr)
     if (topdir.exists())
         FileUtils.cleanDirectory(topdir)
@@ -172,8 +174,10 @@ fun initDB(db: Connection): Map<String, String> {
     val rootEntry = OrgEntry()
     rootEntry.setFieldInteger("Index", 1)
     rootEntry.setField("Name", "Example, Inc.")
-    rootEntry.setField("Contact-Admin",
-        "c590b44c-798d-4055-8d72-725a7942f3f6/example.com")
+    rootEntry.setField(
+        "Contact-Admin",
+        "c590b44c-798d-4055-8d72-725a7942f3f6/example.com"
+    )
     rootEntry.setField("Language", "en")
     rootEntry.setField("Domain", "example.com")
     rootEntry.setField("Primary-Verification-Key", initialOSPair.publicKey.toString())
@@ -188,24 +192,30 @@ fun initDB(db: Connection): Map<String, String> {
     val orgCard = Keycard.new("Organization")!!
     orgCard.entries.add(rootEntry)
 
-    var stmt = db.prepareStatement("""INSERT INTO keycards(owner,creationtime,index,entry,fingerprint)
-        VALUES('organization',?,?,?,?);""")
+    var stmt = db.prepareStatement(
+        """INSERT INTO keycards(owner,creationtime,index,entry,fingerprint)
+        VALUES('organization',?,?,?,?);"""
+    )
     stmt.setString(1, rootEntry.getFieldString("Timestamp")!!)
     stmt.setInt(2, rootEntry.getFieldInteger("Index")!!)
     stmt.setString(3, rootEntry.getFullText(null).getOrThrow())
     stmt.setString(4, rootEntry.getAuthString("Hash")!!.toString())
     stmt.execute()
 
-    stmt = db.prepareStatement("""INSERT INTO orgkeys(creationtime,pubkey,privkey,purpose,fingerprint)
-        VALUES(?,?,?,'encrypt',?);""")
+    stmt = db.prepareStatement(
+        """INSERT INTO orgkeys(creationtime,pubkey,privkey,purpose,fingerprint)
+        VALUES(?,?,?,'encrypt',?);"""
+    )
     stmt.setString(1, rootEntry.getFieldString("Timestamp")!!)
     stmt.setString(2, initialOEPair.publicKey.toString())
     stmt.setString(3, initialOEPair.privateKey.toString())
     stmt.setString(4, initialOEPair.publicKey.calcHash().getOrThrow().toString())
     stmt.execute()
 
-    stmt = db.prepareStatement("""INSERT INTO orgkeys(creationtime,pubkey,privkey,purpose,fingerprint)
-        VALUES(?,?,?,'sign',?);""")
+    stmt = db.prepareStatement(
+        """INSERT INTO orgkeys(creationtime,pubkey,privkey,purpose,fingerprint)
+        VALUES(?,?,?,'sign',?);"""
+    )
     stmt.setString(1, rootEntry.getFieldString("Timestamp")!!)
     stmt.setString(2, initialOSPair.publicKey.toString())
     stmt.setString(3, initialOSPair.privateKey.toString())
@@ -218,32 +228,40 @@ fun initDB(db: Connection): Map<String, String> {
 
     val newEntry = orgCard.entries[1]
 
-    stmt = db.prepareStatement("""INSERT INTO keycards(owner,creationtime,index,entry,fingerprint)
-        VALUES('organization',?,?,?,?);""")
+    stmt = db.prepareStatement(
+        """INSERT INTO keycards(owner,creationtime,index,entry,fingerprint)
+        VALUES('organization',?,?,?,?);"""
+    )
     stmt.setString(1, newEntry.getFieldString("Timestamp")!!)
     stmt.setInt(2, newEntry.getFieldInteger("Index")!!)
     stmt.setString(3, newEntry.getFullText(null).getOrThrow())
     stmt.setString(4, newEntry.getAuthString("Hash")!!.toString())
     stmt.execute()
 
-    stmt = db.prepareStatement("""UPDATE orgkeys SET creationtime=?,pubkey=?,privkey=?,fingerprint=?
-        WHERE purpose='encrypt';""")
+    stmt = db.prepareStatement(
+        """UPDATE orgkeys SET creationtime=?,pubkey=?,privkey=?,fingerprint=?
+        WHERE purpose='encrypt';"""
+    )
     stmt.setString(1, newEntry.getFieldString("Timestamp")!!)
     stmt.setString(2, keys["encryption.public"].toString())
     stmt.setString(3, keys["encryption.private"].toString())
     stmt.setString(4, keys["encryption.public"]!!.calcHash().getOrThrow().toString())
     stmt.execute()
 
-    stmt = db.prepareStatement("""UPDATE orgkeys SET creationtime=?,pubkey=?,privkey=?,fingerprint=?
-        WHERE purpose='sign';""")
+    stmt = db.prepareStatement(
+        """UPDATE orgkeys SET creationtime=?,pubkey=?,privkey=?,fingerprint=?
+        WHERE purpose='sign';"""
+    )
     stmt.setString(1, newEntry.getFieldString("Timestamp")!!)
     stmt.setString(2, keys["primary.public"].toString())
     stmt.setString(3, keys["primary.private"].toString())
     stmt.setString(4, keys["primary.public"]!!.calcHash().getOrThrow().toString())
     stmt.execute()
 
-    stmt = db.prepareStatement("""INSERT INTO orgkeys(creationtime,pubkey,privkey,purpose,fingerprint)
-        VALUES(?,?,?,'altsign',?);""")
+    stmt = db.prepareStatement(
+        """INSERT INTO orgkeys(creationtime,pubkey,privkey,purpose,fingerprint)
+        VALUES(?,?,?,'altsign',?);"""
+    )
     stmt.setString(1, rootEntry.getFieldString("Timestamp")!!)
     stmt.setString(2, initialOSPair.publicKey.toString())
     stmt.setString(3, initialOSPair.privateKey.toString())
@@ -253,8 +271,10 @@ fun initDB(db: Connection): Map<String, String> {
     // Preregister the admin account
 
     val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"]!!)!!
-    stmt = db.prepareStatement("""INSERT INTO prereg(wid,uid,domain,regcode) 
-        VALUES(?,'admin','example.com',?);""")
+    stmt = db.prepareStatement(
+        """INSERT INTO prereg(wid,uid,domain,regcode) 
+        VALUES(?,'admin','example.com',?);"""
+    )
     stmt.setString(1, adminWID.toString())
     stmt.setString(2, ADMIN_PROFILE_DATA["reghash"]!!)
     stmt.execute()
@@ -262,8 +282,10 @@ fun initDB(db: Connection): Map<String, String> {
     // Set up abuse/support forwarding to admin
 
     val abuseWID = RandomID.fromString("f8cfdbdf-62fe-4275-b490-736f5fdc82e3")!!
-    stmt = db.prepareStatement("""INSERT INTO workspaces(wid,uid,domain,password,passtype,status,wtype) 
-        VALUES(?,'abuse','example.com','-', '','active','alias');""")
+    stmt = db.prepareStatement(
+        """INSERT INTO workspaces(wid,uid,domain,password,passtype,status,wtype) 
+        VALUES(?,'abuse','example.com','-', '','active','alias');"""
+    )
     stmt.setString(1, abuseWID.toString())
     stmt.execute()
 
@@ -273,8 +295,10 @@ fun initDB(db: Connection): Map<String, String> {
     stmt.execute()
 
     val supportWID = RandomID.fromString("f0309ef1-a155-4655-836f-55173cc1bc3b")!!
-    stmt = db.prepareStatement("""INSERT INTO workspaces(wid,uid,domain,password,passtype,status,wtype) 
-        VALUES(?,'support','example.com','-', '','active','alias');""")
+    stmt = db.prepareStatement(
+        """INSERT INTO workspaces(wid,uid,domain,password,passtype,status,wtype) 
+        VALUES(?,'support','example.com','-', '','active','alias');"""
+    )
     stmt.setString(1, supportWID.toString())
     stmt.execute()
 
@@ -296,11 +320,14 @@ fun initDB(db: Connection): Map<String, String> {
 }
 
 /** Test setup command to preregister a user */
-fun preregUser(db: DBConn, uid: String? = null, regcode: String? = null, reghash: String? = null,
-               wid: String? = null): Map<String,String> {
+fun preregUser(
+    db: DBConn, uid: String? = null, regcode: String? = null, reghash: String? = null,
+    wid: String? = null
+): Map<String, String> {
 
     val rcode = regcode ?: gRegCodeGenerator.getPassphrase(
-        ServerConfig.get().getInteger("security.diceware_wordcount")!!)
+        ServerConfig.get().getInteger("security.diceware_wordcount")!!
+    )
     val rhash = reghash ?: Argon2idPassword().updateHash(rcode).getOrThrow()
 
     val outWID = RandomID.fromString(wid) ?: RandomID.generate()
@@ -326,9 +353,11 @@ fun setupAdmin(db: DBConn) {
     val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
     val devkey = CryptoString.fromString(ADMIN_PROFILE_DATA["device.public"]!!)!!
     val fakeInfo = CryptoString.fromString("XSALSA20:ABCDEFG1234567890")!!
-    addWorkspace(db, adminWID, adminUID, gServerDomain, ADMIN_PROFILE_DATA["passhash"]!!,
+    addWorkspace(
+        db, adminWID, adminUID, gServerDomain, ADMIN_PROFILE_DATA["passhash"]!!,
         "argon2id", "anXvadxtNJAYa2cUQFqKSQ", "m=65536,t=2,p=1",
-        WorkspaceStatus.Active,WorkspaceType.Individual)?.let { throw it }
+        WorkspaceStatus.Active, WorkspaceType.Individual
+    )?.let { throw it }
     addDevice(db, adminWID, devid, devkey, fakeInfo, DeviceStatus.Registered)?.let { throw it }
     deletePrereg(db, WAddress.fromParts(adminWID, gServerDomain))?.let { throw it }
 }
@@ -342,9 +371,11 @@ fun setupUser(db: DBConn) {
     val devid = RandomID.fromString(USER_PROFILE_DATA["devid"])!!
     val devkey = CryptoString.fromString(USER_PROFILE_DATA["device.public"]!!)!!
     val fakeInfo = CryptoString.fromString("XSALSA20:abcdefg1234567890")!!
-    addWorkspace(db, userWID, userUID, gServerDomain, USER_PROFILE_DATA["passhash"]!!,
+    addWorkspace(
+        db, userWID, userUID, gServerDomain, USER_PROFILE_DATA["passhash"]!!,
         "argon2id", "ejzAtaom5H1y6wnLHvrb7g", "m=65536,t=2,p=1",
-        WorkspaceStatus.Active,WorkspaceType.Individual)?.let { throw it }
+        WorkspaceStatus.Active, WorkspaceType.Individual
+    )?.let { throw it }
     addDevice(db, userWID, devid, devkey, fakeInfo, DeviceStatus.Registered)?.let { throw it }
     deletePrereg(db, WAddress.fromParts(userWID, gServerDomain))?.let { throw it }
 }
@@ -360,8 +391,10 @@ fun setupUser(db: DBConn) {
  *
  * @see ServerConfig
  */
-class SetupData(val config: ServerConfig, val serverSetupData: Map<String, String>,
-                val testPath: String)
+class SetupData(
+    val config: ServerConfig, val serverSetupData: Map<String, String>,
+    val testPath: String
+)
 
 /**
  * Performs all the setup that most server tests will need and returns the path to the test
@@ -372,7 +405,7 @@ fun setupTest(name: String): SetupData {
     initLogging(Paths.get(testpath, "log.txt"), true)
     LocalFS.initialize(Paths.get(testpath, "topdir").toString())?.let { throw it }
     val lfs = LocalFS.get()
-    listOf("wsp","out","tmp","keys").forEach { lfs.entry(MServerPath("/ $it")).makeDirectory() }
+    listOf("wsp", "out", "tmp", "keys").forEach { lfs.entry(MServerPath("/ $it")).makeDirectory() }
 
     val config = ServerConfig.load().getOrThrow()
     gServerDomain = Domain.fromString(config.getString("global.domain"))!!
@@ -390,15 +423,19 @@ fun setupTest(name: String): SetupData {
  * Generate a test file containing nothing but zeroes. If the filename is not specified, a random
  * name will be generated. If the file size is not specified, the file will be between 1 and 10KB
  */
-fun makeTestFile(fileDir: String, fileName: String? = null,
-                 fileSize: Int? = null): Pair<String,Int> {
+fun makeTestFile(
+    fileDir: String, fileName: String? = null,
+    fileSize: Int? = null
+): Pair<String, Int> {
 
     val rng = SecureRandom()
     val realSize = fileSize ?: ((rng.nextInt(10) + 1) * 1024)
 
     val realName = if (fileName.isNullOrEmpty()) {
         "${Instant.now().epochSecond}.$realSize.${UUID.randomUUID().toString().lowercase()}"
-    } else { fileName }
+    } else {
+        fileName
+    }
 
     val fHandle = File(Paths.get(fileDir, realName).toString())
     fHandle.writeBytes("0".repeat(realSize).toByteArray())

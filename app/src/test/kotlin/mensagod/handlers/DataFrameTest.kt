@@ -1,4 +1,4 @@
-package mensagod.commands
+package mensagod.handlers
 
 import libmensago.*
 import org.junit.jupiter.api.Test
@@ -34,8 +34,8 @@ class DataFrameTest {
     private fun generateMultipartMsg(): String {
         val sj = StringBuilder("")
         val multiplier = (MAX_MSG_SIZE / 33) + 1
-        for (i in 1 .. multiplier)
-            sj.append("|${i.toString().padStart(4,'0')}|ABCDEFGHIJKLMNOPQRSTUVWXYZ ")
+        for (i in 1..multiplier)
+            sj.append("|${i.toString().padStart(4, '0')}|ABCDEFGHIJKLMNOPQRSTUVWXYZ ")
         return sj.toString()
     }
 
@@ -65,9 +65,14 @@ class DataFrameTest {
         // Now get and process the first actual data frame
         frame.read(inStream)
         assertEquals(FrameType.MultipartFrame, frame.type)
-        assertEquals(sentMsg.substring(IntRange(0, MAX_MSG_SIZE -1)).length,
-            frame.payload.decodeToString().length)
-        assertEquals(sentMsg.substring(IntRange(0, MAX_MSG_SIZE -1)), frame.payload.decodeToString())
+        assertEquals(
+            sentMsg.substring(IntRange(0, MAX_MSG_SIZE - 1)).length,
+            frame.payload.decodeToString().length
+        )
+        assertEquals(
+            sentMsg.substring(IntRange(0, MAX_MSG_SIZE - 1)),
+            frame.payload.decodeToString()
+        )
         msgParts.addAll(frame.payload.toList())
 
         // Finally deal with the final frame

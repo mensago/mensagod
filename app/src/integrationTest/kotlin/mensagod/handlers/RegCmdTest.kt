@@ -1,4 +1,4 @@
-package mensagod.commands
+package mensagod.handlers
 
 import keznacl.CryptoString
 import libkeycard.RandomID
@@ -18,7 +18,7 @@ import java.net.Socket
 class RegCmdTest {
     @Test
     fun preregTest() {
-        setupTest("commands.preregTest")
+        setupTest("handlers.preregTest")
         val config = ServerConfig.load().getOrThrow()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
@@ -94,14 +94,14 @@ class RegCmdTest {
 
     @Test
     fun regCodeTest() {
-        setupTest("commands.regCodeTest")
+        setupTest("handlers.regCodeTest")
 
         val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
         val devkey = CryptoString.fromString(ADMIN_PROFILE_DATA["device.public"]!!)
 
         // TODO: Update regCodeTest to validate the command better.
         //  the current test implementation allowed Password-Salt to be completely missing
-        
+
         // Test Case #1: Regcode a user
         val db = DBConn()
         val regInfo = preregUser(db, "csimons")

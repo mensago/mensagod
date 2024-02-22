@@ -7,7 +7,7 @@ import libmensago.MServerPath
 import libmensago.NotConnectedException
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
-import mensagod.commands.DeviceStatus
+import mensagod.handlers.DeviceStatus
 
 /**
  * Adds a device to a workspcae. The device's initial last login is set to when this method is
@@ -18,11 +18,15 @@ import mensagod.commands.DeviceStatus
  * @throws java.sql.SQLException Returned for database problems, most likely either with your query
  * or with the connection
  */
-fun addDevice(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString,
-              devInfo: CryptoString, status: DeviceStatus): Throwable? {
+fun addDevice(
+    db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString,
+    devInfo: CryptoString, status: DeviceStatus
+): Throwable? {
     val now = Timestamp()
-    return db.execute("""INSERT INTO iwkspc_devices(wid, devid, devkey, lastlogin, devinfo, status)
-        VALUES(?,?,?,?,?,?)""", wid, devid, devkey, now, devInfo, status)
+    return db.execute(
+        """INSERT INTO iwkspc_devices(wid, devid, devkey, lastlogin, devinfo, status)
+        VALUES(?,?,?,?,?,?)""", wid, devid, devkey, now, devInfo, status
+    )
         .exceptionOrNull()
 }
 
@@ -36,9 +40,11 @@ fun addDevice(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString,
  */
 fun addKeyInfo(db: DBConn, wid: RandomID, devid: RandomID, path: MServerPath): Throwable? {
     db.execute("""DELETE FROM keyinfo WHERE wid=? AND devid=?""", wid, devid)
-        .exceptionOrNull()?.let{ return it }
-    return db.execute("""INSERT INTO keyinfo(wid, devid, path) VALUES(?,?,?) """, wid, devid,
-        path).exceptionOrNull()
+        .exceptionOrNull()?.let { return it }
+    return db.execute(
+        """INSERT INTO keyinfo(wid, devid, path) VALUES(?,?,?) """, wid, devid,
+        path
+    ).exceptionOrNull()
 }
 
 /**
@@ -64,14 +70,19 @@ fun countDevices(db: DBConn, wid: RandomID): Result<Int> {
  * @throws DatabaseCorruptionException Returned if bad data was loaded from the database
  */
 fun getDeviceKey(db: DBConn, wid: RandomID, devid: RandomID): Result<CryptoString?> {
-    val rs = db.query("""SELECT devkey FROM iwkspc_devices WHERE wid=? AND devid=?""",
-        wid, devid).getOrThrow()
+    val rs = db.query(
+        """SELECT devkey FROM iwkspc_devices WHERE wid=? AND devid=?""",
+        wid, devid
+    ).getOrThrow()
     if (!rs.next()) return Result.success(null)
 
     val key = rs.getString("devkey")
     val out = CryptoString.fromString(key)
-        ?: return Result.failure(DatabaseCorruptionException(
-            "Bad device key '$key' for device $devid in workspace $wid"))
+        ?: return Result.failure(
+            DatabaseCorruptionException(
+                "Bad device key '$key' for device $devid in workspace $wid"
+            )
+        )
     return Result.success(out)
 }
 
@@ -87,22 +98,24 @@ fun getDeviceKey(db: DBConn, wid: RandomID, devid: RandomID): Result<CryptoStrin
  * @throws DatabaseCorruptionException Returned if bad data was loaded from the database
  */
 fun getDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID?):
-        Result<List<Pair<RandomID,CryptoString>>> {
+        Result<List<Pair<RandomID, CryptoString>>> {
     val rs = if (devid == null) {
         db.query("""SELECT devid,devinfo FROM iwkspc_devices WHERE wid=? ORDER BY devid""", wid)
             .getOrElse { return Result.failure(it) }
     } else {
-        db.query("""SELECT devid,devinfo FROM iwkspc_devices WHERE wid=? AND devid=?""",
-            wid, devid).getOrElse { return Result.failure(it) }
+        db.query(
+            """SELECT devid,devinfo FROM iwkspc_devices WHERE wid=? AND devid=?""",
+            wid, devid
+        ).getOrElse { return Result.failure(it) }
     }
 
-    val out = mutableListOf<Pair<RandomID,CryptoString>>()
+    val out = mutableListOf<Pair<RandomID, CryptoString>>()
     while (rs.next()) {
         val dev = RandomID.fromString(rs.getString("devid"))
             ?: return Result.failure(DatabaseCorruptionException("Bad device ID in wid $wid"))
         val info = CryptoString.fromString(rs.getString("devinfo"))
             ?: return Result.failure(DatabaseCorruptionException("Bad device info for wid $wid"))
-        out.add(Pair(dev,info))
+        out.add(Pair(dev, info))
     }
     return Result.success(out)
 }
@@ -117,13 +130,18 @@ fun getDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID?):
  * @throws DatabaseCorruptionException Returned if bad data was loaded from the database
  */
 fun getDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID): Result<DeviceStatus> {
-    val rs = db.query("""SELECT status FROM iwkspc_devices WHERE wid=? AND devid=?""",
-        wid, devid).getOrElse { return Result.failure(it) }
+    val rs = db.query(
+        """SELECT status FROM iwkspc_devices WHERE wid=? AND devid=?""",
+        wid, devid
+    ).getOrElse { return Result.failure(it) }
     if (rs.next()) {
         val stat = rs.getString("status")
         val out = DeviceStatus.fromString(stat)
-            ?: return Result.failure(DatabaseCorruptionException(
-                "Bad device status '$stat' for device $devid in workspace $wid"))
+            ?: return Result.failure(
+                DatabaseCorruptionException(
+                    "Bad device status '$stat' for device $devid in workspace $wid"
+                )
+            )
         return Result.success(out)
     }
     return Result.success(DeviceStatus.NotRegistered)
@@ -144,8 +162,11 @@ fun getKeyInfo(db: DBConn, wid: RandomID, devid: RandomID): Result<MServerPath?>
     if (rs.next()) {
         val infopath = rs.getString("path")
         val out = MServerPath.fromString(infopath)
-            ?: return Result.failure(DatabaseCorruptionException(
-                "Bad key info path '$infopath' for device $devid in workspace $wid"))
+            ?: return Result.failure(
+                DatabaseCorruptionException(
+                    "Bad key info path '$infopath' for device $devid in workspace $wid"
+                )
+            )
         return Result.success(out)
     }
     return Result.success(null)
@@ -160,13 +181,18 @@ fun getKeyInfo(db: DBConn, wid: RandomID, devid: RandomID): Result<MServerPath?>
  * @throws DatabaseCorruptionException Returned if bad data was loaded from the database
  */
 fun getLastDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID): Result<Timestamp?> {
-    val rs = db.query("""SELECT lastlogin FROM iwkspc_devices WHERE wid=? AND devid=?""",
-        wid, devid).getOrElse { return Result.failure(it) }
+    val rs = db.query(
+        """SELECT lastlogin FROM iwkspc_devices WHERE wid=? AND devid=?""",
+        wid, devid
+    ).getOrElse { return Result.failure(it) }
     if (rs.next()) {
         val lastlogin = rs.getString("lastlogin")
         val out = Timestamp.fromString(lastlogin)
-            ?: return Result.failure(DatabaseCorruptionException(
-                "Bad device timestamp '$lastlogin' for device $devid in workspace $wid"))
+            ?: return Result.failure(
+                DatabaseCorruptionException(
+                    "Bad device timestamp '$lastlogin' for device $devid in workspace $wid"
+                )
+            )
         return Result.success(out)
     }
     return Result.success(null)
@@ -203,8 +229,10 @@ fun removeKeyInfo(db: DBConn, wid: RandomID, devid: RandomID): Throwable? {
  */
 fun updateDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID, devInfo: CryptoString):
         Throwable? {
-    return db.execute("""UPDATE iwkspc_devices SET devinfo=? WHERE wid=? AND devid=?""",
-        devInfo, wid, devid).exceptionOrNull()
+    return db.execute(
+        """UPDATE iwkspc_devices SET devinfo=? WHERE wid=? AND devid=?""",
+        devInfo, wid, devid
+    ).exceptionOrNull()
 }
 
 /**
@@ -214,8 +242,10 @@ fun updateDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID, devInfo: Crypto
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun updateDeviceKey(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoString): Throwable? {
-    return db.execute("""UPDATE iwkspc_devices SET devkey=? WHERE wid=? AND devid=?""",
-        devkey, wid, devid).exceptionOrNull()
+    return db.execute(
+        """UPDATE iwkspc_devices SET devkey=? WHERE wid=? AND devid=?""",
+        devkey, wid, devid
+    ).exceptionOrNull()
 }
 
 /**
@@ -226,8 +256,10 @@ fun updateDeviceKey(db: DBConn, wid: RandomID, devid: RandomID, devkey: CryptoSt
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun updateDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID): Throwable? {
-    return db.execute("""UPDATE iwkspc_devices SET lastlogin=? WHERE wid=? AND devid=?""",
-        Timestamp(), wid, devid).exceptionOrNull()
+    return db.execute(
+        """UPDATE iwkspc_devices SET lastlogin=? WHERE wid=? AND devid=?""",
+        Timestamp(), wid, devid
+    ).exceptionOrNull()
 }
 
 /**
@@ -238,6 +270,8 @@ fun updateDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID): Throwable? {
  */
 fun updateDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID, status: DeviceStatus):
         Throwable? {
-    return db.execute("""UPDATE iwkspc_devices SET status=? WHERE wid=? AND devid=?""",
-        status, wid, devid).exceptionOrNull()
+    return db.execute(
+        """UPDATE iwkspc_devices SET status=? WHERE wid=? AND devid=?""",
+        status, wid, devid
+    ).exceptionOrNull()
 }

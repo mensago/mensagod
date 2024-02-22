@@ -37,7 +37,7 @@ class DBConn {
         if (conn != null) return Result.success(this)
 
         conn = if (dbArgs.isNotEmpty()) DriverManager.getConnection(dbURL, dbArgs)
-            else DriverManager.getConnection(dbURL)
+        else DriverManager.getConnection(dbURL)
         return Result.success(this)
     }
 
@@ -48,17 +48,23 @@ class DBConn {
      */
     fun disconnect(): Throwable? {
         return try {
-            if (conn != null) { conn!!.close() }
+            if (conn != null) {
+                conn!!.close()
+            }
             conn = null
             null
-        } catch (e: Exception) { e }
+        } catch (e: Exception) {
+            e
+        }
     }
 
     fun isConnected(): Boolean {
         return conn != null
     }
 
-    fun getConnection(): Connection? { return conn }
+    fun getConnection(): Connection? {
+        return conn
+    }
 
     /**
      * Executes a query to the database
@@ -73,8 +79,11 @@ class DBConn {
         if (!isConnected()) return Result.failure(NotConnectedException())
 
         val stmt = prepStatement(q, args).getOrElse { return Result.failure(it) }
-        return try { Result.success(stmt.executeQuery()) }
-        catch (e: Exception) { Result.failure(e) }
+        return try {
+            Result.success(stmt.executeQuery())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     /**
@@ -94,11 +103,13 @@ class DBConn {
             stmt.execute()
             val count = stmt.updateCount
             return Result.success(if (count < 0) null else count)
-        } catch (e : Exception) { Result.failure(e) }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     /**
-     * Adds a command to the internal list of commands to be executed in batch
+     * Adds a command to the internal list of handlers to be executed in batch
      *
      * @throws EmptyDataException if your query is empty
      * @throws NotConnectedException if not connected to the database
@@ -114,11 +125,13 @@ class DBConn {
                 batch = conn!!.createStatement()
             batch!!.addBatch(s)
             null
-        } catch (e: Exception) { e }
+        } catch (e: Exception) {
+            e
+        }
     }
 
     /**
-     * Runs all commands in the internal list created with add()
+     * Runs all handlers in the internal list created with add()
      *
      * @throws EmptyDataException if your query is empty
      * @throws NotConnectedException if not connected to the database
@@ -132,7 +145,9 @@ class DBConn {
             batch!!.executeBatch()
             batch = null
             null
-        } catch (e : Exception) { e }
+        } catch (e: Exception) {
+            e
+        }
     }
 
     /**
@@ -152,7 +167,9 @@ class DBConn {
             val stmt = prepStatement(q, args).getOrThrow()
             val rs = stmt.executeQuery()
             Result.success(rs.next())
-        } catch (e: Exception) { Result.failure(e) }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     /**
@@ -167,24 +184,28 @@ class DBConn {
         // Make sure the ? count in s matches the number of args
         val qCount = s.split("?").size - 1
         if (qCount != args.size)
-            return Result.failure(BadValueException(
-                "Parameter count $qCount does not match number of placeholders"))
+            return Result.failure(
+                BadValueException(
+                    "Parameter count $qCount does not match number of placeholders"
+                )
+            )
 
         // This is an internal call for query() and execute(). The null check is done there.
         return try {
             val out = conn!!.prepareStatement(s)
             for (i in 0 until qCount) {
-                when(args[i]::class.simpleName) {
-                    "ByteArray" -> out.setBytes(i+1, args[i] as ByteArray)
-                    "Boolean" -> out.setBoolean(i+1, args[i] as Boolean)
-                    "Int" -> out.setInt(i+1, args[i] as Int)
-                    "Long" -> out.setLong(i+1, args[i] as Long)
-                    else -> out.setString(i+1, args[i].toString())
+                when (args[i]::class.simpleName) {
+                    "ByteArray" -> out.setBytes(i + 1, args[i] as ByteArray)
+                    "Boolean" -> out.setBoolean(i + 1, args[i] as Boolean)
+                    "Int" -> out.setInt(i + 1, args[i] as Int)
+                    "Long" -> out.setLong(i + 1, args[i] as Long)
+                    else -> out.setString(i + 1, args[i].toString())
                 }
             }
             Result.success(out)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
-        catch (e: Exception) { Result.failure(e) }
     }
 
     companion object {
@@ -199,8 +220,10 @@ class DBConn {
          */
         fun initialize(config: ServerConfig): Throwable? {
             val sb = StringBuilder("jdbc:postgresql://")
-            sb.append(config.getString("database.host") + ":" +
-                    config.getInteger("database.port").toString())
+            sb.append(
+                config.getString("database.host") + ":" +
+                        config.getInteger("database.port").toString()
+            )
             sb.append("/" + config.getString("database.name"))
 
             val args = Properties()

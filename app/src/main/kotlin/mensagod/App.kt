@@ -8,7 +8,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import libkeycard.Domain
 import libmensago.ClientRequest
-import mensagod.commands.processCommand
+import mensagod.handlers.processCommand
 import java.io.IOException
 import java.net.ServerSocket
 import java.net.Socket

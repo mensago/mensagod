@@ -1,4 +1,4 @@
-package mensagod.commands
+package mensagod.handlers
 
 import keznacl.CryptoString
 import keznacl.EncryptionKey
@@ -21,7 +21,7 @@ class LoginCmdTest {
 
     @Test
     fun deviceTest() {
-        setupTest("commands.deviceTest")
+        setupTest("handlers.deviceTest")
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
         // Actually create some fake device info for the test
@@ -88,7 +88,7 @@ class LoginCmdTest {
 
     @Test
     fun loginTest() {
-        val setupData = setupTest("commands.loginTest")
+        val setupData = setupTest("handlers.loginTest")
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         val serverKey = EncryptionKey.fromString(setupData.serverSetupData["oekey"]!!).getOrThrow()
 
@@ -212,7 +212,7 @@ class LoginCmdTest {
 
     @Test
     fun passwordTest() {
-        setupTest("commands.passwordTest")
+        setupTest("handlers.passwordTest")
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
         // Test Case #1: Successful password auth as admin

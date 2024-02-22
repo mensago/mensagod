@@ -1,4 +1,4 @@
-package mensagod.commands
+package mensagod.handlers
 
 import libmensago.MServerPath
 import libmensago.ServerResponse
@@ -17,8 +17,10 @@ fun commandKeyPkg(state: ClientSession) {
     val db = DBConn()
     val devStatus = getDeviceStatus(db, state.wid!!, devID).getOrElse {
         logError("commandKeyPkg.getDeviceState exception for ${state.wid!!}: $it")
-        QuickResponse.sendInternalError("Error getting device status",
-            state.conn)
+        QuickResponse.sendInternalError(
+            "Error getting device status",
+            state.conn
+        )
         return
     }
 
@@ -27,24 +29,33 @@ fun commandKeyPkg(state: ClientSession) {
             QuickResponse.sendForbidden("Device has already been blocked", state.conn)
             return
         }
+
         DeviceStatus.Registered -> {
             ServerResponse(201, "REGISTERED", "Device already registered")
-                .sendCatching(state.conn,
-                    "Error sending device-already-registered message")
+                .sendCatching(
+                    state.conn,
+                    "Error sending device-already-registered message"
+                )
             return
         }
+
         DeviceStatus.NotRegistered -> {
             ServerResponse(404, "NOT FOUND", "Device not registered")
-                .sendCatching(state.conn,
-                    "Error sending device-not-registered message")
+                .sendCatching(
+                    state.conn,
+                    "Error sending device-not-registered message"
+                )
             return
         }
+
         DeviceStatus.Approved -> {
             ServerResponse(203, "APPROVED", "Device already approved")
                 .sendCatching(state.conn, "Error sending device-already-registered message")
             return
         }
-        DeviceStatus.Pending -> { /* Move on from this block */ }
+
+        DeviceStatus.Pending -> { /* Move on from this block */
+        }
     }
 
     // We got this far, so it means that we need to save the key information to a safe place and

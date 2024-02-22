@@ -1,13 +1,15 @@
-package mensagod.commands
+package mensagod.handlers
 
 import mensagod.ClientSession
 import mensagod.SessionState
 import java.net.ServerSocket
 
-class CommandTest(private val testName: String,
-                  private val state: SessionState,
-                  private val command: (ClientSession) -> Unit,
-                  private val clientCode: (port: Int)-> Unit) {
+class CommandTest(
+    private val testName: String,
+    private val state: SessionState,
+    private val command: (ClientSession) -> Unit,
+    private val clientCode: (port: Int) -> Unit
+) {
     private val srvSocket = ServerSocket(0)
 
     fun run() {
@@ -16,12 +18,12 @@ class CommandTest(private val testName: String,
 
         val serverThread = Thread.ofVirtual().let {
             it.name("$testName: Server")
-            it.uncaughtExceptionHandler { _, throwable ->  serverException = throwable }
+            it.uncaughtExceptionHandler { _, throwable -> serverException = throwable }
             it.start { serverWorker(srvSocket, state) }
         }
         Thread.sleep(100)
 
-        val clientThread = Thread.ofVirtual().let{
+        val clientThread = Thread.ofVirtual().let {
             it.name("$testName: Client")
             it.uncaughtExceptionHandler { _, throwable -> clientException = throwable }
             it.start { clientCode(srvSocket.localPort) }

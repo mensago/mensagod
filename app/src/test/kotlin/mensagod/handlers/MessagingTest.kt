@@ -1,4 +1,4 @@
-package mensagod.commands
+package mensagod.handlers
 
 import libmensago.ClientRequest
 import libmensago.FrameType
@@ -23,8 +23,10 @@ class MessagingTest {
         val buffer = outStream.toByteArray()
         assertEquals(FrameType.SingleFrame, FrameType.fromByte(buffer[0]))
 
-        assertEquals("""{"Action":"TEST","Data":{"foo":"bar"}}""",
-            buffer.sliceArray(IntRange(3, buffer.size - 1)).decodeToString())
+        assertEquals(
+            """{"Action":"TEST","Data":{"foo":"bar"}}""",
+            buffer.sliceArray(IntRange(3, buffer.size - 1)).decodeToString()
+        )
     }
 
     @Test
@@ -51,10 +53,10 @@ class MessagingTest {
         assertEquals("test", status.info)
 
         // checkFields()
-        val schema = listOf(Pair("foo",true), Pair("optional", false))
+        val schema = listOf(Pair("foo", true), Pair("optional", false))
         assert(response.checkFields(schema))
 
-        val failSchema = listOf(Pair("foo",true), Pair("missing", true))
+        val failSchema = listOf(Pair("foo", true), Pair("missing", true))
         assert(!response.checkFields(failSchema))
     }
 }
