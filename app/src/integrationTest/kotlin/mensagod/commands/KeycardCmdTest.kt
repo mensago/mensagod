@@ -15,6 +15,7 @@ import mensagod.dbcmds.getEntries
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import testsupport.ADMIN_PROFILE_DATA
+import testsupport.assertField
 import testsupport.assertReturnCode
 import testsupport.setupTest
 import java.net.InetAddress
@@ -34,7 +35,8 @@ class KeycardCmdTest {
             .getOrThrow()
         val crsPair = SigningPair.fromStrings(
             ADMIN_PROFILE_DATA["crsigning.public"]!!,
-            ADMIN_PROFILE_DATA["crsigning.private"]!!).getOrThrow()
+            ADMIN_PROFILE_DATA["crsigning.private"]!!
+        ).getOrThrow()
 
         val rootEntry = UserEntry()
         rootEntry.run {
@@ -43,10 +45,14 @@ class KeycardCmdTest {
             setField("Workspace-ID", ADMIN_PROFILE_DATA["wid"]!!)
             setField("User-ID", ADMIN_PROFILE_DATA["uid"]!!)
             setField("Domain", ADMIN_PROFILE_DATA["domain"]!!)
-            setField("Contact-Request-Verification-Key",
-                ADMIN_PROFILE_DATA["crsigning.public"]!!)
-            setField("Contact-Request-Encryption-Key",
-                ADMIN_PROFILE_DATA["crencryption.public"]!!)
+            setField(
+                "Contact-Request-Verification-Key",
+                ADMIN_PROFILE_DATA["crsigning.public"]!!
+            )
+            setField(
+                "Contact-Request-Encryption-Key",
+                ADMIN_PROFILE_DATA["crencryption.public"]!!
+            )
             setField("Verification-Key", ADMIN_PROFILE_DATA["signing.public"]!!)
             setField("Encryption-Key", ADMIN_PROFILE_DATA["encryption.public"]!!)
         }
@@ -54,19 +60,26 @@ class KeycardCmdTest {
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
         // Test Case #1: Successfully add root user entry
-        CommandTest("addEntry.1",
+        CommandTest(
+            "addEntry.1",
             SessionState(
-                ClientRequest("ADDENTRY", mutableMapOf(
-                "Base-Entry" to rootEntry.getFullText("Organization-Signature").getOrThrow()
-            )), adminWID, LoginState.LoggedIn), ::commandAddEntry) { port ->
+                ClientRequest(
+                    "ADDENTRY", mutableMapOf(
+                        "Base-Entry" to rootEntry.getFullText("Organization-Signature").getOrThrow()
+                    )
+                ), adminWID, LoginState.LoggedIn
+            ), ::commandAddEntry
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
             response.assertReturnCode(100)
             assert(response.data.containsKey("Organization-Signature"))
             rootEntry.run {
-                addAuthString("Organization-Signature",
-                    CryptoString.fromString(response.data["Organization-Signature"]!!)!!)
+                addAuthString(
+                    "Organization-Signature",
+                    CryptoString.fromString(response.data["Organization-Signature"]!!)!!
+                )
                     ?.let { throw it }
                 addAuthString("Previous-Hash", orgEntry.getAuthString("Hash")!!)
                     ?.let { throw it }
@@ -74,12 +87,14 @@ class KeycardCmdTest {
                 sign("User-Signature", crsPair)?.let { throw it }
             }
 
-            ClientRequest("ADDENTRY", mutableMapOf(
-                "Base-Entry" to rootEntry.getFullText(null).getOrThrow(),
-                "Previous-Hash" to rootEntry.getAuthString("Previous-Hash")!!.toString(),
-                "Hash" to rootEntry.getAuthString("Hash")!!.toString(),
-                "User-Signature" to rootEntry.getAuthString("User-Signature")!!.toString()
-            )).send(socket.getOutputStream())
+            ClientRequest(
+                "ADDENTRY", mutableMapOf(
+                    "Base-Entry" to rootEntry.getFullText(null).getOrThrow(),
+                    "Previous-Hash" to rootEntry.getAuthString("Previous-Hash")!!.toString(),
+                    "Hash" to rootEntry.getAuthString("Hash")!!.toString(),
+                    "User-Signature" to rootEntry.getAuthString("User-Signature")!!.toString()
+                )
+            ).send(socket.getOutputStream())
 
             response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(200)
@@ -89,36 +104,49 @@ class KeycardCmdTest {
         keycard.entries.add(rootEntry)
         val newkeys = keycard.chain(crsPair).getOrThrow()
         val newEntry = keycard.current!!
-        val newCRSPair = SigningPair.from(newkeys["crsigning.public"]!!,
-            newkeys["crsigning.private"]!!).getOrThrow()
+        val newCRSPair = SigningPair.from(
+            newkeys["crsigning.public"]!!,
+            newkeys["crsigning.private"]!!
+        ).getOrThrow()
 
         // Test Case #2: Successfully add second user entry
-        CommandTest("addEntry.2",
+        CommandTest(
+            "addEntry.2",
             SessionState(
-                ClientRequest("ADDENTRY", mutableMapOf(
-                "Base-Entry" to newEntry.getFullText("Organization-Signature").getOrThrow(),
-            )), adminWID, LoginState.LoggedIn), ::commandAddEntry) { port ->
+                ClientRequest(
+                    "ADDENTRY", mutableMapOf(
+                        "Base-Entry" to newEntry.getFullText("Organization-Signature").getOrThrow(),
+                    )
+                ), adminWID, LoginState.LoggedIn
+            ), ::commandAddEntry
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
             response.assertReturnCode(100)
             assert(response.data.containsKey("Organization-Signature"))
             newEntry.run {
-                addAuthString("Organization-Signature",
-                    CryptoString.fromString(response.data["Organization-Signature"]!!)!!)
+                addAuthString(
+                    "Organization-Signature",
+                    CryptoString.fromString(response.data["Organization-Signature"]!!)!!
+                )
                     ?.let { throw it }
-                addAuthString("Previous-Hash",
-                    newEntry.getAuthString("Previous-Hash")!!)?.let { throw it }
+                addAuthString(
+                    "Previous-Hash",
+                    newEntry.getAuthString("Previous-Hash")!!
+                )?.let { throw it }
                 hash()?.let { throw it }
                 sign("User-Signature", newCRSPair)?.let { throw it }
             }
 
-            ClientRequest("ADDENTRY", mutableMapOf(
-                "Base-Entry" to newEntry.getFullText(null).getOrThrow(),
-                "Previous-Hash" to rootEntry.getAuthString("Hash")!!.toString(),
-                "Hash" to newEntry.getAuthString("Hash")!!.toString(),
-                "User-Signature" to newEntry.getAuthString("User-Signature")!!.toString()
-            )).send(socket.getOutputStream())
+            ClientRequest(
+                "ADDENTRY", mutableMapOf(
+                    "Base-Entry" to newEntry.getFullText(null).getOrThrow(),
+                    "Previous-Hash" to rootEntry.getAuthString("Hash")!!.toString(),
+                    "Hash" to newEntry.getAuthString("Hash")!!.toString(),
+                    "User-Signature" to newEntry.getAuthString("User-Signature")!!.toString()
+                )
+            ).send(socket.getOutputStream())
 
             response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(200)
@@ -130,10 +158,13 @@ class KeycardCmdTest {
         setupTest("commands.getOrgCard")
 
         // Test Case #1: Successfully get organization card
-        CommandTest("getOrgCard.1",
+        CommandTest(
+            "getOrgCard.1",
             SessionState(
                 ClientRequest("GETCARD", mutableMapOf("Start-Index" to "1")), null,
-                LoginState.NoSession), ::commandGetCard) { port ->
+                LoginState.NoSession
+            ), ::commandGetCard
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
@@ -155,10 +186,13 @@ class KeycardCmdTest {
         }.run()
 
         // Test Case #2: Get organization's current entry only
-        CommandTest("getOrgCard.2",
+        CommandTest(
+            "getOrgCard.2",
             SessionState(
                 ClientRequest("GETCARD", mutableMapOf("Start-Index" to "0")), null,
-                LoginState.NoSession), ::commandGetCard) { port ->
+                LoginState.NoSession
+            ), ::commandGetCard
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
@@ -185,12 +219,17 @@ class KeycardCmdTest {
         }.run()
 
         // Test Case #3: Get organization's first entry only
-        CommandTest("getOrgCard.3",
+        CommandTest(
+            "getOrgCard.3",
             SessionState(
-                ClientRequest("GETCARD", mutableMapOf(
-                    "Start-Index" to "1",
-                    "End-Index" to "1",
-                )), null, LoginState.NoSession), ::commandGetCard) { port ->
+                ClientRequest(
+                    "GETCARD", mutableMapOf(
+                        "Start-Index" to "1",
+                        "End-Index" to "1",
+                    )
+                ), null, LoginState.NoSession
+            ), ::commandGetCard
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
@@ -218,19 +257,85 @@ class KeycardCmdTest {
     }
 
     @Test
+    fun commandIsCurrentTest() {
+        setupTest("commands.getUserCard")
+
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+
+        // Test Case #1: Org card check isn't current
+        CommandTest(
+            "isCurrent.1",
+            SessionState(
+                ClientRequest(
+                    "ISCURRENT", mutableMapOf(
+                        "Index" to "1",
+                    )
+                ), null,
+                LoginState.NoSession
+            ), ::commandIsCurrent
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            response.assertField("Is-Current") { it == "NO" }
+        }.run()
+
+        // Test Case #2: Org card check is current
+        CommandTest(
+            "isCurrent.2",
+            SessionState(
+                ClientRequest(
+                    "ISCURRENT", mutableMapOf(
+                        "Index" to "2",
+                    )
+                ), null,
+                LoginState.NoSession
+            ), ::commandIsCurrent
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            response.assertField("Is-Current") { it == "YES" }
+        }.run()
+
+        // Test Case #3: User card check -- doesn't exist
+        CommandTest(
+            "isCurrent.3",
+            SessionState(
+                ClientRequest(
+                    "ISCURRENT", mutableMapOf(
+                        "Workspace-ID" to adminWID.toString(),
+                        "Index" to "2",
+                    )
+                ), null,
+                LoginState.NoSession
+            ), ::commandIsCurrent
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(404)
+        }.run()
+    }
+
+    @Test
     fun commandGetUserCardTest() {
         setupTest("commands.getUserCard")
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
         // Test Case #1: Request nonexistent keycard
-        CommandTest("getUserCard.1",
+        CommandTest(
+            "getUserCard.1",
             SessionState(
-                ClientRequest("GETCARD", mutableMapOf(
-                    "Owner" to adminWID.toString(),
-                    "Start-Index" to "1",
-                )), null,
-                LoginState.NoSession), ::commandGetCard) { port ->
+                ClientRequest(
+                    "GETCARD", mutableMapOf(
+                        "Owner" to adminWID.toString(),
+                        "Start-Index" to "1",
+                    )
+                ), null,
+                LoginState.NoSession
+            ), ::commandGetCard
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(404)
