@@ -527,8 +527,39 @@ fun commandIsCurrent(state: ClientSession) {
         QuickResponse.sendNotFound("Workspace keycard not found", state.conn)
         return
     }
+    val entryIndex = if (wid != null) {
+        val userEntry = OrgEntry.fromString(entries[0]).getOrElse {
+            logError("Bad user entry in commandIsCurrent for $wid")
+            QuickResponse.sendInternalError("Server error reading keycard", state.conn)
+            return
+        }
+        try {
+            userEntry.getFieldInteger("Index")!!.toUInt()
+        } catch (e: Exception) {
+            logError("Invalid index in commandIsCurrent")
+            QuickResponse.sendInternalError("Bad data in keycard", state.conn)
+            return
+        }
+    } else {
+        val orgEntry = OrgEntry.fromString(entries[0]).getOrElse {
+            logError("Bad org entry in commandIsCurrent")
+            QuickResponse.sendInternalError("Server error reading keycard", state.conn)
+            return
+        }
+        try {
+            orgEntry.getFieldInteger("Index")!!.toUInt()
+        } catch (e: Exception) {
+            logError("Invalid index in commandIsCurrent")
+            QuickResponse.sendInternalError("Bad data in keycard", state.conn)
+            return
+        }
+    }
 
-    TODO("Implement commandIsCurrent($state)")
+    ServerResponse(
+        200, "OK", "", mutableMapOf(
+            "Is-Current" to if (index == entryIndex) "YES" else "NO"
+        )
+    ).sendCatching(state.conn, "Error sending isCurrent response")
 }
 
 /**
