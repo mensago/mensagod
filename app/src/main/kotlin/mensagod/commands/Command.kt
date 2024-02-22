@@ -17,6 +17,7 @@ fun processCommand(state: ClientSession) {
         "GETCARD" -> commandGetCard(state)
         "GETWID" -> commandGetWID(state)
         "KEYPKG" -> commandKeyPkg(state)
+        "ISCURRENT" -> commandIsCurrent(state)
         "LOGIN" -> commandLogin(state)
         "LOGOUT" -> commandLogout(state)
         "PASSWORD" -> commandPassword(state)

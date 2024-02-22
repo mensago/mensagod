@@ -48,27 +48,35 @@ fun commandAddEntry(state: ClientSession) {
     val entry = UserEntry.fromString(state.message.data["Base-Entry"]!!).getOrNull()
     if (entry == null) {
         ServerResponse(411, "BAD KEYCARD DATA", "Couldn't create entry from data")
-            .sendCatching(state.conn,
-                "commandAddEntry: Couldn't send response for bad keycard data, "+
-                        "wid = ${state.wid}")
+            .sendCatching(
+                state.conn,
+                "commandAddEntry: Couldn't send response for bad keycard data, " +
+                        "wid = ${state.wid}"
+            )
         return
     }
 
     entry.isDataCompliant()?.let {
         ServerResponse(412, "NONCOMPLIANT KEYCARD DATA", it.message ?: "")
-            .sendCatching(state.conn,
-                "commandAddEntry: Couldn't send response for noncompliant keycard data, "+
-                        "wid = ${state.wid}")
+            .sendCatching(
+                state.conn,
+                "commandAddEntry: Couldn't send response for noncompliant keycard data, " +
+                        "wid = ${state.wid}"
+            )
         return
     }
 
     val wid = RandomID.fromString(entry.getFieldString("Workspace-ID"))
     if (wid!! != state.wid) {
-        ServerResponse(411, "BAD KEYCARD DATA",
-            "Entry workspace doesn't match login session")
-            .sendCatching(state.conn,
-                "commandAddEntry: Couldn't send response for wid mismatch, "+
-                        "wid = ${state.wid}")
+        ServerResponse(
+            411, "BAD KEYCARD DATA",
+            "Entry workspace doesn't match login session"
+        )
+            .sendCatching(
+                state.conn,
+                "commandAddEntry: Couldn't send response for wid mismatch, " +
+                        "wid = ${state.wid}"
+            )
         return
     }
 
@@ -85,23 +93,31 @@ fun commandAddEntry(state: ClientSession) {
             val specialAddr = MAddress.fromParts(UserID.fromString(it)!!, gServerDomain)
             val specialWID = resolveAddress(db, specialAddr).getOrElse { e ->
                 logError("commandAddEntry.resolveAddress exception: $e")
-                QuickResponse.sendInternalError("Server error resolving a special address",
-                    state.conn)
+                QuickResponse.sendInternalError(
+                    "Server error resolving a special address",
+                    state.conn
+                )
                 return
             }
             if (specialWID == null) {
                 logError("commandAddEntry: error resolving address ")
-                QuickResponse.sendInternalError("Internal error in server error handling",
-                    state.conn)
+                QuickResponse.sendInternalError(
+                    "Internal error in server error handling",
+                    state.conn
+                )
                 return
             }
 
             if (state.wid == specialWID && outUID.toString() != it) {
-                ServerResponse(411, "BAD KEYCARD DATA",
-                    "Admin, Support, and Abuse can't change their user IDs")
-                    .sendCatching(state.conn,
+                ServerResponse(
+                    411, "BAD KEYCARD DATA",
+                    "Admin, Support, and Abuse can't change their user IDs"
+                )
+                    .sendCatching(
+                        state.conn,
                         "commandAddEntry: Couldn't send response for special uid " +
-                                "change attempt, wid = ${state.wid}")
+                                "change attempt, wid = ${state.wid}"
+                    )
                 return
             }
         }
@@ -116,9 +132,11 @@ fun commandAddEntry(state: ClientSession) {
     }
     if (isExpired.getOrThrow()) {
         ServerResponse(412, "NONCOMPLIANT KEYCARD DATA", "Entry is expired")
-            .sendCatching(state.conn,
-                "commandAddEntry: Couldn't send response for expired data, "+
-                        "wid = ${state.wid}")
+            .sendCatching(
+                state.conn,
+                "commandAddEntry: Couldn't send response for expired data, " +
+                        "wid = ${state.wid}"
+            )
         return
     }
 
@@ -148,12 +166,14 @@ fun commandAddEntry(state: ClientSession) {
             return
         }
 
-        if (currentIndex != prevIndex+1) {
-           ServerResponse(412, "NONCOMPLIANT KEYCARD DATA", "Non-sequential index")
-               .sendCatching(state.conn,
-                   "commandAddEntry: Couldn't send response for nonsequential keycard index, "+
-                           "wid = ${state.wid}")
-           return
+        if (currentIndex != prevIndex + 1) {
+            ServerResponse(412, "NONCOMPLIANT KEYCARD DATA", "Non-sequential index")
+                .sendCatching(
+                    state.conn,
+                    "commandAddEntry: Couldn't send response for nonsequential keycard index, " +
+                            "wid = ${state.wid}"
+                )
+            return
         }
         prevUserEntry
     } else {
@@ -161,11 +181,15 @@ fun commandAddEntry(state: ClientSession) {
         // because the only way that a valid root entry can have an Index greater than one is if
         // it's a revocation root entry. Those are added by the REVOKE command.
         if (currentIndex != 1) {
-            ServerResponse(412, "NONCOMPLIANT KEYCARD DATA",
-                "The index of the first keycard entry must be 1")
-                .sendCatching(state.conn,
-                    "commandAddEntry: Couldn't send response for root entry index != 1, "+
-                            "wid = ${state.wid}")
+            ServerResponse(
+                412, "NONCOMPLIANT KEYCARD DATA",
+                "The index of the first keycard entry must be 1"
+            )
+                .sendCatching(
+                    state.conn,
+                    "commandAddEntry: Couldn't send response for root entry index != 1, " +
+                            "wid = ${state.wid}"
+                )
             return
         }
 
@@ -173,15 +197,19 @@ fun commandAddEntry(state: ClientSession) {
         // keycard entry.
         val tempOrgList = getEntries(db, null, 0U).getOrElse {
             logError("commandAddEntry.getCurrentOrgEntry exception: $it")
-            QuickResponse.sendInternalError("Server can't get current org keycard entry",
-                state.conn)
+            QuickResponse.sendInternalError(
+                "Server can't get current org keycard entry",
+                state.conn
+            )
             return
         }
 
         OrgEntry.fromString(tempOrgList[0]).getOrElse {
             logError("commandAddEntry.dbCorruption: bad org entry in db - $it")
-            QuickResponse.sendInternalError("Error loading current org keycard entry",
-                state.conn)
+            QuickResponse.sendInternalError(
+                "Error loading current org keycard entry",
+                state.conn
+            )
             return
         }
     }
@@ -200,14 +228,17 @@ fun commandAddEntry(state: ClientSession) {
         return
     }
 
-    ServerResponse(100, "CONTINUE", "", mutableMapOf(
-                "Organization-Signature" to entry.getAuthString("Organization-Signature")!!
-                    .toString()))
-            .send(state.conn)?.let {
-        logError("commandAddEntry.sendContinue, wid=$wid - $it")
-        QuickResponse.sendInternalError("Error signing user entry", state.conn)
-        return
-    }
+    ServerResponse(
+        100, "CONTINUE", "", mutableMapOf(
+            "Organization-Signature" to entry.getAuthString("Organization-Signature")!!
+                .toString()
+        )
+    )
+        .send(state.conn)?.let {
+            logError("commandAddEntry.sendContinue, wid=$wid - $it")
+            QuickResponse.sendInternalError("Error signing user entry", state.conn)
+            return
+        }
 
     // ADDENTRY, Stage 2
     // Client has attached the Previous-Hash and Hash fields and then signed the entire thing. We're
@@ -222,8 +253,10 @@ fun commandAddEntry(state: ClientSession) {
     }
 
     if (req.action == "CANCEL") {
-        ServerResponse(200, "OK").sendCatching(state.conn,
-                "commandAddEntry: Error sending Cancel acknowledgement, wid = ${state.wid}")
+        ServerResponse(200, "OK").sendCatching(
+            state.conn,
+            "commandAddEntry: Error sending Cancel acknowledgement, wid = ${state.wid}"
+        )
         return
     }
     if (req.action != "ADDENTRY") {
@@ -236,11 +269,15 @@ fun commandAddEntry(state: ClientSession) {
     }
 
     if (prevEntry.getAuthString("Hash")?.toString() != req.data["Previous-Hash"]) {
-            ServerResponse(412, "NONCOMPLIANT KEYCARD DATA",
-            "Previous-Hash mismatch in new entry")
-            .sendCatching(state.conn,
-                "commandAddEntry: Couldn't send response for hash verify failure, "+
-                        "wid = ${state.wid}")
+        ServerResponse(
+            412, "NONCOMPLIANT KEYCARD DATA",
+            "Previous-Hash mismatch in new entry"
+        )
+            .sendCatching(
+                state.conn,
+                "commandAddEntry: Couldn't send response for hash verify failure, " +
+                        "wid = ${state.wid}"
+            )
         return
     }
     entry.addAuthString("Previous-Hash", prevEntry.getAuthString("Hash")!!)
@@ -249,19 +286,27 @@ fun commandAddEntry(state: ClientSession) {
     // calculate the hash ourselves using the algorithm that the client used and compare the two.
     val clientHash = CryptoString.fromString(req.data["Hash"]!!)
     if (clientHash == null) {
-        ServerResponse(412, "NONCOMPLIANT KEYCARD DATA",
-            "Invalid Hash in new entry")
-            .sendCatching(state.conn,
-                "commandAddEntry: Couldn't send response for invalid hash field, "+
-                        "wid = ${state.wid}")
+        ServerResponse(
+            412, "NONCOMPLIANT KEYCARD DATA",
+            "Invalid Hash in new entry"
+        )
+            .sendCatching(
+                state.conn,
+                "commandAddEntry: Couldn't send response for invalid hash field, " +
+                        "wid = ${state.wid}"
+            )
         return
     }
     if (!getSupportedHashAlgorithms().contains(clientHash.prefix)) {
-        ServerResponse(412, "ALGORITHM NOT SUPPORTED",
-            "This server doesn't support hashing with ${clientHash.prefix}")
-            .sendCatching(state.conn,
-                "commandAddEntry: Couldn't send response for unsupported hash algorithm, "+
-                        "wid = ${state.wid}")
+        ServerResponse(
+            412, "ALGORITHM NOT SUPPORTED",
+            "This server doesn't support hashing with ${clientHash.prefix}"
+        )
+            .sendCatching(
+                state.conn,
+                "commandAddEntry: Couldn't send response for unsupported hash algorithm, " +
+                        "wid = ${state.wid}"
+            )
         return
     }
     entry.hash(clientHash.prefix)?.let {
@@ -270,21 +315,29 @@ fun commandAddEntry(state: ClientSession) {
         return
     }
     if (entry.getAuthString("Hash")!!.toString() != clientHash.toString()) {
-        ServerResponse(412, "NONCOMPLIANT KEYCARD DATA",
-            "New entry hash mismatch")
-            .sendCatching(state.conn,
-                "commandAddEntry: Couldn't send response for hash field mismatch, "+
-                        "wid = ${state.wid}")
+        ServerResponse(
+            412, "NONCOMPLIANT KEYCARD DATA",
+            "New entry hash mismatch"
+        )
+            .sendCatching(
+                state.conn,
+                "commandAddEntry: Couldn't send response for hash field mismatch, " +
+                        "wid = ${state.wid}"
+            )
         return
     }
 
     val userSig = CryptoString.fromString(req.data["User-Signature"]!!)
     if (userSig == null) {
-        ServerResponse(412, "NONCOMPLIANT KEYCARD DATA",
-            "Invalid User-Signature in new entry")
-            .sendCatching(state.conn,
-                "commandAddEntry: Couldn't send response for invalid user signature, "+
-                        "wid = ${state.wid}")
+        ServerResponse(
+            412, "NONCOMPLIANT KEYCARD DATA",
+            "Invalid User-Signature in new entry"
+        )
+            .sendCatching(
+                state.conn,
+                "commandAddEntry: Couldn't send response for invalid user signature, " +
+                        "wid = ${state.wid}"
+            )
         return
     }
     entry.addAuthString("User-Signature", userSig)?.let {
@@ -306,10 +359,14 @@ fun commandAddEntry(state: ClientSession) {
         return
     }
     val crKey = VerificationKey.from(crKeyCS).getOrElse {
-        logError("commandAddEntry.dbCorruption: error creating previous CRV Key, "+
-                "wid=$wid - $it")
-        QuickResponse.sendInternalError("Error creating previous entry verification key",
-            state.conn)
+        logError(
+            "commandAddEntry.dbCorruption: error creating previous CRV Key, " +
+                    "wid=$wid - $it"
+        )
+        QuickResponse.sendInternalError(
+            "Error creating previous entry verification key",
+            state.conn
+        )
         return
     }
 
@@ -319,10 +376,12 @@ fun commandAddEntry(state: ClientSession) {
         return
     }
     if (!verified) {
-        ServerResponse(413, "INVALID SIGNATURE","User signature verification failure")
-            .sendCatching(state.conn,
-                "commandAddEntry: Couldn't send response for verify failure, "+
-                        "wid = ${state.wid}")
+        ServerResponse(413, "INVALID SIGNATURE", "User signature verification failure")
+            .sendCatching(
+                state.conn,
+                "commandAddEntry: Couldn't send response for verify failure, " +
+                        "wid = ${state.wid}"
+            )
         return
     }
 
@@ -334,9 +393,11 @@ fun commandAddEntry(state: ClientSession) {
         return
     }
 
-    ServerResponse(200, "OK").sendCatching(state.conn,
-            "commandAddEntry: Couldn't send confirmation response for "+
-                    "wid = ${state.wid}")
+    ServerResponse(200, "OK").sendCatching(
+        state.conn,
+        "commandAddEntry: Couldn't send confirmation response for " +
+                "wid = ${state.wid}"
+    )
 }
 
 // GETCARD(Start-Index, Owner="", End-Index=0)
@@ -346,8 +407,9 @@ fun commandGetCard(state: ClientSession) {
         QuickResponse.sendBadRequest("Missing required field Start-Index", state.conn)
         return
     }
-    val startIndex = try { state.message.data["Start-Index"]!!.toUInt() }
-    catch (e: Exception) {
+    val startIndex = try {
+        state.message.data["Start-Index"]!!.toUInt()
+    } catch (e: Exception) {
         QuickResponse.sendBadRequest("Bad value for field Start-Index", state.conn)
         return
     }
@@ -359,7 +421,8 @@ fun commandGetCard(state: ClientSession) {
 
         val resolved = resolveOwner(db, state.message.data["Owner"]!!).getOrElse {
             logError(
-                "commandGetCard: Error resolving owner ${state.message.data["Owner"]}: $it")
+                "commandGetCard: Error resolving owner ${state.message.data["Owner"]}: $it"
+            )
             QuickResponse.sendInternalError("Error resolving owner", state.conn)
             return
         }
@@ -372,14 +435,17 @@ fun commandGetCard(state: ClientSession) {
 
 
     val endIndex = if (state.message.hasField("End-Index")) {
-        val end = try { state.message.data["End-Index"]!!.toUInt() }
-        catch (e: Exception) {
+        val end = try {
+            state.message.data["End-Index"]!!.toUInt()
+        } catch (e: Exception) {
             QuickResponse.sendBadRequest("Bad value for field End-Index", state.conn)
             return
         }
         if (end < startIndex) {
-            QuickResponse.sendBadRequest("Start-Index may not be less than Start-Index",
-                state.conn)
+            QuickResponse.sendBadRequest(
+                "Start-Index may not be less than Start-Index",
+                state.conn
+            )
             return
         }
         end
@@ -397,15 +463,18 @@ fun commandGetCard(state: ClientSession) {
 
     // 56 is the combined length of the header and footer lines
     val totalSize = entries.fold(0) { acc, item -> acc + item.length + 48 }
-    val response = ServerResponse(104, "TRANSFER", "", mutableMapOf(
-        "Item-Count" to entries.size.toString(),
-        "Total-Size" to totalSize.toString(),
-    ))
+    val response = ServerResponse(
+        104, "TRANSFER", "", mutableMapOf(
+            "Item-Count" to entries.size.toString(),
+            "Total-Size" to totalSize.toString(),
+        )
+    )
     if (!response.sendCatching(state.conn, "commandGetCard: Failed to send entry count"))
         return
 
-    val istream = try { state.conn.getInputStream() }
-    catch (e: Exception) {
+    val istream = try {
+        state.conn.getInputStream()
+    } catch (e: Exception) {
         logDebug("commandGetCard: error opening input stream: $e")
         return
     }
@@ -424,8 +493,14 @@ fun commandGetCard(state: ClientSession) {
     response.data["Card-Data"] = entries.joinToString("") {
         "----- BEGIN ENTRY -----\r\n$it----- END ENTRY -----\r\n"
     }
-    response.sendCatching(state.conn,
-        "commandGetCard: Failure sending card data to ${state.wid}")
+    response.sendCatching(
+        state.conn,
+        "commandGetCard: Failure sending card data to ${state.wid}"
+    )
+}
+
+fun commandIsCurrent(state: ClientSession) {
+    TODO("Implement commandIsCurrent($state)")
 }
 
 /**
