@@ -500,6 +500,34 @@ fun commandGetCard(state: ClientSession) {
 }
 
 fun commandIsCurrent(state: ClientSession) {
+
+    if (!state.message.hasField("Index")) {
+        QuickResponse.sendBadRequest("Missing required field Index", state.conn)
+        return
+    }
+    val index = try {
+        state.message.data["Index"]!!.toUInt()
+    } catch (e: Exception) {
+        QuickResponse.sendBadRequest("Missing required field Index", state.conn)
+        return
+    }
+
+    val wid = if (state.message.hasField("Workspace-ID"))
+        state.getRandomID("Workspace-ID", true) ?: return
+    else
+        null
+
+    val db = DBConn()
+    val entries = getEntries(db, wid, 0U).getOrElse {
+        logError("commandIsCurrent: error getting keycard: $it")
+        QuickResponse.sendInternalError("Server error checking keycard", state.conn)
+        return
+    }
+    if (entries.isEmpty()) {
+        QuickResponse.sendNotFound("Workspace keycard not found", state.conn)
+        return
+    }
+
     TODO("Implement commandIsCurrent($state)")
 }
 
