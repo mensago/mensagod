@@ -528,7 +528,7 @@ fun commandIsCurrent(state: ClientSession) {
         return
     }
     val entryIndex = if (wid != null) {
-        val userEntry = OrgEntry.fromString(entries[0]).getOrElse {
+        val userEntry = UserEntry.fromString(entries[0]).getOrElse {
             logError("Bad user entry in commandIsCurrent for $wid")
             QuickResponse.sendInternalError("Server error reading keycard", state.conn)
             return
