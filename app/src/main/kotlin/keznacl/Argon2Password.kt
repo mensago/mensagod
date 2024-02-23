@@ -34,7 +34,7 @@ fun argonPassFromHash(hashStr: String): Result<Argon2Password> {
  * cleartext password. In most situations, you merely need to instantiate an instance of
  * Argon2idPassword and call updateHash(). If you need extra security,
  */
-sealed class Argon2Password: Password() {
+sealed class Argon2Password : Password() {
     protected abstract val hasher: Argon2Advanced
     protected var rawSalt = byteArrayOf()
     var iterations = 10
@@ -73,7 +73,9 @@ sealed class Argon2Password: Password() {
     fun setFromInfo(pwInfo: PasswordInfo): Throwable? {
         try {
             salt = pwInfo.salt
-        } catch (e: Exception) { return e }
+        } catch (e: Exception) {
+            return e
+        }
 
         val paramData = parseParameters(pwInfo.parameters).getOrElse { return it }
         memory = paramData.first
@@ -91,7 +93,7 @@ sealed class Argon2Password: Password() {
      */
     override fun setStrength(strength: HashStrength): Argon2Password {
 
-        memory = when(strength) {
+        memory = when (strength) {
             HashStrength.Basic -> 0x100_000
             HashStrength.Extra -> 0x200_000
             HashStrength.Secret -> 0x400_000
@@ -110,10 +112,13 @@ sealed class Argon2Password: Password() {
     override fun updateHash(pw: String): Result<String> {
 
         try {
-            hash = hasher.hash(iterations, memory, threads, pw.toCharArray(),
-                Charset.defaultCharset(), rawSalt)
+            hash = hasher.hash(
+                iterations, memory, threads, pw.toCharArray(),
+                Charset.defaultCharset(), rawSalt
+            )
+        } catch (e: Exception) {
+            return Result.failure(e)
         }
-        catch (e: Exception) { return Result.failure(e) }
 
         return Result.success(hash)
     }
@@ -123,7 +128,9 @@ sealed class Argon2Password: Password() {
      * Because there are no guarantees if the instance's cleartext password property is in sync with
      * the hash, this call only compares the supplied password against the hash itself.
      */
-    override fun verify(pw: String): Boolean { return hasher.verify(hash, pw.toCharArray()) }
+    override fun verify(pw: String): Boolean {
+        return hasher.verify(hash, pw.toCharArray())
+    }
 
     /**
      * Updates internal properties from the passed hash. It does *not* change the internal hash
@@ -151,12 +158,17 @@ sealed class Argon2Password: Password() {
             memory = paramParts.first
             iterations = paramParts.second
             threads = paramParts.third
-        } catch (e : Exception) { return e }
+        } catch (e: Exception) {
+            return e
+        }
 
         parameters = parts[2]
         salt = parts[3]
-        rawSalt = try { Base64.getDecoder().decode(salt) }
-            catch (e : Exception) { return e }
+        rawSalt = try {
+            Base64.getDecoder().decode(salt)
+        } catch (e: Exception) {
+            return e
+        }
 
         return null
     }
@@ -167,15 +179,21 @@ sealed class Argon2Password: Password() {
      *
      * @throws NumberFormatException Returned if given non-integers for parameter values
      */
-    private fun parseParameters(paramStr: String): Result<Triple<Int,Int,Int>> {
+    private fun parseParameters(paramStr: String): Result<Triple<Int, Int, Int>> {
         val paramParts = paramStr
             .split(',')
-            .associateBy({it.split('=')[0]},{it.split('=')[1]})
+            .associateBy({ it.split('=')[0] }, { it.split('=')[1] })
         return try {
-            Result.success(Triple(paramParts["m"]!!.toInt(),
-                paramParts["t"]!!.toInt(),
-                paramParts["p"]!!.toInt()))
-        } catch (e : Exception) { return Result.failure(e) }
+            Result.success(
+                Triple(
+                    paramParts["m"]!!.toInt(),
+                    paramParts["t"]!!.toInt(),
+                    paramParts["p"]!!.toInt()
+                )
+            )
+        } catch (e: Exception) {
+            return Result.failure(e)
+        }
     }
 
     companion object {
@@ -193,30 +211,36 @@ sealed class Argon2Password: Password() {
             if (!listOf("ARGON2D", "ARGON2I", "ARGON2ID").contains(info.algorithm))
                 return BadValueException("${info.algorithm} not supported by Argon2Password class")
 
-            try { Base64.getDecoder().decode(info.salt) }
-            catch (e : Exception) { return IllegalArgumentException() }
+            try {
+                Base64.getDecoder().decode(info.salt)
+            } catch (e: Exception) {
+                return IllegalArgumentException()
+            }
 
             val paramParts = info.parameters
                 .split(',')
-                .associateBy({it.split('=')[0]},{it.split('=')[1]})
+                .associateBy({ it.split('=')[0] }, { it.split('=')[1] })
 
             if (paramParts["m"] != null) {
-                try { paramParts["m"]!!.toInt() }
-                catch (e: Exception) {
+                try {
+                    paramParts["m"]!!.toInt()
+                } catch (e: Exception) {
                     return BadValueException("bad memory value in parameters")
                 }
             } else return MissingDataException("memory value missing from parameters")
 
             if (paramParts["t"] != null) {
-                try { paramParts["t"]!!.toInt() }
-                catch (e: Exception) {
+                try {
+                    paramParts["t"]!!.toInt()
+                } catch (e: Exception) {
                     return BadValueException("bad time cost value in parameters")
                 }
             } else return MissingDataException("time cost value missing from parameters")
 
             if (paramParts["p"] != null) {
-                try { paramParts["p"]!!.toInt() }
-                catch (e: Exception) {
+                try {
+                    paramParts["p"]!!.toInt()
+                } catch (e: Exception) {
                     return BadValueException("bad thread value in parameters")
                 }
             } else return MissingDataException("thread value missing from parameters")
@@ -230,7 +254,7 @@ sealed class Argon2Password: Password() {
  * An Argon2 algorithm which balances protection against brute force attacks and side-channel
  * attacks.
  */
-class Argon2idPassword: Argon2Password() {
+class Argon2idPassword : Argon2Password() {
     override var algorithm = "ARGON2ID"
     override val hasher: Argon2Advanced = Argon2Factory
         .createAdvanced(Argon2Factory.Argon2Types.ARGON2id)
@@ -245,7 +269,7 @@ class Argon2idPassword: Argon2Password() {
  * An Argon2 algorithm which maximizes protection against GPU-based brute force attacks, but
  * introduces possible side-channel attacks.
  */
-class Argon2dPassword: Argon2Password() {
+class Argon2dPassword : Argon2Password() {
     override var algorithm = "ARGON2D"
     override val hasher: Argon2Advanced = Argon2Factory
         .createAdvanced(Argon2Factory.Argon2Types.ARGON2d)
@@ -257,7 +281,7 @@ class Argon2dPassword: Argon2Password() {
 }
 
 /** An Argon2 algorithm which is optimized to resist side-channel attacks. */
-class Argon2iPassword: Argon2Password() {
+class Argon2iPassword : Argon2Password() {
     override var algorithm = "ARGON2I"
     override val hasher: Argon2Advanced = Argon2Factory
         .createAdvanced(Argon2Factory.Argon2Types.ARGON2i)

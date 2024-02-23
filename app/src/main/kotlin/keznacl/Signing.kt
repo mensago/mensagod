@@ -14,13 +14,20 @@ fun getSupportedSigningAlgorithms(): List<String> {
  * Returns the recommended digital signature algorithm supported by the library. If you don't know what to choose
  * for your implementation, this will provide a good default which balances speed and security.
  */
-fun getPreferredSigningAlgorithm(): String { return "ED25519" }
+fun getPreferredSigningAlgorithm(): String {
+    return "ED25519"
+}
 
-class SigningPair private constructor(publicKeyStr: CryptoString, privateKeyStr: CryptoString):
+class SigningPair private constructor(publicKeyStr: CryptoString, privateKeyStr: CryptoString) :
     KeyPair(publicKeyStr, privateKeyStr), Verifier {
 
-    override fun canEncrypt(): Boolean { return false }
-    override fun canSign(): Boolean { return true }
+    override fun canEncrypt(): Boolean {
+        return false
+    }
+
+    override fun canSign(): Boolean {
+        return true
+    }
 
     /**
      * Creates a digital signature of the data supplied to it.
@@ -46,7 +53,9 @@ class SigningPair private constructor(publicKeyStr: CryptoString, privateKeyStr:
         return Result.success(CryptoString.fromBytes("ED25519", signature)!!)
     }
 
-    override fun toString(): String { return "$publicKey,$privateKey" }
+    override fun toString(): String {
+        return "$publicKey,$privateKey"
+    }
 
     override fun verify(data: ByteArray, signature: CryptoString): Result<Boolean> {
         if (data.isEmpty()) return Result.failure(EmptyDataException())
@@ -73,10 +82,12 @@ class SigningPair private constructor(publicKeyStr: CryptoString, privateKeyStr:
 
         fun fromStrings(pubKeyStr: String, privKeyStr: String): Result<SigningPair> {
 
-            val publicKeyCS = CryptoString.fromString(pubKeyStr) ?:
-                return Result.failure(BadValueException("bad public key"))
-            val privateKeyCS = CryptoString.fromString(privKeyStr) ?:
-                return Result.failure(BadValueException("bad private key"))
+            val publicKeyCS = CryptoString.fromString(pubKeyStr) ?: return Result.failure(
+                BadValueException("bad public key")
+            )
+            val privateKeyCS = CryptoString.fromString(privKeyStr) ?: return Result.failure(
+                BadValueException("bad private key")
+            )
             return from(publicKeyCS, privateKeyCS)
         }
 
@@ -87,12 +98,12 @@ class SigningPair private constructor(publicKeyStr: CryptoString, privateKeyStr:
             when (algorithm) {
                 "ED25519" -> {
                     val keyPair = Signature.keyPair()
-                    val publicKeyCS = CryptoString.fromBytes("ED25519", keyPair.publicKey) ?:
-                    return Result.failure(KeyErrorException())
+                    val publicKeyCS = CryptoString.fromBytes("ED25519", keyPair.publicKey)
+                        ?: return Result.failure(KeyErrorException())
 
                     val privateKeyCS =
-                        CryptoString.fromBytes("ED25519", keyPair.secretKey.copyOfRange(0,32)) ?:
-                        return Result.failure(KeyErrorException())
+                        CryptoString.fromBytes("ED25519", keyPair.secretKey.copyOfRange(0, 32))
+                            ?: return Result.failure(KeyErrorException())
                     return from(publicKeyCS, privateKeyCS)
                 }
             }
@@ -102,14 +113,16 @@ class SigningPair private constructor(publicKeyStr: CryptoString, privateKeyStr:
     }
 }
 
-class VerificationKey: Verifier, PublicHasher {
+class VerificationKey : Verifier, PublicHasher {
     var publicKey: CryptoString? = null
         private set
 
     private var publicHash: CryptoString? = null
 
     val key: CryptoString
-        get() { return publicKey!! }
+        get() {
+            return publicKey!!
+        }
 
     override fun verify(data: ByteArray, signature: CryptoString): Result<Boolean> {
         if (data.isEmpty()) return Result.failure(EmptyDataException())
@@ -118,24 +131,29 @@ class VerificationKey: Verifier, PublicHasher {
         val rawKey = key.toRaw().getOrElse { return Result.failure(it) }
         val box = Signature(rawKey, null)
 
-        return Result.success(box.detached_verify(data, signature.toRaw().
-            getOrElse { return Result.failure(it) }))
+        return Result.success(
+            box.detached_verify(data, signature.toRaw().getOrElse { return Result.failure(it) })
+        )
     }
 
     override fun getPublicHash(algorithm: String): Result<CryptoString> {
         if (publicHash == null || publicHash!!.prefix != algorithm)
-            publicHash = hash(publicKey!!.toByteArray(), algorithm).
-            getOrElse { return Result.failure(it) }
+            publicHash =
+                hash(publicKey!!.toByteArray(), algorithm).getOrElse { return Result.failure(it) }
         return Result.success(publicHash!!)
     }
 
-    override fun toString(): String { return publicKey.toString() }
+    override fun toString(): String {
+        return publicKey.toString()
+    }
 
     companion object {
 
         fun from(pubKey: CryptoString): Result<VerificationKey> {
 
-            if (!isSupportedAlgorithm(pubKey.prefix)) return Result.failure(UnsupportedAlgorithmException())
+            if (!isSupportedAlgorithm(pubKey.prefix)) return Result.failure(
+                UnsupportedAlgorithmException()
+            )
 
             return Result.success(VerificationKey().also {
                 it.publicKey = pubKey
@@ -145,7 +163,8 @@ class VerificationKey: Verifier, PublicHasher {
         fun fromString(pubKeyStr: String): Result<VerificationKey> {
 
             val publicKeyCS =
-                CryptoString.fromString(pubKeyStr) ?: return Result.failure(BadValueException("bad public key"))
+                CryptoString.fromString(pubKeyStr)
+                    ?: return Result.failure(BadValueException("bad public key"))
             return from(publicKeyCS)
         }
     }

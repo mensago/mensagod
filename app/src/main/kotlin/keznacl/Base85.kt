@@ -47,8 +47,10 @@ open class Encoder(private val encodeMap: ByteArray) {
         return if (out.size == len) String(out) else String(out.copyOf(len))
     }
 
-    fun encodeBlockReverse(rawData: ByteArray, offset: Int = 0, length: Int = rawData.size,
-                           outOffset: Int = 0): String {
+    fun encodeBlockReverse(
+        rawData: ByteArray, offset: Int = 0, length: Int = rawData.size,
+        outOffset: Int = 0
+    ): String {
         val size = ceil(length * 1.25).toInt()
         val out = ByteArray(size)
 
@@ -67,8 +69,10 @@ open class Encoder(private val encodeMap: ByteArray) {
         return String(out)
     }
 
-    private fun encodeDangling(encodeMap: ByteArray, out: ByteArray, wi: Int, buffer: ByteBuffer,
-                               leftover: Int): Int {
+    private fun encodeDangling(
+        encodeMap: ByteArray, out: ByteArray, wi: Int, buffer: ByteBuffer,
+        leftover: Int
+    ): Int {
         var sum = buffer.getInt(0).toLong() and 0x00000000ffffffffL
         out[wi] = encodeMap[(sum / Power4).toInt()]
         sum %= Power4
@@ -92,8 +96,10 @@ open class Encoder(private val encodeMap: ByteArray) {
         var loop = rlen / 4
         while (loop > 0) {
             System.arraycopy(`in` as Any, rIndex, buf, 0, 4)
-            wIndex = writeData(buffer.getInt(0).toLong() and 0x00000000ffffffffL,
-                encodeMap, out, wIndex)
+            wIndex = writeData(
+                buffer.getInt(0).toLong() and 0x00000000ffffffffL,
+                encodeMap, out, wIndex
+            )
             loop--
             rIndex += 4
         }
@@ -122,8 +128,9 @@ open class Encoder(private val encodeMap: ByteArray) {
 
 class Rfc1924Encoder : Encoder(encoderMap) {
     companion object {
-        val encoderMap = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+-;<=>?@^_`{|}~"
-            .toByteArray(StandardCharsets.US_ASCII)
+        val encoderMap =
+            "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+-;<=>?@^_`{|}~"
+                .toByteArray(StandardCharsets.US_ASCII)
     }
 }
 
@@ -131,7 +138,7 @@ open class Decoder {
 
     open fun decodedLength(stringData: String, offset: Int = 0, length: Int = stringData.length):
             Int {
-        
+
         return if (length % 5 == 1) -1 else (length * 0.8).toInt()
     }
 
@@ -150,8 +157,10 @@ open class Decoder {
 
         val result = ByteArray(size)
         try {
-            val len = decodeInternal(stringData.toByteArray(StandardCharsets.US_ASCII), offset,
-                length, result).getOrElse { return Result.failure(it) }
+            val len = decodeInternal(
+                stringData.toByteArray(StandardCharsets.US_ASCII), offset,
+                length, result
+            ).getOrElse { return Result.failure(it) }
 
             // Should not happen, but fitting the size makes sure tests will fail when it does happen.
             if (result.size != len) return Result.success(result.copyOf(len))
@@ -203,11 +212,14 @@ open class Decoder {
         return true
     }
 
-    private fun decodeDangling(decodeMap: ByteArray, `in`: ByteArray, ri: Int, buffer: ByteBuffer,
-                                 leftover: Int): Result<Int> {
+    private fun decodeDangling(
+        decodeMap: ByteArray, `in`: ByteArray, ri: Int, buffer: ByteBuffer,
+        leftover: Int
+    ): Result<Int> {
         if (leftover == 1)
             return Result.failure(IllegalArgumentException("Malformed Base85/$name data", null))
-        var sum = decodeMap[`in`[ri].toInt()] * Power4 + decodeMap[`in`[ri + 1].toInt()] * Power3 + 85
+        var sum =
+            decodeMap[`in`[ri].toInt()] * Power4 + decodeMap[`in`[ri + 1].toInt()] * Power3 + 85
         if (leftover >= 3) {
             sum += decodeMap[`in`[ri + 2].toInt()] * Power2
             sum += if (leftover >= 4) (decodeMap[`in`[ri + 3].toInt()] * 85).toLong() else Power2
@@ -234,8 +246,13 @@ open class Decoder {
         }
         var leftover = rlen % 5
         if (leftover == 0) return Result.success(wIndex)
-        leftover = decodeDangling(decodeMap, data, rIndex, buffer, leftover).
-            getOrElse { return Result.failure(it) }
+        leftover = decodeDangling(
+            decodeMap,
+            data,
+            rIndex,
+            buffer,
+            leftover
+        ).getOrElse { return Result.failure(it) }
         System.arraycopy(buf, 0, out as Any, wIndex, leftover)
         return Result.success(wIndex + leftover)
     }

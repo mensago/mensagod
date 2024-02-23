@@ -15,15 +15,19 @@ enum class HashStrength {
  * Data class used for passing around information about a password without including the hashed
  * password itself.
  */
-open class PasswordInfo(open var algorithm: String = "",
-                          open var salt: String = "",
-                          open var parameters: String = "")
+open class PasswordInfo(
+    open var algorithm: String = "",
+    open var salt: String = "",
+    open var parameters: String = ""
+)
 
 /** Parent class for all password hashing algorithms. */
-abstract class Password: PasswordInfo() {
+abstract class Password : PasswordInfo() {
 
     open var hash = ""
-    override fun toString(): String { return hash }
+    override fun toString(): String {
+        return hash
+    }
 
     abstract fun setFromHash(hashStr: String): Throwable?
     abstract fun setStrength(strength: HashStrength): Password
@@ -45,7 +49,9 @@ fun getSupportedPasswordAlgorithms(): List<String> {
  * know what to choose for your implementation, this will provide a good default which balances
  * speed and security.
  */
-fun getPreferredPasswordAlgorithm(): String { return "ARGON2ID" }
+fun getPreferredPasswordAlgorithm(): String {
+    return "ARGON2ID"
+}
 
 /**
  * Validates the data in the PasswordInfo instance passed to it. This call ensures that (a) the
@@ -74,26 +80,32 @@ fun passhasherForInfo(pi: PasswordInfo): Result<Password> {
     return when (pi.algorithm.uppercase()) {
         "ARGON2D" -> {
             Argon2dPassword().let {
-                it.setFromInfo(pi)?.let{ err -> return Result.failure(err) }
+                it.setFromInfo(pi)?.let { err -> return Result.failure(err) }
                 Result.success(it)
             }
         }
+
         "ARGON2I" -> {
             Argon2iPassword().let {
-                it.setFromInfo(pi)?.let{ err -> return Result.failure(err) }
+                it.setFromInfo(pi)?.let { err -> return Result.failure(err) }
                 Result.success(it)
             }
         }
+
         "ARGON2ID" -> {
             Argon2idPassword().let {
-                it.setFromInfo(pi)?.let{ err -> return Result.failure(err) }
+                it.setFromInfo(pi)?.let { err -> return Result.failure(err) }
                 Result.success(it)
             }
         }
+
         else -> {
-            Result.failure(ProgramException(
-                "Unreachable code in passhasherForInfo reached. " +
-                        "Algorithm: ${pi.algorithm.uppercase()}"))
+            Result.failure(
+                ProgramException(
+                    "Unreachable code in passhasherForInfo reached. " +
+                            "Algorithm: ${pi.algorithm.uppercase()}"
+                )
+            )
         }
     }
 }

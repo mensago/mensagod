@@ -25,11 +25,13 @@ class SealedBox {
     fun cryptoBoxSeal(clearText: ByteArray, receiverPubKey: ByteArray): Result<ByteArray> {
 
         val ephkeypair = TweetNaclFast.Box.keyPair()
-        val nonce = cryptoBoxSealNonce(ephkeypair.publicKey, receiverPubKey) ?:
-            return Result.failure(ProgramException("Nonce generation failure"))
+        val nonce =
+            cryptoBoxSealNonce(ephkeypair.publicKey, receiverPubKey) ?: return Result.failure(
+                ProgramException("Nonce generation failure")
+            )
         val box = TweetNacl.Box(receiverPubKey, ephkeypair.secretKey)
-        val ciphertext = box.box(clearText, nonce) ?:
-            return Result.failure(GeneralSecurityException("NaCl error: couldn't create box"))
+        val ciphertext = box.box(clearText, nonce)
+            ?: return Result.failure(GeneralSecurityException("NaCl error: couldn't create box"))
 
         val sealedbox = ByteArray(ciphertext.size + cryptoBoxPublicKeyBytes)
         val ephpubkey: ByteArray = ephkeypair.publicKey
@@ -52,18 +54,22 @@ class SealedBox {
      * @param privKey receiver private key
      * @return decrypted message or GeneralSecurityException
      */
-    fun cryptoBoxSealOpen(cipherText: ByteArray, pubKey: ByteArray, privKey: ByteArray): Result<ByteArray> {
+    fun cryptoBoxSealOpen(
+        cipherText: ByteArray,
+        pubKey: ByteArray,
+        privKey: ByteArray
+    ): Result<ByteArray> {
         if (cipherText.size < cryptoBoxSealBytes) return Result.failure(BadValueException("Ciphertext too short"))
 
         val pksender = cipherText.copyOfRange(0, cryptoBoxPublicKeyBytes)
         val ciphertextwithmac = cipherText.copyOfRange(cryptoBoxPublicKeyBytes, cipherText.size)
-        val nonce = cryptoBoxSealNonce(pksender, pubKey) ?:
-            return Result.failure(ProgramException("Nonce generation failure"))
+        val nonce = cryptoBoxSealNonce(pksender, pubKey)
+            ?: return Result.failure(ProgramException("Nonce generation failure"))
         val box: TweetNacl.Box = TweetNacl.Box(pksender, privKey)
 
         val result = box.open(ciphertextwithmac, nonce)
         return if (result != null) Result.success(result)
-            else Result.failure(GeneralSecurityException("NaCl error: Could not open box"))
+        else Result.failure(GeneralSecurityException("NaCl error: Could not open box"))
     }
 
     /**

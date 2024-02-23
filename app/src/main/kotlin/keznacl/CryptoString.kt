@@ -44,7 +44,9 @@ import java.util.regex.Pattern
 class CryptoString private constructor() {
     var value: String = ""
         private set
-        get() { return "$prefix:$encodedData" }
+        get() {
+            return "$prefix:$encodedData"
+        }
 
     var prefix: String = ""
         private set
@@ -61,13 +63,17 @@ class CryptoString private constructor() {
         return encodedData == other.encodedData
     }
 
-    override fun hashCode(): Int { return value.hashCode() }
+    override fun hashCode(): Int {
+        return value.hashCode()
+    }
 
     override fun toString(): String {
         return value
     }
 
-    fun toByteArray(): ByteArray { return value.toByteArray() }
+    fun toByteArray(): ByteArray {
+        return value.toByteArray()
+    }
 
     /**
      * Returns the object's raw, unencoded data
@@ -86,9 +92,11 @@ class CryptoString private constructor() {
 
     companion object {
         private val csPattern = Pattern.compile(
-            "^([A-Z0-9-]{1,24}):([0-9A-Za-z!#\$%&()*+-;<=>?@^_`{|}~]+)\$")
+            "^([A-Z0-9-]{1,24}):([0-9A-Za-z!#\$%&()*+-;<=>?@^_`{|}~]+)\$"
+        )
         private val csPrefixPattern = Pattern.compile(
-            "^([A-Z0-9-]{1,24})\$")
+            "^([A-Z0-9-]{1,24})\$"
+        )
 
         /** Creates a new CryptoString object from a string in CryptoString format or null if
          *  invalid.

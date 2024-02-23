@@ -16,13 +16,15 @@ fun getSupportedHashAlgorithms(): List<String> {
  * Returns the recommended algorithm supported by the library. If you don't know what to choose for a hashing algorithm
  * for your implementation, this will provide a good default which balances speed and security.
  */
-fun getPreferredHashAlgorithm(): String { return "BLAKE2B-256" }
+fun getPreferredHashAlgorithm(): String {
+    return "BLAKE2B-256"
+}
 
 fun hash(data: ByteArray, reqAlgorithm: String? = null): Result<CryptoString> {
     val algorithm = reqAlgorithm ?: getPreferredHashAlgorithm()
     if (!isSupportedAlgorithm(algorithm)) return Result.failure(UnsupportedAlgorithmException())
 
-   return when(algorithm) {
+    return when (algorithm) {
         "BLAKE2B-256" -> blake2Hash(data)
         else -> Result.failure(UnsupportedAlgorithmException())
     }
@@ -35,7 +37,11 @@ fun hash(data: ByteArray, reqAlgorithm: String? = null): Result<CryptoString> {
 fun hashFile(path: String, algorithm: String = getPreferredHashAlgorithm()): Result<CryptoString> {
     if (path.isEmpty()) return Result.failure(EmptyDataException())
     if (algorithm != "BLAKE2B-256") return Result.failure(UnsupportedAlgorithmException())
-    val file = try { File(path) } catch (e: Exception) { return Result.failure(e) }
+    val file = try {
+        File(path)
+    } catch (e: Exception) {
+        return Result.failure(e)
+    }
 
     val buffer = ByteArray(8192)
     val istream = FileInputStream(file)
