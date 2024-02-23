@@ -41,18 +41,12 @@ import java.util.regex.Pattern
  * returns the raw data stored in the object.
  */
 @Serializable
-class CryptoString private constructor() {
+open class CryptoString protected constructor(val prefix: String, val encodedData: String) {
     var value: String = ""
         private set
         get() {
             return "$prefix:$encodedData"
         }
-
-    var prefix: String = ""
-        private set
-
-    var encodedData: String = ""
-        private set
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -106,10 +100,7 @@ class CryptoString private constructor() {
 
             val parts = value.split(":")
             if (parts.size != 2) return null
-            return CryptoString().apply {
-                prefix = parts[0]
-                encodedData = parts[1]
-            }
+            return CryptoString(parts[0], parts[1])
         }
 
         /** Creates a new CryptoString from a string containing the algorithm and raw data */
@@ -117,10 +108,7 @@ class CryptoString private constructor() {
 
             if (!csPrefixPattern.matcher(algorithm).matches() || buffer.isEmpty()) return null
 
-            return CryptoString().apply {
-                prefix = algorithm
-                encodedData = Base85.rfc1924Encoder.encode(buffer)
-            }
+            return CryptoString(algorithm, Base85.rfc1924Encoder.encode(buffer))
         }
     }
 }
