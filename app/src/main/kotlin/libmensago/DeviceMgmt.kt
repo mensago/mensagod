@@ -66,10 +66,8 @@ fun collectInfoForDevice(
     devKey: CryptoString
 ): Result<MutableMap<String, String>> {
 
-    // TODO: Finish implementing collectInfoForDevice()
-
     val out = hashMapOf(
-        "Name" to Platform.getHostname().getOrElse { return Result.failure(it) },
+        "Name" to Platform.getHostname(),
         "User" to Platform.getUsername().getOrElse { return Result.failure(it) },
         "OS" to Platform.getOS().getOrElse { return Result.failure(it) },
         "Device-ID" to devid.toString(),
