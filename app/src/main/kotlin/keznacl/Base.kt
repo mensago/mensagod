@@ -26,6 +26,6 @@ interface PublicHasher {
 }
 
 /** Interface for classes which can decrypt data */
-interface Decryptor : PublicHasher {
+interface Decryptor {
     fun decrypt(encData: CryptoString): Result<ByteArray>
 }
