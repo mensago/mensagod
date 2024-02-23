@@ -3,6 +3,8 @@ package libmensago
 import keznacl.BadValueException
 import keznacl.CryptoString
 import libkeycard.*
+import libmensago.commands.getCard
+import libmensago.commands.getWID
 import java.net.InetAddress
 
 /**
@@ -11,7 +13,7 @@ import java.net.InetAddress
  * user's Mensago address or its workspace address. When `force_update` is true, a lookup is
  * forced and the cache is updated regardless of the keycard's TTL expiration status.
  */
-fun getKeycard(owner: String, dns: DNSHandler): Result<Keycard> {
+fun getKeycard(owner: String?, dns: DNSHandler): Result<Keycard> {
 
     // First, determine the type of owner. A domain will be passed for an organization, and for
     // a user card a Mensago address or a workspace address will be given.
@@ -23,27 +25,17 @@ fun getKeycard(owner: String, dns: DNSHandler): Result<Keycard> {
         false
     }
     val domain = if (isOrg) domainTest!! else userTest!!.domain
-    val ownerType = if (isOrg) "Organization" else "User"
-
     val config = getRemoteServerConfig(domain, dns).getOrElse { return Result.failure(it) }
 
     val ip = dns.lookupA(config[0].server.toString()).getOrElse { return Result.failure(it) }
     val conn = ServerConnection()
     conn.connect(ip[0], config[0].port).let { if (it != null) return Result.failure(it) }
 
-    TODO("Finish getKeycard($owner, $dns). Depends on GETCARD command implementation")
 
-//    card = when (ownerType) {
-//        "Organization" -> orgCard(conn, 1).getOrElse { return Result.failure(it) }
-//        "User" -> userCard(conn, userTest!!, 1).getOrElse { return Result.failure(it) }
-//        else -> return Result.failure(
-//            UnreachableCodeException("Bad owner type '$ownerType' in getCard()")
-//        )
-//    }
-//
-//    conn.disconnect()
-//
-//    return Result.success(card)
+    val card = getCard(conn, owner, 1).getOrElse { return Result.failure(it) }
+    conn.disconnect()
+
+    return Result.success(card)
 }
 
 /** Obtains the workspace ID for a Mensago address */
@@ -57,29 +49,16 @@ fun resolveMenagoAddress(addr: MAddress, dns: DNSHandler): Result<RandomID> {
     val conn = ServerConnection()
     conn.connect(ip[0], config[0].port)?.let { return Result.failure(it) }
 
-    val req = ClientRequest("GETWID", mutableMapOf(
-        "User-ID" to addr.userid.toString(),
-        "Domain" to addr.domain.toString()
-    ))
-    conn.send(req)?.let { return Result.failure(it) }
-
-    val resp = conn.receive().getOrElse { return Result.failure(it) }
-    conn.disconnect()
-    Thread.sleep(10)
-
-    if (resp.code != 200) return Result.failure(ProtocolException(resp.toStatus()))
-    if (!resp.data.containsKey("Workspace-ID")) return Result.failure(SchemaFailureException())
-    val out = RandomID.fromString(resp.data["Workspace-ID"]!!)
-        ?: return Result.failure(BadValueException("Server exception: bad workspace ID received"))
-
-    return Result.success(out)
+    return getWID(conn, addr.userid, addr.domain)
 }
 
 /**
  * Data class to store information contained in a Mensago server's DNS management record.
  */
-data class DNSMgmtRecord(val pvk: CryptoString, val svk: CryptoString?, val ek: CryptoString,
-                         val tls: CryptoString?)
+data class DNSMgmtRecord(
+    val pvk: CryptoString, val svk: CryptoString?, val ek: CryptoString,
+    val tls: CryptoString?
+)
 
 /**
  * This function obtains and returns the information stored in a Mensago server's DNS management
@@ -149,8 +128,11 @@ fun getRemoteServerConfig(domain: Domain, dns: DNSHandler): Result<List<ServiceC
 
     // Having gotten this far, we have only one other option: attempt to connect to the domain on
     // port 2001.
-    val addr = try { InetAddress.getByName(itDomain.toString()) }
-    catch (e: Exception) { return Result.failure(e) }
+    val addr = try {
+        InetAddress.getByName(itDomain.toString())
+    } catch (e: Exception) {
+        return Result.failure(e)
+    }
 
     val conn = ServerConnection()
     if (conn.connect(addr, 2001) == null)
