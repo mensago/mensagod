@@ -63,3 +63,45 @@ fun blake2Hash(data: ByteArray): Result<CryptoString> {
     blake2b.update(data)
     return Result.success(CryptoString.fromBytes("BLAKE2B-256", blake2b.digest())!!)
 }
+
+class Hash private constructor(prefix: String, encodedData: String) :
+    CryptoString(prefix, encodedData) {
+
+    fun check(data: ByteArray): Result<Boolean> {
+        TODO("Implement Hash::check($data)")
+    }
+
+    companion object {
+
+        /** Creates a new CryptoString from a string containing the algorithm and raw data */
+        fun fromBytes(algorithm: String, buffer: ByteArray): Hash? {
+            return if (!isValidPrefix(algorithm) || buffer.isEmpty() ||
+                !getSupportedHashAlgorithms().contains(algorithm)
+            ) {
+                null
+            } else {
+                Hash(algorithm, Base85.rfc1924Encoder.encode(buffer))
+            }
+        }
+
+        /**
+         * Creates a new Hash object from a string in CryptoString format. Null is returned if the
+         * string is invalid or if the algorithm is not supported by the library.
+         */
+        fun fromString(value: String): Hash? {
+            if (!isValid(value)) return null
+
+            val parts = value.split(":")
+            if (parts.size != 2)
+                return null
+
+            if (!getSupportedHashAlgorithms().contains(parts[0])) return null
+
+            return Hash(parts[0], parts[1])
+        }
+
+        fun fromCryptoString(cs: CryptoString): Hash? {
+            TODO("Implement Hash::fromCryptoString()")
+        }
+    }
+}

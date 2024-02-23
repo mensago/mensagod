@@ -84,10 +84,16 @@ open class CryptoString protected constructor(val prefix: String, val encodedDat
         return hash(value.encodeToByteArray(), algorithm)
     }
 
+    /** Returns true if the string passed is a valid CryptoString prefix */
+    protected fun isValidPrefix(s: String): Boolean {
+        return csPattern.matcher(s).matches()
+    }
+
     companion object {
         private val csPattern = Pattern.compile(
             "^([A-Z0-9-]{1,24}):([0-9A-Za-z!#\$%&()*+-;<=>?@^_`{|}~]+)\$"
-        )
+        )!!
+
         private val csPrefixPattern = Pattern.compile(
             "^([A-Z0-9-]{1,24})\$"
         )
@@ -96,19 +102,28 @@ open class CryptoString protected constructor(val prefix: String, val encodedDat
          *  invalid.
          */
         fun fromString(value: String): CryptoString? {
-            if (!csPattern.matcher(value).matches()) return null
+            if (!isValid(value)) return null
 
             val parts = value.split(":")
-            if (parts.size != 2) return null
-            return CryptoString(parts[0], parts[1])
+            return if (parts.size != 2) null else CryptoString(parts[0], parts[1])
         }
 
         /** Creates a new CryptoString from a string containing the algorithm and raw data */
         fun fromBytes(algorithm: String, buffer: ByteArray): CryptoString? {
+            return if (!csPrefixPattern.matcher(algorithm).matches() || buffer.isEmpty())
+                null
+            else
+                CryptoString(algorithm, Base85.rfc1924Encoder.encode(buffer))
+        }
 
-            if (!csPrefixPattern.matcher(algorithm).matches() || buffer.isEmpty()) return null
+        /** Returns true if the string passed conforms to CryptoString format */
+        fun isValid(s: String): Boolean {
+            return csPattern.matcher(s).matches()
+        }
 
-            return CryptoString(algorithm, Base85.rfc1924Encoder.encode(buffer))
+        @JvmStatic
+        protected fun isValidPrefix(s: String): Boolean {
+            return csPrefixPattern.matcher(s).matches()
         }
     }
 }
