@@ -15,10 +15,12 @@ fun getSupportedSymmetricAlgorithms(): List<String> {
  * Returns the recommended secret key encryption algorithm supported by the library. If you don't know what to choose
  * for your implementation, this will provide a good default which balances speed and security.
  */
-fun getPreferredSymmetricAlgorithm(): String { return "XSALSA20" }
+fun getPreferredSymmetricAlgorithm(): String {
+    return "XSALSA20"
+}
 
 
-class SecretKey private constructor(keyStr: CryptoString): Encryptor {
+class SecretKey private constructor(keyStr: CryptoString) : Encryptor, Decryptor {
     val key: CryptoString = keyStr
     private var keyHash: CryptoString? = null
 
@@ -40,23 +42,27 @@ class SecretKey private constructor(keyStr: CryptoString): Encryptor {
         val nonce = ByteArray(SecretBox.nonceLength)
         rng.nextBytes(nonce)
 
-        val ciphertext: ByteArray = box.box(data, nonce) ?: return Result.failure(EncryptionFailureException())
+        val ciphertext: ByteArray =
+            box.box(data, nonce) ?: return Result.failure(EncryptionFailureException())
 
         return Result.success(CryptoString.fromBytes("XSALSA20", nonce + ciphertext)!!)
     }
 
-    fun decrypt(encData: CryptoString): Result<ByteArray> {
+    override fun decrypt(encData: CryptoString): Result<ByteArray> {
         val rawKey = key.toRaw()
         val box = SecretBox(rawKey.getOrElse { return Result.failure(it) })
         val ciphertext = encData.toRaw().getOrElse { return Result.failure(it) }
         val nonce = ciphertext.dropLast(ciphertext.size - SecretBox.nonceLength).toByteArray()
 
-        val decData: ByteArray = box.open(ciphertext.drop(SecretBox.nonceLength).toByteArray(), nonce) ?:
-            return Result.failure(DecryptionFailureException())
+        val decData: ByteArray =
+            box.open(ciphertext.drop(SecretBox.nonceLength).toByteArray(), nonce)
+                ?: return Result.failure(DecryptionFailureException())
         return Result.success(decData)
     }
 
-    override fun toString(): String { return key.toString() }
+    override fun toString(): String {
+        return key.toString()
+    }
 
     companion object {
 
@@ -70,8 +76,9 @@ class SecretKey private constructor(keyStr: CryptoString): Encryptor {
 
         fun fromString(pubKeyStr: String): Result<SecretKey> {
 
-            val pubKey = CryptoString.fromString(pubKeyStr) ?:
-            return Result.failure(BadValueException("bad key"))
+            val pubKey = CryptoString.fromString(pubKeyStr) ?: return Result.failure(
+                BadValueException("bad key")
+            )
             return from(pubKey)
 
         }
