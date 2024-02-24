@@ -2,6 +2,7 @@ package libmensago
 
 class BadFrameException(message: String = "") : Exception(message)
 class BadSessionException(message: String = "") : Exception(message)
+class DNSException(message: String = "") : Exception(message)
 class InvalidPathException(message: String = "") : Exception(message)
 class InsufficientResourceException(message: String = "") : Exception(message)
 class NotConnectedException(message: String = "") : Exception(message)

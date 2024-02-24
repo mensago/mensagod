@@ -5,6 +5,7 @@ import keznacl.CryptoString
 import libkeycard.*
 import libmensago.commands.getCard
 import libmensago.commands.getWID
+import java.io.IOException
 import java.net.InetAddress
 
 /**
@@ -63,6 +64,11 @@ data class DNSMgmtRecord(
 /**
  * This function obtains and returns the information stored in a Mensago server's DNS management
  * record.
+ *
+ * @exception ResourceNotFoundException Returned if the management record doesn't exist
+ * @exception BadValueException Returned for bad data in the management record
+ * @exception MissingDataException Returned if a required key is missing from the management record
+ * @exception IOException Returned if there was a DNS lookup error
  */
 fun getMgmtRecord(d: Domain, dns: DNSHandler): Result<DNSMgmtRecord> {
 
@@ -141,7 +147,13 @@ fun getRemoteServerConfig(domain: Domain, dns: DNSHandler): Result<List<ServiceC
     return Result.failure(ResourceNotFoundException())
 }
 
-// This private function just finds the management record items in a list of TXT records
+//
+/**
+ * This private function just finds the management record items in a list of TXT records
+ *
+ * @exception BadValueException Returned for invalid data in a TXT record
+ * @exception MissingDataException Returned if a required key is missing from a Mensago TXT record
+ */
 private fun parseTXTRecords(records: List<String>): Result<DNSMgmtRecord> {
     // This seemingly pointless construct ensures that we have all the necessary information if,
     // say, the admin put 2 management record items in a TXT record and put another in a second
@@ -169,4 +181,3 @@ private fun parseTXTRecords(records: List<String>): Result<DNSMgmtRecord> {
 
     return Result.success(DNSMgmtRecord(pvk, svk, ek, tls))
 }
-

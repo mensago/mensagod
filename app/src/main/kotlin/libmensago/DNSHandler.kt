@@ -5,6 +5,7 @@ import org.minidns.hla.ResolverApi
 import org.minidns.record.A
 import org.minidns.record.AAAA
 import org.minidns.record.TXT
+import java.io.IOException
 import java.net.InetAddress
 
 data class ServiceConfig(val server: Domain, val port: Int, val priority: Int)
@@ -46,6 +47,8 @@ open class DNSHandler {
     /**
      * Returns all text records for a specific domain. This call is primarily intended for Mensago
      * management record lookups
+     *
+     * @exception IOException Returned if there was a DNS lookup error
      */
     open fun lookupTXT(d: String): Result<List<String>> {
         val out = mutableListOf<String>()
