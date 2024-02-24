@@ -83,5 +83,17 @@ class DeliveryTag private constructor(var receiver: RecipientInfo, var sender: S
 
             return Result.success(DeliveryTag(rInfo, sInfo, payKey, type, subType))
         }
+
+        fun fromMessage(message: Message): Result<DeliveryTag> {
+            return Result.success(
+                DeliveryTag(
+                    RecipientInfo(message.to, message.from.domain),
+                    SenderInfo(message.from, message.to.domain),
+                    SecretKey.generate().getOrElse { return Result.failure(it) },
+                    message.type,
+                    message.subType
+                )
+            )
+        }
     }
 }
