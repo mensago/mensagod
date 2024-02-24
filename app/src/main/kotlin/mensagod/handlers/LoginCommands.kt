@@ -4,7 +4,10 @@ import keznacl.Base85
 import keznacl.CryptoString
 import keznacl.EncryptionKey
 import keznacl.UnsupportedAlgorithmException
-import libmensago.*
+import libmensago.ClientRequest
+import libmensago.DeviceApprovalMsg
+import libmensago.MServerPath
+import libmensago.ServerResponse
 import mensagod.*
 import mensagod.dbcmds.*
 import java.security.GeneralSecurityException
@@ -444,7 +447,7 @@ fun challengeDevice(state: ClientSession, devkey: CryptoString): Result<Boolean>
     val rng = SecureRandom()
     val rawBytes = ByteArray(32)
     rng.nextBytes(rawBytes)
-    val challenge = Base85.rfc1924Encoder.encode(rawBytes)
+    val challenge = Base85.encode(rawBytes)
     val encrypted = realKey.encrypt(challenge.toByteArray()).getOrElse { return Result.failure(it) }
     ServerResponse(
         100, "CONTINUE", "",

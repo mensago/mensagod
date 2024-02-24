@@ -1,9 +1,6 @@
 package libkeycard
 
-import keznacl.BadValueException
-import keznacl.CryptoString
-import keznacl.SigningPair
-import keznacl.Verifier
+import keznacl.*
 import java.time.Instant
 
 /**
@@ -178,7 +175,7 @@ sealed class Entry {
      * please see the documentation for `getFullText()` for the corresponding type of entry. OutOfOrderSignature is
      * returned if other required authentication strings are missing when hashing is requested.
      */
-    fun hash(algorithm: String? = null): Throwable? {
+    fun hash(algorithm: String = getPreferredHashAlgorithm()): Throwable? {
         val totalData = getFullText("Hash").getOrElse { return it }
 
         val hashValue = keznacl.hash(totalData.toByteArray(), algorithm)

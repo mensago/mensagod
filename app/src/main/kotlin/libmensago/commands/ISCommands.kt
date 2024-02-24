@@ -325,7 +325,7 @@ fun login(conn: MConn, wid: RandomID, serverKey: Encryptor): Result<PasswordInfo
     val rng = SecureRandom()
     val rawBytes = ByteArray(32)
     rng.nextBytes(rawBytes)
-    val challenge = Base85.rfc1924Encoder.encode(rawBytes)
+    val challenge = Base85.encode(rawBytes)
     val encrypted = serverKey.encrypt(challenge.toByteArray())
         .getOrElse { return Result.failure(it) }
 

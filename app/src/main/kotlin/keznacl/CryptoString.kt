@@ -37,7 +37,7 @@ import java.util.regex.Pattern
  * Regular usage of a CryptoString mostly involves creating an instance from other data. The
  * constructor can take a CryptoString-formatted string or a string prefix and some raw bytes. Once
  * data has been put into the instance, getting it back out is just a matter of casting to a string,
- * or calling `to_string()`, `to_bytes()`, or `to_raw()`. The last of these three methods only
+ * or calling [toString], [toByteArray], or [toRaw]. The last of these three methods only
  * returns the raw data stored in the object.
  */
 @Serializable
@@ -65,6 +65,7 @@ open class CryptoString protected constructor(val prefix: String, val encodedDat
         return value
     }
 
+    /** Returns the instance's value as a ByteArray */
     fun toByteArray(): ByteArray {
         return value.toByteArray()
     }
@@ -72,21 +73,16 @@ open class CryptoString protected constructor(val prefix: String, val encodedDat
     /**
      * Returns the object's raw, unencoded data
      *
-     * @throws IllegalArgumentException Returned if there was a Base85 decoding error
+     * @exception IllegalArgumentException Returned if there was a Base85 decoding error
      */
     fun toRaw(): Result<ByteArray> {
-        val out = Base85.rfc1924Decoder.decode(encodedData).getOrElse { return Result.failure(it) }
+        val out = Base85.decode(encodedData).getOrElse { return Result.failure(it) }
         return Result.success(out)
     }
 
     /** Calculates and returns the hash of the string value of the instance */
-    fun calcHash(algorithm: String? = null): Result<CryptoString> {
+    fun calcHash(algorithm: String = getPreferredHashAlgorithm()): Result<Hash> {
         return hash(value.encodeToByteArray(), algorithm)
-    }
-
-    /** Returns true if the string passed is a valid CryptoString prefix */
-    protected fun isValidPrefix(s: String): Boolean {
-        return csPattern.matcher(s).matches()
     }
 
     companion object {
@@ -98,8 +94,7 @@ open class CryptoString protected constructor(val prefix: String, val encodedDat
             "^([A-Z0-9-]{1,24})\$"
         )
 
-        /** Creates a new CryptoString object from a string in CryptoString format or null if
-         *  invalid.
+        /** Creates a new instance from a string in CryptoString format or null if invalid.
          */
         fun fromString(value: String): CryptoString? {
             if (!isValid(value)) return null
@@ -108,12 +103,12 @@ open class CryptoString protected constructor(val prefix: String, val encodedDat
             return if (parts.size != 2) null else CryptoString(parts[0], parts[1])
         }
 
-        /** Creates a new CryptoString from a string containing the algorithm and raw data */
+        /** Creates a new CryptoString from a string containing the algorithm name and raw data */
         fun fromBytes(algorithm: String, buffer: ByteArray): CryptoString? {
             return if (!csPrefixPattern.matcher(algorithm).matches() || buffer.isEmpty())
                 null
             else
-                CryptoString(algorithm, Base85.rfc1924Encoder.encode(buffer))
+                CryptoString(algorithm, Base85.encode(buffer))
         }
 
         /** Returns true if the string passed conforms to CryptoString format */

@@ -5,8 +5,11 @@ import com.iwebpp.crypto.TweetNaclFast
 import ove.crypto.digest.Blake2b
 import java.security.GeneralSecurityException
 
-
-class SealedBox {
+/**
+ * This class sits on top of TweetNaCl and is used to implement the NaCl sealed box encryption. It
+ * is not intended to be part of the public API.
+ */
+internal class SealedBox {
     private val cryptoBoxNonceBytes = 24
     private val cryptoBoxPublicKeyBytes = 32
     private val cryptoBoxMacBytes = 16
@@ -16,7 +19,7 @@ class SealedBox {
     //  int crypto_box_seal(unsigned char *c, const unsigned char *m,
     //            unsigned long long mlen, const unsigned char *pk);
     /**
-     * Encrypt in  a sealed box
+     * Encrypt in a sealed box
      *
      * @param clearText clear text
      * @param receiverPubKey receiver public key
@@ -59,7 +62,8 @@ class SealedBox {
         pubKey: ByteArray,
         privKey: ByteArray
     ): Result<ByteArray> {
-        if (cipherText.size < cryptoBoxSealBytes) return Result.failure(BadValueException("Ciphertext too short"))
+        if (cipherText.size < cryptoBoxSealBytes)
+            return Result.failure(BadValueException("Ciphertext too short"))
 
         val pksender = cipherText.copyOfRange(0, cryptoBoxPublicKeyBytes)
         val ciphertextwithmac = cipherText.copyOfRange(cryptoBoxPublicKeyBytes, cipherText.size)

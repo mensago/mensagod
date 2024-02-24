@@ -8,7 +8,7 @@ import kotlin.test.assertNull
 class Argon2PasswordTest {
 
     private val weakTestHash = "\$argon2id\$v=19\$m=16384,t=1,p=1\$z48dw25lKtFmfLw6HTvR/g" +
-        "\$TSXxBPLhZ1U2B+mBxOyw63WlwpUpwpfihRTEzTMfa44"
+            "\$TSXxBPLhZ1U2B+mBxOyw63WlwpUpwpfihRTEzTMfa44"
     private val weak2iHash = "\$argon2i\$v=19\$m=16384,t=1,p=1\$86jbEKB3WO0Nr8okRL9/MA" +
             "\$X0J81SApJRz44CX791lme+mfH8hy3NUMGFDOfZdIlak"
     private val weak2dHash = "\$argon2d\$v=19\$m=16384,t=1,p=1\$/0l+lSUhmlySJtm3Xg54gw" +
@@ -56,7 +56,8 @@ class Argon2PasswordTest {
 
     @Test
     fun setFromInfo() {
-        val info = PasswordInfo("ARGON2ID",
+        val info = PasswordInfo(
+            "ARGON2ID",
             "z48dw25lKtFmfLw6HTvR/g",
             "m=16384,t=1,p=2"
         )
@@ -84,40 +85,75 @@ class Argon2PasswordTest {
 
     @Test
     fun validateInfo() {
-        assertNull(validatePasswordInfo(PasswordInfo("ARGON2ID",
-            "z48dw25lKtFmfLw6HTvR/g",
-            "m=16384,t=1,p=1"
-        )))
+        assertNull(
+            validatePasswordInfo(
+                PasswordInfo(
+                    "ARGON2ID",
+                    "z48dw25lKtFmfLw6HTvR/g",
+                    "m=16384,t=1,p=1"
+                )
+            )
+        )
 
-        assertNotNull(validatePasswordInfo(PasswordInfo("BADALGO",
-            "z48dw25lKtFmfLw6HTvR/g",
-            "m=16384,t=1,p=1"
-        )))
+        assertNotNull(
+            validatePasswordInfo(
+                PasswordInfo(
+                    "BADALGO",
+                    "z48dw25lKtFmfLw6HTvR/g",
+                    "m=16384,t=1,p=1"
+                )
+            )
+        )
 
-        assertNotNull(validatePasswordInfo(PasswordInfo("ARGON2ID",
-            "",
-            "m=16384,t=1,p=1"
-        )))
+        assertNotNull(
+            validatePasswordInfo(
+                PasswordInfo(
+                    "ARGON2ID",
+                    "",
+                    "m=16384,t=1,p=1"
+                )
+            )
+        )
 
-        assertNotNull(validatePasswordInfo(PasswordInfo("ARGON2ID",
-            "z48dw25lKtFmfLw6HTvR/g",
-            ""
-        )))
+        assertNotNull(
+            validatePasswordInfo(
+                PasswordInfo(
+                    "ARGON2ID",
+                    "z48dw25lKtFmfLw6HTvR/g",
+                    ""
+                )
+            )
+        )
 
-        assertNotNull(validatePasswordInfo(PasswordInfo("ARGON2ID",
-            "z48dw25lKtFmfLw6HTvR/g",
-            "m=a,t=1,p=1"
-        )))
+        assertNotNull(
+            validatePasswordInfo(
+                PasswordInfo(
+                    "ARGON2ID",
+                    "z48dw25lKtFmfLw6HTvR/g",
+                    "m=a,t=1,p=1"
+                )
+            )
+        )
 
-        assertNotNull(validatePasswordInfo(PasswordInfo("ARGON2ID",
-            "z48dw25lKtFmfLw6HTvR/g",
-            "m=16384,t=a,p=1"
-        )))
+        assertNotNull(
+            validatePasswordInfo(
+                PasswordInfo(
+                    "ARGON2ID",
+                    "z48dw25lKtFmfLw6HTvR/g",
+                    "m=16384,t=a,p=1"
+                )
+            )
+        )
 
-        assertNotNull(validatePasswordInfo(PasswordInfo("ARGON2ID",
-            "z48dw25lKtFmfLw6HTvR/g",
-            "m=16384,t=1,p=a"
-        )))
+        assertNotNull(
+            validatePasswordInfo(
+                PasswordInfo(
+                    "ARGON2ID",
+                    "z48dw25lKtFmfLw6HTvR/g",
+                    "m=16384,t=1,p=a"
+                )
+            )
+        )
     }
 
     @Test

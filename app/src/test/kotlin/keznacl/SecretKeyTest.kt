@@ -18,7 +18,9 @@ class SecretKeyTest {
     @Test
     fun testSecretKey() {
         val testdata = "This is some test data"
-        val key = SecretKey.fromString("XSALSA20:Z%_Is*V6uc!_+QIG5F`UJ*cLYoO`=58RCuAk-`Bq").getOrThrow()
+        val key =
+            SecretKey.fromString("XSALSA20:Z%_Is*V6uc!_+QIG5F`UJ*cLYoO`=58RCuAk-`Bq")
+                .getOrThrow()
 
         val encdata = key.encrypt(testdata.toByteArray()).getOrThrow()
         val decdata = key.decrypt(encdata)
@@ -30,6 +32,10 @@ class SecretKeyTest {
         val encdata2 = key2.encrypt(testdata.toByteArray()).getOrThrow()
         val decdata2 = key2.decrypt(encdata2)
         assert(decdata2.isSuccess)
+
+        // Lint removal / smoke test
+        CryptoString.fromString("XSALSA20:Z%_Is*V6uc!_+QIG5F`UJ*cLYoO`=58RCuAk-`Bq")!!
+            .toSecretKey().getOrThrow()
     }
 
 }

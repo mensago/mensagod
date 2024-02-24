@@ -11,21 +11,22 @@ fun isSupportedAlgorithm(name: String): Boolean {
     }
 }
 
+/** Interface for classes which can decrypt data */
+interface Decryptor {
+    fun decrypt(encData: CryptoString): Result<ByteArray>
+}
+
 /** Interface for classes which can encrypt data */
 interface Encryptor : PublicHasher {
     fun encrypt(data: ByteArray): Result<CryptoString>
 }
 
+/** Interface for classes which can verify a cryptographic signature */
 interface Verifier : PublicHasher {
     fun verify(data: ByteArray, signature: CryptoString): Result<Boolean>
 }
 
 /** Interface for classes which can have a method to get the hash of a public key */
 interface PublicHasher {
-    fun getPublicHash(algorithm: String = getPreferredHashAlgorithm()): Result<CryptoString>
-}
-
-/** Interface for classes which can decrypt data */
-interface Decryptor {
-    fun decrypt(encData: CryptoString): Result<ByteArray>
+    fun getPublicHash(algorithm: String = getPreferredHashAlgorithm()): Result<Hash>
 }

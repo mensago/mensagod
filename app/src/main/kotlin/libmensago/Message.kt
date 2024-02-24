@@ -101,9 +101,7 @@ open class Message(var from: WAddress, var to: WAddress, var format: MsgFormat) 
 
             val rng = SecureRandom()
             val size = rng.nextInt(actualRange.first, actualRange.last + 1)
-            return Base85.rfc1924Encoder.encode(
-                ByteArray(size) { rng.nextInt(0, 256).toByte() }
-            )
+            return Base85.encode(ByteArray(size) { rng.nextInt(0, 256).toByte() })
         }
 
     }

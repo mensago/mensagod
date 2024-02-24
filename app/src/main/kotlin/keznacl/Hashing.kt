@@ -5,24 +5,31 @@ import java.io.File
 import java.io.FileInputStream
 
 /**
- * Returns the hashing algorithms supported by the library. Currently the only supported algorithm is
- * BLAKE2B. Other algorithms may be added at a future time.
+ * Returns the hashing algorithms supported by the library. Currently the only supported algorithm
+ * is BLAKE2B. Other algorithms may be added at a future time.
  */
 fun getSupportedHashAlgorithms(): List<String> {
     return listOf("BLAKE2B-256")
 }
 
 /**
- * Returns the recommended algorithm supported by the library. If you don't know what to choose for a hashing algorithm
- * for your implementation, this will provide a good default which balances speed and security.
+ * Returns the recommended algorithm supported by the library. If you don't know what to choose for
+ * a hashing algorithm for your implementation, this will provide a good default which balances
+ * speed and security.
  */
 fun getPreferredHashAlgorithm(): String {
     return "BLAKE2B-256"
 }
 
-fun hash(data: ByteArray, reqAlgorithm: String? = null): Result<CryptoString> {
-    val algorithm = reqAlgorithm ?: getPreferredHashAlgorithm()
-    if (!isSupportedAlgorithm(algorithm)) return Result.failure(UnsupportedAlgorithmException())
+/**
+ * Creates a hash of the specified data.
+ *
+ * @exception UnsupportedAlgorithmException Returned if the library does not support the algorithm
+ * specified
+ */
+fun hash(data: ByteArray, algorithm: String = getPreferredHashAlgorithm()): Result<Hash> {
+    if (!getSupportedHashAlgorithms().contains(algorithm))
+        return Result.failure(UnsupportedAlgorithmException())
 
     return when (algorithm) {
         "BLAKE2B-256" -> blake2Hash(data)
@@ -31,12 +38,14 @@ fun hash(data: ByteArray, reqAlgorithm: String? = null): Result<CryptoString> {
 }
 
 /**
- * hashFile computes a hash of the file specified by the path parameter. This call is often helpful
+ * Computes a [Hash] of the file specified by the path parameter. This call is often helpful
  * in that the entire contents of the file are not loaded into memory during computation.
  */
-fun hashFile(path: String, algorithm: String = getPreferredHashAlgorithm()): Result<CryptoString> {
+fun hashFile(path: String, algorithm: String = getPreferredHashAlgorithm()): Result<Hash> {
     if (path.isEmpty()) return Result.failure(EmptyDataException())
-    if (algorithm != "BLAKE2B-256") return Result.failure(UnsupportedAlgorithmException())
+    if (!getSupportedHashAlgorithms().contains(algorithm))
+        return Result.failure(UnsupportedAlgorithmException())
+
     val file = try {
         File(path)
     } catch (e: Exception) {
@@ -53,39 +62,58 @@ fun hashFile(path: String, algorithm: String = getPreferredHashAlgorithm()): Res
         bytesRead = istream.read(buffer)
     }
 
-    return Result.success(CryptoString.fromBytes(algorithm, blake2b.digest())!!)
+    return Result.success(Hash.fromBytes(algorithm, blake2b.digest())!!)
 }
 
-fun blake2Hash(data: ByteArray): Result<CryptoString> {
+/**
+ * Creates a 256-bit BLAKE2B hash of the data that provides 128 bits of protection.
+ *
+ * @exception EmptyDataException Returned if the ByteArray given is empty
+ */
+fun blake2Hash(data: ByteArray): Result<Hash> {
     if (data.isEmpty()) return Result.failure(EmptyDataException())
 
     val blake2b = Blake2b.Digest.newInstance(32)
     blake2b.update(data)
-    return Result.success(CryptoString.fromBytes("BLAKE2B-256", blake2b.digest())!!)
+    return Result.success(Hash.fromBytes("BLAKE2B-256", blake2b.digest())!!)
 }
 
+/**
+ * The Hash class is a [CryptoString] subclass which provides some helpful functions for easier
+ * hashing and hash checks.
+ */
 class Hash private constructor(prefix: String, encodedData: String) :
     CryptoString(prefix, encodedData) {
 
     fun check(data: ByteArray): Result<Boolean> {
-        TODO("Implement Hash::check($data)")
+        return Result.success(
+            hash(data, prefix)
+                .getOrElse { return Result.failure(it) }
+                .toString() == value
+        )
     }
 
     companion object {
 
-        /** Creates a new CryptoString from a string containing the algorithm and raw data */
+        /**
+         * Creates a new Hash object from a string containing the algorithm and raw data
+         * representing an existing hash. It does not calculate a hash from the data; it instead
+         * encodes raw hash data into CryptoString format. Note that this, unlike the superclass
+         * version, this function will return null if given an algorithm that is not a hash
+         * algorithm supported by the library.
+         */
         fun fromBytes(algorithm: String, buffer: ByteArray): Hash? {
             return if (!isValidPrefix(algorithm) || buffer.isEmpty() ||
                 !getSupportedHashAlgorithms().contains(algorithm)
             ) {
                 null
             } else {
-                Hash(algorithm, Base85.rfc1924Encoder.encode(buffer))
+                Hash(algorithm, Base85.encode(buffer))
             }
         }
 
         /**
-         * Creates a new Hash object from a string in CryptoString format. Null is returned if the
+         * Creates a new Hash object from a string in [CryptoString] format. Null is returned if the
          * string is invalid or if the algorithm is not supported by the library.
          */
         fun fromString(value: String): Hash? {
@@ -99,9 +127,13 @@ class Hash private constructor(prefix: String, encodedData: String) :
 
             return Hash(parts[0], parts[1])
         }
-
-        fun fromCryptoString(cs: CryptoString): Hash? {
-            TODO("Implement Hash::fromCryptoString()")
-        }
     }
+}
+
+/**
+ * Converts the CryptoString object into a [Hash] object. It will return null if the object does
+ * not use a hashing algorithm or one supported by the library.
+ */
+fun CryptoString.toHash(): Hash? {
+    return Hash.fromString(this.value)
 }

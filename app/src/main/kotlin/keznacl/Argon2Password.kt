@@ -2,15 +2,14 @@ package keznacl
 
 import de.mkammerer.argon2.Argon2Advanced
 import de.mkammerer.argon2.Argon2Factory
-import libkeycard.MissingDataException
 import java.nio.charset.Charset
 import java.util.*
 
 /**
  * Instantiates an Argon2-family class instance from the supplied hash.
  *
- * @throws EmptyDataException Returned if given an empty string
- * @throws BadValueException Returned if given a string that isn't an Argon2 hash
+ * @exception EmptyDataException Returned if given an empty string
+ * @exception BadValueException Returned if given a string that isn't an Argon2 hash
  */
 fun argonPassFromHash(hashStr: String): Result<Argon2Password> {
     hashStr.ifEmpty { return Result.failure(EmptyDataException()) }
@@ -30,9 +29,10 @@ fun argonPassFromHash(hashStr: String): Result<Argon2Password> {
 
 
 /**
- * Represents a password and its hash from the Argon2-family. It can also create a hash from a
+ * Represents a password and its hash from the Argon2 family. It can also create a hash from a
  * cleartext password. In most situations, you merely need to instantiate an instance of
- * Argon2idPassword and call updateHash(). If you need extra security,
+ * [Argon2idPassword] and call [updateHash]. The defaults provide good security in many situations,
+ * but if you need extra, you can call [setStrength] or set parameters manually.
  */
 sealed class Argon2Password : Password() {
     protected abstract val hasher: Argon2Advanced
@@ -51,9 +51,11 @@ sealed class Argon2Password : Password() {
     /**
      * Sets the instance's properties from an existing Argon2 hash
      *
-     * @throws BadValueException Returned if given a bad hash algorithm name
-     * @throws NumberFormatException Returned if a hash parameter value or the version is not a number
-     * @throws IllegalArgumentException Returned if there is a Base64 decoding error
+     * @exception BadValueException Returned if given a bad hash algorithm name or the hash from
+     * a different variant of the same algorithm family.
+     * @exception NumberFormatException Returned if a hash parameter value or the version is not a
+     * number
+     * @exception IllegalArgumentException Returned if there is a Base64 decoding error
      */
     override fun setFromHash(hashStr: String): Throwable? {
         parseHash(hashStr)?.let { return it }
@@ -63,12 +65,12 @@ sealed class Argon2Password : Password() {
     }
 
     /**
-     * Updates the object from a PasswordInfo structure. NOTE: this call only performs basic
+     * Updates the object from a [PasswordInfo] structure. NOTE: this call only performs basic
      * validation. If you are concerned about the validity of the data in pwInfo, pass it through
-     * Argon2Password::validateInfo() first.
+     * [Argon2Password.validateInfo] first.
      *
-     * @throws NumberFormatException Returned if given non-integers for parameter values
-     * @throws IllegalArgumentException Returned for Base64 decoding errors
+     * @exception NumberFormatException Returned if given non-integers for parameter values
+     * @exception IllegalArgumentException Returned for Base64 decoding errors
      */
     fun setFromInfo(pwInfo: PasswordInfo): Throwable? {
         try {
@@ -136,9 +138,10 @@ sealed class Argon2Password : Password() {
      * Updates internal properties from the passed hash. It does *not* change the internal hash
      * property itself.
      *
-     * @throws BadValueException Returned if given a bad hash algorithm name
-     * @throws NumberFormatException Returned if a hash parameter value or the version is not a number
-     * @throws IllegalArgumentException Returned if there is a Base64 decoding error
+     * @exception BadValueException Returned if given a bad hash algorithm name
+     * @exception NumberFormatException Returned if a hash parameter value or the version is not a
+     * number
+     * @exception IllegalArgumentException Returned if there is a Base64 decoding error
      */
     private fun parseHash(hashStr: String): Throwable? {
         // Sample of the hash format
@@ -177,7 +180,7 @@ sealed class Argon2Password : Password() {
      * Parses out an Argon2 parameter token and returns a triple containing memory, iterations (time
      * cost), and parallelism (threads).
      *
-     * @throws NumberFormatException Returned if given non-integers for parameter values
+     * @exception NumberFormatException Returned if given non-integers for parameter values
      */
     private fun parseParameters(paramStr: String): Result<Triple<Int, Int, Int>> {
         val paramParts = paramStr
@@ -201,7 +204,7 @@ sealed class Argon2Password : Password() {
         /**
          * Ensures that all the hash-related information in the instance is present and valid
          *
-         * @throws IllegalArgumentException Returned for Base64 decoding errors
+         * @exception IllegalArgumentException Returned for Base64 decoding errors
          */
         fun validateInfo(info: PasswordInfo): Throwable? {
 
@@ -252,7 +255,7 @@ sealed class Argon2Password : Password() {
 
 /**
  * An Argon2 algorithm which balances protection against brute force attacks and side-channel
- * attacks.
+ * attacks. If you're not sure which of the three Argon variants to choose, pick this one.
  */
 class Argon2idPassword : Argon2Password() {
     override var algorithm = "ARGON2ID"
@@ -291,4 +294,3 @@ class Argon2iPassword : Argon2Password() {
         salt = Base64.getEncoder().withoutPadding().encodeToString(rawSalt)
     }
 }
-

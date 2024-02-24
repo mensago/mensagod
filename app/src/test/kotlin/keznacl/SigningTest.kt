@@ -20,7 +20,8 @@ class SigningTest {
     fun pairSignTest() {
         val keypair = SigningPair.fromStrings(
             "ED25519:PnY~pK2|;AYO#1Z;B%T$2}E$^kIpL=>>VzfMKsDx",
-            "ED25519:{^A@`5N*T%5ybCU%be892x6%*Rb2rnYd=SGeO4jF",).getOrThrow()
+            "ED25519:{^A@`5N*T%5ybCU%be892x6%*Rb2rnYd=SGeO4jF",
+        ).getOrThrow()
         assertEquals(keypair.publicKey.value, "ED25519:PnY~pK2|;AYO#1Z;B%T$2}E$^kIpL=>>VzfMKsDx")
         assertEquals(keypair.privateKey.value, "ED25519:{^A@`5N*T%5ybCU%be892x6%*Rb2rnYd=SGeO4jF")
 
@@ -33,13 +34,19 @@ class SigningTest {
         val signature2 = keypair2.sign(testdata.toByteArray()).getOrThrow()
         val verified2 = keypair2.verify(testdata.toByteArray(), signature2).getOrThrow()
         assert(verified2)
+
+        // Lint removal / smoke test
+        CryptoString.fromString("ED25519:PnY~pK2|;AYO#1Z;B%T$2}E$^kIpL=>>VzfMKsDx")!!
+            .toVerificationKey()
+            .getOrThrow()
     }
 
     @Test
     fun keySignTest() {
         val keypair = SigningPair.fromStrings(
             "ED25519:PnY~pK2|;AYO#1Z;B%T$2}E$^kIpL=>>VzfMKsDx",
-            "ED25519:{^A@`5N*T%5ybCU%be892x6%*Rb2rnYd=SGeO4jF",).getOrThrow()
+            "ED25519:{^A@`5N*T%5ybCU%be892x6%*Rb2rnYd=SGeO4jF",
+        ).getOrThrow()
         val key = VerificationKey.from(keypair.publicKey).getOrThrow()
         assertEquals(key.key.value, "ED25519:PnY~pK2|;AYO#1Z;B%T$2}E$^kIpL=>>VzfMKsDx")
 

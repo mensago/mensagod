@@ -2,7 +2,7 @@ package keznacl
 
 /**
  * An enum class to quickly figure out parameters for a hash function. Basic, despite the usage by
- * gen Z, is good, basic protection, and the other levels are for situations which require more.
+ * GenZ, is good, basic protection, and the other levels are for situations which require more.
  */
 enum class HashStrength {
     Basic,
@@ -29,9 +29,23 @@ abstract class Password : PasswordInfo() {
         return hash
     }
 
+    /**
+     * Sets the Password value from an existing password hash.
+     *
+     * @exception BadValueException Returned if invalid data is passed
+     */
     abstract fun setFromHash(hashStr: String): Throwable?
+
+    /**
+     * Sets parameters for the algorithm based on the strength requested. The specific parameter
+     * values assigned to a strength level is specific to the algorithm.
+     */
     abstract fun setStrength(strength: HashStrength): Password
+
+    /** Creates a new hash given a cleartext password. */
     abstract fun updateHash(pw: String): Result<String>
+
+    /** Checks the cleartext password against the object's hash and returns true if they match */
     abstract fun verify(pw: String): Boolean
 }
 
