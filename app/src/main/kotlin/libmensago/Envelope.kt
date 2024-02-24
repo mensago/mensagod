@@ -2,6 +2,7 @@ package libmensago
 
 import keznacl.*
 import libkeycard.HashMismatchException
+import libkeycard.MissingDataException
 import java.io.File
 import java.io.IOException
 
@@ -39,9 +40,37 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
 
         /**
          * Creates a new Envelope object representing a ready-to-send encrypted message.
+         *
+         * @exception ResourceNotFoundException Returned if the management record doesn't exist
+         * @exception BadValueException Returned for bad data in the management record
+         * @exception MissingDataException Returned if a required key is missing from the management record
+         * @exception IOException Returned if there was a DNS lookup error
+         * @exception UnsupportedAlgorithmException Returned if the library doesn't support the
+         * encryption algorithm used by one of the servers
          */
-        fun seal(key: Encryptor, message: Message): Result<Envelope> {
-            TODO("Implement Envelope::seal($key, $message")
+        fun seal(recipientKey: Encryptor, message: Message, dns: DNSHandler):
+                Result<Envelope> {
+
+            // To do this, we need to create a DeliveryTag and then seal() it, and then encrypt
+            // the message itself with the recipient's key. Pretty simple, actually.
+
+            val senderRec = KCCache.getMgmtRecord(message.from.domain, dns)
+                .getOrElse { return Result.failure(it) }
+            val senderKey = senderRec.ek.toEncryptionKey()
+                .getOrElse { return Result.failure(it) }
+            val receiverRec = KCCache.getMgmtRecord(message.to.domain, dns)
+                .getOrElse { return Result.failure(it) }
+            val receiverKey = receiverRec.ek.toEncryptionKey()
+                .getOrElse { return Result.failure(it) }
+
+            val tag = DeliveryTag.fromMessage(message).getOrElse { return Result.failure(it) }
+            val sealedTag = tag.seal(recipientKey, senderKey, receiverKey)
+                .getOrElse { return Result.failure(it) }
+
+            val payload = serializeAndEncrypt(message, recipientKey)
+                .getOrElse { return Result.failure(it) }
+
+            return Result.success(Envelope(sealedTag, payload))
         }
 
         /**
