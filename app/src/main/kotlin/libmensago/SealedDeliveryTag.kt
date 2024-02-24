@@ -32,8 +32,8 @@ class SealedDeliveryTag(val receiver: CryptoString, val sender: CryptoString, va
      * @throws IllegalArgumentException Returned if there was a Base85 decoding error
      * @throws GeneralSecurityException Returned for decryption failures
      */
-    fun decryptReceiver(keyPair: EncryptionPair): Result<RecipientInfo> {
-        return decryptAndDeserialize<RecipientInfo>(receiver, keyPair)
+    fun decryptReceiver(keyPair: EncryptionPair): Result<RecipientLabel> {
+        return decryptAndDeserialize<RecipientLabel>(receiver, keyPair)
     }
 
     /**
@@ -43,8 +43,8 @@ class SealedDeliveryTag(val receiver: CryptoString, val sender: CryptoString, va
      * @throws IllegalArgumentException Returned if there was a Base85 decoding error
      * @throws GeneralSecurityException Returned for decryption failures
      */
-    fun decryptSender(keyPair: EncryptionPair): Result<SenderInfo> {
-        return decryptAndDeserialize<SenderInfo>(sender, keyPair)
+    fun decryptSender(keyPair: EncryptionPair): Result<SenderLabel> {
+        return decryptAndDeserialize<SenderLabel>(sender, keyPair)
     }
 
     companion object {
