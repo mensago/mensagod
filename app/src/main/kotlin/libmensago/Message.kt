@@ -1,6 +1,7 @@
 package libmensago
 
 import keznacl.Base85
+import kotlinx.serialization.Serializable
 import libkeycard.RandomID
 import libkeycard.Timestamp
 import libkeycard.WAddress
@@ -10,9 +11,9 @@ import java.security.SecureRandom
  * Message is primarily a data model class which also provides most of the functionality for
  * interacting with messages.
  *
- * @see SysMessage For interacting with system messages.
  * @see Envelope High-level API for encrypting messages.
  */
+@Serializable
 open class Message(var from: WAddress, var to: WAddress, var format: MsgFormat) {
 
     var date: Timestamp = Timestamp()
@@ -80,18 +81,45 @@ open class Message(var from: WAddress, var to: WAddress, var format: MsgFormat) 
 
     // Builder pattern methods
 
-    fun setSubject(s: String): Message { subject = s; return this }
+    fun setSubject(s: String): Message {
+        subject = s
+        return this
+    }
 
-    fun setBody(s: String): Message { body = s; return this }
+    fun setBody(s: String): Message {
+        body = s
+        return this
+    }
 
-    fun addCC(recipient: WAddress): Message { cc.add(recipient); return this }
-    fun clearCC(): Message { cc.clear(); return this }
+    fun addCC(recipient: WAddress): Message {
+        cc.add(recipient)
+        return this
+    }
 
-    fun addBCC(recipient: WAddress): Message { bcc.add(recipient); return this }
-    fun clearBCC(): Message { bcc.clear(); return this }
+    fun clearCC(): Message {
+        cc.clear()
+        return this
+    }
 
-    fun attach(att: Attachment): Message { attachments.add(att); return this }
-    fun clearAttachments(): Message { attachments.clear(); return this }
+    fun addBCC(recipient: WAddress): Message {
+        bcc.add(recipient)
+        return this
+    }
+
+    fun clearBCC(): Message {
+        bcc.clear()
+        return this
+    }
+
+    fun attach(att: Attachment): Message {
+        attachments.add(att)
+        return this
+    }
+
+    fun clearAttachments(): Message {
+        attachments.clear()
+        return this
+    }
 
     companion object {
 
