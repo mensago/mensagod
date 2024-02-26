@@ -25,13 +25,13 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
     fun open(keyPair: EncryptionPair): Result<Message> {
 
         val pubHash = hash(keyPair.publicKey.toByteArray(), tag.keyHash.prefix)
-            .getOrElse { return Result.failure(it) }
+            .getOrElse { return it.toFailure() }
         if (pubHash != tag.keyHash) return Result.failure(HashMismatchException())
 
         val payloadKeyStr = keyPair.decrypt(tag.payloadKey)
-            .getOrElse { return Result.failure(it) }
+            .getOrElse { return it.toFailure() }
             .decodeToString()
-        val msgKey = SecretKey.fromString(payloadKeyStr).getOrElse { return Result.failure(it) }
+        val msgKey = SecretKey.fromString(payloadKeyStr).getOrElse { return it.toFailure() }
         return decryptAndDeserialize<Message>(message, msgKey)
     }
 
@@ -40,13 +40,14 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
      * this version will not throw exceptions, but otherwise functions like toString().
      */
     fun toStringResult(): Result<String> {
-        return Result.success(listOf("MENSAGO",
-            runCatching { Json.encodeToString(tag) }.getOrElse { return Result.failure(it) },
+        return listOf("MENSAGO",
+            runCatching { Json.encodeToString(tag) }.getOrElse { return it.toFailure() },
             "----------",
             message.prefix,
-            message.encodedData
+            message.encodedData,
+            ""
         ).joinToString("\r\n")
-        )
+            .toSuccess()
     }
 
     override fun toString(): String {
@@ -61,13 +62,11 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
      * @exception IOException Returned if an I/O error occurs
      */
     fun saveFile(path: String): Throwable? {
-        kotlin.runCatching {
+        return kotlin.runCatching {
             val file = File(path)
             if (!file.exists()) file.createNewFile()
             file.bufferedWriter().write(toString())
-        }.onFailure { return it }
-
-        return null
+        }.exceptionOrNull()
     }
 
     companion object {
@@ -89,20 +88,20 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
             // the message itself with the recipient's key. Pretty simple, actually.
 
             val senderRec = KCCache.getMgmtRecord(message.from.domain, dns)
-                .getOrElse { return Result.failure(it) }
+                .getOrElse { return it.toFailure() }
             val senderKey = senderRec.ek.toEncryptionKey()
-                .getOrElse { return Result.failure(it) }
+                .getOrElse { return it.toFailure() }
             val receiverRec = KCCache.getMgmtRecord(message.to.domain, dns)
-                .getOrElse { return Result.failure(it) }
+                .getOrElse { return it.toFailure() }
             val receiverKey = receiverRec.ek.toEncryptionKey()
-                .getOrElse { return Result.failure(it) }
+                .getOrElse { return it.toFailure() }
 
-            val tag = DeliveryTag.fromMessage(message).getOrElse { return Result.failure(it) }
+            val tag = DeliveryTag.fromMessage(message).getOrElse { return it.toFailure() }
             val sealedTag = tag.seal(recipientKey, senderKey, receiverKey)
-                .getOrElse { return Result.failure(it) }
+                .getOrElse { return it.toFailure() }
 
             val payload = serializeAndEncrypt(message, recipientKey)
-                .getOrElse { return Result.failure(it) }
+                .getOrElse { return it.toFailure() }
 
             return Result.success(Envelope(sealedTag, payload))
         }
@@ -113,7 +112,7 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
         fun loadFile(file: File): Result<Envelope> {
 
             val data = readEnvelopeFile(file, false)
-                .getOrElse { return Result.failure(it) }
+                .getOrElse { return it.toFailure() }
 
             TODO("Finish implementing Envelope::readFromFile($file")
         }
@@ -134,11 +133,7 @@ fun readEnvelopeFile(file: File, headerOnly: Boolean): Result<Pair<String, Strin
     var ready = false
     val reader = file.bufferedReader()
     do {
-        val line = try {
-            reader.readLine()
-        } catch (e: Exception) {
-            return Result.failure(e)
-        }
+        val line = runCatching { reader.readLine() }.getOrElse { return it.toFailure() }
         if (line.trim() == "MENSAGO") {
             ready = true
             break
