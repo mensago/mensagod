@@ -17,7 +17,7 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
     /**
      * Returns the decrypted message contained in the envelope.
      *
-     * @throws HashMismatchException Returned if the hash of the public key does not match that of
+     * @exception HashMismatchException Returned if the hash of the public key does not match that of
      * the key hash in the delivery tag.
      */
     fun open(keyPair: EncryptionPair): Result<Message> {
@@ -34,7 +34,23 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
     }
 
     // TODO: Implement toString()
-    // TODO: Implement saveFile()
+
+    /**
+     * Saves the Envelope's contents to a file using the official data format.
+     *
+     * @exception NullPointerException Returned if given empty data
+     * @exception SecurityException Returned if a security manager exists and gets in the way
+     * @exception IOException Returned if an I/O error occurs
+     */
+    fun saveFile(path: String): Throwable? {
+        kotlin.runCatching {
+            val file = File(path)
+            if (!file.exists()) file.createNewFile()
+            file.bufferedWriter().write(toString())
+        }.onFailure { return it }
+
+        return null
+    }
 
     companion object {
 
