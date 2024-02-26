@@ -1,6 +1,8 @@
 package libmensago
 
 import keznacl.*
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import libkeycard.HashMismatchException
 import libkeycard.MissingDataException
 import java.io.File
@@ -33,7 +35,23 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
         return decryptAndDeserialize<Message>(message, msgKey)
     }
 
-    // TODO: Implement toString()
+    /**
+     * Returns a string representing the Envelope's data in the official format. Unlike toString(),
+     * this version will not throw exceptions, but otherwise functions like toString().
+     */
+    fun toStringResult(): Result<String> {
+        return Result.success(listOf("MENSAGO",
+            runCatching { Json.encodeToString(tag) }.getOrElse { return Result.failure(it) },
+            "----------",
+            message.prefix,
+            message.encodedData
+        ).joinToString("\r\n")
+        )
+    }
+
+    override fun toString(): String {
+        return toStringResult().getOrThrow()
+    }
 
     /**
      * Saves the Envelope's contents to a file using the official data format.
