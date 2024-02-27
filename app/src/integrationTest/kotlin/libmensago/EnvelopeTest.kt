@@ -15,7 +15,7 @@ class EnvelopeTest {
 
     @Test
     fun sealOpenTest() {
-        setupTest("envelope.sealOpen")
+        val setupData = setupTest("envelope.sealOpen")
 
         val msg = Message(adminWID, oneWID, MsgFormat.Text)
             .setSubject("Test Message")
@@ -23,7 +23,11 @@ class EnvelopeTest {
 
         val adminKey = EncryptionKey.fromString(ADMIN_PROFILE_DATA["encryption.public"]!!)
             .getOrThrow()
-        Envelope.seal(adminKey, msg, FakeDNSHandler()).getOrThrow()
+        val sealed = Envelope.seal(adminKey, msg, FakeDNSHandler()).getOrThrow()
+
+        sealed.saveFile(listOf(setupData.testPath, "sealed1.txt").toPath().toString())
+
+
 
         // TODO: Implement sealOpenTest
     }

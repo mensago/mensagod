@@ -46,6 +46,7 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
             "----------",
             message.prefix,
             message.encodedData,
+            "",
             ""
         ).joinToString("\r\n")
             .toSuccess()
@@ -66,7 +67,9 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
         return kotlin.runCatching {
             val file = File(path)
             if (!file.exists()) file.createNewFile()
-            file.bufferedWriter().write(toString())
+            val writer = file.bufferedWriter()
+            writer.write(toString())
+            writer.flush()
         }.exceptionOrNull()
     }
 
