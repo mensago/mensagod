@@ -74,7 +74,7 @@ open class CryptoString protected constructor(val prefix: String, val encodedDat
 
     /** Returns the instance's value as a ByteArray */
     fun toByteArray(): ByteArray {
-        return value.toByteArray()
+        return value.encodeToByteArray()
     }
 
     /**
