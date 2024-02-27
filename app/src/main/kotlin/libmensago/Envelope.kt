@@ -130,33 +130,37 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
  */
 fun readEnvelopeFile(file: File, headerOnly: Boolean): Result<Pair<String, String>> {
 
-    var ready = false
     val reader = file.bufferedReader()
     do {
-        val line = runCatching { reader.readLine() }.getOrElse { return it.toFailure() }
+        val line = runCatching {
+            reader.readLine()
+                ?: return BadValueException("File missing start of header").toFailure()
+        }.getOrElse { return it.toFailure() }.trim()
+
         if (line.trim() == "MENSAGO") {
-            ready = true
             break
         }
-    } while (line != null)
-
-    if (!ready) return Result.failure(BadValueException())
+    } while (true)
 
     val headerLines = mutableListOf<String>()
     do {
-        val line = try {
-            reader.readLine()
-        } catch (e: Exception) {
-            return Result.failure(e)
-        }
-        if (line.trim() == "----------")
+        val line = runCatching {
+            reader.readLine() ?: return MissingDataException("Premature end of header").toFailure()
+        }.getOrElse { return it.toFailure() }.trim()
+
+        if (line == "----------")
             break
         headerLines.add(line)
-    } while (line != null)
+    } while (true)
 
-    if (headerOnly) return Result.success(Pair(headerLines.joinToString(), ""))
+    if (headerOnly) return Pair(headerLines.joinToString(), "").toSuccess()
+    val prefix = runCatching {
+        reader.readLine() ?: return BadValueException("File missing payload prefix").toFailure()
+    }.getOrElse { return it.toFailure() }.trim()
 
-    TODO("Finish readEnvelopeFile($file, $headerOnly")
+    val payload = runCatching {
+        reader.readLine() ?: return BadValueException("File missing payload").toFailure()
+    }.getOrElse { return it.toFailure() }.trim()
 
-//    return Result.success(out)
+    return Pair(headerLines.joinToString(), "$prefix:$payload").toSuccess()
 }
