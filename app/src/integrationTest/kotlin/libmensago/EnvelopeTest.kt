@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test
 import testsupport.ADMIN_PROFILE_DATA
 import testsupport.FakeDNSHandler
 import testsupport.setupTest
+import java.time.Instant
+import java.util.*
 
 class EnvelopeTest {
     private val oneWID = WAddress.fromString(
@@ -25,8 +27,10 @@ class EnvelopeTest {
             .getOrThrow()
         val sealed = Envelope.seal(adminKey, msg, FakeDNSHandler()).getOrThrow()
 
-        sealed.saveFile(listOf(setupData.testPath, "sealed1.txt").toPath().toString())
-
+        val filelength = sealed.toString().length
+        val filename =
+            "${Instant.now().epochSecond}.$filelength.${UUID.randomUUID().toString().lowercase()}"
+        sealed.saveFile(listOf(setupData.testPath, filename).toPath().toString())
 
 
         // TODO: Implement sealOpenTest
