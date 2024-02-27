@@ -1,6 +1,7 @@
 package libmensago
 
 import keznacl.*
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import libkeycard.HashMismatchException
@@ -111,10 +112,14 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
          */
         fun loadFile(file: File): Result<Envelope> {
 
-            val data = readEnvelopeFile(file, false)
-                .getOrElse { return it.toFailure() }
+            val data = readEnvelopeFile(file, false).getOrElse { return it.toFailure() }
+            val tag = runCatching { Json.decodeFromString<SealedDeliveryTag>(data.first) }
+                .getOrElse {
+                    return SerializationException("Failed to deserialize delivery tag: $it")
+                        .toFailure()
+                }
 
-            TODO("Finish implementing Envelope::readFromFile($file")
+            return Envelope(tag, data.second!!).toSuccess()
         }
     }
 }
@@ -128,7 +133,7 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
  *
  * @throws IOException Returned if there was an I/O error
  */
-fun readEnvelopeFile(file: File, headerOnly: Boolean): Result<Pair<String, String>> {
+fun readEnvelopeFile(file: File, headerOnly: Boolean): Result<Pair<String, CryptoString?>> {
 
     val reader = file.bufferedReader()
     do {
@@ -153,7 +158,7 @@ fun readEnvelopeFile(file: File, headerOnly: Boolean): Result<Pair<String, Strin
         headerLines.add(line)
     } while (true)
 
-    if (headerOnly) return Pair(headerLines.joinToString(), "").toSuccess()
+    if (headerOnly) return Pair(headerLines.joinToString(), null).toSuccess()
     val prefix = runCatching {
         reader.readLine() ?: return BadValueException("File missing payload prefix").toFailure()
     }.getOrElse { return it.toFailure() }.trim()
@@ -162,5 +167,10 @@ fun readEnvelopeFile(file: File, headerOnly: Boolean): Result<Pair<String, Strin
         reader.readLine() ?: return BadValueException("File missing payload").toFailure()
     }.getOrElse { return it.toFailure() }.trim()
 
-    return Pair(headerLines.joinToString(), "$prefix:$payload").toSuccess()
+
+    return Pair(
+        headerLines.joinToString(),
+        CryptoString.fromString("$prefix:$payload")
+            ?: return BadValueException("Bad payload format").toFailure()
+    ).toSuccess()
 }
