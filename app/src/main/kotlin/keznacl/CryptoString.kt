@@ -1,6 +1,13 @@
 package keznacl
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import java.util.regex.Pattern
 
 /**
@@ -40,7 +47,7 @@ import java.util.regex.Pattern
  * or calling [toString], [toByteArray], or [toRaw]. The last of these three methods only
  * returns the raw data stored in the object.
  */
-@Serializable
+@Serializable(with = CryptoStringAsStringSerializer::class)
 open class CryptoString protected constructor(val prefix: String, val encodedData: String) {
     var value: String = ""
         private set
@@ -120,5 +127,20 @@ open class CryptoString protected constructor(val prefix: String, val encodedDat
         protected fun isValidPrefix(s: String): Boolean {
             return csPrefixPattern.matcher(s).matches()
         }
+    }
+}
+
+object CryptoStringAsStringSerializer : KSerializer<CryptoString> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("CryptoString", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: CryptoString) {
+        encoder.encodeString(value.toString())
+    }
+
+    override fun deserialize(decoder: Decoder): CryptoString {
+        val out = CryptoString.fromString(decoder.decodeString())
+            ?: throw SerializationException("Invalid value for CryptoString")
+        return out
     }
 }
