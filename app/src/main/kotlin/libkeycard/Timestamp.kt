@@ -1,6 +1,5 @@
 package libkeycard
 
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -14,9 +13,9 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
-@Serializable
-class Timestamp() {
-    var value: @Contextual Instant = Instant.now().let { it.minusNanos(it.nano.toLong()) }
+@Serializable(with = TimestampSerializer::class)
+class Timestamp(i: Instant? = null) {
+    var value: Instant = i ?: Instant.now().let { it.minusNanos(it.nano.toLong()) }
         private set
     var formatted: String = DateTimeFormatter.ISO_INSTANT.format(value)
         private set
@@ -30,9 +29,13 @@ class Timestamp() {
     /**
      * Returns the object as a string with just the date in the format YYMMDD.
      */
-    fun toDateString(): String { return dateFormatter.format(value) }
+    fun toDateString(): String {
+        return dateFormatter.format(value)
+    }
 
-    override fun toString(): String { return formatted }
+    override fun toString(): String {
+        return formatted
+    }
 
     /**
      * Returns a copy of the current instance offset by the specified number of days into the
@@ -76,24 +79,34 @@ class Timestamp() {
         return value == other.value
     }
 
-    override fun hashCode(): Int { return value.hashCode() }
+    override fun hashCode(): Int {
+        return value.hashCode()
+    }
 
     companion object {
-        private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC)!!
+        private val dateFormatter =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC)!!
+
         /**
          * Creates an instance from a string in the format YYYY-MM-DDThh:mm:ssZ
          */
         fun fromString(str: String): Timestamp? {
-            return try { Timestamp().set(Instant.parse(str)) }
-                catch (e: Exception) { return null }
+            return try {
+                Timestamp().set(Instant.parse(str))
+            } catch (e: Exception) {
+                return null
+            }
         }
 
         /**
          * Creates a Timestamp object from just a date, which is stored internally as midnight on that date.
          */
         fun fromDateString(s: String): Timestamp? {
-            val date = try { LocalDate.parse(s, dateFormatter).atStartOfDay() }
-                catch (e: Exception) { return null }
+            val date = try {
+                LocalDate.parse(s, dateFormatter).atStartOfDay()
+            } catch (e: Exception) {
+                return null
+            }
             val instant = date.atZone(ZoneId.of("UTC")).toInstant()
             return Timestamp().set(instant)
         }
@@ -109,8 +122,15 @@ class Timestamp() {
     }
 }
 
-object InstantSerializer : KSerializer<Instant> {
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("java.time.Instant", PrimitiveKind.STRING)
-    override fun serialize(encoder: Encoder, value: Instant) = encoder.encodeString(value.toString())
-    override fun deserialize(decoder: Decoder): Instant = Instant.parse(decoder.decodeString())
+object TimestampSerializer : KSerializer<Timestamp> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("Timestamp", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: Timestamp) {
+        encoder.encodeString(value.value.toString())
+    }
+
+    override fun deserialize(decoder: Decoder): Timestamp {
+        return Timestamp(Instant.parse(decoder.decodeString()))
+    }
 }
