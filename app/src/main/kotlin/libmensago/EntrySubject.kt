@@ -1,4 +1,4 @@
-package libmensago.cache;
+package libmensago;
 
 import libkeycard.Domain
 import libkeycard.MAddress
