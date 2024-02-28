@@ -73,7 +73,5 @@ class SealedDeliveryTagTest {
         assertEquals(tag.date, sealed.tag.date)
         assertEquals(tag.subType, sealed.tag.subType)
         assertEquals(tag.version, sealed.tag.version)
-
-        // TODO: Implement SealedDeliveryTagTest::readTest()
     }
 }
