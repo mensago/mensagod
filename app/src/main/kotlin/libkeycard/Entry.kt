@@ -60,6 +60,18 @@ sealed class Entry {
         return field.toString()
     }
 
+    /** Obtains the requested encryption key from the entry, if it exists */
+    fun getEncryptionKey(fieldName: String): EncryptionKey? {
+        val field = fields[fieldName] ?: return null
+        return EncryptionKey.fromString(field.toString()).getOrNull()
+    }
+
+    /** Obtains the requested verification key from the entry, if it exists */
+    fun getVerificationKey(fieldName: String): VerificationKey? {
+        val field = fields[fieldName] ?: return null
+        return VerificationKey.fromString(field.toString()).getOrNull()
+    }
+
     /**
      * Returns the owner for the entry, which will be a string containing a workspace address, if the entry is for a
      * user, or a domain in the case of organizations. It will return null if the required fields are not populated
@@ -196,7 +208,7 @@ sealed class Entry {
     fun hash(algorithm: String = getPreferredHashAlgorithm()): Throwable? {
         val totalData = getFullText("Hash").getOrElse { return it }
 
-        val hashValue = keznacl.hash(totalData.toByteArray(), algorithm)
+        val hashValue = hash(totalData.toByteArray(), algorithm)
         if (hashValue.isFailure) return hashValue.exceptionOrNull()!!
 
         addAuthString("Hash", hashValue.getOrNull()!!)
@@ -214,7 +226,7 @@ sealed class Entry {
         val totalData = getFullText("Hash")
         if (totalData.isFailure) return Result.failure(totalData.exceptionOrNull()!!)
 
-        val hashValue = keznacl.hash(totalData.getOrNull()!!.toByteArray(), currentHash.prefix)
+        val hashValue = hash(totalData.getOrNull()!!.toByteArray(), currentHash.prefix)
         if (hashValue.isFailure) return Result.failure(hashValue.exceptionOrNull()!!)
 
         return Result.success(currentHash.value == hashValue.getOrNull()!!.value)
