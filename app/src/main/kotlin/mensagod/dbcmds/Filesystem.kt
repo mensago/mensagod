@@ -1,6 +1,7 @@
 package mensagod.dbcmds
 
 import keznacl.BadValueException
+import keznacl.toFailure
 import libkeycard.RandomID
 import libmensago.MServerPath
 import libmensago.NotConnectedException
@@ -25,17 +26,19 @@ import java.io.IOException
 private fun addQuotaFromDisk(db: DBConn, wid: RandomID): Result<Pair<Long, Long>> {
     val userWidPath = MServerPath("/ wsp $wid")
     val handle = LocalFS.get().entry(userWidPath)
-    if (!handle.exists().getOrElse { return Result.failure(it) }) {
-        val status = checkWorkspace(db, wid).getOrElse { return Result.failure(it) }
+    if (!handle.exists().getOrElse { return it.toFailure() }) {
+        val status = checkWorkspace(db, wid).getOrElse { return it.toFailure() }
         if (status == null) return Result.failure(ResourceNotFoundException())
     }
 
     val usage = LocalFS.get().getDiskUsage(MServerPath("/ wsp $wid"))
-        .getOrElse { return Result.failure(it) }
+        .getOrElse { return it.toFailure() }
     val defaultQuota = ServerConfig.get().getInteger("global.default_quota")!! * 1_048_576L
 
-    db.execute("INSERT INTO quotas(wid, usage, quota) VALUES(?,?,?)", wid, usage,
-        defaultQuota).getOrElse { return Result.failure(it) }
+    db.execute(
+        "INSERT INTO quotas(wid, usage, quota) VALUES(?,?,?)", wid, usage,
+        defaultQuota
+    ).getOrElse { return it.toFailure() }
     return Result.success(Pair(usage, defaultQuota))
 }
 
@@ -53,19 +56,23 @@ private fun addQuotaFromDisk(db: DBConn, wid: RandomID): Result<Pair<Long, Long>
  */
 fun getQuotaInfo(db: DBConn, wid: RandomID): Result<Pair<Long, Long>> {
     val rs = db.query("SELECT usage,quota FROM quotas WHERE wid=?", wid)
-        .getOrElse { return Result.failure(it) }
+        .getOrElse { return it.toFailure() }
 
     val widPath = MServerPath("/ wsp $wid")
-    if (!rs.next()) { return addQuotaFromDisk(db, wid) }
+    if (!rs.next()) {
+        return addQuotaFromDisk(db, wid)
+    }
 
     val dbUsage = rs.getLong("usage")
     val dbQuota = rs.getLong("quota")
-    if (dbUsage >= 0) { return Result.success(Pair(dbUsage, dbQuota)) }
+    if (dbUsage >= 0) {
+        return Result.success(Pair(dbUsage, dbQuota))
+    }
 
     // We got this far, which means that the usage has not yet been loaded since the server was
     // started.
-    val fsUsage = LocalFS.get().getDiskUsage(widPath).getOrElse { return Result.failure(it) }
-    setQuotaUsage(db, wid, fsUsage)?.let { return Result.failure(it) }
+    val fsUsage = LocalFS.get().getDiskUsage(widPath).getOrElse { return it.toFailure() }
+    setQuotaUsage(db, wid, fsUsage)?.let { return it.toFailure() }
 
     return Result.success(Pair(fsUsage, dbQuota))
 }
@@ -87,10 +94,10 @@ fun getQuotaInfo(db: DBConn, wid: RandomID): Result<Pair<Long, Long>> {
  */
 fun modifyQuotaUsage(db: DBConn, wid: RandomID, size: Long): Result<Long> {
     val rs = db.query("SELECT usage FROM quotas WHERE wid=?", wid)
-        .getOrElse { return Result.failure(it) }
+        .getOrElse { return it.toFailure() }
 
     if (!rs.next()) {
-        val info = addQuotaFromDisk(db, wid).getOrElse { return Result.failure(it) }
+        val info = addQuotaFromDisk(db, wid).getOrElse { return it.toFailure() }
         return Result.success(info.first)
     }
 
@@ -99,13 +106,13 @@ fun modifyQuotaUsage(db: DBConn, wid: RandomID, size: Long): Result<Long> {
     val dbUsage = rs.getLong("usage")
     if (dbUsage < 0) {
         val usage = LocalFS.get().getDiskUsage(MServerPath("/ wsp $wid"))
-            .getOrElse { return Result.failure(it) }
-        setQuotaUsage(db, wid, usage)?.let { return Result.failure(it) }
+            .getOrElse { return it.toFailure() }
+        setQuotaUsage(db, wid, usage)?.let { return it.toFailure() }
         return Result.success(usage)
     }
 
     val newTotal = dbUsage + size
-    setQuotaUsage(db, wid, newTotal)?.let { return Result.failure(it) }
+    setQuotaUsage(db, wid, newTotal)?.let { return it.toFailure() }
     return Result.success(newTotal)
 }
 

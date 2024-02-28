@@ -1,5 +1,6 @@
 package mensagod.auth
 
+import keznacl.toFailure
 import libkeycard.RandomID
 import libmensago.MServerPath
 
@@ -15,13 +16,13 @@ import libmensago.MServerPath
  *
  * Currently only users are authorized directory target access.
  */
-class DirectoryTarget private constructor(private val path: MServerPath): AuthTarget {
+class DirectoryTarget private constructor(private val path: MServerPath) : AuthTarget {
 
     override fun getActions(actor: AuthActor, action: AuthAction): Result<List<AuthAction>> {
         if (actor.getType() != AuthActorType.WID) return Result.success(listOf())
         actor as WIDActor
 
-        if (actor.isAdmin().getOrElse { return Result.failure(it) } ||
+        if (actor.isAdmin().getOrElse { return it.toFailure() } ||
             isKeysDirectory(actor.wid) || ownsPath(actor.wid))
             return Result.success(listOf(AuthAction.Create, AuthAction.Delete, AuthAction.Access))
 
@@ -35,7 +36,7 @@ class DirectoryTarget private constructor(private val path: MServerPath): AuthTa
                 actor as WIDActor
 
                 // Admins can access all directories
-                if (actor.isAdmin().getOrElse { return Result.failure(it) })
+                if (actor.isAdmin().getOrElse { return it.toFailure() })
                     return Result.success(true)
 
                 // Users have admin access over their identity workspaces and their corresponding
@@ -43,12 +44,15 @@ class DirectoryTarget private constructor(private val path: MServerPath): AuthTa
                 if (isKeysDirectory(actor.wid)) return Result.success(true)
                 if (ownsPath(actor.wid)) return Result.success(true)
             }
+
             else -> return Result.success(false)
         }
         return Result.success(false)
     }
 
-    private fun isKeysDirectory(wid: RandomID): Boolean { return path.toString() == "/ keys $wid" }
+    private fun isKeysDirectory(wid: RandomID): Boolean {
+        return path.toString() == "/ keys $wid"
+    }
 
     private fun ownsPath(wid: RandomID): Boolean {
         return path.toString().startsWith("/ wsp $wid")

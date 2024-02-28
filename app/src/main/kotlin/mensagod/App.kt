@@ -1,6 +1,8 @@
 package mensagod
 
 import keznacl.BadValueException
+import keznacl.toFailure
+import keznacl.toSuccess
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -76,12 +78,12 @@ class Server private constructor(val config: ServerConfig) {
 
         /** Performs setup needed for the server to run. */
         fun initialize(): Result<Server> {
-            val config = ServerConfig.load().getOrElse { return Result.failure(it) }
+            val config = ServerConfig.load().getOrElse { return it.toFailure() }
             config.validate()?.let { return Result.failure(BadValueException(it)) }
 
             val logLocation = Paths.get(config.getString("global.log_dir")!!, "mensagod.log")
             initLogging(logLocation, false)
-            DBConn.initialize(config)?.let { return Result.failure(it) }
+            DBConn.initialize(config)?.let { return it.toFailure() }
 
             LocalFS.initialize(config.getString("global.top_dir")!!)
 
@@ -90,7 +92,7 @@ class Server private constructor(val config: ServerConfig) {
 
             gServerDomain = Domain.fromString(config.getString("global.domain"))!!
 
-            return Result.success(out)
+            return out.toSuccess()
         }
     }
 }

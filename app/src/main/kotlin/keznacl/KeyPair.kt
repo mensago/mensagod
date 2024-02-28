@@ -19,7 +19,7 @@ sealed class KeyPair(val publicKey: CryptoString, val privateKey: CryptoString) 
     fun getPublicHash(algorithm: String = getPreferredHashAlgorithm()): Result<Hash> {
         if (publicHash == null || publicHash!!.prefix != algorithm)
             publicHash =
-                hash(publicKey.toByteArray(), algorithm).getOrElse { return Result.failure(it) }
+                hash(publicKey.toByteArray(), algorithm).getOrElse { return it.toFailure() }
         return Result.success(publicHash!!)
     }
 
@@ -27,7 +27,7 @@ sealed class KeyPair(val publicKey: CryptoString, val privateKey: CryptoString) 
     fun getPrivateHash(algorithm: String = getPreferredHashAlgorithm()): Result<Hash> {
         if (privateHash == null || privateHash!!.prefix != algorithm)
             privateHash =
-                hash(privateKey.toByteArray(), algorithm).getOrElse { return Result.failure(it) }
+                hash(privateKey.toByteArray(), algorithm).getOrElse { return it.toFailure() }
         return Result.success(privateHash!!)
     }
 }

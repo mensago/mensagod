@@ -2,6 +2,8 @@ package mensagod
 
 import keznacl.BadValueException
 import keznacl.EmptyDataException
+import keznacl.toFailure
+import keznacl.toSuccess
 import libkeycard.MissingDataException
 import libmensago.NotConnectedException
 import java.sql.*
@@ -78,11 +80,11 @@ class DBConn {
         if (q.isEmpty()) return Result.failure(EmptyDataException())
         if (!isConnected()) return Result.failure(NotConnectedException())
 
-        val stmt = prepStatement(q, args).getOrElse { return Result.failure(it) }
+        val stmt = prepStatement(q, args).getOrElse { return it.toFailure() }
         return try {
-            Result.success(stmt.executeQuery())
+            stmt.executeQuery().toSuccess()
         } catch (e: Exception) {
-            Result.failure(e)
+            e.toFailure()
         }
     }
 
@@ -98,7 +100,7 @@ class DBConn {
         if (s.isEmpty()) return Result.failure(EmptyDataException())
         if (!isConnected()) return Result.failure(NotConnectedException())
 
-        val stmt = prepStatement(s, args).getOrElse { return Result.failure(it) }
+        val stmt = prepStatement(s, args).getOrElse { return it.toFailure() }
         return try {
             stmt.execute()
             val count = stmt.updateCount
@@ -202,7 +204,7 @@ class DBConn {
                     else -> out.setString(i + 1, args[i].toString())
                 }
             }
-            Result.success(out)
+            out.toSuccess()
         } catch (e: Exception) {
             Result.failure(e)
         }

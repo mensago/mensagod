@@ -1,5 +1,6 @@
 package mensagod
 
+import keznacl.toFailure
 import java.sql.Connection
 
 /**
@@ -9,7 +10,7 @@ import java.sql.Connection
  */
 fun resetDB(config: ServerConfig): Result<Connection> {
 
-    val db = config.connectToDB().getOrElse { return Result.failure(it) }
+    val db = config.connectToDB().getOrElse { return it.toFailure() }
     val stmt = db.createStatement()
 
     // Drop all tables in the database

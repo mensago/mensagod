@@ -1,5 +1,6 @@
 package libmensago
 
+import keznacl.toFailure
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -9,10 +10,12 @@ import java.io.InputStream
 import java.net.Socket
 
 @Serializable
-class ServerResponse(@Required @SerialName("Code") var code: Int = 0,
-                     @Required @SerialName("Status") var status: String = "",
-                     @SerialName("Info") var info: String = "",
-                     @SerialName("Data") var data: MutableMap<String, String> = mutableMapOf()) {
+class ServerResponse(
+    @Required @SerialName("Code") var code: Int = 0,
+    @Required @SerialName("Status") var status: String = "",
+    @SerialName("Info") var info: String = "",
+    @SerialName("Data") var data: MutableMap<String, String> = mutableMapOf()
+) {
 
     /**
      * Checks attached data for the requested fields in the pair list. The bool parameter is
@@ -34,11 +37,15 @@ class ServerResponse(@Required @SerialName("Code") var code: Int = 0,
             val jsonStr = Json.encodeToString(this)
             writeMessage(conn.getOutputStream(), jsonStr.encodeToByteArray())
             null
-        } catch (e: Exception) { e }
+        } catch (e: Exception) {
+            e
+        }
     }
 
     /** Returns a CmdStatus object based on the contents of the server response */
-    fun toStatus(): CmdStatus { return CmdStatus(code, status, info) }
+    fun toStatus(): CmdStatus {
+        return CmdStatus(code, status, info)
+    }
 
     override fun toString(): String {
         return if (info.isNotEmpty()) "ServerResponse -> $code: $status ($info)"
@@ -49,10 +56,12 @@ class ServerResponse(@Required @SerialName("Code") var code: Int = 0,
         /** Reads a ServerResponse from a connection */
         fun receive(conn: InputStream): Result<ServerResponse> {
 
-            val jsonMsg = readStringMessage(conn).getOrElse { return Result.failure(it) }
+            val jsonMsg = readStringMessage(conn).getOrElse { return it.toFailure() }
             val response = try {
                 Json.decodeFromString<ServerResponse>(jsonMsg)
-            } catch (e: Exception) { return Result.failure(e) }
+            } catch (e: Exception) {
+                return Result.failure(e)
+            }
 
             return Result.success(response)
         }

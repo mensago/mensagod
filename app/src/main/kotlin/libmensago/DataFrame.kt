@@ -1,6 +1,7 @@
 package libmensago
 
 import keznacl.EmptyDataException
+import keznacl.toFailure
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -19,17 +20,24 @@ class DataFrame {
     var type: FrameType = FrameType.InvalidFrame
 
     val size: Int
-        get() { return index }
+        get() {
+            return index
+        }
 
     val payload: ByteArray
-        get() { return buffer.sliceArray(IntRange(0, index - 1)) }
+        get() {
+            return buffer.sliceArray(IntRange(0, index - 1))
+        }
 
     fun getMultipartSize(): Result<Int> {
         if (size < 1) return Result.failure(BadFrameException())
         if (type != FrameType.MultipartFrameStart) return Result.failure(TypeException())
 
-        return try { Result.success(payload.decodeToString().toInt()) }
-        catch (e: Exception) { Result.failure(e) }
+        return try {
+            Result.success(payload.decodeToString().toInt())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     fun read(conn: InputStream): Throwable? {
@@ -73,7 +81,9 @@ fun writeFrame(conn: OutputStream, frameType: FrameType, payload: ByteArray): Th
     try {
         conn.write(header)
         conn.write(payload)
-    } catch (e: Exception) { return e }
+    } catch (e: Exception) {
+        return e
+    }
 
     return null
 }
@@ -82,12 +92,13 @@ fun readMessage(conn: InputStream): Result<ByteArray> {
     val out = mutableListOf<Byte>()
     val chunk = DataFrame()
 
-    chunk.read(conn).let { if (it != null) return Result.failure(it) }
+    chunk.read(conn).let { if (it != null) return it.toFailure() }
     when (chunk.type) {
         FrameType.SingleFrame -> {
             out.addAll(chunk.payload.toList())
             return Result.success(out.toByteArray())
         }
+
         FrameType.MultipartFrameStart -> {}
         FrameType.MultipartFrameFinal -> return Result.failure(BadSessionException())
         else -> return Result.failure(BadFrameException())
@@ -95,11 +106,11 @@ fun readMessage(conn: InputStream): Result<ByteArray> {
 
     // We got this far, so we have a multipart message which we need to reassemble.
 
-    val totalSize = chunk.getMultipartSize().getOrElse { return Result.failure(it) }
+    val totalSize = chunk.getMultipartSize().getOrElse { return it.toFailure() }
 
     var sizeRead = 0
     while (sizeRead < totalSize) {
-        chunk.read(conn).let { if (it != null) return Result.failure(it) }
+        chunk.read(conn).let { if (it != null) return it.toFailure() }
         out.addAll(chunk.payload.toList())
         sizeRead += chunk.size
 
@@ -111,7 +122,7 @@ fun readMessage(conn: InputStream): Result<ByteArray> {
 }
 
 fun readStringMessage(conn: InputStream): Result<String> {
-    val data = readMessage(conn).getOrElse { return Result.failure(it) }
+    val data = readMessage(conn).getOrElse { return it.toFailure() }
     return Result.success(data.decodeToString())
 }
 
@@ -134,8 +145,10 @@ fun writeMessage(conn: OutputStream, msg: ByteArray): Throwable? {
     var index = 0
 
     while (index + MAX_MSG_SIZE < msg.size) {
-        writeFrame(conn, FrameType.MultipartFrame,
-            msg.sliceArray(IntRange(index, index + MAX_MSG_SIZE - 1)))
+        writeFrame(
+            conn, FrameType.MultipartFrame,
+            msg.sliceArray(IntRange(index, index + MAX_MSG_SIZE - 1))
+        )
         conn.flush()
         index += MAX_MSG_SIZE
     }

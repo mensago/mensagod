@@ -1,5 +1,7 @@
 package mensagod.dbcmds
 
+import keznacl.toFailure
+import keznacl.toSuccess
 import libkeycard.Domain
 import libkeycard.RandomID
 import libkeycard.UserID
@@ -78,17 +80,21 @@ enum class WorkspaceStatus {
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  * @throws ResourceExistsException if the workspace ID already exists in the database
  */
-fun addWorkspace(db: DBConn, wid: RandomID, uid: UserID?, domain: Domain, passhash: String,
-                 algorithm: String, salt: String, passParams: String, status: WorkspaceStatus,
-                 wtype: WorkspaceType): Throwable? {
+fun addWorkspace(
+    db: DBConn, wid: RandomID, uid: UserID?, domain: Domain, passhash: String,
+    algorithm: String, salt: String, passParams: String, status: WorkspaceStatus,
+    wtype: WorkspaceType
+): Throwable? {
 
     val wStatus = checkWorkspace(db, wid).getOrElse { return it }
 
     if (wStatus != null && wStatus != WorkspaceStatus.Preregistered)
         return ResourceExistsException("$wid exists")
-    return db.execute("""INSERT INTO workspaces(wid, uid, domain, password, passtype, salt,
+    return db.execute(
+        """INSERT INTO workspaces(wid, uid, domain, password, passtype, salt,
         passparams, status, wtype) VALUES(?,?,?,?,?,?,?,?,?)""",
-        wid, uid ?: "", domain, passhash, algorithm, salt, passParams, status, wtype)
+        wid, uid ?: "", domain, passhash, algorithm, salt, passParams, status, wtype
+    )
         .exceptionOrNull()
 }
 
@@ -101,15 +107,16 @@ fun addWorkspace(db: DBConn, wid: RandomID, uid: UserID?, domain: Domain, passha
  */
 fun checkWorkspace(db: DBConn, wid: RandomID): Result<WorkspaceStatus?> {
     var rs = db.query("""SELECT status FROM workspaces WHERE wid=?""", wid)
-        .getOrElse { return Result.failure(it) }
+        .getOrElse { return it.toFailure() }
     if (rs.next()) {
         val stat = rs.getString("status")
         val out = WorkspaceStatus.fromString(stat) ?: return Result.failure(
-            DatabaseCorruptionException("Bad workspace status '$stat' for workspace $wid"))
-        return Result.success(out)
+            DatabaseCorruptionException("Bad workspace status '$stat' for workspace $wid")
+        )
+        return out.toSuccess()
     }
     rs = db.query("""SELECT wid FROM prereg WHERE wid=?""", wid)
-        .getOrElse { return Result.failure(it) }
+        .getOrElse { return it.toFailure() }
     if (rs.next())
         return Result.success(WorkspaceStatus.Preregistered)
 
@@ -126,12 +133,13 @@ fun checkWorkspace(db: DBConn, wid: RandomID): Result<WorkspaceStatus?> {
 fun resolveUserID(db: DBConn, uid: UserID): Result<RandomID?> {
     for (table in listOf("workspaces", "prereg")) {
         val rs = db.query("""SELECT wid FROM $table WHERE uid=?""", uid)
-            .getOrElse { return Result.failure(it) }
+            .getOrElse { return it.toFailure() }
         if (rs.next()) {
             val widStr = rs.getString("wid")
             val out = RandomID.fromString(widStr) ?: return Result.failure(
-                DatabaseCorruptionException("Bad workspace ID '$widStr' for userID $uid"))
-            return Result.success(out)
+                DatabaseCorruptionException("Bad workspace ID '$widStr' for userID $uid")
+            )
+            return out.toSuccess()
         }
     }
     return Result.success(null)

@@ -49,7 +49,7 @@ class SigningPair private constructor(publicKeyStr: CryptoString, privateKeyStr:
         // the last are the public key. We don't do that here -- they are split because they are
         // associated a different way.
         val rawKey = Base85.decode(privateKey.encodedData + publicKey.encodedData)
-            .getOrElse { return Result.failure(it) }
+            .getOrElse { return it.toFailure() }
         val box = Signature(null, rawKey)
         val signature = box.detached(data)
 
@@ -74,8 +74,8 @@ class SigningPair private constructor(publicKeyStr: CryptoString, privateKeyStr:
         if (data.isEmpty()) return Result.failure(EmptyDataException())
         if (signature.prefix != publicKey.prefix) return Result.failure(AlgorithmMismatchException())
 
-        val rawPubKey = publicKey.toRaw().getOrElse { return Result.failure(it) }
-        val rawSignature = signature.toRaw().getOrElse { return Result.failure(it) }
+        val rawPubKey = publicKey.toRaw().getOrElse { return it.toFailure() }
+        val rawSignature = signature.toRaw().getOrElse { return it.toFailure() }
         val box = Signature(rawPubKey, null)
 
         return Result.success(box.detached_verify(data, rawSignature))
@@ -170,11 +170,11 @@ class VerificationKey : Verifier, PublicHasher {
         if (data.isEmpty()) return Result.failure(EmptyDataException())
         if (signature.prefix != key.prefix) return Result.failure(AlgorithmMismatchException())
 
-        val rawKey = key.toRaw().getOrElse { return Result.failure(it) }
+        val rawKey = key.toRaw().getOrElse { return it.toFailure() }
         val box = Signature(rawKey, null)
 
         return Result.success(
-            box.detached_verify(data, signature.toRaw().getOrElse { return Result.failure(it) })
+            box.detached_verify(data, signature.toRaw().getOrElse { return it.toFailure() })
         )
     }
 
@@ -187,7 +187,7 @@ class VerificationKey : Verifier, PublicHasher {
     override fun getPublicHash(algorithm: String): Result<Hash> {
         if (publicHash == null || publicHash!!.prefix != algorithm)
             publicHash =
-                hash(publicKey!!.toByteArray(), algorithm).getOrElse { return Result.failure(it) }
+                hash(publicKey!!.toByteArray(), algorithm).getOrElse { return it.toFailure() }
         return Result.success(publicHash!!)
     }
 

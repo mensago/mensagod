@@ -30,11 +30,11 @@ inline fun <reified T> serializeAndEncrypt(obj: T, key: Encryptor): Result<Crypt
  * @exception GeneralSecurityException Returned for errors during the encryption process.
  */
 inline fun <reified T> decryptAndDeserialize(cs: CryptoString, key: Decryptor): Result<T> {
-    val rawJSON = key.decrypt(cs).getOrElse { return Result.failure(it) }.decodeToString()
+    val rawJSON = key.decrypt(cs).getOrElse { return it.toFailure() }.decodeToString()
     val out = try {
         Json.decodeFromString<T>(rawJSON)
     } catch (e: Exception) {
         return Result.failure(e)
     }
-    return Result.success(out)
+    return out.toSuccess()
 }

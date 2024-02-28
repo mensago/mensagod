@@ -83,8 +83,8 @@ open class CryptoString protected constructor(val prefix: String, val encodedDat
      * @exception IllegalArgumentException Returned if there was a Base85 decoding error
      */
     fun toRaw(): Result<ByteArray> {
-        val out = Base85.decode(encodedData).getOrElse { return Result.failure(it) }
-        return Result.success(out)
+        val out = Base85.decode(encodedData).getOrElse { return it.toFailure() }
+        return out.toSuccess()
     }
 
     /** Calculates and returns the hash of the string value of the instance */

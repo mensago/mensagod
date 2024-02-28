@@ -1,5 +1,6 @@
 package libmensago
 
+import keznacl.toSuccess
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -11,13 +12,17 @@ import java.io.OutputStream
  * The ClientRequest class handles sending and receiving of Mensago client requests.
  */
 @Serializable
-class ClientRequest(@SerialName("Action") var action: String,
-                    @SerialName("Data") var data: MutableMap<String, String> = mutableMapOf()) {
+class ClientRequest(
+    @SerialName("Action") var action: String,
+    @SerialName("Data") var data: MutableMap<String, String> = mutableMapOf()
+) {
 
     /**
      * Convenience function which returns true if the request has the specified field.
      */
-    fun hasField(fieldname: String): Boolean { return data.containsKey(fieldname) }
+    fun hasField(fieldname: String): Boolean {
+        return data.containsKey(fieldname)
+    }
 
     /**
      * Converts the ClientRequest to JSON and sends it out a connection.
@@ -30,7 +35,9 @@ class ClientRequest(@SerialName("Action") var action: String,
             val jsonStr = Json.encodeToString(this)
             writeMessage(conn, jsonStr.encodeToByteArray())
             null
-        } catch (e: Exception) { e }
+        } catch (e: Exception) {
+            e
+        }
     }
 
     /**
@@ -56,9 +63,12 @@ class ClientRequest(@SerialName("Action") var action: String,
             val jsonMsg = readStringMessage(conn).getOrElse {
                 return Result.failure(java.io.IOException("SysMessage session error"))
             }
-            val out = try { Json.decodeFromString<ClientRequest>(jsonMsg) }
-            catch (e: Exception) { return Result.failure(e) }
-            return Result.success(out)
+            val out = try {
+                Json.decodeFromString<ClientRequest>(jsonMsg)
+            } catch (e: Exception) {
+                return Result.failure(e)
+            }
+            return out.toSuccess()
         }
     }
 }

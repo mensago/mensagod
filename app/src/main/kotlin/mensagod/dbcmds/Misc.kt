@@ -2,6 +2,8 @@ package mensagod.dbcmds
 
 import keznacl.EncryptionPair
 import keznacl.SigningPair
+import keznacl.toFailure
+import keznacl.toSuccess
 import libmensago.NotConnectedException
 import libmensago.ResourceNotFoundException
 import mensagod.DBConn
@@ -17,17 +19,21 @@ import mensagod.DatabaseCorruptionException
  * @throws DatabaseCorruptionException if something bad was received from the database itself
  */
 fun getEncryptionPair(db: DBConn): Result<EncryptionPair> {
-    val rs = db.query("""SELECT pubkey,privkey FROM orgkeys WHERE purpose = 'encrypt' 
-        ORDER BY rowid DESC LIMIT 1""").getOrElse { return Result.failure(it) }
+    val rs = db.query(
+        """SELECT pubkey,privkey FROM orgkeys WHERE purpose = 'encrypt' 
+        ORDER BY rowid DESC LIMIT 1"""
+    ).getOrElse { return it.toFailure() }
     if (!rs.next())
         return Result.failure(ResourceNotFoundException("org encryption keypair not found"))
 
-    val out = EncryptionPair.fromStrings(rs.getString("pubkey"),
-        rs.getString("privkey"))
+    val out = EncryptionPair.fromStrings(
+        rs.getString("pubkey"),
+        rs.getString("privkey")
+    )
         .getOrElse {
             return Result.failure(DatabaseCorruptionException("bad org encryption keypair"))
         }
-    return Result.success(out)
+    return out.toSuccess()
 }
 
 /**
@@ -41,15 +47,19 @@ fun getEncryptionPair(db: DBConn): Result<EncryptionPair> {
  * itself
  */
 fun getPrimarySigningPair(db: DBConn): Result<SigningPair> {
-    val rs = db.query("""SELECT pubkey,privkey FROM orgkeys WHERE purpose = 'sign' 
-        ORDER BY rowid DESC LIMIT 1""").getOrElse { return Result.failure(it) }
+    val rs = db.query(
+        """SELECT pubkey,privkey FROM orgkeys WHERE purpose = 'sign' 
+        ORDER BY rowid DESC LIMIT 1"""
+    ).getOrElse { return it.toFailure() }
     if (!rs.next())
         return Result.failure(ResourceNotFoundException("org encryption keypair not found"))
 
-    val out = SigningPair.fromStrings(rs.getString("pubkey"),
-        rs.getString("privkey"))
+    val out = SigningPair.fromStrings(
+        rs.getString("pubkey"),
+        rs.getString("privkey")
+    )
         .getOrElse {
             return Result.failure(DatabaseCorruptionException("bad org primary signing keypair"))
         }
-    return Result.success(out)
+    return out.toSuccess()
 }

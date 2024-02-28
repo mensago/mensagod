@@ -179,9 +179,9 @@ fun device(conn: MConn, info: DeviceInfo): Result<Boolean> {
             "Device-Info" to info.encryptedInfo!!.toString(),
         )
     )
-    conn.send(req).let { if (it != null) return Result.failure(it) }
+    conn.send(req).let { if (it != null) return it.toFailure() }
 
-    var resp = conn.receive().getOrElse { return Result.failure(it) }
+    var resp = conn.receive().getOrElse { return it.toFailure() }
     if (resp.code != 100) return Result.failure(ProtocolException(resp.toStatus()))
 
     if (!resp.checkFields(listOf(Pair("Challenge", true))))
@@ -202,7 +202,7 @@ fun device(conn: MConn, info: DeviceInfo): Result<Boolean> {
         it
     }
     val challDecrypted =
-        info.keypair.decrypt(challStr).getOrElse { return Result.failure(it) }.decodeToString()
+        info.keypair.decrypt(challStr).getOrElse { return it.toFailure() }.decodeToString()
 
     req = ClientRequest(
         "DEVICE", mutableMapOf(
@@ -212,9 +212,9 @@ fun device(conn: MConn, info: DeviceInfo): Result<Boolean> {
             "Response" to challDecrypted,
         )
     )
-    conn.send(req).let { if (it != null) return Result.failure(it) }
+    conn.send(req).let { if (it != null) return it.toFailure() }
 
-    resp = conn.receive().getOrElse { return Result.failure(it) }
+    resp = conn.receive().getOrElse { return it.toFailure() }
     Thread.sleep(10)
     if (resp.code != 200) return Result.failure(ProtocolException(resp.toStatus()))
 
@@ -243,9 +243,9 @@ fun getCard(conn: MConn, owner: String?, startIndex: Long): Result<Keycard> {
         req.data["Owner"] = owner
     }
 
-    conn.send(req).let { if (it != null) return Result.failure(it) }
+    conn.send(req).let { if (it != null) return it.toFailure() }
 
-    var resp = conn.receive().getOrElse { return Result.failure(it) }
+    var resp = conn.receive().getOrElse { return it.toFailure() }
     Thread.sleep(10)
     if (resp.code != 104) return Result.failure(ProtocolException(resp.toStatus()))
 
@@ -259,7 +259,7 @@ fun getCard(conn: MConn, owner: String?, startIndex: Long): Result<Keycard> {
     // Send an empty TRANSFER request to confirm that we are ready to accept the card data
     conn.send(ClientRequest("TRANSFER"))
 
-    resp = conn.receive().getOrElse { return Result.failure(it) }
+    resp = conn.receive().getOrElse { return it.toFailure() }
     Thread.sleep(10)
     if (resp.code != 200) return Result.failure(ProtocolException(resp.toStatus()))
 
@@ -284,9 +284,9 @@ fun getWID(conn: MConn, uid: UserID, domain: Domain?): Result<RandomID> {
 
     val req = ClientRequest("GETWID", mutableMapOf("User-ID" to uid.toString()))
     if (domain != null) req.data["Domain"] = domain.toString()
-    conn.send(req)?.let { return Result.failure(it) }
+    conn.send(req)?.let { return it.toFailure() }
 
-    val resp = conn.receive().getOrElse { return Result.failure(it) }
+    val resp = conn.receive().getOrElse { return it.toFailure() }
     Thread.sleep(10)
     if (resp.code != 200) return Result.failure(ProtocolException(resp.toStatus()))
 
@@ -294,7 +294,7 @@ fun getWID(conn: MConn, uid: UserID, domain: Domain?): Result<RandomID> {
     val out = RandomID.fromString(resp.data["Workspace-ID"]!!)
         ?: return Result.failure(BadValueException("Server exception: bad workspace ID received"))
 
-    return Result.success(out)
+    return out.toSuccess()
 }
 
 /**
@@ -305,9 +305,9 @@ fun isCurrent(conn: MConn, index: Long, wid: RandomID?): Result<Boolean> {
 
     val req = ClientRequest("ISCURRENT", mutableMapOf("Index" to index.toString()))
     if (wid != null) req.data["Workspace-ID"] = wid.toString()
-    conn.send(req)?.let { return Result.failure(it) }
+    conn.send(req)?.let { return it.toFailure() }
 
-    val resp = conn.receive().getOrElse { return Result.failure(it) }
+    val resp = conn.receive().getOrElse { return it.toFailure() }
     Thread.sleep(10)
     if (resp.code != 200) return Result.failure(ProtocolException(resp.toStatus()))
 
@@ -327,7 +327,7 @@ fun login(conn: MConn, wid: RandomID, serverKey: Encryptor): Result<PasswordInfo
     rng.nextBytes(rawBytes)
     val challenge = Base85.encode(rawBytes)
     val encrypted = serverKey.encrypt(challenge.toByteArray())
-        .getOrElse { return Result.failure(it) }
+        .getOrElse { return it.toFailure() }
 
     val req = ClientRequest(
         "LOGIN", mutableMapOf(
@@ -336,9 +336,9 @@ fun login(conn: MConn, wid: RandomID, serverKey: Encryptor): Result<PasswordInfo
             "Challenge" to encrypted.toString(),
         )
     )
-    conn.send(req)?.let { return Result.failure(it) }
+    conn.send(req)?.let { return it.toFailure() }
 
-    val resp = conn.receive().getOrElse { return Result.failure(it) }
+    val resp = conn.receive().getOrElse { return it.toFailure() }
     Thread.sleep(10)
     if (resp.code != 100) return Result.failure(ProtocolException(resp.toStatus()))
 
@@ -350,7 +350,7 @@ fun login(conn: MConn, wid: RandomID, serverKey: Encryptor): Result<PasswordInfo
         resp.data["Password-Salt"] ?: "",
         resp.data["Password-Parameters"] ?: "",
     )
-    validatePasswordInfo(pwInfo)?.let { return Result.failure(it) }
+    validatePasswordInfo(pwInfo)?.let { return it.toFailure() }
 
     return if (resp.data["Response"] == challenge) Result.success(pwInfo)
     else Result.failure(ServerAuthException())
@@ -433,9 +433,9 @@ fun preregister(
     if (domain != null) req.data["Domain"] = domain.toString()
     if (uid != null) req.data["User-ID"] = uid.toString()
 
-    conn.send(req).let { if (it != null) return Result.failure(it) }
+    conn.send(req).let { if (it != null) return it.toFailure() }
 
-    val resp = conn.receive().getOrElse { return Result.failure(it) }
+    val resp = conn.receive().getOrElse { return it.toFailure() }
     Thread.sleep(10)
     if (resp.code != 200) return Result.failure(ProtocolException(resp.toStatus()))
 
@@ -510,9 +510,9 @@ fun regCode(conn: MConn, address: MAddress, regCode: String, pw: Password, devIn
         req.data["Workspace-ID"] = address.userid.toString()
     else
         req.data["User-ID"] = address.userid.toString()
-    conn.send(req).let { if (it != null) return Result.failure(it) }
+    conn.send(req).let { if (it != null) return it.toFailure() }
 
-    val resp = conn.receive().getOrElse { return Result.failure(it) }
+    val resp = conn.receive().getOrElse { return it.toFailure() }
     Thread.sleep(10)
     if (resp.code != 201) return Result.failure(ProtocolException(resp.toStatus()))
 
@@ -577,9 +577,9 @@ fun register(
         if (uid != null) regData["User-ID"] = uid.toString()
         val req = ClientRequest("REGISTER", regData)
 
-        conn.send(req).let { if (it != null) return Result.failure(it) }
+        conn.send(req).let { if (it != null) return it.toFailure() }
 
-        val resp = conn.receive().getOrElse { return Result.failure(it) }
+        val resp = conn.receive().getOrElse { return it.toFailure() }
         Thread.sleep(10)
         when (resp.code) {
             101, 201 -> {
@@ -650,9 +650,9 @@ fun resetPassword(
 
     if (!resetCode.isNullOrEmpty()) req.data["Reset-Code"] = resetCode
     if (expires != null) req.data["Timestamp"] = expires.toString()
-    conn.send(req).let { if (it != null) return Result.failure(it) }
+    conn.send(req).let { if (it != null) return it.toFailure() }
 
-    val resp = conn.receive().getOrElse { return Result.failure(it) }
+    val resp = conn.receive().getOrElse { return it.toFailure() }
     Thread.sleep(10)
     if (resp.code != 200) return Result.failure(ProtocolException(resp.toStatus()))
     if (!resp.checkFields(listOf(Pair("Expires", true), Pair("Reset-Code", true))))
@@ -717,9 +717,9 @@ fun unregister(conn: MConn, pwhash: String, wid: RandomID?): Result<CmdStatus> {
     val req = ClientRequest("UNREGISTER", mutableMapOf("Password-Hash" to pwhash))
     if (wid != null)
         req.data["Workspace-ID"] = wid.toString()
-    conn.send(req).let { if (it != null) return Result.failure(it) }
+    conn.send(req).let { if (it != null) return it.toFailure() }
 
-    val resp = conn.receive().getOrElse { return Result.failure(it) }
+    val resp = conn.receive().getOrElse { return it.toFailure() }
     Thread.sleep(10)
 
     // This particular command is very simple: make a request, because the server will return one of

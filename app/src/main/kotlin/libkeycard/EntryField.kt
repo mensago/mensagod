@@ -1,6 +1,7 @@
 package libkeycard
 
 import keznacl.CryptoString
+import keznacl.toSuccess
 import java.util.regex.Pattern
 
 /** Data class used for validating field data from raw strings */
@@ -11,90 +12,141 @@ sealed class EntryField {
             return when (fieldName) {
                 "Type" -> {
                     val field = StringField.validatedEntryType(fieldValue)
-                        ?: return Result.failure(BadFieldValueException(
-                            "Entry type must be 'Organization' or 'User', not $fieldValue"))
-                    Result.success(field)
+                        ?: return Result.failure(
+                            BadFieldValueException(
+                                "Entry type must be 'Organization' or 'User', not $fieldValue"
+                            )
+                        )
+                    field.toSuccess()
                 }
+
                 "Index" -> {
-                    val field = IntegerField.fromString(fieldValue) ?:
-                        return Result.failure(BadFieldValueException(
-                            "Bad $fieldName field value: $fieldValue"))
-                    Result.success(field)
+                    val field = IntegerField.fromString(fieldValue) ?: return Result.failure(
+                        BadFieldValueException(
+                            "Bad $fieldName field value: $fieldValue"
+                        )
+                    )
+                    field.toSuccess()
                 }
+
                 "Name" -> {
                     val field = StringField.validatedName(fieldValue)
-                        ?: return Result.failure(BadFieldValueException(
-                            "Bad $fieldName field value: '$fieldValue'"))
-                    Result.success(field)
+                        ?: return Result.failure(
+                            BadFieldValueException(
+                                "Bad $fieldName field value: '$fieldValue'"
+                            )
+                        )
+                    field.toSuccess()
                 }
+
                 "Local-ID" -> {
                     val field = StringField.validatedLocalID(fieldValue)
-                        ?: return Result.failure(BadFieldValueException(
-                            "Bad $fieldName field value: '$fieldValue'"))
-                    Result.success(field)
+                        ?: return Result.failure(
+                            BadFieldValueException(
+                                "Bad $fieldName field value: '$fieldValue'"
+                            )
+                        )
+                    field.toSuccess()
                 }
+
                 "User-ID" -> {
                     val field = StringField.validatedUserID(fieldValue)
-                        ?: return Result.failure(BadFieldValueException(
-                            "Bad $fieldName field value: '$fieldValue'"))
-                    Result.success(field)
+                        ?: return Result.failure(
+                            BadFieldValueException(
+                                "Bad $fieldName field value: '$fieldValue'"
+                            )
+                        )
+                    field.toSuccess()
                 }
+
                 "Workspace-ID" -> {
                     val field = StringField.validatedRandomID(fieldValue)
-                        ?: return Result.failure(BadFieldValueException(
-                            "Bad $fieldName field value: '$fieldValue'"))
-                    Result.success(field)
+                        ?: return Result.failure(
+                            BadFieldValueException(
+                                "Bad $fieldName field value: '$fieldValue'"
+                            )
+                        )
+                    field.toSuccess()
                 }
+
                 "Domain" -> {
                     val field = StringField.validatedDomain(fieldValue)
-                        ?: return Result.failure(BadFieldValueException(
-                            "Bad $fieldName field value: '$fieldValue'"))
-                    Result.success(field)
+                        ?: return Result.failure(
+                            BadFieldValueException(
+                                "Bad $fieldName field value: '$fieldValue'"
+                            )
+                        )
+                    field.toSuccess()
                 }
+
                 "Contact-Admin",
                 "Contact-Abuse",
                 "Contact-Support" -> {
                     val field = WAddressField.fromString(fieldValue)
-                        ?: return Result.failure(BadFieldValueException(
-                            "Bad $fieldName field value: $fieldValue"))
-                    Result.success(field)
+                        ?: return Result.failure(
+                            BadFieldValueException(
+                                "Bad $fieldName field value: $fieldValue"
+                            )
+                        )
+                    field.toSuccess()
                 }
+
                 "Contact-Request-Encryption-Key",
                 "Contact-Request-Verification-Key",
                 "Primary-Verification-Key",
                 "Secondary-Verification-Key",
                 "Verification-Key",
                 "Encryption-Key",
-                "Revoke"-> {
+                "Revoke" -> {
                     val field = CryptoStringField.fromString(fieldValue)
-                        ?: return Result.failure(BadFieldValueException(
-                            "Bad $fieldName field value: $fieldValue"))
-                    Result.success(field)
+                        ?: return Result.failure(
+                            BadFieldValueException(
+                                "Bad $fieldName field value: $fieldValue"
+                            )
+                        )
+                    field.toSuccess()
                 }
+
                 "Language" -> {
                     val field = StringField.validatedLanguage(fieldValue)
-                        ?: return Result.failure(BadFieldValueException(
-                            "Bad $fieldName field value: '$fieldValue'"))
-                    Result.success(field)
+                        ?: return Result.failure(
+                            BadFieldValueException(
+                                "Bad $fieldName field value: '$fieldValue'"
+                            )
+                        )
+                    field.toSuccess()
                 }
+
                 "Time-To-Live" -> {
                     val field = IntegerField.validatedTTL(fieldValue)
-                        ?: return Result.failure(BadFieldValueException(
-                            "Bad $fieldName field value: '$fieldValue'"))
-                    Result.success(field)
+                        ?: return Result.failure(
+                            BadFieldValueException(
+                                "Bad $fieldName field value: '$fieldValue'"
+                            )
+                        )
+                    field.toSuccess()
                 }
+
                 "Expires" -> {
                     val field = DatestampField.fromString(fieldValue)
-                        ?: return Result.failure(BadFieldValueException(
-                            "Bad $fieldName field value: $fieldValue"))
-                    Result.success(field)
+                        ?: return Result.failure(
+                            BadFieldValueException(
+                                "Bad $fieldName field value: $fieldValue"
+                            )
+                        )
+                    field.toSuccess()
                 }
+
                 "Timestamp" -> {
                     val field = TimestampField.fromString(fieldValue)
-                        ?: return Result.failure(BadFieldValueException(
-                            "Bad $fieldName field value: $fieldValue"))
-                    Result.success(field)
+                        ?: return Result.failure(
+                            BadFieldValueException(
+                                "Bad $fieldName field value: $fieldValue"
+                            )
+                        )
+                    field.toSuccess()
                 }
+
                 else -> Result.failure(BadFieldException(fieldName))
             }
         }
@@ -102,9 +154,11 @@ sealed class EntryField {
 }
 
 /** EntryField subclass which represents integers */
-class IntegerField(val value: Int): EntryField() {
+class IntegerField(val value: Int) : EntryField() {
 
-    override fun toString(): String { return value.toString() }
+    override fun toString(): String {
+        return value.toString()
+    }
 
     companion object {
 
@@ -112,13 +166,17 @@ class IntegerField(val value: Int): EntryField() {
             return try {
                 val i = s.toInt()
                 if (i < 1) null else IntegerField(i)
+            } catch (e: Exception) {
+                null
             }
-            catch (e: Exception) { null }
         }
 
         fun validatedTTL(s: String): IntegerField? {
-            val ttl =  try { IntegerField(s.toInt()) }
-                catch (e: Exception) { return null }
+            val ttl = try {
+                IntegerField(s.toInt())
+            } catch (e: Exception) {
+                return null
+            }
 
             return if (ttl.value in 1..30) ttl else null
         }
@@ -126,9 +184,11 @@ class IntegerField(val value: Int): EntryField() {
 }
 
 /** EntryField subclass which validates the various string fields for entries */
-class StringField(val value: String): EntryField() {
+class StringField(val value: String) : EntryField() {
 
-    override fun toString(): String { return value }
+    override fun toString(): String {
+        return value
+    }
 
     companion object {
         private val nameRE = Pattern
@@ -138,7 +198,8 @@ class StringField(val value: String): EntryField() {
             .toRegex()
         private val controlCharsRE = Pattern.compile("""\p{C}""").toRegex()
         private val randomIDRE = Pattern.compile(
-            """^[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}$""")
+            """^[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}$"""
+        )
             .toRegex()
         private val localIDRE = Pattern.compile("""^([\p{L}\p{M}\p{N}\-_]|\.[^.]){1,64}$""")
             .toRegex()
@@ -147,7 +208,7 @@ class StringField(val value: String): EntryField() {
             .toRegex()
 
         fun validatedEntryType(s: String): StringField? {
-            return when(s) {
+            return when (s) {
                 "Organization", "User" -> StringField(s)
                 else -> null
             }
@@ -156,7 +217,8 @@ class StringField(val value: String): EntryField() {
         fun validatedName(s: String): StringField? {
             if (s.isEmpty() || s.length > 64 ||
                 !nameRE.matches(s) ||
-                controlCharsRE.matches(s))
+                controlCharsRE.matches(s)
+            )
                 return null
             return StringField(s)
         }
@@ -185,9 +247,11 @@ class StringField(val value: String): EntryField() {
 }
 
 /** EntryField subclass which houses timestamps */
-class TimestampField(val value: Timestamp = Timestamp()): EntryField() {
+class TimestampField(val value: Timestamp = Timestamp()) : EntryField() {
 
-    override fun toString(): String { return value.toString() }
+    override fun toString(): String {
+        return value.toString()
+    }
 
     companion object {
 
@@ -199,9 +263,11 @@ class TimestampField(val value: Timestamp = Timestamp()): EntryField() {
 }
 
 /** DatestampField objects track timestamps which only require date information */
-class DatestampField(val value: Timestamp = Timestamp()): EntryField() {
+class DatestampField(val value: Timestamp = Timestamp()) : EntryField() {
 
-    override fun toString(): String { return value.toDateString() }
+    override fun toString(): String {
+        return value.toDateString()
+    }
 
     companion object {
 
@@ -213,9 +279,11 @@ class DatestampField(val value: Timestamp = Timestamp()): EntryField() {
 }
 
 /** EntryField subclass for validating CryptoString data */
-class CryptoStringField(val value: CryptoString): EntryField() {
+class CryptoStringField(val value: CryptoString) : EntryField() {
 
-    override fun toString(): String { return value.toString() }
+    override fun toString(): String {
+        return value.toString()
+    }
 
     companion object {
 
@@ -227,9 +295,11 @@ class CryptoStringField(val value: CryptoString): EntryField() {
 }
 
 /** EntryField subclass which holds workspace addresses */
-class WAddressField(val value: WAddress): EntryField() {
+class WAddressField(val value: WAddress) : EntryField() {
 
-    override fun toString(): String { return value.toString() }
+    override fun toString(): String {
+        return value.toString()
+    }
 
     companion object {
 

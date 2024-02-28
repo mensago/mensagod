@@ -45,7 +45,7 @@ class EncryptionPair private constructor(publicKeyStr: CryptoString, privateKeyS
      * @exception IllegalArgumentException Returned if there was a decoding error
      */
     override fun encrypt(data: ByteArray): Result<CryptoString> {
-        val rawKey = publicKey.toRaw().getOrElse { return Result.failure(it) }
+        val rawKey = publicKey.toRaw().getOrElse { return it.toFailure() }
         val box = SealedBox()
         val result = box.cryptoBoxSeal(data, rawKey)
         if (result.isFailure) {
@@ -61,11 +61,11 @@ class EncryptionPair private constructor(publicKeyStr: CryptoString, privateKeyS
      * @exception IllegalArgumentException Returned if there was a decoding error
      */
     override fun decrypt(encData: CryptoString): Result<ByteArray> {
-        val ciphertext = encData.toRaw().getOrElse { return Result.failure(it) }
+        val ciphertext = encData.toRaw().getOrElse { return it.toFailure() }
         val box = SealedBox()
         return box.cryptoBoxSealOpen(ciphertext,
-            publicKey.toRaw().getOrElse { return Result.failure(it) },
-            privateKey.toRaw().getOrElse { return Result.failure(it) })
+            publicKey.toRaw().getOrElse { return it.toFailure() },
+            privateKey.toRaw().getOrElse { return it.toFailure() })
     }
 
     override fun toString(): String {
@@ -168,7 +168,7 @@ class EncryptionKey private constructor() : Encryptor {
     override fun encrypt(data: ByteArray): Result<CryptoString> {
         val rawKey = publicKey!!.toRaw()
         val box = SealedBox()
-        val result = box.cryptoBoxSeal(data, rawKey.getOrElse { return Result.failure(it) })
+        val result = box.cryptoBoxSeal(data, rawKey.getOrElse { return it.toFailure() })
         if (result.isFailure) {
             return Result.failure(result.exceptionOrNull()!!)
         }
@@ -180,7 +180,7 @@ class EncryptionKey private constructor() : Encryptor {
     override fun getPublicHash(algorithm: String): Result<Hash> {
         if (publicHash == null || publicHash!!.prefix != algorithm)
             publicHash =
-                hash(publicKey!!.toByteArray(), algorithm).getOrElse { return Result.failure(it) }
+                hash(publicKey!!.toByteArray(), algorithm).getOrElse { return it.toFailure() }
         return Result.success(publicHash!!)
     }
 

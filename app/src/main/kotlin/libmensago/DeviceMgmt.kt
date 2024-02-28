@@ -1,8 +1,6 @@
 package libmensago
 
-import keznacl.CryptoString
-import keznacl.EncryptionPair
-import keznacl.Encryptor
+import keznacl.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import libkeycard.RandomID
@@ -22,7 +20,7 @@ class DeviceInfo(
     /** Convenience method to update the object's attributes */
     fun collectAttributes(): Result<DeviceInfo> {
         val info = collectInfoForDevice(id, keypair.publicKey)
-            .getOrElse { return Result.failure(it) }
+            .getOrElse { return it.toFailure() }
         attributes = info
         return Result.success(this)
     }
@@ -38,7 +36,7 @@ class DeviceInfo(
             return Result.failure(e)
         }
         encryptedInfo = key.encrypt(outJSON.encodeToByteArray())
-            .getOrElse { return Result.failure(it) }
+            .getOrElse { return it.toFailure() }
         return Result.success(this)
     }
 
@@ -48,9 +46,9 @@ class DeviceInfo(
         fun generate(): Result<DeviceInfo> {
 
             val id = RandomID.generate()
-            val keypair = EncryptionPair.generate().getOrElse { return Result.failure(it) }
+            val keypair = EncryptionPair.generate().getOrElse { return it.toFailure() }
             val info = collectInfoForDevice(id, keypair.publicKey)
-                .getOrElse { return Result.failure(it) }
+                .getOrElse { return it.toFailure() }
             return Result.success(DeviceInfo(id, keypair, info))
         }
     }
@@ -68,11 +66,11 @@ fun collectInfoForDevice(
 
     val out = hashMapOf(
         "Name" to Platform.getHostname(),
-        "User" to Platform.getUsername().getOrElse { return Result.failure(it) },
-        "OS" to Platform.getOS().getOrElse { return Result.failure(it) },
+        "User" to Platform.getUsername().getOrElse { return it.toFailure() },
+        "OS" to Platform.getOS().getOrElse { return it.toFailure() },
         "Device-ID" to devid.toString(),
         "Device-Key" to devKey.toString(),
         "Timestamp" to Timestamp().toString(),
     )
-    return Result.success(out)
+    return out.toSuccess()
 }

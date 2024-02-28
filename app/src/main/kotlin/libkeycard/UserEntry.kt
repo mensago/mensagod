@@ -9,7 +9,7 @@ import java.util.*
  * information, please consult the Mensago Identity Services Guide and the Identity Services API
  * reference.
  */
-class UserEntry: Entry() {
+class UserEntry : Entry() {
 
     init {
         fields["Type"] = StringField("User")
@@ -84,7 +84,8 @@ class UserEntry: Entry() {
             if (!fields.containsKey("Revoke")) {
                 if (!hasAuthString("Custody-Signature"))
                     return BadFieldException(
-                        "Non-root entry is missing required field Custody-Signature")
+                        "Non-root entry is missing required field Custody-Signature"
+                    )
             }
         }
         listOf("Organization-Signature", "Previous-Hash", "Hash", "User-Signature").forEach {
@@ -136,6 +137,7 @@ class UserEntry: Entry() {
             "Custody-Signature" -> {
                 // We don't need to do anything else for the custody signature
             }
+
             "Organization-Signature" -> {
                 if (signatures.containsKey("Custody-Signature"))
                     lines.add("Custody-Signature:${signatures["Custody-Signature"]}")
@@ -144,6 +146,7 @@ class UserEntry: Entry() {
                         return Result.failure(ComplianceFailureException("Custody-Signature missing"))
                 }
             }
+
             "Previous-Hash" -> {
                 listOf("Custody-Signature", "Organization-Signature").forEach {
                     if (signatures.containsKey(it))
@@ -154,6 +157,7 @@ class UserEntry: Entry() {
                     }
                 }
             }
+
             "Hash" -> {
                 listOf("Custody-Signature", "Organization-Signature", "Previous-Hash").forEach {
                     if (signatures.containsKey(it))
@@ -164,9 +168,12 @@ class UserEntry: Entry() {
                     }
                 }
             }
+
             "User-Signature" -> {
-                listOf("Custody-Signature", "Organization-Signature", "Previous-Hash",
-                        "Hash").forEach {
+                listOf(
+                    "Custody-Signature", "Organization-Signature", "Previous-Hash",
+                    "Hash"
+                ).forEach {
                     if (signatures.containsKey(it))
                         lines.add("$it:${signatures[it]}")
                     else {
@@ -175,9 +182,12 @@ class UserEntry: Entry() {
                     }
                 }
             }
+
             null -> {
-                listOf("Custody-Signature", "Organization-Signature", "Previous-Hash", "Hash",
-                        "User-Signature").forEach {
+                listOf(
+                    "Custody-Signature", "Organization-Signature", "Previous-Hash", "Hash",
+                    "User-Signature"
+                ).forEach {
                     if (signatures.containsKey(it))
                         lines.add("$it:${signatures[it]}")
                     else {
@@ -186,6 +196,7 @@ class UserEntry: Entry() {
                     }
                 }
             }
+
             else -> return Result.failure(BadValueException())
         }
         lines.add("")
@@ -218,11 +229,17 @@ class UserEntry: Entry() {
             Result<Pair<Entry, Map<String, CryptoString>>> {
 
         if (!fields.containsKey("Contact-Request-Verification-Key"))
-            return Result.failure(ComplianceFailureException(
-                "Required field Contact-Request-Verification-Key missing"))
+            return Result.failure(
+                ComplianceFailureException(
+                    "Required field Contact-Request-Verification-Key missing"
+                )
+            )
         if (!fields.containsKey("Contact-Request-Encryption-Key"))
-            return Result.failure(ComplianceFailureException(
-                "Required field Contact-Request-Encryption-Key missing"))
+            return Result.failure(
+                ComplianceFailureException(
+                    "Required field Contact-Request-Encryption-Key missing"
+                )
+            )
         if (!signatures.containsKey("Hash"))
             return Result.failure(ComplianceFailureException("Required auth string Hash missing"))
 
@@ -231,16 +248,16 @@ class UserEntry: Entry() {
 
 
         val signAlgo = CryptoString.fromString(
-            fields["Contact-Request-Verification-Key"]!!.toString()) ?:
-                return Result.failure(BadFieldValueException("Bad Contact-Request-Verification-Key"))
+            fields["Contact-Request-Verification-Key"]!!.toString()
+        ) ?: return Result.failure(BadFieldValueException("Bad Contact-Request-Verification-Key"))
         val newCRSPair = SigningPair.generate(signAlgo.prefix).getOrThrow()
         outMap["crsigning.public"] = newCRSPair.publicKey
         outMap["crsigning.private"] = newCRSPair.privateKey
         outEntry.setField("Contact-Request-Verification-Key", newCRSPair.publicKey.value)
 
         val encAlgo = CryptoString.fromString(
-            fields["Contact-Request-Encryption-Key"]!!.toString()) ?:
-                return Result.failure(BadFieldValueException("Bad Contact-Request-Encryption-Key"))
+            fields["Contact-Request-Encryption-Key"]!!.toString()
+        ) ?: return Result.failure(BadFieldValueException("Bad Contact-Request-Encryption-Key"))
         val newCREPair = EncryptionPair.generate(encAlgo.prefix).getOrThrow()
         outMap["crencryption.public"] = newCREPair.publicKey
         outMap["crencryption.private"] = newCREPair.privateKey
@@ -291,8 +308,11 @@ class UserEntry: Entry() {
     override fun verifyChain(previous: Entry): Result<Boolean> {
 
         if (!signatures.containsKey("Previous-Hash"))
-            return Result.failure(ComplianceFailureException(
-                "Required auth string Previous-Hash missing"))
+            return Result.failure(
+                ComplianceFailureException(
+                    "Required auth string Previous-Hash missing"
+                )
+            )
         if (!fields.containsKey("Index"))
             return Result.failure(ComplianceFailureException("Required field Index missing"))
 
@@ -303,7 +323,8 @@ class UserEntry: Entry() {
         if (complianceError != null) return Result.failure(complianceError)
 
         if (previous.getAuthString("Hash")!!.toString() !=
-                getAuthString("Previous-Hash")!!.toString())
+            getAuthString("Previous-Hash")!!.toString()
+        )
             return Result.failure(HashMismatchException())
 
         val className = previous.javaClass.toString()
@@ -316,7 +337,8 @@ class UserEntry: Entry() {
                 if (previous.getFieldInteger("Index")!! != selfIndex - 1)
                     return Result.failure(OutOfOrderException())
                 val verKeyStr = previous.getFieldString(
-                    "Contact-Request-Verification-Key")!!
+                    "Contact-Request-Verification-Key"
+                )!!
                 val verKey = VerificationKey.fromString(verKeyStr)
                     .getOrElse {
                         return Result.failure(BadFieldValueException("Bad CR verification key"))
@@ -324,6 +346,7 @@ class UserEntry: Entry() {
 
                 verifySignature("Custody-Signature", verKey)
             }
+
             className.endsWith("OrgEntry") -> {
                 val verKeyStr = previous.getFieldString("Primary-Verification-Key")!!
                 val verKey = VerificationKey.fromString(verKeyStr)
@@ -333,6 +356,7 @@ class UserEntry: Entry() {
 
                 verifySignature("Organization-Signature", verKey)
             }
+
             else -> return Result.failure(EntryTypeException())
         }
 
@@ -347,11 +371,17 @@ class UserEntry: Entry() {
     override fun revoke(expiration: Int): Result<Pair<Entry, Map<String, CryptoString>>> {
 
         if (!fields.containsKey("Contact-Request-Verification-Key"))
-            return Result.failure(ComplianceFailureException(
-                "Required field Contact-Request-Verification-Key missing"))
+            return Result.failure(
+                ComplianceFailureException(
+                    "Required field Contact-Request-Verification-Key missing"
+                )
+            )
         if (!fields.containsKey("Contact-Request-Encryption-Key"))
-            return Result.failure(ComplianceFailureException(
-                "Required field Contact-Request-Encryption-Key missing"))
+            return Result.failure(
+                ComplianceFailureException(
+                    "Required field Contact-Request-Encryption-Key missing"
+                )
+            )
         if (!signatures.containsKey("Hash"))
             return Result.failure(ComplianceFailureException("Required auth string Hash missing"))
 
@@ -360,16 +390,16 @@ class UserEntry: Entry() {
 
 
         val signAlgo = CryptoString.fromString(
-            fields["Contact-Request-Verification-Key"]!!.toString()) ?:
-                return Result.failure(BadFieldValueException("Bad Contact-Request-Verification-Key"))
+            fields["Contact-Request-Verification-Key"]!!.toString()
+        ) ?: return Result.failure(BadFieldValueException("Bad Contact-Request-Verification-Key"))
         val newCRSPair = SigningPair.generate(signAlgo.prefix).getOrThrow()
         outMap["crsigning.public"] = newCRSPair.publicKey
         outMap["crsigning.private"] = newCRSPair.privateKey
         outEntry.setField("Contact-Request-Verification-Key", newCRSPair.publicKey.value)
 
         val encAlgo = CryptoString.fromString(
-            fields["Contact-Request-Encryption-Key"]!!.toString()) ?:
-                return Result.failure(BadFieldValueException("Bad Contact-Request-Encryption-Key"))
+            fields["Contact-Request-Encryption-Key"]!!.toString()
+        ) ?: return Result.failure(BadFieldValueException("Bad Contact-Request-Encryption-Key"))
         val newCREPair = EncryptionPair.generate(encAlgo.prefix).getOrThrow()
         outMap["crencryption.public"] = newCRSPair.publicKey
         outMap["crencryption.private"] = newCRSPair.privateKey
@@ -436,7 +466,9 @@ class UserEntry: Entry() {
             length for any variable-length fields, including keys. It's a good, quick way of ruling out
              obviously bad data.
              */
-            if (s.length < 160) { return Result.failure(BadValueException()) }
+            if (s.length < 160) {
+                return Result.failure(BadValueException())
+            }
 
             val out = UserEntry()
             for (rawLine in s.split("\r\n")) {
@@ -444,7 +476,9 @@ class UserEntry: Entry() {
                 if (line.isEmpty()) continue
 
                 val parts = line.split(":", limit = 2)
-                if (parts.size != 2) { return Result.failure(BadFieldValueException(line)) }
+                if (parts.size != 2) {
+                    return Result.failure(BadFieldValueException(line))
+                }
 
                 if (parts[1].length > 6144) {
                     return Result.failure(RangeException("Field ${parts[0]} may not be longer than 6144 bytes"))
@@ -458,8 +492,9 @@ class UserEntry: Entry() {
                     "Previous-Hash",
                     "Hash",
                     "User-Signature" -> {
-                        val cs = CryptoString.fromString(fieldValue) ?:
-                        return Result.failure(BadFieldValueException(fieldName))
+                        val cs = CryptoString.fromString(fieldValue) ?: return Result.failure(
+                            BadFieldValueException(fieldName)
+                        )
                         out.addAuthString(fieldName, cs)
                         continue
                     }
@@ -472,7 +507,7 @@ class UserEntry: Entry() {
                 if (err != null) return Result.failure(err)
             }
 
-            return Result.success(out)
+            return out.toSuccess()
         }
     }
 }

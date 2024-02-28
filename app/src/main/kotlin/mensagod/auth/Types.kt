@@ -1,5 +1,6 @@
 package mensagod.auth
 
+import keznacl.toFailure
 import libkeycard.MAddress
 import libkeycard.RandomID
 import mensagod.DBConn
@@ -24,13 +25,18 @@ interface AuthActor {
  * The WIDActor class represents a local user identified by its workspace ID. This actor is
  * typically used when the actor is either logging in or is already logged in.
  */
-open class WIDActor(val wid: RandomID): AuthActor {
-    override fun getType(): AuthActorType { return AuthActorType.WID }
-    override fun toString(): String { return wid.toString() }
+open class WIDActor(val wid: RandomID) : AuthActor {
+    override fun getType(): AuthActorType {
+        return AuthActorType.WID
+    }
+
+    override fun toString(): String {
+        return wid.toString()
+    }
 
     fun isAdmin(): Result<Boolean> {
         val adminWID = resolveAddress(DBConn(), MAddress.fromString("admin/$gServerDomain")!!)
-            .getOrElse { return Result.failure(it) }
+            .getOrElse { return it.toFailure() }
         if (adminWID == null)
             logError("isAdmin couldn't find the admin's workspace ID")
         return Result.success(adminWID == wid)
@@ -41,7 +47,7 @@ open class WIDActor(val wid: RandomID): AuthActor {
  * The SessionActor class represents more than just a workspace ID as a security context. It also
  * provides an IP address for the specific session.
  */
-class SessionActor(wid: RandomID, val ip: InetAddress): WIDActor(wid)
+class SessionActor(wid: RandomID, val ip: InetAddress) : WIDActor(wid)
 
 /**
  * The AuthAction class represents an action or group of actions as defined by the permissions

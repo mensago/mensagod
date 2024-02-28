@@ -2,6 +2,8 @@ package libmensago
 
 import keznacl.BadValueException
 import keznacl.CryptoString
+import keznacl.toFailure
+import keznacl.toSuccess
 import libkeycard.*
 import libmensago.commands.getCard
 import libmensago.commands.getWID
@@ -26,14 +28,14 @@ fun getKeycard(owner: String?, dns: DNSHandler): Result<Keycard> {
         false
     }
     val domain = if (isOrg) domainTest!! else userTest!!.domain
-    val config = getRemoteServerConfig(domain, dns).getOrElse { return Result.failure(it) }
+    val config = getRemoteServerConfig(domain, dns).getOrElse { return it.toFailure() }
 
-    val ip = dns.lookupA(config[0].server.toString()).getOrElse { return Result.failure(it) }
+    val ip = dns.lookupA(config[0].server.toString()).getOrElse { return it.toFailure() }
     val conn = ServerConnection()
-    conn.connect(ip[0], config[0].port).let { if (it != null) return Result.failure(it) }
+    conn.connect(ip[0], config[0].port).let { if (it != null) return it.toFailure() }
 
 
-    val card = getCard(conn, owner, 1).getOrElse { return Result.failure(it) }
+    val card = getCard(conn, owner, 1).getOrElse { return it.toFailure() }
     conn.disconnect()
 
     return Result.success(card)
@@ -45,10 +47,10 @@ fun resolveMenagoAddress(addr: MAddress, dns: DNSHandler): Result<RandomID> {
     if (addr.userid.type == IDType.WorkspaceID)
         return Result.success(RandomID.fromString(addr.userid.toString())!!)
 
-    val config = getRemoteServerConfig(addr.domain, dns).getOrElse { return Result.failure(it) }
-    val ip = dns.lookupA(config[0].server.toString()).getOrElse { return Result.failure(it) }
+    val config = getRemoteServerConfig(addr.domain, dns).getOrElse { return it.toFailure() }
+    val ip = dns.lookupA(config[0].server.toString()).getOrElse { return it.toFailure() }
     val conn = ServerConnection()
-    conn.connect(ip[0], config[0].port)?.let { return Result.failure(it) }
+    conn.connect(ip[0], config[0].port)?.let { return it.toFailure() }
 
     return getWID(conn, addr.userid, addr.domain)
 }
@@ -75,7 +77,7 @@ fun getMgmtRecord(d: Domain, dns: DNSHandler): Result<DNSMgmtRecord> {
     val parts = d.toString().split(".")
 
     if (parts.size == 1) {
-        val results = dns.lookupTXT(d.toString()).getOrElse { return Result.failure(it) }
+        val results = dns.lookupTXT(d.toString()).getOrElse { return it.toFailure() }
         return parseTXTRecords(results)
     }
 
@@ -88,11 +90,10 @@ fun getMgmtRecord(d: Domain, dns: DNSHandler): Result<DNSMgmtRecord> {
         val records = dns.lookupTXT(testParts.joinToString("."))
         if (records.isFailure) continue
 
-        out = parseTXTRecords(records.getOrThrow()).getOrElse { return Result.failure(it) }
+        out = parseTXTRecords(records.getOrThrow()).getOrElse { return it.toFailure() }
     }
 
-    return if (out == null) Result.failure(ResourceNotFoundException())
-    else Result.success(out)
+    return out?.toSuccess() ?: ResourceNotFoundException().toFailure()
 }
 
 /**

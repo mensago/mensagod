@@ -1,6 +1,8 @@
 package mensagod.dbcmds
 
 import keznacl.CryptoString
+import keznacl.toFailure
+import keznacl.toSuccess
 import libkeycard.RandomID
 import libkeycard.Timestamp
 import libmensago.MServerPath
@@ -56,8 +58,8 @@ fun addKeyInfo(db: DBConn, wid: RandomID, devid: RandomID, path: MServerPath): T
  */
 fun countDevices(db: DBConn, wid: RandomID): Result<Int> {
     val rs = db.query("""SELECT COUNT(*) FROM iwkspc_devices WHERE wid=?""", wid)
-        .getOrElse { return Result.failure(it) }
-    if (!rs.next()) return Result.success(0)
+        .getOrElse { return it.toFailure() }
+    if (!rs.next()) return 0.toSuccess()
     return Result.success(rs.getInt(1))
 }
 
@@ -83,7 +85,7 @@ fun getDeviceKey(db: DBConn, wid: RandomID, devid: RandomID): Result<CryptoStrin
                 "Bad device key '$key' for device $devid in workspace $wid"
             )
         )
-    return Result.success(out)
+    return out.toSuccess()
 }
 
 /**
@@ -101,12 +103,12 @@ fun getDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID?):
         Result<List<Pair<RandomID, CryptoString>>> {
     val rs = if (devid == null) {
         db.query("""SELECT devid,devinfo FROM iwkspc_devices WHERE wid=? ORDER BY devid""", wid)
-            .getOrElse { return Result.failure(it) }
+            .getOrElse { return it.toFailure() }
     } else {
         db.query(
             """SELECT devid,devinfo FROM iwkspc_devices WHERE wid=? AND devid=?""",
             wid, devid
-        ).getOrElse { return Result.failure(it) }
+        ).getOrElse { return it.toFailure() }
     }
 
     val out = mutableListOf<Pair<RandomID, CryptoString>>()
@@ -117,7 +119,7 @@ fun getDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID?):
             ?: return Result.failure(DatabaseCorruptionException("Bad device info for wid $wid"))
         out.add(Pair(dev, info))
     }
-    return Result.success(out)
+    return out.toSuccess()
 }
 
 /**
@@ -133,7 +135,7 @@ fun getDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID): Result<DeviceSt
     val rs = db.query(
         """SELECT status FROM iwkspc_devices WHERE wid=? AND devid=?""",
         wid, devid
-    ).getOrElse { return Result.failure(it) }
+    ).getOrElse { return it.toFailure() }
     if (rs.next()) {
         val stat = rs.getString("status")
         val out = DeviceStatus.fromString(stat)
@@ -142,7 +144,7 @@ fun getDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID): Result<DeviceSt
                     "Bad device status '$stat' for device $devid in workspace $wid"
                 )
             )
-        return Result.success(out)
+        return out.toSuccess()
     }
     return Result.success(DeviceStatus.NotRegistered)
 }
@@ -158,7 +160,7 @@ fun getDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID): Result<DeviceSt
  */
 fun getKeyInfo(db: DBConn, wid: RandomID, devid: RandomID): Result<MServerPath?> {
     val rs = db.query("""SELECT path FROM keyinfo WHERE wid=? AND devid=?""", wid, devid)
-        .getOrElse { return Result.failure(it) }
+        .getOrElse { return it.toFailure() }
     if (rs.next()) {
         val infopath = rs.getString("path")
         val out = MServerPath.fromString(infopath)
@@ -167,7 +169,7 @@ fun getKeyInfo(db: DBConn, wid: RandomID, devid: RandomID): Result<MServerPath?>
                     "Bad key info path '$infopath' for device $devid in workspace $wid"
                 )
             )
-        return Result.success(out)
+        return out.toSuccess()
     }
     return Result.success(null)
 }
@@ -184,7 +186,7 @@ fun getLastDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID): Result<Times
     val rs = db.query(
         """SELECT lastlogin FROM iwkspc_devices WHERE wid=? AND devid=?""",
         wid, devid
-    ).getOrElse { return Result.failure(it) }
+    ).getOrElse { return it.toFailure() }
     if (rs.next()) {
         val lastlogin = rs.getString("lastlogin")
         val out = Timestamp.fromString(lastlogin)
@@ -193,7 +195,7 @@ fun getLastDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID): Result<Times
                     "Bad device timestamp '$lastlogin' for device $devid in workspace $wid"
                 )
             )
-        return Result.success(out)
+        return out.toSuccess()
     }
     return Result.success(null)
 }

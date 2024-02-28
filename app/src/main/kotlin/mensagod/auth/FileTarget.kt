@@ -1,5 +1,6 @@
 package mensagod.auth
 
+import keznacl.toFailure
 import libkeycard.RandomID
 import libmensago.MServerPath
 
@@ -9,18 +10,20 @@ import libmensago.MServerPath
  * workspace directories.
  *
  */
-class FileTarget private constructor(private val path: MServerPath): AuthTarget {
+class FileTarget private constructor(private val path: MServerPath) : AuthTarget {
     private val parent = path.parent()
 
     override fun getActions(actor: AuthActor, action: AuthAction): Result<List<AuthAction>> {
         if (actor.getType() != AuthActorType.WID) return Result.success(listOf())
         actor as WIDActor
 
-        if (actor.isAdmin().getOrElse { return Result.failure(it) } ||
+        if (actor.isAdmin().getOrElse { return it.toFailure() } ||
             isKeysDirectory(actor.wid) || ownsParent(actor.wid))
-            return Result.success(listOf(
-                AuthAction.Create, AuthAction.Delete, AuthAction.Read, AuthAction.Modify
-            ))
+            return Result.success(
+                listOf(
+                    AuthAction.Create, AuthAction.Delete, AuthAction.Read, AuthAction.Modify
+                )
+            )
 
         return Result.success(listOf())
     }
@@ -32,7 +35,7 @@ class FileTarget private constructor(private val path: MServerPath): AuthTarget 
                 actor as WIDActor
 
                 // Admins can access all directories and files
-                val isAdmin = actor.isAdmin().getOrElse { return Result.failure(it) }
+                val isAdmin = actor.isAdmin().getOrElse { return it.toFailure() }
                 if (isAdmin)
                     return Result.success(true)
 
@@ -41,12 +44,15 @@ class FileTarget private constructor(private val path: MServerPath): AuthTarget 
                 if (isKeysDirectory(actor.wid)) return Result.success(true)
                 if (ownsParent(actor.wid)) return Result.success(true)
             }
+
             else -> return Result.success(false)
         }
         return Result.success(false)
     }
 
-    private fun isKeysDirectory(wid: RandomID): Boolean { return path.toString() == "/ keys $wid" }
+    private fun isKeysDirectory(wid: RandomID): Boolean {
+        return path.toString() == "/ keys $wid"
+    }
 
     private fun ownsParent(wid: RandomID): Boolean {
         return parent.toString().startsWith("/ wsp $wid")

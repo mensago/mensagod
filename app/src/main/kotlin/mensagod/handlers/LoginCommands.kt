@@ -1,9 +1,6 @@
 package mensagod.handlers
 
-import keznacl.Base85
-import keznacl.CryptoString
-import keznacl.EncryptionKey
-import keznacl.UnsupportedAlgorithmException
+import keznacl.*
 import libmensago.ClientRequest
 import libmensago.DeviceApprovalMsg
 import libmensago.MServerPath
@@ -442,21 +439,21 @@ fun challengeDevice(state: ClientSession, devkey: CryptoString): Result<Boolean>
     // 5) If strings don't match, respond to client with 402 Authentication Failure and return false
     // 6) If strings match respond to client with 200 OK and return true/nil
 
-    val realKey = EncryptionKey.from(devkey).getOrElse { return Result.failure(it) }
+    val realKey = EncryptionKey.from(devkey).getOrElse { return it.toFailure() }
 
     val rng = SecureRandom()
     val rawBytes = ByteArray(32)
     rng.nextBytes(rawBytes)
     val challenge = Base85.encode(rawBytes)
-    val encrypted = realKey.encrypt(challenge.toByteArray()).getOrElse { return Result.failure(it) }
+    val encrypted = realKey.encrypt(challenge.toByteArray()).getOrElse { return it.toFailure() }
     ServerResponse(
         100, "CONTINUE", "",
         mutableMapOf("Challenge" to encrypted.toString())
     )
-        .send(state.conn)?.let { return Result.failure(it) }
+        .send(state.conn)?.let { return it.toFailure() }
 
     val req = ClientRequest.receive(state.conn.getInputStream())
-        .getOrElse { return Result.failure(it) }
+        .getOrElse { return it.toFailure() }
     if (req.action == "CANCEL") return Result.failure(CancelException())
 
     if (req.action != "DEVICE") {

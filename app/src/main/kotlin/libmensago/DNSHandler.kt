@@ -1,5 +1,6 @@
 package libmensago
 
+import keznacl.toSuccess
 import libkeycard.Domain
 import org.minidns.hla.ResolverApi
 import org.minidns.record.A
@@ -25,9 +26,11 @@ open class DNSHandler {
                 for (record in result.answers)
                     out.add(record.inetAddress)
             }
-        } catch (e: Exception) { return Result.failure(e) }
+        } catch (e: Exception) {
+            return Result.failure(e)
+        }
 
-        return Result.success(out)
+        return out.toSuccess()
     }
 
     /** Turns a domain into an IPv6 address */
@@ -39,9 +42,11 @@ open class DNSHandler {
                 for (record in result.answers)
                     out.add(record.inetAddress)
             }
-        } catch (e: Exception) { return Result.failure(e) }
+        } catch (e: Exception) {
+            return Result.failure(e)
+        }
 
-        return Result.success(out)
+        return out.toSuccess()
     }
 
     /**
@@ -58,9 +63,11 @@ open class DNSHandler {
                 for (record in result.answers)
                     out.add(record.text)
             }
-        } catch (e: Exception) { return Result.failure(e) }
+        } catch (e: Exception) {
+            return Result.failure(e)
+        }
 
-        return Result.success(out)
+        return out.toSuccess()
     }
 
     /**
@@ -79,10 +86,12 @@ open class DNSHandler {
                     out.add(ServiceConfig(dom, record.port, record.priority))
                 }
             }
-        } catch (e: Exception) { return Result.failure(e) }
+        } catch (e: Exception) {
+            return Result.failure(e)
+        }
 
-        out.sortWith(compareBy({it.priority}, {it.server.toString()}))
-        return Result.success(out)
+        out.sortWith(compareBy({ it.priority }, { it.server.toString() }))
+        return out.toSuccess()
     }
 
 }

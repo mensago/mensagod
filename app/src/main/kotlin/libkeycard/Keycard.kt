@@ -1,8 +1,6 @@
 package libkeycard
 
-import keznacl.CryptoString
-import keznacl.EmptyDataException
-import keznacl.SigningPair
+import keznacl.*
 import java.util.*
 
 /**
@@ -12,14 +10,20 @@ import java.util.*
  * account's managing server. Note that creating a new, empty Keycard instance is done by calling
  * Keycard.new()
  */
-class Keycard private constructor(cardType: String, val entries: MutableList<Entry> = mutableListOf()) {
+class Keycard private constructor(
+    cardType: String,
+    val entries: MutableList<Entry> = mutableListOf()
+) {
     var entryType = cardType
         private set
 
     val current: Entry?
-         get() {
-            return if (entries.isEmpty()) { null }
-            else { entries.last() }
+        get() {
+            return if (entries.isEmpty()) {
+                null
+            } else {
+                entries.last()
+            }
         }
 
     /** Returns the entry matching the hash passed to it */
@@ -33,7 +37,7 @@ class Keycard private constructor(cardType: String, val entries: MutableList<Ent
     /** Convenience function which calls getOwner() on the current entry in the card */
     fun getOwner(): String? {
         return if (entries.isEmpty()) null
-            else entries.last().getOwner()
+        else entries.last().getOwner()
     }
 
     /**
@@ -58,7 +62,7 @@ class Keycard private constructor(cardType: String, val entries: MutableList<Ent
 
         val current = entries.last()
         val (newEntry, keys) = current.chain(signingPair, expires)
-            .getOrElse { return Result.failure(it) }
+            .getOrElse { return it.toFailure() }
         entries.add(newEntry)
 
         return Result.success(keys)
@@ -95,9 +99,9 @@ class Keycard private constructor(cardType: String, val entries: MutableList<Ent
         for (i in 0 until entries.size - 1) {
             entries[i].isCompliant().let {
                 if (it != null)
-                    return Result.failure(it)
+                    return it.toFailure()
             }
-            val result = entries[i+1].verifyChain(entries[i])
+            val result = entries[i + 1].verifyChain(entries[i])
             if (result.isFailure) return result
             if (!result.getOrThrow()) return Result.success(false)
         }
@@ -109,9 +113,11 @@ class Keycard private constructor(cardType: String, val entries: MutableList<Ent
     override fun toString(): String {
         val sj = StringJoiner("")
         entries.forEach {
-            sj.add("----- BEGIN ENTRY -----\r\n" +
-                    it.getFullText(null) +
-                    "----- END ENTRY -----\r\n")
+            sj.add(
+                "----- BEGIN ENTRY -----\r\n" +
+                        it.getFullText(null) +
+                        "----- END ENTRY -----\r\n"
+            )
         }
         return sj.toString()
     }
@@ -120,7 +126,7 @@ class Keycard private constructor(cardType: String, val entries: MutableList<Ent
 
         /** Creates a new, empty keycard. */
         fun new(cardType: String): Keycard? {
-            return when(cardType) {
+            return when (cardType) {
                 "User", "Organization" -> Keycard(cardType)
                 else -> null
             }
@@ -130,11 +136,12 @@ class Keycard private constructor(cardType: String, val entries: MutableList<Ent
         fun fromString(data: String): Result<Keycard> {
             if (data.isEmpty()) return Result.failure(EmptyDataException())
 
-            val entries = parseEntries(data).getOrElse { return Result.failure(it) }
+            val entries = parseEntries(data).getOrElse { return it.toFailure() }
             if (entries.isEmpty()) return Result.failure(EmptyDataException())
 
-            val cardType = entries[0].getFieldString("Type") ?:
-                return Result.failure(BadFieldException("Keycard missing Type field"))
+            val cardType = entries[0].getFieldString("Type") ?: return Result.failure(
+                BadFieldException("Keycard missing Type field")
+            )
 
             return Result.success(Keycard(cardType, entries))
         }
@@ -155,12 +162,13 @@ class Keycard private constructor(cardType: String, val entries: MutableList<Ent
                         accumulator = StringJoiner("\r\n")
                         continue
                     }
+
                     "----- END ENTRY -----" -> {
                         val entry: Entry = when (cardType) {
                             "User" -> UserEntry.fromString(accumulator.toString())
                             "Organization" -> OrgEntry.fromString(accumulator.toString())
                             else -> return Result.failure(InvalidKeycardException())
-                        }.getOrElse { return Result.failure(it) }
+                        }.getOrElse { return it.toFailure() }
 
                         out.add(entry)
                         continue
@@ -169,7 +177,8 @@ class Keycard private constructor(cardType: String, val entries: MutableList<Ent
 
                 val parts = trimmed.split(":", limit = 2)
                 if (parts.size != 2) return Result.failure(
-                    BadFieldException("Invalid line $i: $trimmed"))
+                    BadFieldException("Invalid line $i: $trimmed")
+                )
 
                 val fieldName = parts[0]
 
@@ -179,7 +188,8 @@ class Keycard private constructor(cardType: String, val entries: MutableList<Ent
                     } else {
                         if (cardType != parts[1]) {
                             return Result.failure(
-                                BadFieldValueException("Entry type must match keycard type"))
+                                BadFieldValueException("Entry type must match keycard type")
+                            )
                         }
                     }
                 }
@@ -187,7 +197,7 @@ class Keycard private constructor(cardType: String, val entries: MutableList<Ent
                 accumulator.add(trimmed)
             }
 
-            return Result.success(out)
+            return out.toSuccess()
         }
     }
 }

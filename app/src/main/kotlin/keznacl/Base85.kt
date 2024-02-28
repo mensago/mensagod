@@ -54,9 +54,9 @@ object Base85 {
 
         val out = ByteArray(decodedSize)
         decodeInternal(stringData.toByteArray(StandardCharsets.US_ASCII), out)
-            .getOrElse { return Result.failure(it) }
+            .getOrElse { return it.toFailure() }
 
-        return Result.success(out)
+        return out.toSuccess()
     }
 
     /** Returns the length of the data returned after decoding */
@@ -111,7 +111,7 @@ object Base85 {
         var leftover = inData.size % 5
         if (leftover == 0) return Result.success(wIndex)
         leftover = decodeRemainder(decodeMap, inData, rIndex, buffer, leftover)
-            .getOrElse { return Result.failure(it) }
+            .getOrElse { return it.toFailure() }
         System.arraycopy(buf, 0, outData as Any, wIndex, leftover)
         return Result.success(wIndex + leftover)
     }

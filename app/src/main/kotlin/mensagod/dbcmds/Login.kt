@@ -3,6 +3,7 @@ package mensagod.dbcmds
 import keznacl.Argon2idPassword
 import keznacl.EmptyDataException
 import keznacl.PasswordInfo
+import keznacl.toFailure
 import libkeycard.*
 import libmensago.NotConnectedException
 import libmensago.ResourceExistsException
@@ -44,22 +45,30 @@ fun checkRegCode(db: DBConn, addr: MAddress, regcode: String): Result<Pair<Rando
         db.query(
             """SELECT uid,regcode FROM prereg WHERE wid=? AND domain=?""",
             addr.userid, addr.domain
-        ).getOrElse { return Result.failure(it) }
+        ).getOrElse { return it.toFailure() }
     } else {
-        db.query("""SELECT wid,regcode FROM prereg WHERE uid=? AND domain=?""",
-            addr.userid, addr.domain).getOrThrow()
+        db.query(
+            """SELECT wid,regcode FROM prereg WHERE uid=? AND domain=?""",
+            addr.userid, addr.domain
+        ).getOrThrow()
     }
     if (!rs.next()) return Result.success(null)
 
     val rawHash = rs.getString("regcode")
     if (rawHash.isEmpty()) {
-        return Result.failure(DatabaseCorruptionException(
-            "Prereg entry missing regcode for workspace $addr"))
+        return Result.failure(
+            DatabaseCorruptionException(
+                "Prereg entry missing regcode for workspace $addr"
+            )
+        )
     }
     val regHash = Argon2idPassword()
     regHash.setFromHash(rawHash)?.let {
-        return Result.failure(DatabaseCorruptionException(
-            "Prereg entry has bad regcode for workspace $addr"))
+        return Result.failure(
+            DatabaseCorruptionException(
+                "Prereg entry has bad regcode for workspace $addr"
+            )
+        )
     }
     if (!regHash.verify(regcode)) return Result.success(null)
 
@@ -69,8 +78,11 @@ fun checkRegCode(db: DBConn, addr: MAddress, regcode: String): Result<Pair<Rando
     }
 
     val outWID = RandomID.fromString(rs.getString("wid"))
-        ?: return Result.failure(DatabaseCorruptionException(
-                "Bad prereg workspace ID ${rs.getString("wid")}"))
+        ?: return Result.failure(
+            DatabaseCorruptionException(
+                "Bad prereg workspace ID ${rs.getString("wid")}"
+            )
+        )
     return Result.success(Pair(outWID, addr.userid))
 }
 
@@ -93,7 +105,7 @@ fun deletePrereg(db: DBConn, addr: WAddress): Throwable? {
  */
 fun getPasswordInfo(db: DBConn, wid: RandomID): Result<PasswordInfo?> {
     val rs = db.query("""SELECT passtype,salt,passparams FROM workspaces WHERE wid=?""", wid)
-        .getOrElse { return Result.failure(it) }
+        .getOrElse { return it.toFailure() }
     if (rs.next()) {
         val type = rs.getString("passtype")
         val salt = rs.getString("salt")
@@ -112,7 +124,7 @@ fun getPasswordInfo(db: DBConn, wid: RandomID): Result<PasswordInfo?> {
  * @throws EmptyDataException if the registration code hash string is empty
  */
 fun preregWorkspace(db: DBConn, wid: RandomID, userID: UserID?, domain: Domain, reghash: String):
-    Throwable? {
+        Throwable? {
 
     if (reghash.isEmpty())
         return EmptyDataException("registration code hash may not be empty")
@@ -125,12 +137,16 @@ fun preregWorkspace(db: DBConn, wid: RandomID, userID: UserID?, domain: Domain, 
         if (resolvedWAddr != null)
             return ResourceExistsException("Workspcae-ID $wid already exists")
 
-        return db.execute("""INSERT INTO prereg(wid, uid, domain, regcode) VALUES(?,?,?,?)""",
-            wid, userID, domain, reghash).exceptionOrNull()
+        return db.execute(
+            """INSERT INTO prereg(wid, uid, domain, regcode) VALUES(?,?,?,?)""",
+            wid, userID, domain, reghash
+        ).exceptionOrNull()
     }
 
     if (resolveWID(db, wid).getOrElse { return it } != null)
         return ResourceExistsException("Workspace-ID $wid already exists")
-    return db.execute("""INSERT INTO prereg(wid, domain, regcode) VALUES(?,?,?)""", wid, domain,
-        reghash).exceptionOrNull()
+    return db.execute(
+        """INSERT INTO prereg(wid, domain, regcode) VALUES(?,?,?)""", wid, domain,
+        reghash
+    ).exceptionOrNull()
 }

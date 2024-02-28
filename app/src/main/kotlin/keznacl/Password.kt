@@ -89,27 +89,27 @@ fun validatePasswordInfo(pi: PasswordInfo): Throwable? {
  * hash a password using the process specified in the PasswordInfo instance.
  */
 fun passhasherForInfo(pi: PasswordInfo): Result<Password> {
-    validatePasswordInfo(pi)?.let { return Result.failure(it) }
+    validatePasswordInfo(pi)?.let { return it.toFailure() }
 
     return when (pi.algorithm.uppercase()) {
         "ARGON2D" -> {
             Argon2dPassword().let {
                 it.setFromInfo(pi)?.let { err -> return Result.failure(err) }
-                Result.success(it)
+                it.toSuccess()
             }
         }
 
         "ARGON2I" -> {
             Argon2iPassword().let {
                 it.setFromInfo(pi)?.let { err -> return Result.failure(err) }
-                Result.success(it)
+                it.toSuccess()
             }
         }
 
         "ARGON2ID" -> {
             Argon2idPassword().let {
                 it.setFromInfo(pi)?.let { err -> return Result.failure(err) }
-                Result.success(it)
+                it.toSuccess()
             }
         }
 

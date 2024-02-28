@@ -35,7 +35,7 @@ class SecretKey private constructor(keyStr: CryptoString) : Encryptor, Decryptor
      */
     fun getHash(algorithm: String = getPreferredHashAlgorithm()): Result<Hash> {
         if (keyHash == null || keyHash!!.prefix != algorithm)
-            keyHash = hash(key.toByteArray(), algorithm).getOrElse { return Result.failure(it) }
+            keyHash = hash(key.toByteArray(), algorithm).getOrElse { return it.toFailure() }
         return Result.success(keyHash!!)
     }
 
@@ -53,7 +53,7 @@ class SecretKey private constructor(keyStr: CryptoString) : Encryptor, Decryptor
      * @exception IllegalArgumentException Returned if there was a key decoding error
      */
     override fun encrypt(data: ByteArray): Result<CryptoString> {
-        val rawKey = key.toRaw().getOrElse { return Result.failure(it) }
+        val rawKey = key.toRaw().getOrElse { return it.toFailure() }
         val box = SecretBox(rawKey)
 
         val rng = SecureRandom()
@@ -74,8 +74,8 @@ class SecretKey private constructor(keyStr: CryptoString) : Encryptor, Decryptor
      */
     override fun decrypt(encData: CryptoString): Result<ByteArray> {
         val rawKey = key.toRaw()
-        val box = SecretBox(rawKey.getOrElse { return Result.failure(it) })
-        val ciphertext = encData.toRaw().getOrElse { return Result.failure(it) }
+        val box = SecretBox(rawKey.getOrElse { return it.toFailure() })
+        val ciphertext = encData.toRaw().getOrElse { return it.toFailure() }
         val nonce = ciphertext.dropLast(ciphertext.size - SecretBox.nonceLength).toByteArray()
 
         val decData: ByteArray =

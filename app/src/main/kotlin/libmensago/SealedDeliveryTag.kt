@@ -59,7 +59,7 @@ class SealedDeliveryTag(
         fun readFromFile(file: File): Result<SealedDeliveryTag> {
 
             val data = readEnvelopeFile(file, true)
-                .getOrElse { return Result.failure(it) }
+                .getOrElse { return it.toFailure() }
 
             val out = try {
                 Json.decodeFromString<SealedDeliveryTag>(data.first)
@@ -67,7 +67,7 @@ class SealedDeliveryTag(
                 return Result.failure(e)
             }
 
-            return Result.success(out)
+            return out.toSuccess()
         }
     }
 }

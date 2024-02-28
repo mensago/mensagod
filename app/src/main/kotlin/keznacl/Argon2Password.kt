@@ -24,7 +24,7 @@ fun argonPassFromHash(hashStr: String): Result<Argon2Password> {
     }
     out.setFromHash(hashStr)?.let { return Result.failure(BadValueException()) }
 
-    return Result.success(out)
+    return out.toSuccess()
 }
 
 

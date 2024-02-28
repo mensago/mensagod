@@ -1,8 +1,6 @@
 package mensagod.handlers
 
-import keznacl.CryptoString
-import keznacl.VerificationKey
-import keznacl.getSupportedHashAlgorithms
+import keznacl.*
 import libkeycard.*
 import libmensago.ClientRequest
 import libmensago.ServerResponse
@@ -577,8 +575,8 @@ private fun resolveOwner(db: DBConn, owner: String): Result<RandomID?> {
 
     val maddr = MAddress.fromString(owner)
     if (maddr != null) {
-        val out = resolveUserID(db, maddr.userid).getOrElse { return Result.failure(it) }
-        return Result.success(out)
+        val out = resolveUserID(db, maddr.userid).getOrElse { return it.toFailure() }
+        return out.toSuccess()
     }
     return Result.success(null)
 }

@@ -1,5 +1,7 @@
 package mensagod.auth
 
+import keznacl.toFailure
+import keznacl.toSuccess
 import libkeycard.MAddress
 import libkeycard.UserID
 import mensagod.*
@@ -10,13 +12,13 @@ import java.net.Inet4Address
  * The ServerTarget class is used for actions which operate at the server level of scope. This
  * includes workspace registration and preregistration.
  */
-class ServerTarget: AuthTarget {
+class ServerTarget : AuthTarget {
 
     override fun getActions(actor: AuthActor, action: AuthAction): Result<List<AuthAction>> {
         if (actor.getType() != AuthActorType.WID) return Result.success(listOf())
         actor as WIDActor
 
-        if (actor.isAdmin().getOrElse { return Result.failure(it) })
+        if (actor.isAdmin().getOrElse { return it.toFailure() })
             return Result.success(listOf(AuthAction.Preregister, AuthAction.Unregister))
 
         val out = mutableListOf(AuthAction.Unregister)
@@ -39,7 +41,7 @@ class ServerTarget: AuthTarget {
             }
         }
 
-        return Result.success(out)
+        return out.toSuccess()
     }
 
     override fun isAuthorized(actor: AuthActor, action: AuthAction): Result<Boolean> {
@@ -52,13 +54,14 @@ class ServerTarget: AuthTarget {
                 // For the moment, only the administrator can preregister workspaces
                 val addr = MAddress.fromParts(UserID.fromString("admin")!!, gServerDomain)
                 val adminWID = resolveAddress(DBConn().connect().getOrThrow(), addr)
-                    .getOrElse { return Result.failure(it) }
+                    .getOrElse { return it.toFailure() }
                     ?: return Result.failure(
                         DatabaseCorruptionException("Administrator WID missing from database")
                     )
 
                 return Result.success(actor.wid == adminWID)
             }
+
             else -> return Result.success(false)
         }
     }

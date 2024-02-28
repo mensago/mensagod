@@ -3,6 +3,7 @@ package mensagod
 import keznacl.BadValueException
 import keznacl.CryptoString
 import keznacl.getPreferredHashAlgorithm
+import keznacl.toSuccess
 import libkeycard.RandomID
 import libmensago.MServerPath
 import libmensago.ResourceNotFoundException
@@ -71,8 +72,11 @@ class LocalFSHandle(mpath: MServerPath, private var file: File) {
      */
     fun delete(): Throwable? {
         if (file.exists()) {
-            try { Files.delete(file.toPath()) }
-            catch (e: Exception) { return e }
+            try {
+                Files.delete(file.toPath())
+            } catch (e: Exception) {
+                return e
+            }
         }
         return null
     }
@@ -85,13 +89,18 @@ class LocalFSHandle(mpath: MServerPath, private var file: File) {
      * directory
      */
     fun exists(): Result<Boolean> {
-        val out = try { file.exists() }
-        catch (e: Exception) { return Result.failure(e) }
-        return Result.success(out)
+        val out = try {
+            file.exists()
+        } catch (e: Exception) {
+            return Result.failure(e)
+        }
+        return out.toSuccess()
     }
 
     /** Returns the associated File object for the handle */
-    fun getFile(): File { return file }
+    fun getFile(): File {
+        return file
+    }
 
     /**
      * Creates a hash of the file.
@@ -130,8 +139,11 @@ class LocalFSHandle(mpath: MServerPath, private var file: File) {
         if (!localDest.isDirectory()) return TypeException("$destPath is not a directory")
 
         val destFile = File(localDest.toString())
-        try { FileUtils.moveFileToDirectory(file, destFile, false) }
-        catch (e: Exception) { return e }
+        try {
+            FileUtils.moveFileToDirectory(file, destFile, false)
+        } catch (e: Exception) {
+            return e
+        }
         val newPath = destPath.clone().push(path.basename()).getOrElse { return it }
 
         file = File(destFile, file.name)
@@ -150,8 +162,11 @@ class LocalFSHandle(mpath: MServerPath, private var file: File) {
      */
     fun readAll(): Result<ByteArray> {
         if (!file.exists()) return Result.failure(ResourceNotFoundException())
-        return try { Result.success(FileUtils.readFileToByteArray(file)) }
-        catch (e: Exception) { Result.failure(e) }
+        return try {
+            Result.success(FileUtils.readFileToByteArray(file))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     /**
@@ -161,8 +176,11 @@ class LocalFSHandle(mpath: MServerPath, private var file: File) {
      * file
      */
     fun size(): Result<Long> {
-        return try { Result.success(file.length()) }
-            catch (e: Exception) { Result.failure(e) }
+        return try {
+            Result.success(file.length())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }
 
@@ -211,8 +229,11 @@ class LocalFS private constructor(val basePath: Path) {
         val pathFile = File(localPath.toString())
         if (!pathFile.exists()) return Result.failure(ResourceNotFoundException())
 
-        return try { Result.success(FileUtils.sizeOf(pathFile)) }
-        catch (e: Exception) { Result.failure(e) }
+        return try {
+            Result.success(FileUtils.sizeOf(pathFile))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     /** Creates a lock on a filesystem entry. */
@@ -231,9 +252,10 @@ class LocalFS private constructor(val basePath: Path) {
             val tempFile = Paths.get(widTempPath.toString(), tempName).toFile()
             val tempMPath = MServerPath("/ tmp $wid $tempName")
             LocalFSHandle(tempMPath, tempFile)
+        } catch (e: Exception) {
+            return Result.failure(e)
         }
-        catch (e: Exception) { return Result.failure(e) }
-        return Result.success(out)
+        return out.toSuccess()
     }
 
     /** Removes the lock on a filesystem entry. */
@@ -257,6 +279,8 @@ class LocalFS private constructor(val basePath: Path) {
             return null
         }
 
-        fun get(): LocalFS { return localFSSingleton!! }
+        fun get(): LocalFS {
+            return localFSSingleton!!
+        }
     }
 }

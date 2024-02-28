@@ -3,6 +3,7 @@ package libmensago
 import keznacl.Encryptor
 import keznacl.SecretKey
 import keznacl.serializeAndEncrypt
+import keznacl.toFailure
 import kotlinx.serialization.Serializable
 import libkeycard.Domain
 import libkeycard.Timestamp
@@ -57,16 +58,16 @@ class DeliveryTag private constructor(
             Result<SealedDeliveryTag> {
 
         val encReceiver = serializeAndEncrypt(receiver, receiverKey)
-            .getOrElse { return Result.failure(it) }
+            .getOrElse { return it.toFailure() }
         val encSender = serializeAndEncrypt(sender, senderKey)
-            .getOrElse { return Result.failure(it) }
+            .getOrElse { return it.toFailure() }
         val encPayKey = recipientKey.encrypt(payloadKey.key.toByteArray())
-            .getOrElse { return Result.failure(it) }
+            .getOrElse { return it.toFailure() }
 
         return Result.success(
             SealedDeliveryTag(
                 encReceiver, encSender, type, date, encPayKey,
-                recipientKey.getPublicHash().getOrElse { return Result.failure(it) },
+                recipientKey.getPublicHash().getOrElse { return it.toFailure() },
                 subType, version
             )
         )
@@ -85,7 +86,7 @@ class DeliveryTag private constructor(
 
             val rInfo = RecipientLabel(to, from.domain)
             val sInfo = SenderLabel(from, to.domain)
-            val payKey = SecretKey.generate().getOrElse { return Result.failure(it) }
+            val payKey = SecretKey.generate().getOrElse { return it.toFailure() }
 
             return Result.success(DeliveryTag(rInfo, sInfo, payKey, type, subType))
         }
@@ -95,7 +96,7 @@ class DeliveryTag private constructor(
                 DeliveryTag(
                     RecipientLabel(message.to, message.from.domain),
                     SenderLabel(message.from, message.to.domain),
-                    SecretKey.generate().getOrElse { return Result.failure(it) },
+                    SecretKey.generate().getOrElse { return it.toFailure() },
                     message.type,
                     message.subType
                 )

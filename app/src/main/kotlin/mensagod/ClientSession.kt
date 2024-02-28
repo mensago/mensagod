@@ -1,6 +1,7 @@
 package mensagod
 
 import keznacl.CryptoString
+import keznacl.toFailure
 import libkeycard.Domain
 import libkeycard.MAddress
 import libkeycard.RandomID
@@ -35,7 +36,7 @@ open class SessionState(
  * The ClientSession class encapsulates all the state needed for responding to requests during a
  * client-server connection session.
  */
-class ClientSession(val conn: Socket): SessionState() {
+class ClientSession(val conn: Socket) : SessionState() {
 
     /**
      * Checks the database for updates and update the session state update count.
@@ -113,6 +114,7 @@ class ClientSession(val conn: Socket): SessionState() {
         }
         return tempPath
     }
+
     /**
      * Validator function which gets a user ID from the specified field. All error states for the
      * field are handled internally, so if null is returned, the caller need not do anything else.
@@ -167,9 +169,12 @@ class ClientSession(val conn: Socket): SessionState() {
      */
     fun isAdmin(): Result<Boolean> {
         val adminWID = resolveAddress(DBConn(), MAddress.fromString("admin/$gServerDomain")!!)
-            .getOrElse { return Result.failure(it) }
-            ?: return Result.failure(DatabaseCorruptionException(
-                "isAdmin couldn't find the admin's workspace ID"))
+            .getOrElse { return it.toFailure() }
+            ?: return Result.failure(
+                DatabaseCorruptionException(
+                    "isAdmin couldn't find the admin's workspace ID"
+                )
+            )
         return Result.success(adminWID == wid)
     }
 
@@ -197,7 +202,9 @@ class ClientSession(val conn: Socket): SessionState() {
                 remaining -= bytesRead
                 rfile.write(buffer)
             }
-        } catch (e: Exception) { return e }
+        } catch (e: Exception) {
+            return e
+        }
         return null
     }
 
@@ -242,7 +249,9 @@ class ClientSession(val conn: Socket): SessionState() {
                 ostream.write(buffer, 0, bytesRead)
             }
 
-        } catch (e: Exception) { return e }
+        } catch (e: Exception) {
+            return e
+        }
         return null
     }
 }

@@ -97,7 +97,7 @@ class Hash private constructor(prefix: String, encodedData: String) :
     fun check(data: ByteArray): Result<Boolean> {
         return Result.success(
             hash(data, prefix)
-                .getOrElse { return Result.failure(it) }
+                .getOrElse { return it.toFailure() }
                 .toString() == value
         )
     }

@@ -1,5 +1,7 @@
 package mensagod.dbcmds
 
+import keznacl.toFailure
+import keznacl.toSuccess
 import libkeycard.*
 import libmensago.NotConnectedException
 import mensagod.DBConn
@@ -14,13 +16,15 @@ import mensagod.DatabaseCorruptionException
  */
 fun addEntry(db: DBConn, entry: Entry): Throwable? {
     val owner = if (entry.getFieldString("Type") == "Organization") "organization"
-        else entry.getFieldString("Workspace-ID")!!
+    else entry.getFieldString("Workspace-ID")!!
 
-    return db.execute("""INSERT INTO keycards(owner, creationtime, index, entry, fingerprint)
+    return db.execute(
+        """INSERT INTO keycards(owner, creationtime, index, entry, fingerprint)
         VALUES(?,?,?,?,?)""",
         owner, entry.getFieldString("Timestamp")!!,
         entry.getFieldInteger("Index")!!, entry.getFullText(null).getOrThrow(),
-        entry.getAuthString("Hash")!!).exceptionOrNull()
+        entry.getAuthString("Hash")!!
+    ).exceptionOrNull()
 }
 
 /**
@@ -47,27 +51,33 @@ fun getEntries(db: DBConn, wid: RandomID?, startIndex: UInt = 1U, endIndex: UInt
 
     val out = mutableListOf<String>()
     if (startIndex == 0U) {
-        val rs = db.query("""SELECT entry FROM keycards WHERE owner = ? 
-            ORDER BY index DESC LIMIT 1""", owner).getOrElse { return Result.failure(it) }
-        if (!rs.next()) return Result.success(out)
+        val rs = db.query(
+            """SELECT entry FROM keycards WHERE owner = ? 
+            ORDER BY index DESC LIMIT 1""", owner
+        ).getOrElse { return it.toFailure() }
+        if (!rs.next()) return out.toSuccess()
         out.add(rs.getString("entry"))
-        return Result.success(out)
+        return out.toSuccess()
     }
 
     val rs = if (endIndex != null) {
-        if (endIndex < startIndex) return Result.success(out)
+        if (endIndex < startIndex) return out.toSuccess()
 
-        db.query("""SELECT entry FROM keycards WHERE owner = ? AND index >= ?
-            AND index <= ? ORDER BY index""", owner, startIndex.toInt(), endIndex.toInt())
-            .getOrElse { return Result.failure(it) }
+        db.query(
+            """SELECT entry FROM keycards WHERE owner = ? AND index >= ?
+            AND index <= ? ORDER BY index""", owner, startIndex.toInt(), endIndex.toInt()
+        )
+            .getOrElse { return it.toFailure() }
     } else {
         // Given just a start index
-        db.query("""SELECT entry FROM keycards WHERE owner = ? AND index >= ? """, owner,
-            startIndex.toInt()).getOrElse { return Result.failure(it) }
+        db.query(
+            """SELECT entry FROM keycards WHERE owner = ? AND index >= ? """, owner,
+            startIndex.toInt()
+        ).getOrElse { return it.toFailure() }
     }
 
     while (rs.next()) out.add(rs.getString("entry"))
-    return Result.success(out)
+    return out.toSuccess()
 }
 
 /**
@@ -78,7 +88,7 @@ fun getEntries(db: DBConn, wid: RandomID?, startIndex: UInt = 1U, endIndex: UInt
  */
 fun isDomainLocal(db: DBConn, domain: Domain): Result<Boolean> {
     val rs = db.query("SELECT domain FROM workspaces WHERE domain=?", domain)
-        .getOrElse { return Result.failure(it) }
+        .getOrElse { return it.toFailure() }
     return Result.success(rs.next())
 }
 
@@ -94,20 +104,22 @@ fun resolveAddress(db: DBConn, addr: MAddress): Result<RandomID?> {
     // If the address is a workspace address, all we have to do is confirm the workspace exists --
     // workspace IDs are unique across an organization, not just a domain.
     if (addr.userid.type == IDType.WorkspaceID) {
-        val inWorkspaces = db.exists("""SELECT wtype FROM workspaces WHERE wid=?""",
-            addr.userid.value).getOrElse { return Result.failure(it) }
+        val inWorkspaces = db.exists(
+            """SELECT wtype FROM workspaces WHERE wid=?""",
+            addr.userid.value
+        ).getOrElse { return it.toFailure() }
         val inAliases = db.exists("""SELECT wid FROM aliases WHERE wid=?""", addr.userid.value)
-            .getOrElse { return Result.failure(it) }
+            .getOrElse { return it.toFailure() }
         return if (inWorkspaces || inAliases)
-                Result.success(addr.userid.toWID()!!)
-            else Result.success(null)
+            Result.success(addr.userid.toWID()!!)
+        else Result.success(null)
     }
 
     val rs = db.query("""SELECT wid FROM workspaces WHERE uid=?""", addr.userid.value)
-        .getOrElse { return Result.failure(it) }
+        .getOrElse { return it.toFailure() }
     if (!rs.next()) return Result.success(null)
 
-    RandomID.fromString(rs.getString("wid"))?.let { return Result.success(it) }
+    RandomID.fromString(rs.getString("wid"))?.let { return it.toSuccess() }
     return Result.failure(
         DatabaseCorruptionException("Bad wid '${rs.getString("wid")}' for address $addr")
     )
@@ -121,10 +133,11 @@ fun resolveAddress(db: DBConn, addr: MAddress): Result<RandomID?> {
  */
 fun resolveWID(db: DBConn, wid: RandomID): Result<WAddress?> {
     val rs = db.query("""SELECT domain FROM workspaces WHERE wid=?""", wid)
-        .getOrElse { return Result.failure(it) }
+        .getOrElse { return it.toFailure() }
     if (!rs.next()) return Result.success(null)
 
     val dom = Domain.fromString(rs.getString("domain")) ?: return Result.failure(
-        DatabaseCorruptionException("Bad domain '${rs.getString("domain")}' for workspace ID $wid"))
+        DatabaseCorruptionException("Bad domain '${rs.getString("domain")}' for workspace ID $wid")
+    )
     return Result.success(WAddress.fromParts(wid, dom))
 }

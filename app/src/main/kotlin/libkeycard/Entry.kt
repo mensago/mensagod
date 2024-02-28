@@ -8,12 +8,16 @@ import java.time.Instant
  * common to its child classes, OrgEntry and UserEntry.
  */
 sealed class Entry {
-    protected val fields = mutableMapOf<String,EntryField>()
+    protected val fields = mutableMapOf<String, EntryField>()
     protected val signatures = mutableMapOf<String, CryptoString>()
 
-    fun getField(fieldName: String): EntryField? { return fields[fieldName] }
+    fun getField(fieldName: String): EntryField? {
+        return fields[fieldName]
+    }
 
-    fun hasField(fieldName: String): Boolean { return fields.containsKey(fieldName) }
+    fun hasField(fieldName: String): Boolean {
+        return fields.containsKey(fieldName)
+    }
 
     /**
      * Sets the value of one of the fields in an entry. The internal representation of each of the
@@ -22,7 +26,9 @@ sealed class Entry {
      * field to be updated.
      */
     fun setField(fieldName: String, fieldValue: String): Throwable? {
-        if (!isFieldAllowed(fieldName)) { return BadFieldException("$fieldName not allowed") }
+        if (!isFieldAllowed(fieldName)) {
+            return BadFieldException("$fieldName not allowed")
+        }
 
         val result = EntryField.fromStrings(fieldName, fieldValue)
         if (result.isFailure) return result.exceptionOrNull()!!
@@ -31,12 +37,16 @@ sealed class Entry {
         return null
     }
 
-    fun deleteField(fieldName: String) { fields.remove(fieldName) }
+    fun deleteField(fieldName: String) {
+        fields.remove(fieldName)
+    }
 
     // Type-specific field methods for the most common/annoying types
 
     /** Convenience method to reduce the number of casts needed when setting integer field values */
-    fun setFieldInteger(fieldName: String, value: Int) { fields[fieldName] = IntegerField(value) }
+    fun setFieldInteger(fieldName: String, value: Int) {
+        fields[fieldName] = IntegerField(value)
+    }
 
     /** Convenience method to reduce the number of casts needed when getting field values */
     fun getFieldInteger(fieldName: String): Int? {
@@ -127,8 +137,10 @@ sealed class Entry {
      * this call. The primary use for this method is to set the Previous-Hash for the entry.
      */
     fun addAuthString(astype: String, value: CryptoString): Throwable? {
-        val validAuthStrings = listOf("Custody-Signature", "Organization-Signature", "Previous-Hash", "Hash",
-            "User-Signature")
+        val validAuthStrings = listOf(
+            "Custody-Signature", "Organization-Signature", "Previous-Hash", "Hash",
+            "User-Signature"
+        )
         if (astype !in validAuthStrings) return BadFieldException()
 
         signatures[astype] = value
@@ -136,13 +148,19 @@ sealed class Entry {
     }
 
     /** Returns true if the entry has the requested auth string (signature, hash, etc.) */
-    fun hasAuthString(astype: String): Boolean { return signatures.containsKey(astype) }
+    fun hasAuthString(astype: String): Boolean {
+        return signatures.containsKey(astype)
+    }
 
     /** Returns the requested auth string (signature, hash, etc) or null if not found. */
-    fun getAuthString(astype: String): CryptoString? { return signatures[astype] }
+    fun getAuthString(astype: String): CryptoString? {
+        return signatures[astype]
+    }
 
     /** Deletes the requested auth string. */
-    fun deleteAuthString(astype: String) { fields.remove(astype) }
+    fun deleteAuthString(astype: String) {
+        fields.remove(astype)
+    }
 
     /**
      * Creates the requested signature. Requirements for this call vary with the entry type implementation; see child
@@ -166,7 +184,7 @@ sealed class Entry {
      */
     fun verifySignature(astype: String, key: Verifier): Result<Boolean> {
         val signature = getAuthString(astype) ?: return Result.failure(BadValueException())
-        val totalData = getFullText(astype).getOrElse { return Result.failure(it) }
+        val totalData = getFullText(astype).getOrElse { return it.toFailure() }
         return key.verify(totalData.toByteArray(), signature)
     }
 
@@ -207,7 +225,10 @@ sealed class Entry {
      * entry so that the Custody-Signature field is generated correctly. An expiration period for the new entry may be
      * specified. If the default expiration value is used, the default for the entry type is used.
      */
-    abstract fun chain(signingPair: SigningPair, expiration: Int = 0): Result<Pair<Entry, Map<String, CryptoString>>>
+    abstract fun chain(
+        signingPair: SigningPair,
+        expiration: Int = 0
+    ): Result<Pair<Entry, Map<String, CryptoString>>>
 
     /**
      * Verifies the chain of custody between the current Entry instance and the provided entry. Specific conditions for
@@ -223,10 +244,13 @@ sealed class Entry {
     abstract fun revoke(expiration: Int = 0): Result<Pair<Entry, Map<String, CryptoString>>>
 
     /** Returns true if the previous entry in the keycard was revoked */
-    fun isRevoked(): Boolean { return fields.containsKey("Revoke") }
+    fun isRevoked(): Boolean {
+        return fields.containsKey("Revoke")
+    }
 
     fun copy(): Result<Entry> {
-        val entryType: StringField = fields["Type"] as StringField? ?: return Result.failure(BadFieldException())
+        val entryType: StringField =
+            fields["Type"] as StringField? ?: return Result.failure(BadFieldException())
         val out = when (entryType.value) {
             "User" -> UserEntry()
             "Organization" -> OrgEntry()
@@ -240,7 +264,10 @@ sealed class Entry {
                 "SecondaryVerificationKey",
                 "EncryptionKey",
                 "Expires",
-                "Timestamp", -> { /* Field is set correctly in new(). Do nothing. */ }
+                "Timestamp",
+                -> { /* Field is set correctly in new(). Do nothing. */
+                }
+
                 else -> {
                     val result = out.setField(f.key, f.value.toString())
                     if (result != null) return Result.failure(result)
@@ -250,7 +277,7 @@ sealed class Entry {
         val newIndex = (fields["Index"] as IntegerField).value + 1
         out.fields["Index"] = IntegerField(newIndex)
 
-        return Result.success(out)
+        return out.toSuccess()
     }
 
     /**
