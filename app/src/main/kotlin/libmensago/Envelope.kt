@@ -104,7 +104,7 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
             val sealedTag = tag.seal(recipientKey, senderKey, receiverKey)
                 .getOrElse { return it.toFailure() }
 
-            val payload = serializeAndEncrypt(message, recipientKey)
+            val payload = serializeAndEncrypt(message, tag.payloadKey)
                 .getOrElse { return it.toFailure() }
 
             return Result.success(Envelope(sealedTag, payload))

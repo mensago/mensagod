@@ -60,7 +60,7 @@ class DeliveryTag private constructor(
             .getOrElse { return Result.failure(it) }
         val encSender = serializeAndEncrypt(sender, senderKey)
             .getOrElse { return Result.failure(it) }
-        val encPayKey = recipientKey.encrypt(payloadKey.key.value.encodeToByteArray())
+        val encPayKey = recipientKey.encrypt(payloadKey.key.toByteArray())
             .getOrElse { return Result.failure(it) }
 
         return Result.success(
