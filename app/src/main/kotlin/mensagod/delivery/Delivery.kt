@@ -1,11 +1,7 @@
 package mensagod.delivery
 
-import libkeycard.Domain
-import libkeycard.RandomID
-import libkeycard.WAddress
-import libmensago.KCCache
-import libmensago.MServerPath
-import libmensago.SealedDeliveryTag
+import libkeycard.*
+import libmensago.*
 import mensagod.*
 import mensagod.dbcmds.*
 import java.time.Instant
@@ -47,7 +43,7 @@ fun deliveryWorker() {
             return
         }
         if (!exists) {
-            sendBounce(300, msgInfo, mapOf("INTERNALCODE" to "delivery.deliveryWorker.1"))
+            sendBounce(300, msgInfo, mapOf("InternalCode" to "delivery.deliveryWorker.1"))
                 ?.let { logError("Error sending deliveryWorker bounce #1: $it") }
             continue
         }
@@ -61,7 +57,7 @@ fun deliveryWorker() {
             val sealedEnv = SealedDeliveryTag.readFromFile(handle.getFile()).getOrElse {
                 sendBounce(
                     300, msgInfo,
-                    mapOf("INTERNALCODE" to "delivery.deliveryWorker.2")
+                    mapOf("InternalCode" to "delivery.deliveryWorker.2")
                 )
                     ?.let { logError("Error sending deliveryWorker bounce #2: $it") }
                 return
@@ -120,12 +116,60 @@ fun deliveryWorker() {
     }
 }
 
-private fun sendBounce(errorcode: Int, info: MessageInfo, extraData: Map<String, String>):
+private fun sendBounce(errorCode: Int, info: MessageInfo, extraData: Map<String, String>):
         Throwable? {
 
     val db = DBConn()
     val orgPair = getEncryptionPair(db).getOrElse { return it }
     val userEntry = KCCache.getCurrentEntry(info.receiver.toEntrySubject()).getOrElse { return it }
+    val domStr = userEntry.getFieldString("Domain")
+        ?: return BadFieldValueException("Entry for user missing Domain field")
+    val userWidStr = userEntry.getFieldString("Workspace-ID")
+        ?: return BadFieldValueException("Entry for user missing Workspace-ID field")
+    val userAddr = WAddress.fromString("$userWidStr:$domStr")
+        ?: return BadFieldValueException("Bad workspace address from user entry")
 
-    TODO("Implement sendBounce($errorcode, $info, $extraData")
+    val msg = Message(gServerAddress, userAddr, MsgFormat.Text)
+    when (errorCode) {
+        300 -> {
+            msg.subject = "Delivery Report: Internal Server Error"
+            msg.body = "The server was unable to delivery your message because of an internal " +
+                    "error. Please contact technical support for your account with the " +
+                    "information provide below.\r\n\r\n" +
+                    "----------\r\n" +
+                    "Technical Support Information\r\n" +
+                    "Error Code: 300 INTERNAL SERVER ERROR" +
+                    "Internal Error Code: ${extraData["InternalCode"]!!}" +
+                    "Date: ${Timestamp()}"
+        }
+
+        301 -> {
+            msg.subject = "Delivery Report: External Delivery Not Implemented"
+            msg.body = "The server was unable to deliver your message because external delivery" +
+                    "is not yet implemented. Sorry!"
+        }
+
+        503 -> {
+            msg.subject = "Delivery Report: Unreadable Recipient Address"
+            msg.body = "The server was unable to deliver your message because the recipient's " +
+                    "address was formatted incorrectly.\r\n\r\n" +
+                    "----------\r\n" +
+                    "Technical Support Information\r\n" +
+                    "Error Code: 503 BAD RECIPIENT ADDRESS" +
+                    "Date: ${Timestamp()}"
+        }
+
+        504 -> {
+            msg.subject = "Delivery Report: Unreadable Recipient Address"
+            msg.body = "The server was unable to deliver your message because it was unable to " +
+                    "decrypt the recipient's address. This might be a problem with your " +
+                    "program.\r\n\r\n" +
+                    "----------\r\n" +
+                    "Technical Support Information\r\n" +
+                    "Error Code: 504 UNREADABLE RECIPIENT ADDRESS" +
+                    "Date: ${Timestamp()}"
+        }
+    }
+
+    TODO("Implement sendBounce($errorCode, $info, $extraData")
 }
