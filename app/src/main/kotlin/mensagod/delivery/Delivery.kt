@@ -3,6 +3,7 @@ package mensagod.delivery
 import libkeycard.Domain
 import libkeycard.RandomID
 import libkeycard.WAddress
+import libmensago.KCCache
 import libmensago.MServerPath
 import libmensago.SealedDeliveryTag
 import mensagod.*
@@ -24,8 +25,10 @@ private val gDeliveryPool = WorkerPool(100)
  * message if the thread pool is not running at capacity.
  */
 fun queueMessageForDelivery(sender: WAddress, domain: Domain, path: MServerPath) {
-    val info = MessageInfo(DeliveryTarget(sender.domain, sender.id),
-        DeliveryTarget(domain), path)
+    val info = MessageInfo(
+        DeliveryTarget(sender.domain, sender.id),
+        DeliveryTarget(domain), path
+    )
     gMessageQueue.add(info)
 
     Thread.ofVirtual().start { deliveryWorker() }
@@ -56,8 +59,10 @@ fun deliveryWorker() {
 
         if (isLocal) {
             val sealedEnv = SealedDeliveryTag.readFromFile(handle.getFile()).getOrElse {
-                sendBounce(300, msgInfo,
-                    mapOf("INTERNALCODE" to "delivery.deliveryWorker.2"))
+                sendBounce(
+                    300, msgInfo,
+                    mapOf("INTERNALCODE" to "delivery.deliveryWorker.2")
+                )
                     ?.let { logError("Error sending deliveryWorker bounce #2: $it") }
                 return
             }
@@ -78,8 +83,9 @@ fun deliveryWorker() {
                 return
             }
             if (!exists) {
-                try { destHandle.getFile().mkdirs() }
-                catch (e: Exception) {
+                try {
+                    destHandle.getFile().mkdirs()
+                } catch (e: Exception) {
                     logError("Unable to check for path ${destHandle.path}")
                     return
                 }
@@ -95,10 +101,12 @@ fun deliveryWorker() {
                 logError("Error creating final path for ${handle.path}: $it")
                 return
             }
-            addUpdateRecord(db, recipientInfo.to.id, UpdateRecord(
-                RandomID.generate(), UpdateType.Create, finalPath.toString(),
-                Instant.now().epochSecond.toString(), gServerDevID
-            ))
+            addUpdateRecord(
+                db, recipientInfo.to.id, UpdateRecord(
+                    RandomID.generate(), UpdateType.Create, finalPath.toString(),
+                    Instant.now().epochSecond.toString(), gServerDevID
+                )
+            )
         }
 
         // FEATURE: ExternalDelivery
@@ -112,7 +120,12 @@ fun deliveryWorker() {
     }
 }
 
-private fun sendBounce(errorcode: Int, info: MessageInfo, extraData: Map<String,String>):
+private fun sendBounce(errorcode: Int, info: MessageInfo, extraData: Map<String, String>):
         Throwable? {
+
+    val db = DBConn()
+    val orgPair = getEncryptionPair(db).getOrElse { return it }
+    val userEntry = KCCache.getCurrentEntry(info.receiver.toEntrySubject()).getOrElse { return it }
+
     TODO("Implement sendBounce($errorcode, $info, $extraData")
 }

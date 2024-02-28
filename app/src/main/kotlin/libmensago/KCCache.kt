@@ -1,9 +1,6 @@
 package libmensago
 
-import libkeycard.Domain
-import libkeycard.Keycard
-import libkeycard.MAddress
-import libkeycard.RandomID
+import libkeycard.*
 
 /**
  * The KCCache class provides thread-safe in-memory keycard caching with an optional second-level
@@ -11,24 +8,29 @@ import libkeycard.RandomID
  * keycard lookups.
  */
 object KCCache {
+    var dns: DNSHandler = DNSHandler()
 
-    fun getKeycard(owner: String?, dns: DNSHandler): Result<Keycard> {
+    fun getCurrentEntry(subject: EntrySubject): Result<Entry> {
+        TODO("Implement KCCache::getCurrentEntry")
+    }
+
+    fun getKeycard(owner: String?): Result<Keycard> {
         // TODO: Implement KCCache::getKeycard
-        return libmensago.getKeycard(owner, dns)
+        return getKeycard(owner, dns)
     }
 
-    fun resolveMenagoAddress(addr: MAddress, dns: DNSHandler): Result<RandomID> {
+    fun resolveMenagoAddress(addr: MAddress): Result<RandomID> {
         // TODO: Implement KCCache::resolveMensagoAddress
-        return libmensago.resolveMenagoAddress(addr, dns)
+        return resolveMenagoAddress(addr, dns)
     }
 
-    fun getMgmtRecord(d: Domain, dns: DNSHandler): Result<DNSMgmtRecord> {
+    fun getMgmtRecord(d: Domain): Result<DNSMgmtRecord> {
         // TODO: implement KCCache::getMgmtRecord
-        return libmensago.getMgmtRecord(d, dns)
+        return getMgmtRecord(d, dns)
     }
 
-    fun getRemoteServerConfig(domain: Domain, dns: DNSHandler): Result<List<ServiceConfig>> {
+    fun getRemoteServerConfig(domain: Domain): Result<List<ServiceConfig>> {
         // TODO: implement KCCache::getRemoteServerConfig
-        return libmensago.getRemoteServerConfig(domain, dns)
+        return getRemoteServerConfig(domain, dns)
     }
 }

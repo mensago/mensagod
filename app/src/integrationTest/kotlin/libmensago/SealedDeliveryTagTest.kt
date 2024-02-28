@@ -55,7 +55,8 @@ class SealedDeliveryTagTest {
         ).getOrThrow()
         adminPair.getPublicHash()
 
-        val sealed = Envelope.seal(adminPair, msg, FakeDNSHandler()).getOrThrow()
+        KCCache.dns = FakeDNSHandler()
+        val sealed = Envelope.seal(adminPair, msg).getOrThrow()
 
         val filelength = sealed.toStringResult().getOrThrow().length
         val filePath = listOf(

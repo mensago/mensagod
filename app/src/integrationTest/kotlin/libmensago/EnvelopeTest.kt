@@ -34,7 +34,8 @@ class EnvelopeTest {
         adminPair.getPublicHash()
 
         val fakeDNS = FakeDNSHandler()
-        val sealed = Envelope.seal(adminPair, msg, fakeDNS).getOrThrow()
+        KCCache.dns = fakeDNS
+        val sealed = Envelope.seal(adminPair, msg).getOrThrow()
 
         val filelength = sealed.toStringResult().getOrThrow().length
         val filePath = listOf(

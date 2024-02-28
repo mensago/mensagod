@@ -85,17 +85,16 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
          * @exception UnsupportedAlgorithmException Returned if the library doesn't support the
          * encryption algorithm used by one of the servers
          */
-        fun seal(recipientKey: Encryptor, message: Message, dns: DNSHandler):
-                Result<Envelope> {
+        fun seal(recipientKey: Encryptor, message: Message): Result<Envelope> {
 
             // To do this, we need to create a DeliveryTag and then seal() it, and then encrypt
             // the message itself with the recipient's key. Pretty simple, actually.
 
-            val senderRec = KCCache.getMgmtRecord(message.from.domain, dns)
+            val senderRec = KCCache.getMgmtRecord(message.from.domain)
                 .getOrElse { return it.toFailure() }
             val senderKey = senderRec.ek.toEncryptionKey()
                 .getOrElse { return it.toFailure() }
-            val receiverRec = KCCache.getMgmtRecord(message.to.domain, dns)
+            val receiverRec = KCCache.getMgmtRecord(message.to.domain)
                 .getOrElse { return it.toFailure() }
             val receiverKey = receiverRec.ek.toEncryptionKey()
                 .getOrElse { return it.toFailure() }
