@@ -3,6 +3,7 @@ package libmensago
 import keznacl.EncryptionPair
 import keznacl.SecretKey
 import libkeycard.WAddress
+import libmensago.resolver.KCResolver
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import testsupport.ADMIN_PROFILE_DATA
@@ -55,7 +56,7 @@ class SealedDeliveryTagTest {
         ).getOrThrow()
         adminPair.getPublicHash()
 
-        KCCache.dns = FakeDNSHandler()
+        KCResolver.dns = FakeDNSHandler()
         val sealed = Envelope.seal(adminPair, msg).getOrThrow()
 
         val filelength = sealed.toStringResult().getOrThrow().length

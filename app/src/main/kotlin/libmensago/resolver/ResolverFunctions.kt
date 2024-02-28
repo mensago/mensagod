@@ -1,10 +1,14 @@
-package libmensago
+package libmensago.resolver
 
 import keznacl.BadValueException
 import keznacl.CryptoString
 import keznacl.toFailure
 import keznacl.toSuccess
 import libkeycard.*
+import libmensago.DNSHandler
+import libmensago.ResourceNotFoundException
+import libmensago.ServerConnection
+import libmensago.ServiceConfig
 import libmensago.commands.getCard
 import libmensago.commands.getWID
 import java.io.IOException

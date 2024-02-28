@@ -1,7 +1,11 @@
 package mensagod.delivery
 
 import libkeycard.*
-import libmensago.*
+import libmensago.MServerPath
+import libmensago.Message
+import libmensago.MsgFormat
+import libmensago.SealedDeliveryTag
+import libmensago.resolver.KCResolver
 import mensagod.*
 import mensagod.dbcmds.*
 import java.time.Instant
@@ -121,7 +125,8 @@ private fun sendBounce(errorCode: Int, info: MessageInfo, extraData: Map<String,
 
     val db = DBConn()
     val orgPair = getEncryptionPair(db).getOrElse { return it }
-    val userEntry = KCCache.getCurrentEntry(info.receiver.toEntrySubject()).getOrElse { return it }
+    val userEntry =
+        KCResolver.getCurrentEntry(info.receiver.toEntrySubject()).getOrElse { return it }
     val domStr = userEntry.getFieldString("Domain")
         ?: return BadFieldValueException("Entry for user missing Domain field")
     val userWidStr = userEntry.getFieldString("Workspace-ID")

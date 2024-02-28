@@ -6,6 +6,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import libkeycard.HashMismatchException
 import libkeycard.MissingDataException
+import libmensago.resolver.KCResolver
 import java.io.File
 import java.io.IOException
 
@@ -90,11 +91,11 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
             // To do this, we need to create a DeliveryTag and then seal() it, and then encrypt
             // the message itself with the recipient's key. Pretty simple, actually.
 
-            val senderRec = KCCache.getMgmtRecord(message.from.domain)
+            val senderRec = KCResolver.getMgmtRecord(message.from.domain)
                 .getOrElse { return it.toFailure() }
             val senderKey = senderRec.ek.toEncryptionKey()
                 .getOrElse { return it.toFailure() }
-            val receiverRec = KCCache.getMgmtRecord(message.to.domain)
+            val receiverRec = KCResolver.getMgmtRecord(message.to.domain)
                 .getOrElse { return it.toFailure() }
             val receiverKey = receiverRec.ek.toEncryptionKey()
                 .getOrElse { return it.toFailure() }

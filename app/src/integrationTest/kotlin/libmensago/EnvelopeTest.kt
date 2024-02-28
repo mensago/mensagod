@@ -2,6 +2,7 @@ package libmensago
 
 import keznacl.EncryptionPair
 import libkeycard.WAddress
+import libmensago.resolver.KCResolver
 import mensagod.DBConn
 import mensagod.dbcmds.getEncryptionPair
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -34,7 +35,7 @@ class EnvelopeTest {
         adminPair.getPublicHash()
 
         val fakeDNS = FakeDNSHandler()
-        KCCache.dns = fakeDNS
+        KCResolver.dns = fakeDNS
         val sealed = Envelope.seal(adminPair, msg).getOrThrow()
 
         val filelength = sealed.toStringResult().getOrThrow().length
