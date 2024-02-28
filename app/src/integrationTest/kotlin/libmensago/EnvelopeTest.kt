@@ -4,6 +4,7 @@ import keznacl.EncryptionPair
 import libkeycard.WAddress
 import mensagod.DBConn
 import mensagod.dbcmds.getEncryptionPair
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import testsupport.ADMIN_PROFILE_DATA
 import testsupport.FakeDNSHandler
@@ -13,16 +14,16 @@ import java.time.Instant
 import java.util.*
 
 class EnvelopeTest {
-    private val oneWID = WAddress.fromString(
+    private val oneAddr = WAddress.fromString(
         "11111111-1111-1111-1111-111111111111/example.com"
     )!!
-    private val adminWID = WAddress.fromString(ADMIN_PROFILE_DATA["waddress"])!!
+    private val adminAddr = WAddress.fromString(ADMIN_PROFILE_DATA["waddress"])!!
 
     @Test
     fun sealOpenTest() {
         val setupData = setupTest("envelope.sealOpen")
 
-        val msg = Message(adminWID, oneWID, MsgFormat.Text)
+        val msg = Message(adminAddr, oneAddr, MsgFormat.Text)
             .setSubject("Test Message")
             .setBody("This message is just a test")
 
@@ -48,9 +49,10 @@ class EnvelopeTest {
         loaded.tag.decryptSender(epair).getOrThrow()
         loaded.tag.decryptReceiver(epair).getOrThrow()
 
-        loaded.open(adminPair).getOrThrow()
-
-
-        // TODO: Implement sealOpenTest
+        val opened = loaded.open(adminPair).getOrThrow()
+        assertEquals(opened.subject, "Test Message")
+        assertEquals(opened.body, "This message is just a test")
+        assertEquals(opened.from, adminAddr)
+        assertEquals(opened.to, oneAddr)
     }
 }
