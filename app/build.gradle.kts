@@ -51,6 +51,9 @@ dependencies {
     // For the DNSHandler class
     implementation("org.minidns:minidns-hla:1.0.4")
 
+    // Needed by libkeycard
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime-jvm:0.5.0")
+
     // Use the Kotlin JUnit 5 integration.
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5:1.8.10")
 
@@ -86,6 +89,9 @@ testing {
 
                 // For DNS testing
                 implementation("org.minidns:minidns-hla:1.0.4")
+
+                // Needed by libkeycard
+                implementation("org.jetbrains.kotlinx:kotlinx-datetime-jvm:0.5.0")
             }
         }
     }
