@@ -1,5 +1,13 @@
 package keznacl
 
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import ove.crypto.digest.Blake2b
 import java.io.File
 import java.io.FileInputStream
@@ -82,6 +90,7 @@ fun blake2Hash(data: ByteArray): Result<Hash> {
  * The Hash class is a [CryptoString] subclass which provides some helpful functions for easier
  * hashing and hash checks.
  */
+@Serializable(with = HashAsStringSerializer::class)
 class Hash private constructor(prefix: String, encodedData: String) :
     CryptoString(prefix, encodedData) {
 
@@ -136,4 +145,19 @@ class Hash private constructor(prefix: String, encodedData: String) :
  */
 fun CryptoString.toHash(): Hash? {
     return Hash.fromString(this.value)
+}
+
+object HashAsStringSerializer : KSerializer<Hash> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("Hash", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: Hash) {
+        encoder.encodeString(value.toString())
+    }
+
+    override fun deserialize(decoder: Decoder): Hash {
+        val out = Hash.fromString(decoder.decodeString())
+            ?: throw SerializationException("Invalid value for Hash")
+        return out
+    }
 }

@@ -34,8 +34,9 @@ class SenderLabel(var from: WAddress, var recipientDom: Domain)
  */
 class DeliveryTag private constructor(
     var receiver: RecipientLabel, var sender: SenderLabel,
-                                      val payloadKey: SecretKey, var type: MsgType = MsgType.User,
-                                      var subType: String? = null) {
+    val payloadKey: SecretKey, var type: MsgType = MsgType.User,
+    var subType: String? = null
+) {
     var version = 1.0f
     var date = Timestamp()
 
@@ -62,11 +63,13 @@ class DeliveryTag private constructor(
         val encPayKey = recipientKey.encrypt(payloadKey.key.value.encodeToByteArray())
             .getOrElse { return Result.failure(it) }
 
-        return Result.success(SealedDeliveryTag(
-            encReceiver, encSender, type, date, encPayKey,
-            payloadKey.getHash().getOrElse { return Result.failure(it) },
-            subType, version
-        ))
+        return Result.success(
+            SealedDeliveryTag(
+                encReceiver, encSender, type, date, encPayKey,
+                recipientKey.getPublicHash().getOrElse { return Result.failure(it) },
+                subType, version
+            )
+        )
     }
 
     companion object {
@@ -75,8 +78,10 @@ class DeliveryTag private constructor(
          * Create a new DeliveryTag object from the desired sender and recipient addresses and
          * message type information.
          */
-        fun new(from: WAddress, to: WAddress, type: MsgType = MsgType.User,
-                subType: String? = null): Result<DeliveryTag> {
+        fun new(
+            from: WAddress, to: WAddress, type: MsgType = MsgType.User,
+            subType: String? = null
+        ): Result<DeliveryTag> {
 
             val rInfo = RecipientLabel(to, from.domain)
             val sInfo = SenderLabel(from, to.domain)

@@ -29,8 +29,9 @@ class EnvelopeTest {
         val adminPair = EncryptionPair.fromStrings(
             ADMIN_PROFILE_DATA["encryption.public"]!!,
             ADMIN_PROFILE_DATA["encryption.private"]!!
-        )
-            .getOrThrow()
+        ).getOrThrow()
+        adminPair.getPublicHash()
+
         val fakeDNS = FakeDNSHandler()
         val sealed = Envelope.seal(adminPair, msg, fakeDNS).getOrThrow()
 
@@ -48,6 +49,7 @@ class EnvelopeTest {
         loaded.tag.decryptReceiver(epair).getOrThrow()
 
         loaded.open(adminPair).getOrThrow()
+
 
         // TODO: Implement sealOpenTest
     }

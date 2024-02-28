@@ -1,9 +1,6 @@
 package libmensago
 
-import keznacl.BadValueException
-import keznacl.CryptoString
-import keznacl.EncryptionPair
-import keznacl.decryptAndDeserialize
+import keznacl.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import libkeycard.Timestamp
@@ -20,10 +17,12 @@ import java.security.GeneralSecurityException
  * DeliveryTag::seal().
  */
 @Serializable
-class SealedDeliveryTag(val receiver: CryptoString, val sender: CryptoString, val type: MsgType,
-                        val date: Timestamp, val payloadKey: CryptoString,
-                        val keyHash: CryptoString, val subType: String? = null,
-                        val version: Float) {
+class SealedDeliveryTag(
+    val receiver: CryptoString, val sender: CryptoString, val type: MsgType,
+    val date: Timestamp, val payloadKey: CryptoString,
+    val keyHash: Hash, val subType: String? = null,
+    val version: Float
+) {
 
     /**
      * Decrypts the encrypted recipient information in the message using the organization's
@@ -62,8 +61,11 @@ class SealedDeliveryTag(val receiver: CryptoString, val sender: CryptoString, va
             val data = readEnvelopeFile(file, true)
                 .getOrElse { return Result.failure(it) }
 
-            val out = try { Json.decodeFromString<SealedDeliveryTag>(data.first) }
-            catch (e: Exception) { return Result.failure(e) }
+            val out = try {
+                Json.decodeFromString<SealedDeliveryTag>(data.first)
+            } catch (e: Exception) {
+                return Result.failure(e)
+            }
 
             return Result.success(out)
         }
