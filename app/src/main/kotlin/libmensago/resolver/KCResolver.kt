@@ -1,5 +1,6 @@
 package libmensago.resolver
 
+import keznacl.toFailure
 import keznacl.toSuccess
 import libkeycard.*
 import libmensago.DNSHandler
@@ -20,7 +21,9 @@ object KCResolver {
     fun getCurrentEntry(subject: EntrySubject): Result<Entry> {
         val cached = entryCache().get(subject)
         if (cached != null) return cached.toSuccess()
-        return libmensago.resolver.getCurrentEntry(subject, dns)
+        val entry = getCurrentEntry(subject, dns).getOrElse { return it.toFailure() }
+        entryCache().put(entry)
+        return entry.toSuccess()
     }
 
     fun getKeycard(owner: String?): Result<Keycard> {
