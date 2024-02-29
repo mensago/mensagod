@@ -39,7 +39,6 @@ class EntrySubject(var domain: Domain, var id: UserID? = null) {
                 e.getFieldString("User-ID")
                     ?: e.getFieldString("Workspace-ID")
             )
-                ?: return null
             return EntrySubject(domain, uid)
         }
 

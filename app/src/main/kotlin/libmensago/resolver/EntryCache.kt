@@ -25,22 +25,12 @@ class EntryCache(capacity: Int) {
     fun put(entry: Entry) {
         lock.withLock {
             val node = EntryNode.new(entry)
-            if (node != null)
+            if (node != null) {
+                if (queue.remainingCapacity() == 0)
+                    queue.remove()
                 queue.add(node)
-        }
-    }
+            }
 
-    fun remove(subject: EntrySubject) {
-        lock.withLock {
-            find(subject)?.let { queue.remove(it) }
-        }
-    }
-
-    fun removeItem(entry: Entry) {
-        lock.withLock {
-            val node = EntryNode.new(entry)
-            if (node != null)
-                queue.removeIf { it.hash == node.hash }
         }
     }
 
@@ -49,8 +39,7 @@ class EntryCache(capacity: Int) {
      */
     fun debugState(): String {
         return lock.withLock {
-            ""
-            // TODO: Implement debugState
+            queue.joinToString("\n")
         }
     }
 
@@ -61,6 +50,11 @@ class EntryCache(capacity: Int) {
 }
 
 private class EntryNode(val hash: Int, val entry: Entry) {
+
+    override fun toString(): String {
+        val node = EntrySubject.fromEntry(entry)
+        return node?.toString() ?: "null"
+    }
 
     companion object {
         fun new(entry: Entry): EntryNode? {
