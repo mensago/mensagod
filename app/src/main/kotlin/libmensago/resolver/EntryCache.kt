@@ -40,6 +40,16 @@ class EntryCache(capacity: Int) {
         }
     }
 
+    /**
+     * Debugging function to return the current state of the queue.
+     */
+    fun debugState(): String {
+        return lock.withLock {
+            ""
+            // TODO: Implement debugState
+        }
+    }
+
     private fun find(subject: EntrySubject): EntryNode? {
         val hash = subject.hashCode()
         return queue.find { it.hash == hash }

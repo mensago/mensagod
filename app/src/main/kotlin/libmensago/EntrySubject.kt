@@ -27,6 +27,10 @@ class EntrySubject(var domain: Domain, var id: UserID? = null) {
         return result
     }
 
+    override fun toString(): String {
+        return if (id != null) "$id/$domain" else domain.toString()
+    }
+
     companion object {
 
         fun fromEntry(e: Entry): EntrySubject? {

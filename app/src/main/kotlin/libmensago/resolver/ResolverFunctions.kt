@@ -5,14 +5,30 @@ import keznacl.CryptoString
 import keznacl.toFailure
 import keznacl.toSuccess
 import libkeycard.*
-import libmensago.DNSHandler
-import libmensago.ResourceNotFoundException
-import libmensago.ServerConnection
-import libmensago.ServiceConfig
+import libmensago.*
 import libmensago.commands.getCard
 import libmensago.commands.getWID
 import java.io.IOException
 import java.net.InetAddress
+
+/**
+ * Returns the current entry for an EntrySubject.
+ */
+fun getCurrentEntry(owner: EntrySubject, dns: DNSHandler): Result<Entry> {
+
+    val config = getRemoteServerConfig(owner.domain, dns).getOrElse { return it.toFailure() }
+
+    val ip = dns.lookupA(config[0].server.toString()).getOrElse { return it.toFailure() }
+    val conn = ServerConnection()
+    conn.connect(ip[0], config[0].port).let { if (it != null) return it.toFailure() }
+
+
+    val entry = getCard(conn, owner.toString(), 0).getOrElse { return it.toFailure() }
+    conn.disconnect()
+
+    return entry.current!!.toSuccess()
+}
+
 
 /**
  * Returns a keycard belonging to the specified owner. To obtain an organization's keycard,
