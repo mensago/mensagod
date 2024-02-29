@@ -23,7 +23,7 @@ class Keycard private constructor(
         }
 
     /** Returns the entry matching the hash passed to it */
-    fun findByHash(hash: CryptoString): Entry? {
+    fun findByHash(hash: Hash): Entry? {
         val hashstr = hash.toString()
         return entries.find {
             it.hasAuthString("Hash") && it.getAuthString("Hash").toString() == hashstr

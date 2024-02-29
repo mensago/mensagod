@@ -1,10 +1,10 @@
 package libkeycard
 
-import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.Test
-import keznacl.CryptoString
+import keznacl.Hash
 import keznacl.SigningPair
 import keznacl.getPreferredHashAlgorithm
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
 class KeycardTest {
 
@@ -39,8 +39,8 @@ class KeycardTest {
                 "Expires:2023-08-18\r\n" +
                 "Timestamp:2022-08-18T17:26:40Z\r\n" +
                 "Custody-Signature:ED25519:N603IF=MJ-Se<!g+%3rx{mUlOp7}XqIwE<SGEhG~R;@(1gzM|V7lcXw++%NPGuS2zS@yRLpSxmc0oW-I\r\n" +
-                "Previous-Hash:BLAKE3-256:ocU4XayQkNEHh-zHevRuX;YJmKp4AD2eo_R|9I31\r\n" +
-                "Hash:BLAKE3-256:vg65eVmF~r#^zG*gwF2XIEl3*l;J>aB*iLGkN?m6\r\n" +
+                "Previous-Hash:BLAKE2B-256:ocU4XayQkNEHh-zHevRuX;YJmKp4AD2eo_R|9I31\r\n" +
+                "Hash:BLAKE2B-256:vg65eVmF~r#^zG*gwF2XIEl3*l;J>aB*iLGkN?m6\r\n" +
                 "Organization-Signature:ED25519:^O)N7oeF9Af)7fS{Kde_3hPcne{CLfmm3f{%w1`08xp9Df_v9Fc~zCe<k~-\$_yzNA<I3*5&J_0<UlNE5\r\n" +
                 "----- END ENTRY -----\r\n"
 
@@ -50,10 +50,13 @@ class KeycardTest {
         assertEquals(2, card.entries.size)
 
         // findByHash()
-        val foundCard = card.findByHash(CryptoString.fromString(
-            "BLAKE3-256:vg65eVmF~r#^zG*gwF2XIEl3*l;J>aB*iLGkN?m6")!!)
+        val foundCard = card.findByHash(
+            Hash.fromString(
+                "BLAKE2B-256:vg65eVmF~r#^zG*gwF2XIEl3*l;J>aB*iLGkN?m6"
+            )!!
+        )
         assertNotNull(foundCard)
-        assertNull(card.findByHash(CryptoString.fromString("FAKE:aaaaaaa")!!))
+        assertNull(card.findByHash(Hash.fromString("BLAKE2B-256:fakefakefake")!!))
 
         // getOwner()
         assertEquals("example.com", card.getOwner()!!)
@@ -64,8 +67,10 @@ class KeycardTest {
     fun orgChainVerify() {
         val (firstEntry, firstKeys) = makeCompliantOrgEntry().getOrThrow()
 
-        val primarySPair = SigningPair.from(firstKeys["primary.public"]!!,
-            firstKeys["primary.private"]!!).getOrThrow()
+        val primarySPair = SigningPair.from(
+            firstKeys["primary.public"]!!,
+            firstKeys["primary.private"]!!
+        ).getOrThrow()
 
         val card = Keycard.new("Organization")!!
         card.entries.add(firstEntry)
@@ -78,8 +83,10 @@ class KeycardTest {
     fun userChainVerify() {
         val (firstEntry, firstKeys) = makeCompliantUserEntry().getOrThrow()
 
-        val crSPair = SigningPair.from(firstKeys["crsigning.public"]!!,
-            firstKeys["crsigning.private"]!!).getOrThrow()
+        val crSPair = SigningPair.from(
+            firstKeys["crsigning.public"]!!,
+            firstKeys["crsigning.private"]!!
+        ).getOrThrow()
 
         val card = Keycard.new("User")!!
         card.entries.add(firstEntry)
@@ -89,12 +96,16 @@ class KeycardTest {
         // Unlike organizational cards, user cards are cross-signed, so when chain() returns the
         // card isn't complete.
 
-        val orgSPair = SigningPair.from(firstKeys["orgsigning.public"]!!,
-            firstKeys["orgsigning.private"]!!).getOrThrow()
+        val orgSPair = SigningPair.from(
+            firstKeys["orgsigning.public"]!!,
+            firstKeys["orgsigning.private"]!!
+        ).getOrThrow()
         card.crossSign(orgSPair).let { if (it != null) throw it }
 
-        val newCRSPair = SigningPair.from(newKeys["crsigning.public"]!!,
-            newKeys["crsigning.private"]!!).getOrThrow()
+        val newCRSPair = SigningPair.from(
+            newKeys["crsigning.public"]!!,
+            newKeys["crsigning.private"]!!
+        ).getOrThrow()
         card.userSign(getPreferredHashAlgorithm(), newCRSPair).let { if (it != null) throw it }
 
         assert(card.verify().getOrThrow())
