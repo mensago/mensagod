@@ -19,11 +19,7 @@ class Keycard private constructor(
 
     val current: Entry?
         get() {
-            return if (entries.isEmpty()) {
-                null
-            } else {
-                entries.last()
-            }
+            return entries.lastOrNull()
         }
 
     /** Returns the entry matching the hash passed to it */
@@ -103,10 +99,10 @@ class Keycard private constructor(
             }
             val result = entries[i + 1].verifyChain(entries[i])
             if (result.isFailure) return result
-            if (!result.getOrThrow()) return Result.success(false)
+            if (!result.getOrNull()!!) return false.toSuccess()
         }
 
-        return Result.success(true)
+        return true.toSuccess()
     }
 
     /** Returns the entired keycard as a string */
@@ -134,16 +130,15 @@ class Keycard private constructor(
 
         /** Instantiates a keycard instance from text which contains one or more entries */
         fun fromString(data: String): Result<Keycard> {
-            if (data.isEmpty()) return Result.failure(EmptyDataException())
+            if (data.isEmpty()) return EmptyDataException().toFailure()
 
             val entries = parseEntries(data).getOrElse { return it.toFailure() }
-            if (entries.isEmpty()) return Result.failure(EmptyDataException())
+            if (entries.isEmpty()) return EmptyDataException().toFailure()
 
-            val cardType = entries[0].getFieldString("Type") ?: return Result.failure(
-                BadFieldException("Keycard missing Type field")
-            )
+            val cardType = entries[0].getFieldString("Type")
+                ?: return BadFieldException("Keycard missing Type field").toFailure()
 
-            return Result.success(Keycard(cardType, entries))
+            return Keycard(cardType, entries).toSuccess()
         }
 
         private fun parseEntries(data: String): Result<MutableList<Entry>> {
@@ -176,9 +171,8 @@ class Keycard private constructor(
                 }
 
                 val parts = trimmed.split(":", limit = 2)
-                if (parts.size != 2) return Result.failure(
-                    BadFieldException("Invalid line $i: $trimmed")
-                )
+                if (parts.size != 2)
+                    return BadFieldException("Invalid line $i: $trimmed").toFailure()
 
                 val fieldName = parts[0]
 
@@ -187,9 +181,8 @@ class Keycard private constructor(
                         cardType = parts[1]
                     } else {
                         if (cardType != parts[1]) {
-                            return Result.failure(
-                                BadFieldValueException("Entry type must match keycard type")
-                            )
+                            return BadFieldValueException("Entry type must match keycard type")
+                                .toFailure()
                         }
                     }
                 }
