@@ -31,7 +31,7 @@ object KCResolver {
     fun getKeycard(subject: EntrySubject): Result<Keycard> {
         val cached = keycardCache().get(subject)
         if (cached != null) return cached.toSuccess()
-        val keycard = getKeycard(subject.toString(), dns).getOrElse { return it.toFailure() }
+        val keycard = getKeycard(subject, dns).getOrElse { return it.toFailure() }
         keycardCache().put(keycard)
         return keycard.toSuccess()
     }
