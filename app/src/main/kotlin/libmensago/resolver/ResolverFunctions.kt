@@ -1,10 +1,8 @@
 package libmensago.resolver
 
-import keznacl.BadValueException
-import keznacl.CryptoString
-import keznacl.toFailure
-import keznacl.toSuccess
+import keznacl.*
 import libkeycard.*
+import libkeycard.MissingDataException
 import libmensago.*
 import libmensago.commands.getCard
 import libmensago.commands.getWID
@@ -14,21 +12,10 @@ import java.net.InetAddress
 /**
  * Returns the current entry for an EntrySubject.
  */
-fun getCurrentEntry(owner: EntrySubject, dns: DNSHandler): Result<Entry> {
-
-    val config = getRemoteServerConfig(owner.domain, dns).getOrElse { return it.toFailure() }
-
-    val ip = dns.lookupA(config[0].server.toString()).getOrElse { return it.toFailure() }
-    val conn = ServerConnection()
-    conn.connect(ip[0], config[0].port).let { if (it != null) return it.toFailure() }
-
-
-    val entry = getCard(conn, owner.toString(), 0).getOrElse { return it.toFailure() }
-    conn.disconnect()
-
-    return entry.current!!.toSuccess()
+fun getCurrentEntry(subject: EntrySubject, dns: DNSHandler): Result<Entry> {
+    val result = queryCard(subject, 0, dns).getOrElse { return it.toFailure() }
+    return result.current?.toSuccess() ?: return EmptyDataException().toFailure()
 }
-
 
 /**
  * Returns a keycard belonging to the specified owner. To obtain an organization's keycard,
@@ -36,26 +23,19 @@ fun getCurrentEntry(owner: EntrySubject, dns: DNSHandler): Result<Entry> {
  * user's Mensago address or its workspace address. When `force_update` is true, a lookup is
  * forced and the cache is updated regardless of the keycard's TTL expiration status.
  */
-fun getKeycard(owner: String?, dns: DNSHandler): Result<Keycard> {
+fun getKeycard(subject: EntrySubject, dns: DNSHandler): Result<Keycard> {
+    return queryCard(subject, 1, dns)
+}
 
-    // First, determine the type of owner. A domain will be passed for an organization, and for
-    // a user card a Mensago address or a workspace address will be given.
-    val domainTest = Domain.fromString(owner)
-    val userTest = MAddress.fromString(owner)
-    val isOrg = if (domainTest != null) true else {
-        if (userTest == null)
-            return Result.failure(BadValueException())
-        false
-    }
-    val domain = if (isOrg) domainTest!! else userTest!!.domain
-    val config = getRemoteServerConfig(domain, dns).getOrElse { return it.toFailure() }
+private fun queryCard(subject: EntrySubject, index: Long, dns: DNSHandler): Result<Keycard> {
+
+    val config = getRemoteServerConfig(subject.domain, dns).getOrElse { return it.toFailure() }
 
     val ip = dns.lookupA(config[0].server.toString()).getOrElse { return it.toFailure() }
     val conn = ServerConnection()
     conn.connect(ip[0], config[0].port).let { if (it != null) return it.toFailure() }
 
-
-    val card = getCard(conn, owner, 1).getOrElse { return it.toFailure() }
+    val card = getCard(conn, subject.toString(), index).getOrElse { return it.toFailure() }
     conn.disconnect()
 
     return Result.success(card)
