@@ -14,7 +14,11 @@ class EntryCache(capacity: Int) {
 
     fun get(subject: EntrySubject): Entry? {
         return lock.withLock {
-            find(subject)
+            find(subject)?.let {
+                queue.remove(it)
+                queue.add(it)
+                it
+            }
         }?.entry
     }
 
