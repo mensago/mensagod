@@ -1,7 +1,5 @@
 package libmensago.resolver
 
-import keznacl.BadValueException
-import keznacl.EmptyDataException
 import keznacl.toFailure
 import keznacl.toSuccess
 import libkeycard.*
@@ -30,14 +28,10 @@ object KCResolver {
         return entry.toSuccess()
     }
 
-    fun getKeycard(owner: String?): Result<Keycard> {
-        // TODO: Migrated KCCache calls to use EntrySubject
-        if (owner == null) return EmptyDataException().toFailure()
-        val subject = EntrySubject.fromString(owner) ?: return BadValueException().toFailure()
-
+    fun getKeycard(subject: EntrySubject): Result<Keycard> {
         val cached = keycardCache().get(subject)
         if (cached != null) return cached.toSuccess()
-        val keycard = getKeycard(owner, dns).getOrElse { return it.toFailure() }
+        val keycard = getKeycard(subject.toString(), dns).getOrElse { return it.toFailure() }
         keycardCache().put(keycard)
         return keycard.toSuccess()
     }
