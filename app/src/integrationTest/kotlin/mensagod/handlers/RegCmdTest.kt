@@ -5,8 +5,7 @@ import libkeycard.RandomID
 import libmensago.ClientRequest
 import libmensago.ServerResponse
 import mensagod.*
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import testsupport.ADMIN_PROFILE_DATA
 import testsupport.assertReturnCode
@@ -99,9 +98,6 @@ class RegCmdTest {
         val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
         val devkey = CryptoString.fromString(ADMIN_PROFILE_DATA["device.public"]!!)
 
-        // TODO: Update regCodeTest to validate the command better.
-        //  the current test implementation allowed Password-Salt to be completely missing
-
         // Test Case #1: Regcode a user
         val db = DBConn()
         val regInfo = preregUser(db, "csimons")
@@ -128,6 +124,21 @@ class RegCmdTest {
             response.assertReturnCode(201)
             assertEquals("csimons", response.data["User-ID"])
             assertEquals(gServerDomain.toString(), response.data["Domain"])
+            assert(response.data.containsKey("Workspace-ID"))
+            assertNotNull(RandomID.fromString(response.data["Workspace-ID"]))
+
+            val rs = db.query(
+                "SELECT * FROM workspaces WHERE wid=?",
+                response.data["Workspace-ID"]!!
+            ).getOrThrow()
+            assert(rs.next())
+            assertEquals("csimons", rs.getString("uid"))
+            assertEquals("example.com", rs.getString("domain"))
+            assertEquals("individual", rs.getString("wtype"))
+            assertEquals("active", rs.getString("status"))
+            assertEquals("cleartext", rs.getString("passtype"))
+            assertEquals("somekindofsalt", rs.getString("salt"))
+            assert(rs.getString("passparams").isNullOrEmpty())
         }.run()
     }
 }
