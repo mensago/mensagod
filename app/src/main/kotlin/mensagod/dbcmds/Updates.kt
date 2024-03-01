@@ -2,6 +2,8 @@ package mensagod.dbcmds
 
 import keznacl.BadValueException
 import keznacl.CryptoString
+import keznacl.toFailure
+import keznacl.toSuccess
 import libkeycard.EntryTypeException
 import libkeycard.RandomID
 import libmensago.MServerPath
@@ -69,6 +71,24 @@ fun addUpdateRecord(db: DBConn, wid: RandomID, rec: UpdateRecord): Throwable? {
         rec.id, wid, rec.type, rec.data, now, rec.devid)
         .exceptionOrNull()
 }
+
+/**
+ * Returns the number of sync records which occurred after the specified time with a maximum of 1000
+ *
+ * @throws BadValueException Returned if unixtime is negative
+ */
+fun countSyncRecords(db: DBConn, wid: RandomID, unixtime: Long): Result<Int> {
+    if (unixtime < 0) return BadValueException().toFailure()
+
+    val rs = db.query(
+        "SELECT COUNT(wid) FROM updates WHERE wid=? AND unixtime > ?", wid,
+        unixtime
+    ).getOrElse { return it.toFailure() }
+    var out = 0
+    while (rs.next()) out++
+    return out.toSuccess()
+}
+
 
 /**
  * The UpdateType enumerated class represents the different possible operations described by
