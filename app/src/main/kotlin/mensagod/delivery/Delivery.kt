@@ -111,7 +111,9 @@ fun deliveryWorker() {
 
         // External delivery is not needed for the MVP. For the moment, we'll just delete the
         // message and push a bounce message into the sender's workspace for now.
-        sendBounce(301, msgInfo, mapOf())
+        sendBounce(301, msgInfo, mapOf())?.let {
+            logError("Error bouncing message to ${msgInfo.receiver}: $it")
+        }
         lfs.withLock(msgInfo.path) { handle.delete() }
             ?.let { logError("Couldn't delete ${msgInfo.path}: $it") }
     }
