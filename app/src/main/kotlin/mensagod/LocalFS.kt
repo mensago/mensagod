@@ -124,8 +124,9 @@ class LocalFSHandle(mpath: MServerPath, private var file: File) {
     }
 
     /**
-     * Moves the file to the specified directory. Note that the destination MUST point to
-     * a directory. The path must also point to a file; moving directories is not supported.
+     * Moves the file to the specified directory and updates the object's internal state to point to
+     * the new location. Note that the destination MUST point to a directory. The path must also
+     * point to a file; moving directories is not supported.
      *
      * @throws ResourceNotFoundException Returned if the destination path doesn't exist
      * @throws TypeException Returned if the destination path points to a file
