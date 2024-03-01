@@ -1,26 +1,30 @@
 package libmensago.resolver
 
+import libkeycard.MAddress
+import libkeycard.RandomID
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
-class LookupCache<T>(capacity: Int) {
+/** The WIDCache holds resolveMenagoAddress() results */
+class WIDCache(capacity: Int) {
 
-    private val queue = LinkedBlockingQueue<LookupNode<T>>(capacity)
+    private val queue = LinkedBlockingQueue<WIDNode>(capacity)
     private val lock = ReentrantLock()
 
-    fun get(id: Any): T? {
+    fun get(maddr: MAddress): RandomID? {
         return lock.withLock {
-            find(id)?.let {
+            find(maddr)?.let {
                 queue.remove(it)
                 queue.add(it)
                 it
             }
-        }?.entry
+        }?.id
     }
 
-    fun put(node: LookupNode<T>, entry: T) {
+    fun put(maddr: MAddress, id: RandomID) {
         lock.withLock {
+            val node = WIDNode(maddr.hashCode(), id)
             if (queue.remainingCapacity() == 0)
                 queue.remove()
             queue.add(node)
@@ -36,10 +40,14 @@ class LookupCache<T>(capacity: Int) {
         }
     }
 
-    private fun find(subject: Any): LookupNode<T>? {
-        val hash = subject.hashCode()
+    private fun find(maddr: MAddress): WIDNode? {
+        val hash = maddr.hashCode()
         return queue.find { it.hash == hash }
     }
 }
 
-class LookupNode<T>(val hash: Int, val entry: T)
+private class WIDNode(val hash: Int, val id: RandomID) {
+    override fun toString(): String {
+        return id.toString()
+    }
+}

@@ -16,9 +16,11 @@ object KCResolver {
     var dns: DNSHandler = DNSHandler()
     var entryCacheCapacity = 100
     var keycardCacheCapacity = 100
+    var widCacheCapacity = 500
 
     private var entries: EntryCache? = null
     private var keycards: KeycardCache? = null
+    private var wids: WIDCache? = null
 
     fun getCurrentEntry(subject: EntrySubject): Result<Entry> {
         val cached = entryCache().get(subject)
@@ -28,6 +30,12 @@ object KCResolver {
         return entry.toSuccess()
     }
 
+    private fun entryCache(): EntryCache {
+        if (entries == null) entries = EntryCache(entryCacheCapacity)
+        return entries!!
+    }
+
+
     fun getKeycard(subject: EntrySubject): Result<Keycard> {
         val cached = keycardCache().get(subject)
         if (cached != null) return cached.toSuccess()
@@ -36,9 +44,25 @@ object KCResolver {
         return keycard.toSuccess()
     }
 
+    private fun keycardCache(): KeycardCache {
+        if (keycards == null) keycards = KeycardCache(keycardCacheCapacity)
+        return keycards!!
+    }
+
     fun resolveMenagoAddress(addr: MAddress): Result<RandomID> {
-        // TODO: Implement KCResolver::resolveMensagoAddress
-        return resolveMenagoAddress(addr, dns)
+        if (addr.userid.type == IDType.WorkspaceID)
+            return addr.userid.toWID()!!.toSuccess()
+
+        val cached = widCache().get(addr)
+        if (cached != null) return cached.toSuccess()
+        val wid = resolveMenagoAddress(addr, dns).getOrElse { return it.toFailure() }
+        widCache().put(addr, wid)
+        return wid.toSuccess()
+    }
+
+    private fun widCache(): WIDCache {
+        if (wids == null) wids = WIDCache(widCacheCapacity)
+        return wids!!
     }
 
     fun getMgmtRecord(d: Domain): Result<DNSMgmtRecord> {
@@ -49,15 +73,5 @@ object KCResolver {
     fun getRemoteServerConfig(domain: Domain): Result<List<ServiceConfig>> {
         // TODO: implement KCResolver::getRemoteServerConfig
         return getRemoteServerConfig(domain, dns)
-    }
-
-    private fun entryCache(): EntryCache {
-        if (entries == null) entries = EntryCache(entryCacheCapacity)
-        return entries!!
-    }
-
-    private fun keycardCache(): KeycardCache {
-        if (keycards == null) keycards = KeycardCache(keycardCacheCapacity)
-        return keycards!!
     }
 }
