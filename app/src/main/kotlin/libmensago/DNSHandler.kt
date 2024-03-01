@@ -9,7 +9,12 @@ import org.minidns.record.TXT
 import java.io.IOException
 import java.net.InetAddress
 
-data class ServiceConfig(val server: Domain, val port: Int, val priority: Int)
+data class ServiceConfig(val server: Domain, val port: Int, val priority: Int) {
+    // Really just for debugging
+    override fun toString(): String {
+        return "($server:$port@$priority)"
+    }
+}
 
 /**
  * The DNSHandler class is a simple interaction wrapper around DNS lookups that also makes it easy

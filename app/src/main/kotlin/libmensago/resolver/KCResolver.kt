@@ -18,11 +18,13 @@ object KCResolver {
     var keycardCacheCapacity = 100
     var widCacheCapacity = 500
     var mgmtCacheCapacity = 100
+    var svcCacheCapacity = 100
 
     private var entries: EntryCache? = null
     private var keycards: KeycardCache? = null
     private var wids: WIDCache? = null
     private var mgmts: MgmtCache? = null
+    private var svcs: ServiceCache? = null
 
     fun getCurrentEntry(subject: EntrySubject): Result<Entry> {
         val cached = entryCache().get(subject)
@@ -36,7 +38,6 @@ object KCResolver {
         if (entries == null) entries = EntryCache(entryCacheCapacity)
         return entries!!
     }
-
 
     fun getKeycard(subject: EntrySubject): Result<Keycard> {
         val cached = keycardCache().get(subject)
@@ -81,7 +82,15 @@ object KCResolver {
     }
 
     fun getRemoteServerConfig(domain: Domain): Result<List<ServiceConfig>> {
-        // TODO: implement KCResolver::getRemoteServerConfig
-        return getRemoteServerConfig(domain, dns)
+        val cached = serviceCache().get(domain)
+        if (cached != null) return cached.toSuccess()
+        val rec = getRemoteServerConfig(domain, dns).getOrElse { return it.toFailure() }
+        serviceCache().put(domain, rec)
+        return rec.toSuccess()
+    }
+
+    private fun serviceCache(): ServiceCache {
+        if (svcs == null) svcs = ServiceCache(svcCacheCapacity)
+        return svcs!!
     }
 }
