@@ -1,10 +1,7 @@
 package mensagod.delivery
 
 import libkeycard.*
-import libmensago.MServerPath
-import libmensago.Message
-import libmensago.MsgFormat
-import libmensago.SealedDeliveryTag
+import libmensago.*
 import libmensago.resolver.KCResolver
 import mensagod.*
 import mensagod.dbcmds.*
@@ -123,8 +120,6 @@ fun deliveryWorker() {
 private fun sendBounce(errorCode: Int, info: MessageInfo, extraData: Map<String, String>):
         Throwable? {
 
-    val db = DBConn()
-    val orgPair = getEncryptionPair(db).getOrElse { return it }
     val userEntry =
         KCResolver.getCurrentEntry(info.receiver.toEntrySubject()).getOrElse { return it }
     val domStr = userEntry.getFieldString("Domain")
@@ -176,5 +171,16 @@ private fun sendBounce(errorCode: Int, info: MessageInfo, extraData: Map<String,
         }
     }
 
-    TODO("Implement sendBounce($errorCode, $info, $extraData")
+    val userKey = userEntry.getEncryptionKey("Encryption-Key")
+        ?: return BadFieldValueException("Bad encryption key from user entry")
+    val sealed = Envelope.seal(userKey, msg).getOrElse { return it }
+        .toStringResult().getOrElse { return it }
+    val lfs = LocalFS.get()
+    val handle = lfs.makeTempFile(gServerDevID, sealed.length.toLong()).getOrElse { return it }
+    handle.getFile()
+        .runCatching { writeText(sealed) }.onFailure { return it }
+    handle.moveTo(MServerPath("/ out $gServerDevID"))?.let { return it }
+    queueMessageForDelivery(gServerAddress, userAddr.domain, handle.path)
+
+    return null
 }
