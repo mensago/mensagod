@@ -91,6 +91,16 @@ open class Message(var from: WAddress, var to: WAddress, var format: MsgFormat) 
         return this
     }
 
+    fun setType(t: MsgType): Message {
+        type = t
+        return this
+    }
+
+    fun setSubType(st: String): Message {
+        subType = st
+        return this
+    }
+
     fun addCC(recipient: WAddress): Message {
         cc.add(recipient)
         return this
