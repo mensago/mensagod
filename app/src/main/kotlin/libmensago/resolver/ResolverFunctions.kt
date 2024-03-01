@@ -61,7 +61,12 @@ fun resolveMenagoAddress(addr: MAddress, dns: DNSHandler): Result<RandomID> {
 data class DNSMgmtRecord(
     val pvk: CryptoString, val svk: CryptoString?, val ek: CryptoString,
     val tls: CryptoString?
-)
+) {
+    // This is really only for debugging purposes
+    override fun toString(): String {
+        return if (tls == null) "[$pvk,$svk,$ek]" else "[$pvk,$svk,$ek,$tls]"
+    }
+}
 
 /**
  * This function obtains and returns the information stored in a Mensago server's DNS management
