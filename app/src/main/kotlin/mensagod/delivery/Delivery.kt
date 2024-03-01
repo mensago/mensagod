@@ -15,27 +15,26 @@ class MessageInfo(val sender: DeliveryTarget, val receiver: DeliveryTarget, val 
 
 // The global message queue for delivery threads to process work from.
 private val gMessageQueue = ConcurrentLinkedQueue<MessageInfo>()
-private val gDeliveryPool = WorkerPool(100)
 
 /**
  * Add a MessageInfo object to the delivery queue. It also spawns a delivery thread to handle the
  * message if the thread pool is not running at capacity.
  */
-fun queueMessageForDelivery(sender: WAddress, domain: Domain, path: MServerPath) {
+fun queueMessageForDelivery(sender: WAddress, domain: Domain, path: MServerPath): Thread {
     val info = MessageInfo(
         DeliveryTarget(sender.domain, sender.id),
         DeliveryTarget(domain), path
     )
     gMessageQueue.add(info)
 
-    Thread.ofVirtual().start { deliveryWorker() }
+    return Thread.ofVirtual().start { deliveryWorker() }
 }
 
 fun deliveryWorker() {
 
     val lfs = LocalFS.get()
     val db = DBConn()
-    while (!gDeliveryPool.isQuitting()) {
+    while (gMessageQueue.isNotEmpty()) {
         val msgInfo = gMessageQueue.poll() ?: break
 
         val handle = lfs.entry(msgInfo.path)
@@ -80,12 +79,11 @@ fun deliveryWorker() {
                 return
             }
             if (!exists) {
-                try {
-                    destHandle.getFile().mkdirs()
-                } catch (e: Exception) {
-                    logError("Unable to check for path ${destHandle.path}")
-                    return
-                }
+                runCatching { destHandle.getFile().mkdirs() }
+                    .onFailure {
+                        logError("Unable to check for path ${destHandle.path}")
+                        return
+                    }
             }
 
             handle.moveTo(destHandle.path)?.let {
@@ -104,6 +102,7 @@ fun deliveryWorker() {
                     Instant.now().epochSecond.toString(), gServerDevID
                 )
             )
+            continue
         }
 
         // FEATURE: ExternalDelivery
