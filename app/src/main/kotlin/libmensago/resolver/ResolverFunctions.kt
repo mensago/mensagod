@@ -10,7 +10,10 @@ import java.io.IOException
 import java.net.InetAddress
 
 /**
- * Returns the current entry for an EntrySubject.
+ * Returns only the current entry for a user or an organization. This call is usually used when
+ * the caller is only concerned with the keys published in the entry.
+ *
+ * @see EntrySubject
  */
 fun getCurrentEntry(subject: EntrySubject, dns: DNSHandler): Result<Entry> {
     val result = queryCard(subject, 0, dns).getOrElse { return it.toFailure() }
@@ -18,10 +21,11 @@ fun getCurrentEntry(subject: EntrySubject, dns: DNSHandler): Result<Entry> {
 }
 
 /**
- * Returns a keycard belonging to the specified owner. To obtain an organization's keycard,
- * pass a domain, e.g. `example.com`. Otherwise obtain a user's keycard by passing either the
- * user's Mensago address or its workspace address. When `force_update` is true, a lookup is
- * forced and the cache is updated regardless of the keycard's TTL expiration status.
+ * Returns a keycard belonging to the specified owner. Passing a subject which contains only
+ * the domain will result in receiving the organization's keycard. Passing the domain and a
+ * UserID will result in receiving a user keycard.
+ *
+ * @see EntrySubject
  */
 fun getKeycard(subject: EntrySubject, dns: DNSHandler): Result<Keycard> {
     return queryCard(subject, 1, dns)
