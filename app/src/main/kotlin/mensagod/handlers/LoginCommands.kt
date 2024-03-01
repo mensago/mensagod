@@ -1,12 +1,11 @@
 package mensagod.handlers
 
 import keznacl.*
-import libmensago.ClientRequest
-import libmensago.DeviceApprovalMsg
-import libmensago.MServerPath
-import libmensago.ServerResponse
+import libmensago.*
+import libmensago.resolver.KCResolver
 import mensagod.*
 import mensagod.dbcmds.*
+import mensagod.delivery.queueMessageForDelivery
 import java.security.GeneralSecurityException
 import java.security.SecureRandom
 
@@ -122,17 +121,78 @@ fun commandDevice(state: ClientSession) {
                     return
                 }
 
-                // Create auth message and save to file
+                val userEntry =
+                    KCResolver.getCurrentEntry(EntrySubject.fromWAddress(recipient))
+                        .getOrElse {
+                            logError("commandDevice.getCurrentEntry exception: $it")
+                            QuickResponse.sendInternalError(
+                                "Error looking up user keycard",
+                                state.conn
+                            )
+                            return
+                        }
+                val userKey = userEntry.getEncryptionKey("Encryption-Key")
+                if (userKey == null) {
+                    logError("commandDevice.getEncryptionKey failure")
+                    QuickResponse.sendInternalError(
+                        "Bad encryption key in user keycard",
+                        state.conn
+                    )
+                    return
+                }
+
                 val msg = DeviceApprovalMsg(
                     gServerAddress, recipient, state.conn.inetAddress,
                     devinfo
                 )
+                val sealed = Envelope.seal(userKey, msg).getOrElse {
+                    logError("commandDevice.seal failure: $it")
+                    QuickResponse.sendInternalError(
+                        "Failure in encrypting device approval request",
+                        state.conn
+                    )
+                    return
+                }.toStringResult().getOrElse {
+                    logError("commandDevice.toStringResult failure: $it")
+                    QuickResponse.sendInternalError(
+                        "Failure serializing encrypted message",
+                        state.conn
+                    )
+                    return
+                }
+                val lfs = LocalFS.get()
+                val handle = lfs.makeTempFile(gServerDevID, sealed.length.toLong()).getOrElse {
+                    logError("commandDevice.makeTempFile failure: $it")
+                    QuickResponse.sendInternalError(
+                        "Failure creating file for device request",
+                        state.conn
+                    )
+                    return
+                }
+                handle.getFile().runCatching { writeText(sealed) }.onFailure {
+                    logError("commandDevice.writeText failure: $it")
+                    QuickResponse.sendInternalError(
+                        "Failure saving encrypted device request",
+                        state.conn
+                    )
+                    return
+                }
+                handle.moveTo(MServerPath("/ out $gServerDevID"))?.let {
+                    logError("commandDevice.moveTo failure: $it")
+                    QuickResponse.sendInternalError(
+                        "Failure moving encrypted device request",
+                        state.conn
+                    )
+                    return
+                }
 
                 // call queueMessageForDelivery() with delivery info
-                // queueMessageForDelivery(gServerAddress, recipient.domain, )
-
-                // TODO: Implement device handling
-                println("New device handling state encountered")
+                queueMessageForDelivery(gServerAddress, recipient.domain, handle.path)
+                ServerResponse(105, "APPROVAL REQUIRED").sendCatching(
+                    state.conn,
+                    "Failure to send approval required response for ${state.wid}"
+                )
+                return
             }
             addDevice(db, state.wid!!, devid, devkey, devinfo, DeviceStatus.Registered)?.let {
                 logError("commandDevice.addDevice exception: $it")

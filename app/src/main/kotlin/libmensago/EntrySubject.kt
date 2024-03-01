@@ -1,9 +1,6 @@
 package libmensago;
 
-import libkeycard.Domain
-import libkeycard.Entry
-import libkeycard.MAddress
-import libkeycard.UserID;
+import libkeycard.*
 
 /**
  * A EntrySubject is a special data class which can be either a Mensago address or just a
@@ -40,6 +37,14 @@ class EntrySubject(var domain: Domain, var id: UserID? = null) {
                     ?: e.getFieldString("Workspace-ID")
             )
             return EntrySubject(domain, uid)
+        }
+
+        fun fromMAddress(addr: MAddress): EntrySubject {
+            return EntrySubject(addr.domain, addr.userid)
+        }
+
+        fun fromWAddress(addr: WAddress): EntrySubject {
+            return EntrySubject(addr.domain, UserID.fromWID(addr.id))
         }
 
         fun fromString(s: String): EntrySubject? {
