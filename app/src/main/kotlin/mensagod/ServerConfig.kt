@@ -293,9 +293,9 @@ class ServerConfig {
         sl.addAll(
             listOf(
                 "$sep# Max age of sync records in days. Any records older than the oldest device",
-                "# login timestamp minus this number of days are purged. Defaults to 1 week,",
+                "# login timestamp minus this number of days are purged. Defaults to 6 months,",
                 "# which should be plenty.",
-                "# max_sync_age = 7",
+                "# max_sync_age = 360",
             )
         )
         makeValueString("performance.max_sync_age").let { if (it.isNotEmpty()) sl.add(it) }
@@ -615,7 +615,7 @@ class ServerConfig {
 
             "performance.max_file_size" to 50,
             "performance.max_message_size" to 50,
-            "performance.max_sync_age" to 7,
+            "performance.max_sync_age" to 360,
             "performance.max_delivery_threads" to 100,
             "performance.max_client_threads" to 10000,
             "performance.keycard_cache_size" to 5000,
