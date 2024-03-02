@@ -381,6 +381,40 @@ fun setupUser(db: DBConn) {
 }
 
 /**
+ * Sets up the admin account's keycard. Just needed for tests that use keycards and those which
+ * cover more advanced functionality
+ */
+fun setupAdminKeycard(db: DBConn) {
+    val adminEntry = UserEntry()
+    with(adminEntry) {
+        setField("Name", "Administrator")
+        setField("User-ID", "admin")
+        setField("Workspace-ID", "ae406c5e-2673-4d3e-af20-91325d9623ca")
+        setField("Domain", "example.com")
+        setField(
+            "Contact-Request-Verification-Key",
+            "ED25519:E?_z~5@+tkQz!iXK?oV<Zx(ec;=27C8Pjm((kRc|"
+        )
+        setField(
+            "Contact-Request-Encryption-Key",
+            "CURVE25519:mO?WWA-k2B2O|Z%fA`~s3^\$iiN{5R->#jxO@cy6{"
+        )
+        setField(
+            "Verification-Key",
+            "ED25519:6|HBWrxMY6-?r&Sm)_^PLPerpqOj#b&x#N_#C3}p"
+        )
+        setField(
+            "Encryption-Key",
+            "CURVE25519:Umbw0Y<^cf1DN|>X38HCZO@Je(zSe6crC6X_C_0F"
+        )
+    }
+    val card = Keycard.new("User")!!
+    card.entries.add(adminEntry)
+
+    // TODO: Finish setupAdminKeycard
+}
+
+/**
  * Contains all the state data used during test setup.
  *
  * @property config The config of the server in a ServerConfig instance
