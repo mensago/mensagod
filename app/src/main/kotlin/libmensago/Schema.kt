@@ -88,7 +88,7 @@ class Schema(vararg args: MsgField) {
      * (b) the field's data is invalid or isn't present in the case of optional fields.
      */
     fun getCryptoString(field: String, data: Map<String, String>): CryptoString? {
-        if (field !in fields.keys) return null
+        if (field !in fields.keys || field !in data.keys) return null
         return CryptoString.fromString(data[field]!!)
     }
 
@@ -98,7 +98,7 @@ class Schema(vararg args: MsgField) {
      */
     fun getDomain(field: String, data: Map<String, String>): Domain? {
         if (field !in fields.keys) return null
-        return Domain.fromString(data[field]!!)
+        return Domain.fromString(data[field])
     }
 
     /**
@@ -106,7 +106,7 @@ class Schema(vararg args: MsgField) {
      * (b) the field's data is invalid or isn't present in the case of optional fields.
      */
     fun getInteger(field: String, data: Map<String, String>): Int? {
-        if (field !in fields.keys) return null
+        if (field !in fields.keys || field !in data.keys) return null
         return try {
             data[field]!!.toInt()
         } catch (e: Exception) {
@@ -119,7 +119,7 @@ class Schema(vararg args: MsgField) {
      * (b) the field's data is invalid or isn't present in the case of optional fields.
      */
     fun getPath(field: String, data: Map<String, String>): MServerPath? {
-        if (field !in fields.keys) return null
+        if (field !in fields.keys || field !in data.keys) return null
         return MServerPath.fromString(data[field]!!)
     }
 
@@ -129,7 +129,7 @@ class Schema(vararg args: MsgField) {
      */
     fun getRandomID(field: String, data: Map<String, String>): RandomID? {
         if (field !in fields.keys) return null
-        return RandomID.fromString(data[field]!!)
+        return RandomID.fromString(data[field])
     }
 
     /**
@@ -137,7 +137,7 @@ class Schema(vararg args: MsgField) {
      * (b) the field's data is empty or isn't present in the case of optional fields.
      */
     fun getString(field: String, data: Map<String, String>): String? {
-        if (field !in fields.keys) return null
+        if (field !in fields.keys || field !in data.keys) return null
         return data[field]!!.ifEmpty { null }
     }
 
@@ -146,7 +146,7 @@ class Schema(vararg args: MsgField) {
      * (b) the field's data is invalid or isn't present in the case of optional fields.
      */
     fun getUnixTime(field: String, data: Map<String, String>): Long? {
-        if (field !in fields.keys) return null
+        if (field !in fields.keys || field !in data.keys) return null
         return try {
             data[field]!!.toLong()
         } catch (e: Exception) {
@@ -160,6 +160,6 @@ class Schema(vararg args: MsgField) {
      */
     fun getUserID(field: String, data: Map<String, String>): UserID? {
         if (field !in fields.keys) return null
-        return UserID.fromString(data[field]!!)
+        return UserID.fromString(data[field])
     }
 }

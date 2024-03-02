@@ -1,23 +1,28 @@
 package mensagod.handlers
 
 import libkeycard.MAddress
+import libkeycard.MissingFieldException
 import libmensago.ServerResponse
 import mensagod.*
 import mensagod.dbcmds.resolveAddress
 
 // GETWID(User-ID, Domain="")
 fun commandGetWID(state: ClientSession) {
-    if (!state.message.hasField("User-ID")) {
-        ServerResponse(400, "BAD REQUEST", "Required field missing")
-            .sendCatching(state.conn, "commandGetWID: required field error message failure")
+
+    val schema = Schemas.getWID
+    schema.validate(state.message.data) { name, e ->
+        val msg = if (e is MissingFieldException)
+            "Missing required field $name"
+        else
+            "Bad value for field $name"
+        QuickResponse.sendBadRequest(msg, state.conn)
     }
 
-    val db = DBConn()
-    val uid = state.getUserID("User-ID", true) ?: return
-    val domain = state.getDomain("Domain", false, gServerDomain) ?: return
+    val uid = schema.getUserID("User-ID", state.message.data)!!
+    val domain = schema.getDomain("Domain", state.message.data) ?: gServerDomain
     val address = MAddress.fromParts(uid, domain)
 
-    val wid = resolveAddress(db, address).getOrElse {
+    val wid = resolveAddress(DBConn(), address).getOrElse {
         logError("commandGetWID::resolveAddress error: $it")
         QuickResponse.sendInternalError("", state.conn)
     }
