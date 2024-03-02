@@ -1,10 +1,7 @@
 package libmensago
 
 import keznacl.CryptoString
-import libkeycard.Domain
-import libkeycard.MissingFieldException
-import libkeycard.RandomID
-import libkeycard.UserID
+import libkeycard.*
 
 /**
  * Enum class for denoting MsgField types during Schema validation
@@ -77,6 +74,11 @@ class Schema(vararg args: MsgField) {
                 }
 
                 MsgFieldType.UserID -> UserID.checkFormat(data[field.name]!!)
+            }
+
+            if (!isValid) {
+                failHandler(field.name, BadFieldValueException())
+                return
             }
         }
     }
