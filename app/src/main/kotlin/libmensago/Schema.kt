@@ -6,43 +6,12 @@ import libkeycard.MissingFieldException
 import libkeycard.RandomID
 import libkeycard.UserID
 
-/*
-    Message validation:
-    Check that all required fields exist
-    Validate values for required fields
-    Check if optional fields exist and validate if they do
-
-    Types of data in requests:
-    Unix time (Long) / >= 0
-    Domain / meets format
-    UserID / meets format
-    RandomID / meets format
-    General string / is non-empty
-    CryptoString / meets format
-    MPath / meets format
-    Timestamp? / meets format
-    Integer / >= 0
-
-    This kind of stuff applies to both server responses and client request and only concerns the
-    attached data. Essentially we're checking the attachment schema and validating and returning
-    all data
-
-    Schema Entry Components: Field name, field type, required
-    Checking all fields existence requires all schema entries
-    The ClientSession get* methods already do some of this
-
-    The ideal way of writing this would be:
-
-    val schema = SchemaBuilder(
-        Field("Workspace-ID", Field.RandomID, true),
-        Field("User-ID", Field.UserID, false),
-    )
-    schema.validate(state.message.data)
-        ?.let { QuickResponse.sendBadRequest("Failed to send validation failure message") }
-    val wid = schema.getRandomID("Workspace-ID")
-
-*/
-
+/**
+ * Enum class for denoting MsgField types during Schema validation
+ *
+ * @see MsgField
+ * @see Schema
+ */
 enum class MsgFieldType {
     CryptoString,
     Domain,
@@ -54,12 +23,19 @@ enum class MsgFieldType {
     UserID,
 }
 
-/** The MsgField type contains validation information about a message field. */
+/**
+ * The MsgField type contains validation information about a message field.
+ *
+ * @see Schema
+ */
 data class MsgField(val name: String, val type: MsgFieldType, val req: Boolean)
 
 /**
  * The Schema class is used for validating attached message data and converting it to the desired
  * data types.
+ *
+ * @see MsgField
+ * @see MsgFieldType
  */
 class Schema(vararg args: MsgField) {
     val fields = args.associateBy { it.name }
@@ -103,5 +79,85 @@ class Schema(vararg args: MsgField) {
                 MsgFieldType.UserID -> UserID.checkFormat(data[field.name]!!)
             }
         }
+    }
+
+    /**
+     * Returns the requested field as a CryptoString or null if (a) the field isn't in the schema or
+     * (b) the field's data is invalid or isn't present in the case of optional fields.
+     */
+    fun getCryptoString(field: String, data: Map<String, String>): CryptoString? {
+        if (field !in fields.keys) return null
+        return CryptoString.fromString(data[field]!!)
+    }
+
+    /**
+     * Returns the requested field as a Domain or null if (a) the field isn't in the schema or
+     * (b) the field's data is invalid or isn't present in the case of optional fields.
+     */
+    fun getDomain(field: String, data: Map<String, String>): Domain? {
+        if (field !in fields.keys) return null
+        return Domain.fromString(data[field]!!)
+    }
+
+    /**
+     * Returns the requested field as an Int or null if (a) the field isn't in the schema or
+     * (b) the field's data is invalid or isn't present in the case of optional fields.
+     */
+    fun getInteger(field: String, data: Map<String, String>): Int? {
+        if (field !in fields.keys) return null
+        return try {
+            data[field]!!.toInt()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Returns the requested field as an MServerPath or null if (a) the field isn't in the schema or
+     * (b) the field's data is invalid or isn't present in the case of optional fields.
+     */
+    fun getPath(field: String, data: Map<String, String>): MServerPath? {
+        if (field !in fields.keys) return null
+        return MServerPath.fromString(data[field]!!)
+    }
+
+    /**
+     * Returns the requested field as a RandomID or null if (a) the field isn't in the schema or
+     * (b) the field's data is invalid or isn't present in the case of optional fields.
+     */
+    fun getRandomID(field: String, data: Map<String, String>): RandomID? {
+        if (field !in fields.keys) return null
+        return RandomID.fromString(data[field]!!)
+    }
+
+    /**
+     * Returns the requested field as a String or null if (a) the field isn't in the schema or
+     * (b) the field's data is empty or isn't present in the case of optional fields.
+     */
+    fun getString(field: String, data: Map<String, String>): String? {
+        if (field !in fields.keys) return null
+        return data[field]!!.ifEmpty { null }
+    }
+
+    /**
+     * Returns the requested field as an Int or null if (a) the field isn't in the schema or
+     * (b) the field's data is invalid or isn't present in the case of optional fields.
+     */
+    fun getUnixTime(field: String, data: Map<String, String>): Long? {
+        if (field !in fields.keys) return null
+        return try {
+            data[field]!!.toLong()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Returns the requested field as a UserID or null if (a) the field isn't in the schema or
+     * (b) the field's data is invalid or isn't present in the case of optional fields.
+     */
+    fun getUserID(field: String, data: Map<String, String>): UserID? {
+        if (field !in fields.keys) return null
+        return UserID.fromString(data[field]!!)
     }
 }
