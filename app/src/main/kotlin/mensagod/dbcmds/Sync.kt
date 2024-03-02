@@ -9,8 +9,6 @@ import libkeycard.RandomID
 import libmensago.MServerPath
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
-import mensagod.ServerConfig
-import java.time.Instant
 
 data class SyncRecord(
     val id: RandomID, val type: UpdateType, val data: String, val time: String,
@@ -101,17 +99,10 @@ fun countSyncRecords(db: DBConn, wid: RandomID, unixtime: Long): Result<Int> {
 }
 
 /**
- * Clears out old sync records older than the amount of time specified in the server config.
- *
- * @exception BadValueException Returned if the max sync age could not be obtained from the server
- * config
+ * Clears out old sync records older than the time specified.
  */
-fun cullOldSyncRecords(db: DBConn): Throwable? {
-    val unixtime = Instant.now().epochSecond
-    val maxDays = ServerConfig.get().getInteger("performance.max_sync_age")
-        ?: return BadValueException()
-    val threshold = unixtime - (maxDays.toLong() * 86400)
-    return db.execute("DELETE FROM updates WHERE unixtime - ? > 0", threshold).exceptionOrNull()
+fun cullOldSyncRecords(db: DBConn, unixtime: Long): Throwable? {
+    return db.execute("DELETE FROM updates WHERE unixtime < ?", unixtime).exceptionOrNull()
 }
 
 /**

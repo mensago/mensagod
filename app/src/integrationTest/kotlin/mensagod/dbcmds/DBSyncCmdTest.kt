@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test
 import testsupport.ADMIN_PROFILE_DATA
 import testsupport.setupTest
 import testsupport.setupUser
-import java.lang.Thread.sleep
 import java.time.Instant
 import java.util.*
 
@@ -107,7 +106,7 @@ class DBSyncCmdTest {
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
-        val unixtime = 1_000_000L
+        val unixtime = 1_700_000_000L
 
         val recID1 = RandomID.fromString("11111111-1111-1111-1111-111111111111")!!
         var testFileName = "$unixtime.1024.${UUID.randomUUID().toString().lowercase()}"
@@ -127,7 +126,6 @@ class DBSyncCmdTest {
             )
         )?.let { throw it }
 
-        sleep(1000)
         val recID3 = RandomID.fromString("33333333-3333-3333-3333-333333333333")!!
         testFileName = "$unixtime.1024.${UUID.randomUUID().toString().lowercase()}"
         addSyncRecord(
@@ -155,5 +153,17 @@ class DBSyncCmdTest {
         assertEquals(2, countSyncRecords(db, adminWID, unixtime + 5).getOrThrow())
         assertEquals(0, countSyncRecords(db, adminWID, unixtime + 100).getOrThrow())
         assert(countSyncRecords(db, adminWID, -1).exceptionOrNull() is BadValueException)
+
+        val recID4 = RandomID.fromString("44444444-4444-4444-4444-444444444444")!!
+        testFileName = "$unixtime.1024.${UUID.randomUUID().toString().lowercase()}"
+        addSyncRecord(
+            db, adminWID, SyncRecord(
+                recID4, UpdateType.Create, "/ wsp $adminWID $testFileName",
+                (unixtime - 600_000_000).toString(), devid
+            )
+        )?.let { throw it }
+        assertEquals(4, countSyncRecords(db, adminWID, 0).getOrThrow())
+        cullOldSyncRecords(db, unixtime - 375_000_000)
+        assertEquals(3, countSyncRecords(db, adminWID, 0).getOrThrow())
     }
 }
