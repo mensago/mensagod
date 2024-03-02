@@ -10,10 +10,12 @@ import libmensago.ClientRequest
 import libmensago.MServerPath
 import libmensago.NotConnectedException
 import libmensago.ServerResponse
+import mensagod.dbcmds.countSyncRecords
 import mensagod.dbcmds.resolveAddress
 import org.apache.commons.io.FileUtils
 import java.io.RandomAccessFile
 import java.net.Socket
+import java.time.Instant
 
 /** The LoginState class denotes where in the login process a client session is */
 enum class LoginState {
@@ -38,11 +40,19 @@ open class SessionState(
  */
 class ClientSession(val conn: Socket) : SessionState() {
 
+    private var lastUpdateCheck = Instant.now().epochSecond
+    private var updateCount = 0
+
     /**
      * Checks the database for updates and update the session state update count.
      */
     fun checkForUpdates() {
-        // TODO: Implement ClientSession::checkForUpdates()
+        val now = Instant.now().epochSecond
+        if (now - lastUpdateCheck < 3) return
+        if (wid == null) return
+
+        updateCount = countSyncRecords(DBConn(), wid!!, now).getOrElse { return }
+        lastUpdateCheck = now
     }
 
     /**
