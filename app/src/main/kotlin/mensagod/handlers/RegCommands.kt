@@ -2,10 +2,7 @@ package mensagod.handlers
 
 import keznacl.Argon2idPassword
 import keznacl.getSupportedAsymmetricAlgorithms
-import libkeycard.MAddress
-import libkeycard.RandomID
-import libkeycard.UserID
-import libkeycard.WAddress
+import libkeycard.*
 import libmensago.MServerPath
 import libmensago.ResourceExistsException
 import libmensago.ServerResponse
@@ -140,18 +137,27 @@ fun commandPreregister(state: ClientSession) {
 //     Device-Info, Password-Salt="", Password-Parameters="", Domain="")
 fun commandRegCode(state: ClientSession) {
 
-    state.message.validate(setOf("Reg-Code", "Password-Hash", "Password-Algorithm"))?.let {
-        QuickResponse.sendBadRequest("Missing required field $it", state.conn)
-        return
+    val schema = Schemas.regCode
+    schema.validate(state.message.data) { name, e ->
+        val msg = if (e is MissingFieldException)
+            "Missing required field $name"
+        else
+            "Bad value for field $name"
+        QuickResponse.sendBadRequest(msg, state.conn)
     }
 
-    val devid = state.getRandomID("Device-ID", true) ?: return
-    val devkey = state.getCryptoString("Device-Key", true) ?: return
-    val devinfo = state.getCryptoString("Device-Info", true) ?: return
-    val domain = state.getDomain("Domain", false, gServerDomain)!!
+    var uid = schema.getUserID("User-ID", state.message.data)
+    if (uid == null) {
+        val wid = schema.getRandomID("Workspace-ID", state.message.data)
+        if (wid == null) {
+            QuickResponse.sendBadRequest("Workspace-ID or User-ID required", state.conn)
+            return
+        }
+        uid = UserID.fromWID(wid)
+    }
 
-    val regCodeLen = state.message.data["Reg-Code"]!!.codePoints().count()
-    if (regCodeLen > 128 || regCodeLen < 16) {
+    val regCode = schema.getString("Reg-Code", state.message.data)!!
+    if (regCode.codePoints().count() !in 16..128) {
         QuickResponse.sendBadRequest("Invalid registration code", state.conn)
         return
     }
@@ -159,38 +165,38 @@ fun commandRegCode(state: ClientSession) {
     // The password field must pass some basic checks for length, but because we will be hashing
     // the thing with Argon2id, even if the client does a dumb thing and submit a cleartext
     // password, there will be a pretty decent baseline of security in place.
-    val passLen = state.message.data["Password-Hash"]!!.codePoints().count()
-    if (passLen > 128 || passLen < 16) {
+    val passHash = schema.getString("Password-Hash", state.message.data)!!
+    if (passHash.codePoints().count() !in 16..128) {
         QuickResponse.sendBadRequest("Invalid password hash", state.conn)
         return
     }
 
-    var uid = state.getUserID("User-ID", false)
-    if (uid == null) {
-        val wid = state.getRandomID("Workspace-ID", true) ?: return
-        uid = UserID.fromWID(wid)
-    }
+    val passAlgo = schema.getString("Password-Algorithm", state.message.data)!!
 
+    val devid = schema.getRandomID("Device-ID", state.message.data)!!
+    val devkey = schema.getCryptoString("Device-Key", state.message.data)!!
     if (!getSupportedAsymmetricAlgorithms().contains(devkey.prefix)) {
         ServerResponse(
             309, "ENCRYPTION TYPE NOT SUPPORTED",
             "Supported: " + getSupportedAsymmetricAlgorithms().joinToString(",")
+        ).sendCatching(
+            state.conn,
+            "commandRegCode: failed to send bad encryption message"
         )
-            .sendCatching(
-                state.conn,
-                "commandRegCode: failed to send bad encryption message"
-            )
         return
     }
 
+    val devinfo = schema.getCryptoString("Device-Info", state.message.data)!!
+    val domain = schema.getDomain("Domain", state.message.data) ?: gServerDomain
+    val passSalt = schema.getString("Password-Salt", state.message.data)
+    val passParams = schema.getString("Password-Parameters", state.message.data)
+
     val db = DBConn()
-    val regInfo =
-        checkRegCode(db, MAddress.fromParts(uid, domain), state.message.data["Reg-Code"]!!)
-            .getOrElse {
-                logError("Internal error commandRegCode.checkRegCode: $it")
-                QuickResponse.sendInternalError("commandRegCode.1", state.conn)
-                return
-            }
+    val regInfo = checkRegCode(db, MAddress.fromParts(uid, domain), regCode).getOrElse {
+        logError("Internal error commandRegCode.checkRegCode: $it")
+        QuickResponse.sendInternalError("commandRegCode.1", state.conn)
+        return
+    }
 
     if (regInfo == null) {
         ServerResponse(401, "UNAUTHORIZED").sendCatching(
@@ -203,17 +209,14 @@ fun commandRegCode(state: ClientSession) {
     // Although we have been given a password hash, we still need to hash it on this side, as well,
     // so that if the client foolishly presented us with a cleartext password, the client's
     // password isn't stored in cleartext in the database.
-    val serverHash = Argon2idPassword().updateHash(state.message.data["Password-Hash"]!!)
-        .getOrElse {
-            logError("Internal error commandRegCode.hashPassword: $it")
-            QuickResponse.sendInternalError("Server error hashing password", state.conn)
-            return
-        }
+    val serverHash = Argon2idPassword().updateHash(passHash).getOrElse {
+        logError("Internal error commandRegCode.hashPassword: $it")
+        QuickResponse.sendInternalError("Server error hashing password", state.conn)
+        return
+    }
     addWorkspace(
-        db, regInfo.first, regInfo.second, domain, serverHash,
-        state.message.data["Password-Algorithm"]!!, state.message.data["Password-Salt"] ?: "",
-        state.message.data["Password-Parameters"] ?: "", WorkspaceStatus.Active,
-        WorkspaceType.Individual
+        db, regInfo.first, regInfo.second, domain, serverHash, passAlgo, passSalt ?: "",
+        passParams ?: "", WorkspaceStatus.Active, WorkspaceType.Individual
     )?.let {
         if (it is ResourceExistsException) {
             ServerResponse(

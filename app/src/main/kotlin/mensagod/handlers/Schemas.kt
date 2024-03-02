@@ -14,4 +14,21 @@ object Schemas {
         MsgField("User-ID", MsgFieldType.UserID, true),
         MsgField("Domain", MsgFieldType.Domain, false)
     )
+
+    val regCode = Schema(
+        // One of these is required, so a bit more validation once the schema code validates. :/
+        MsgField("Workspace-ID", MsgFieldType.RandomID, false),
+        MsgField("User-ID", MsgFieldType.UserID, false),
+
+        MsgField("Reg-Code", MsgFieldType.String, true),
+        MsgField("Password-Hash", MsgFieldType.String, true),
+        MsgField("Password-Algorithm", MsgFieldType.String, true),
+        MsgField("Device-ID", MsgFieldType.RandomID, true),
+        MsgField("Device-Key", MsgFieldType.CryptoString, true),
+        MsgField("Device-Info", MsgFieldType.CryptoString, true),
+
+        MsgField("Domain", MsgFieldType.Domain, false),
+        MsgField("Password-Salt", MsgFieldType.String, false),
+        MsgField("Password-Parameters", MsgFieldType.String, false),
+    )
 }
