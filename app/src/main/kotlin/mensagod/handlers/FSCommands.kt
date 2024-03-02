@@ -297,8 +297,8 @@ fun commandUpload(state: ClientSession) {
     if (replacesPath != null) {
         lfs.withLock(replacesPath) { lfs.entry(it).delete() }
 
-        addUpdateRecord(
-            db, state.wid!!, UpdateRecord(
+        addSyncRecord(
+            db, state.wid!!, SyncRecord(
                 RandomID.generate(), UpdateType.Replace, "$replacesPath:$uploadPath",
                 unixTime.toString(), state.devid!!
             )
@@ -310,8 +310,8 @@ fun commandUpload(state: ClientSession) {
             return
         }
 
-        addUpdateRecord(
-            db, state.wid!!, UpdateRecord(
+        addSyncRecord(
+            db, state.wid!!, SyncRecord(
                 RandomID.generate(), UpdateType.Create, uploadPath.toString(),
                 unixTime.toString(), state.devid!!
             )

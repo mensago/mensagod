@@ -96,8 +96,8 @@ fun deliveryWorker() {
                 logError("Error creating final path for ${handle.path}: $it")
                 return
             }
-            addUpdateRecord(
-                db, recipientInfo.to.id, UpdateRecord(
+            addSyncRecord(
+                db, recipientInfo.to.id, SyncRecord(
                     RandomID.generate(), UpdateType.Create, finalPath.toString(),
                     Instant.now().epochSecond.toString(), gServerDevID
                 )
