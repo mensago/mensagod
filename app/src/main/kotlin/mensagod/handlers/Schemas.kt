@@ -15,6 +15,10 @@ object Schemas {
         MsgField("Domain", MsgFieldType.Domain, false)
     )
 
+    val getUpdates = Schema(
+        MsgField("Time", MsgFieldType.UnixTime, true)
+    )
+
     val regCode = Schema(
         // One of these is required, so a bit more validation once the schema code validates. :/
         MsgField("Workspace-ID", MsgFieldType.RandomID, false),

@@ -13,7 +13,11 @@ import mensagod.DatabaseCorruptionException
 data class SyncRecord(
     val id: RandomID, val type: UpdateType, val data: String, val time: String,
     val devid: RandomID
-)
+) {
+    override fun toString(): String {
+        return "$id,${type.toString().uppercase()},$data,$time,$devid"
+    }
+}
 
 /**
  * Adds a record to the update table.

@@ -15,6 +15,7 @@ fun processCommand(state: ClientSession) {
         "DEVICE" -> commandDevice(state)
         "DOWNLOAD" -> commandDownload(state)
         "GETCARD" -> commandGetCard(state)
+        "GETUPDATES" -> commandGetUpdates(state)
         "GETWID" -> commandGetWID(state)
         "KEYPKG" -> commandKeyPkg(state)
         "ISCURRENT" -> commandIsCurrent(state)
