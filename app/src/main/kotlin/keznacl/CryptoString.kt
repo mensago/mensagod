@@ -101,6 +101,11 @@ open class CryptoString protected constructor(val prefix: String, val encodedDat
             "^([A-Z0-9-]{1,24})\$"
         )
 
+        /** Returns true if the supplied data matches the expected data format */
+        fun checkFormat(value: String): Boolean {
+            return csPattern.matcher(value).matches()
+        }
+
         /** Creates a new instance from a string in CryptoString format or null if invalid.
          */
         fun fromString(value: String): CryptoString? {
