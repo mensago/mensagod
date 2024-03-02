@@ -128,7 +128,7 @@ class FSCmdTest {
             val socket = Socket(InetAddress.getByName("localhost"), port)
             var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(100)
-            response.assertField("TempName") { MServerPath.validateFileName(it) }
+            response.assertField("TempName") { MServerPath.checkFileName(it) }
 
             val ostream = socket.getOutputStream()
             ostream.write(fileData)
@@ -167,7 +167,7 @@ class FSCmdTest {
             val socket = Socket(InetAddress.getByName("localhost"), port)
             var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(100)
-            response.assertField("TempName") { MServerPath.validateFileName(it) }
+            response.assertField("TempName") { MServerPath.checkFileName(it) }
 
             val ostream = socket.getOutputStream()
             ostream.write("0".repeat(512).encodeToByteArray())

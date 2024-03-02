@@ -87,6 +87,13 @@ class Timestamp(i: Instant? = null) {
         private val dateFormatter =
             DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC)!!
 
+        /** Returns true if the supplied data matches the expected data format */
+        fun checkFormat(value: String): Boolean {
+            // TODO: Devise regex for Timestamp format strings
+            return Instant.parse(value) != null
+        }
+
+
         /**
          * Creates an instance from a string in the format YYYY-MM-DDThh:mm:ssZ
          */

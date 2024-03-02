@@ -194,7 +194,7 @@ fun commandUpload(state: ClientSession) {
 
     val resumeOffset: Long?
     if (hasTempName) {
-        if (!MServerPath.validateFileName(state.message.data["TempName"]!!)) {
+        if (!MServerPath.checkFileName(state.message.data["TempName"]!!)) {
             QuickResponse.sendBadRequest("Invalid value for field TempName", state.conn)
             return
         }

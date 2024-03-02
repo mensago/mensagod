@@ -14,8 +14,11 @@ class MServerPathTest {
         assertNotNull(path.set("/ 725cd0ed-1135-46aa-837e-5bdfb809763a"))
         assert(path.isDir())
 
-        assertNotNull(path.set(
-            "/ 725cd0ed-1135-46aa-837e-5bdfb809763a 123467.1000.4c51a8b2-d8c1-4589-8543-36e038fee403"))
+        assertNotNull(
+            path.set(
+                "/ 725cd0ed-1135-46aa-837e-5bdfb809763a 123467.1000.4c51a8b2-d8c1-4589-8543-36e038fee403"
+            )
+        )
         assert(path.isFile())
 
         assertEquals("123467.1000.4c51a8b2-d8c1-4589-8543-36e038fee403", path.basename())
@@ -76,36 +79,43 @@ class MServerPathTest {
         assertEquals("/", MServerPath.fromString("/")!!.basename())
         assertEquals("wsp", MServerPath.fromString("/ wsp")!!.basename())
 
-        assert(!MServerPath.fromString(
-            "/ wsp fa0423e9-da5c-4927-a8f2-0274b38045bf"
-        )!!.isFile())
+        assert(
+            !MServerPath.fromString(
+                "/ wsp fa0423e9-da5c-4927-a8f2-0274b38045bf"
+            )!!.isFile()
+        )
         assert(
             MServerPath.fromString(
                 "/ wsp fa0423e9-da5c-4927-a8f2-0274b38045bf"
-            )!!.isDir())
+            )!!.isDir()
+        )
 
         assert(
             MServerPath.fromString(
                 "/ wsp fa0423e9-da5c-4927-a8f2-0274b38045bf " +
                         "12345.1000.d665a6c9-6248-478c-89a8-0d5953c3c077"
-            )!!.isFile())
-        assert(!MServerPath.fromString(
-            "/ wsp fa0423e9-da5c-4927-a8f2-0274b38045bf " +
-                    "12345.1000.d665a6c9-6248-478c-89a8-0d5953c3c077"
-        )!!.isDir())
+            )!!.isFile()
+        )
+        assert(
+            !MServerPath.fromString(
+                "/ wsp fa0423e9-da5c-4927-a8f2-0274b38045bf " +
+                        "12345.1000.d665a6c9-6248-478c-89a8-0d5953c3c077"
+            )!!.isDir()
+        )
     }
 
     @Test
     fun validateTest() {
         val fileName = "123467.1000.4c51a8b2-d8c1-4589-8543-36e038fee403"
-        val filePath = "/ 725cd0ed-1135-46aa-837e-5bdfb809763a 123467.1000.4c51a8b2-d8c1-4589-8543-36e038fee403"
+        val filePath =
+            "/ 725cd0ed-1135-46aa-837e-5bdfb809763a 123467.1000.4c51a8b2-d8c1-4589-8543-36e038fee403"
         val dirPath = "/ 725cd0ed-1135-46aa-837e-5bdfb809763a"
 
-        assert(MServerPath.validateFileName(fileName))
-        assertFalse(MServerPath.validateFileName(dirPath))
+        assert(MServerPath.checkFileName(fileName))
+        assertFalse(MServerPath.checkFileName(dirPath))
 
-        assert(MServerPath.validatePath(dirPath))
-        assert(MServerPath.validatePath(filePath))
-        assertFalse(MServerPath.validatePath(fileName))
+        assert(MServerPath.checkFormat(dirPath))
+        assert(MServerPath.checkFormat(filePath))
+        assertFalse(MServerPath.checkFormat(fileName))
     }
 }

@@ -16,11 +16,14 @@ class LocalID private constructor() {
         return value == other.value
     }
 
-    override fun hashCode(): Int { return value.hashCode() }
+    override fun hashCode(): Int {
+        return value.hashCode()
+    }
 
     companion object {
         private val localIDPattern = Pattern.compile(
-            """^([\p{L}\p{M}\p{N}\-_]|\.[^.]){1,64}$""", Pattern.CASE_INSENSITIVE)
+            """^([\p{L}\p{M}\p{N}\-_]|\.[^.]){1,64}$""", Pattern.CASE_INSENSITIVE
+        )
 
         fun fromString(value: String?): LocalID? {
             if (value == null) return null
@@ -32,7 +35,13 @@ class LocalID private constructor() {
             return out
         }
 
+        /** Returns true if the supplied data matches the expected data format */
+        fun checkFormat(value: String): Boolean {
+            return localIDPattern.matcher(value).matches()
+        }
     }
 
-    override fun toString(): String { return value }
+    override fun toString(): String {
+        return value
+    }
 }

@@ -45,7 +45,9 @@ class Domain private constructor() {
         return value == other.value
     }
 
-    override fun hashCode(): Int { return value.hashCode() }
+    override fun hashCode(): Int {
+        return value.hashCode()
+    }
 
     /** Returns the parent of the domain stored in the instance  */
     fun parent(): String? {
@@ -59,7 +61,8 @@ class Domain private constructor() {
 
     companion object {
         private val domainPattern = Pattern.compile(
-            "^([a-zA-Z0-9\\-]+)(\\.[a-zA-Z0-9\\-]+)*$", Pattern.CASE_INSENSITIVE)
+            "^([a-zA-Z0-9\\-]+)(\\.[a-zA-Z0-9\\-]+)*$", Pattern.CASE_INSENSITIVE
+        )
 
         fun fromString(value: String?): Domain? {
             if (value == null) return null
@@ -69,6 +72,11 @@ class Domain private constructor() {
             val out = Domain()
             out.value = value.lowercase()
             return out
+        }
+
+        /** Returns true if the supplied data matches the expected data format */
+        fun checkFormat(value: String): Boolean {
+            return domainPattern.matcher(value).matches()
         }
     }
 

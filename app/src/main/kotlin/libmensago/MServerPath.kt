@@ -27,19 +27,29 @@ class MServerPath(path: String? = null) {
     }
 
     /** Returns a clone of the current object */
-    fun clone(): MServerPath { return MServerPath(value) }
+    fun clone(): MServerPath {
+        return MServerPath(value)
+    }
 
     /** Returns the object's path */
-    fun get(): String { return value }
+    fun get(): String {
+        return value
+    }
 
     /** Returns true if the instance's path represents a file */
-    fun isFile(): Boolean { return fileRE.matches(parts.last()) }
+    fun isFile(): Boolean {
+        return fileRE.matches(parts.last())
+    }
 
     /** Returns true if the instance's path represents a directory */
-    fun isDir(): Boolean { return !isFile() }
+    fun isDir(): Boolean {
+        return !isFile()
+    }
 
     /** Returns true if the path represents the root directory */
-    fun isRoot(): Boolean { return value == "/" }
+    fun isRoot(): Boolean {
+        return value == "/"
+    }
 
     /**
      * Returns the path containing the object's parent. If the instance is set to the path root (/),
@@ -89,24 +99,35 @@ class MServerPath(path: String? = null) {
         return value == other.value
     }
 
-    override fun hashCode(): Int { return value.hashCode() }
+    override fun hashCode(): Int {
+        return value.hashCode()
+    }
 
-    override fun toString(): String { return value }
+    override fun toString(): String {
+        return value
+    }
 
     companion object {
         private val fileRE = Pattern.compile(
             """^[0-9]+.[0-9]+.[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$"""
         ).toRegex()
         private val serverPathRE = Pattern.compile(
-                """^/( wsp| out| tmp| keys)?""" +
-                """( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*""" +
-                """( new)?( [0-9]+.[0-9]+.""" +
-                """[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*"""
+            """^/( wsp| out| tmp| keys)?""" +
+                    """( [0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*""" +
+                    """( new)?( [0-9]+.[0-9]+.""" +
+                    """[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})*"""
         ).toRegex()
 
-        fun validateFileName(s: String): Boolean { return fileRE.matches(s) }
-        fun validatePath(s: String): Boolean { return serverPathRE.matches(s) }
+        fun checkFileName(s: String): Boolean {
+            return fileRE.matches(s)
+        }
 
-        fun fromString(path: String): MServerPath? { return MServerPath().set(path) }
+        fun checkFormat(s: String): Boolean {
+            return serverPathRE.matches(s)
+        }
+
+        fun fromString(path: String): MServerPath? {
+            return MServerPath().set(path)
+        }
     }
 }

@@ -15,7 +15,9 @@ class UserID private constructor() {
     var type: IDType = IDType.UserID
         private set
 
-    fun toWID(): RandomID? { return RandomID.fromUserID(this) }
+    fun toWID(): RandomID? {
+        return RandomID.fromUserID(this)
+    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -26,12 +28,21 @@ class UserID private constructor() {
         return value == other.value
     }
 
-    override fun hashCode(): Int { return value.hashCode() }
+    override fun hashCode(): Int {
+        return value.hashCode()
+    }
 
     companion object {
         private val userIDPattern = Pattern.compile("""^([\w\-]|\.[^.]){1,64}$""")
         private val randomIDPattern = Pattern.compile(
-            """^[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}$""")
+            """^[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}$"""
+        )
+
+        /** Returns true if the supplied data matches the expected data format */
+        fun checkFormat(value: String): Boolean {
+            return userIDPattern.matcher(value).matches() ||
+                    randomIDPattern.matcher(value).matches()
+        }
 
         fun fromString(value: String?): UserID? {
             if (value == null) return null
@@ -53,5 +64,7 @@ class UserID private constructor() {
         }
     }
 
-    override fun toString(): String { return value }
+    override fun toString(): String {
+        return value
+    }
 }

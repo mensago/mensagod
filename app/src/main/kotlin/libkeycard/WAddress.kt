@@ -15,13 +15,22 @@ class WAddress private constructor(val id: RandomID, val domain: Domain) {
         return address == other.address
     }
 
-    override fun hashCode(): Int { return address.hashCode() }
+    override fun hashCode(): Int {
+        return address.hashCode()
+    }
 
     override fun toString(): String {
         return address
     }
 
     companion object {
+
+        /** Returns true if the supplied data matches the expected data format */
+        fun checkFormat(value: String): Boolean {
+            val parts = value.split("/")
+            if (parts.size != 2) return false
+            return RandomID.checkFormat(parts[0]) && Domain.checkFormat(parts[1])
+        }
 
         fun fromParts(randomID: RandomID, domain: Domain): WAddress {
             return WAddress(randomID, domain)

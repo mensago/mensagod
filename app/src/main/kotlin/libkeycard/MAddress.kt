@@ -22,9 +22,18 @@ class MAddress private constructor(val userid: UserID, val domain: Domain) {
         return address == other.address
     }
 
-    override fun hashCode(): Int { return address.hashCode() }
+    override fun hashCode(): Int {
+        return address.hashCode()
+    }
 
     companion object {
+        /** Returns true if the supplied data matches the expected data format */
+        fun checkFormat(value: String): Boolean {
+            val parts = value.split("/")
+            if (parts.size != 2) return false
+            return UserID.checkFormat(parts[0]) && Domain.checkFormat(parts[1])
+        }
+
 
         fun fromParts(userid: UserID, domain: Domain): MAddress {
             return MAddress(userid, domain)
