@@ -1,6 +1,7 @@
 package libmensago
 
 import keznacl.CryptoString
+import keznacl.Hash
 import libkeycard.*
 
 /**
@@ -12,6 +13,7 @@ import libkeycard.*
 enum class MsgFieldType {
     CryptoString,
     Domain,
+    Hash,
     Integer,
     Path,
     RandomID,
@@ -54,7 +56,9 @@ class Schema(vararg args: MsgField) {
             }
 
             val isValid = when (field.type) {
-                MsgFieldType.CryptoString -> CryptoString.checkFormat(data[field.name]!!)
+                MsgFieldType.CryptoString, MsgFieldType.Hash ->
+                    CryptoString.checkFormat(data[field.name]!!)
+
                 MsgFieldType.Domain -> Domain.checkFormat(data[field.name]!!)
                 MsgFieldType.Integer -> {
                     val result = runCatching { data[field.name]!!.toInt() }
@@ -103,6 +107,15 @@ class Schema(vararg args: MsgField) {
     fun getDomain(field: String, data: Map<String, String>): Domain? {
         if (field !in fields.keys) return null
         return Domain.fromString(data[field])
+    }
+
+    /**
+     * Returns the requested field as a Hash or null if (a) the field isn't in the schema or
+     * (b) the field's data is invalid or isn't present in the case of optional fields.
+     */
+    fun getHash(field: String, data: Map<String, String>): CryptoString? {
+        if (field !in fields.keys || field !in data.keys) return null
+        return Hash.fromString(data[field]!!)
     }
 
     /**

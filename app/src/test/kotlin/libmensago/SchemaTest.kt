@@ -1,6 +1,7 @@
 package libmensago
 
 import keznacl.CryptoString
+import keznacl.Hash
 import libkeycard.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -11,6 +12,7 @@ class SchemaTest {
     private val devKey = CryptoString
         .fromString("CURVE25519:mO?WWA-k2B2O|Z%fA`~s3^\$iiN{5R->#jxO@cy6{")!!
     private val domain = Domain.fromString("example.com")!!
+    private val hash = Hash.fromString("BLAKE2B-256:?*e?y<{rF)B`7<5U8?bXQhNic6W4lmGlN}~Mu}la")
     private val userID = UserID.fromString("csimons")!!
     private val testPath = MServerPath("/ wsp a909b468-c7d6-4ab2-93a3-d56fab981a10")
     private val unixTime = 1709000000L
@@ -72,6 +74,7 @@ class SchemaTest {
         val schema = Schema(
             MsgField("Device-Key", MsgFieldType.CryptoString, false),
             MsgField("Domain", MsgFieldType.Domain, false),
+            MsgField("Hash", MsgFieldType.Hash, false),
             MsgField("Index", MsgFieldType.Integer, false),
             MsgField("Destination", MsgFieldType.Path, false),
             MsgField("Device-ID", MsgFieldType.RandomID, false),
@@ -82,6 +85,7 @@ class SchemaTest {
 
         assertNull(schema.getCryptoString("Device-Key", mapOf("Device-Key" to "bad data")))
         assertNull(schema.getDomain("Domain", mapOf("Domain" to "bad data")))
+        assertNull(schema.getHash("Hash", mapOf("Hash" to "bad data")))
         assertNull(schema.getInteger("Index", mapOf("Index" to "bad data")))
         assertNull(schema.getPath("Destination", mapOf("Destination" to "bad data")))
         assertNull(schema.getInteger("Device-ID", mapOf("Index" to "bad data")))
@@ -92,6 +96,7 @@ class SchemaTest {
         val goodData = mapOf(
             "Device-Key" to devKey.toString(),
             "Domain" to domain.toString(),
+            "Hash" to hash.toString(),
             "Index" to "10",
             "Destination" to testPath.toString(),
             "Device-ID" to devID.toString(),
@@ -102,6 +107,7 @@ class SchemaTest {
 
         assertEquals(devKey, schema.getCryptoString("Device-Key", goodData))
         assertEquals(domain, schema.getDomain("Domain", goodData))
+        assertEquals(hash, schema.getHash("Hash", goodData))
         assertEquals(10, schema.getInteger("Index", goodData))
         assertEquals(testPath, schema.getPath("Destination", goodData))
         assertEquals(devID, schema.getRandomID("Device-ID", goodData))
