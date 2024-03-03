@@ -3,6 +3,7 @@ package mensagod
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import testsupport.TestFailureException
 import testsupport.makeTestFolder
 import java.io.File
 import java.nio.file.Paths
@@ -11,7 +12,8 @@ class ServerConfigTest {
 
     private fun makeTestConfigFile(path: String) {
         val handle = File(path)
-        handle.writeText("""
+        handle.writeText(
+            """
 [database]
 name = "mensago"
 password = "S3cr3tPa55w*rd"
@@ -21,7 +23,8 @@ domain = "example.com"
 top_dir = "/var/mensagod"
 registration = "private"
 
-""")
+"""
+        )
     }
 
     @Test
@@ -60,8 +63,10 @@ registration = "private"
         config.setValue("global.registration", "network")
         config.setValue("network.port", 9999)
 
-        val parts = listOf("[global]","""registration = "network"""", "",
-            "[network]", "port = 9999", "")
+        val parts = listOf(
+            "[global]", """registration = "network"""", "",
+            "[network]", "port = 9999", ""
+        )
         assertEquals(parts.joinToString(System.lineSeparator()), config.toString())
     }
 
@@ -133,9 +138,9 @@ registration = "private"
             |# max_message_size = 50
             |
             |# Max age of sync records in days. Any records older than the oldest device
-            |# login timestamp minus this number of days are purged. Defaults to 1 week,
+            |# login timestamp minus this number of days are purged. Defaults to 6 months,
             |# which should be plenty.
-            |# max_sync_age = 7
+            |# max_sync_age = 360
             |
             |# The maximum number of worker threads created handle delivering messages,
             |# both internally and externally
@@ -177,7 +182,13 @@ registration = "private"
             |# password_reset_min = 60
             |""".trimMargin()
 
-        assertEquals(expected, config.toVerboseString().getOrThrow())
+        if (expected != config.toVerboseString().getOrThrow()) {
+            println("Expected:\n-------------")
+            println("|||$expected|||")
+            println("Received:\n-------------")
+            println("|||${config.toVerboseString().getOrThrow()}|||")
+            throw TestFailureException("ServerConfig comparison failure")
+        }
     }
 
     @Test
@@ -295,9 +306,9 @@ registration = "private"
             |max_message_size = 100
             |
             |# Max age of sync records in days. Any records older than the oldest device
-            |# login timestamp minus this number of days are purged. Defaults to 1 week,
+            |# login timestamp minus this number of days are purged. Defaults to 6 months,
             |# which should be plenty.
-            |# max_sync_age = 7
+            |# max_sync_age = 360
             |max_sync_age = 14
             |
             |# The maximum number of worker threads created handle delivering messages,
@@ -349,7 +360,13 @@ registration = "private"
             |password_reset_min = 120
             |""".trimMargin()
 
-        assertEquals(expected, config.toVerboseString().getOrThrow())
+        if (expected != config.toVerboseString().getOrThrow()) {
+            println("Expected:\n-------------")
+            println("|||$expected|||")
+            println("Received:\n-------------")
+            println("|||${config.toVerboseString().getOrThrow()}|||")
+            throw TestFailureException("ServerConfig comparison failure")
+        }
     }
 
     @Test
@@ -430,9 +447,11 @@ registration = "private"
         config.setValue("network.port", 100)
         assertNull(config.validate())
 
-        listOf("performance.max_file_size", "performance.max_message_size",
+        listOf(
+            "performance.max_file_size", "performance.max_message_size",
             "performance.max_sync_age", "performance.max_delivery_threads",
-            "performance.max_client_threads", "performance.keycard_cache_size").forEach {
+            "performance.max_client_threads", "performance.keycard_cache_size"
+        ).forEach {
             config.setValue(it, 100_000_000)
             assertNotNull(config.validate())
             config.setValue(it, 30)
@@ -444,9 +463,11 @@ registration = "private"
         config.setValue("security.diceware_wordcount", 8)
         assertNull(config.validate())
 
-        listOf("security.failure_delay_sec", "security.max_failures",
+        listOf(
+            "security.failure_delay_sec", "security.max_failures",
             "security.lockout_delay_min", "security.registration_delay_min",
-            "security.password_reset_min").forEach {
+            "security.password_reset_min"
+        ).forEach {
             config.setValue(it, 100_000_000)
             assertNotNull(config.validate())
             config.setValue(it, 60)

@@ -520,3 +520,5 @@ fun ServerResponse.assertField(field: String, validator: (v: String) -> Boolean)
         throw ResourceNotFoundException("Missing field $field")
     assert(validator(data[field]!!))
 }
+
+class TestFailureException(message: String = "") : Exception(message)
