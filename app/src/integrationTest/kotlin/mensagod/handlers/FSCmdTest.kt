@@ -101,6 +101,54 @@ class FSCmdTest {
     }
 
     @Test
+    fun mkDirTest() {
+        setupTest("handlers.mkDirTest")
+        ServerConfig.load().getOrThrow()
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+
+        // Test Case #1: Success
+        CommandTest(
+            "mkdir.1",
+            SessionState(
+                ClientRequest(
+                    "MKDIR", mutableMapOf(
+                        "Path" to "/ wsp $adminWID 11111111-1111-1111-1111-111111111111",
+                        "ClientPath" to "XSALSA20:abcdefg"
+                    )
+                ), adminWID,
+                LoginState.LoggedIn,
+                RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+            ), ::commandMkDir
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(200)
+        }.run()
+
+        // Test Case #2: Missing parent directory
+        CommandTest(
+            "mkdir.2",
+            SessionState(
+                ClientRequest(
+                    "MKDIR", mutableMapOf(
+                        "Path" to "/ wsp b59b015d-e432-47b0-8457-416696615157 " +
+                                "11111111-1111-1111-1111-111111111111",
+                        "ClientPath" to "XSALSA20:abcdefg"
+                    )
+                ), adminWID,
+                LoginState.LoggedIn,
+                RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+            ), ::commandMkDir
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(404)
+        }.run()
+    }
+
+    @Test
     fun uploadTest() {
         val setupData = setupTest("handlers.uploadTest")
         ServerConfig.load().getOrThrow()

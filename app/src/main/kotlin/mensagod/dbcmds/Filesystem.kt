@@ -25,7 +25,7 @@ fun addFolderEntry(db: DBConn, wid: RandomID, serverPath: MServerPath, clientPat
     ).onFailure { return it }
     return db.execute(
         "INSERT INTO iwkspc_folders(wid, serverpath, clientpath) " +
-                "VALUES(?,?,?", wid, serverPath, clientPath
+                "VALUES(?,?,?)", wid, serverPath, clientPath
     ).exceptionOrNull()
 }
 

@@ -129,8 +129,17 @@ fun commandMkDir(state: ClientSession) {
         return
     }
     if (!exists) {
-        QuickResponse.sendNotFound("Parent path not found", state.conn)
-        return
+        if (parent.toString() == "/ wsp ${state.wid!!}") {
+            val parentHandle = lfs.entry(parent)
+            parentHandle.makeDirectory()?.let {
+                logError("commandMkDir: failed to create workspace dir $parent: $it")
+                QuickResponse.sendInternalError("Error creating workspace path", state.conn)
+                return
+            }
+        } else {
+            QuickResponse.sendNotFound("Parent path not found", state.conn)
+            return
+        }
     }
 
     val auth = DirectoryTarget.fromPath(parent)!!
@@ -163,7 +172,7 @@ fun commandMkDir(state: ClientSession) {
     addSyncRecord(
         db, state.wid!!, SyncRecord(
             RandomID.generate(),
-            UpdateType.Create,
+            UpdateType.Mkdir,
             "$serverPath:$clientPath",
             Instant.now().epochSecond.toString(),
             state.devid!!
