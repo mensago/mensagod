@@ -14,10 +14,7 @@ import mensagod.SessionState
 import mensagod.dbcmds.getEntries
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import testsupport.ADMIN_PROFILE_DATA
-import testsupport.assertField
-import testsupport.assertReturnCode
-import testsupport.setupTest
+import testsupport.*
 import java.net.InetAddress
 import java.net.Socket
 
@@ -341,6 +338,39 @@ class KeycardCmdTest {
             response.assertReturnCode(404)
         }.run()
 
-        // TODO: Implement commandGetUserCardTest()
+        val db = DBConn()
+        setupAdminKeycard(db, true)
+
+        // Test Case #2: Request entire keycard
+        CommandTest(
+            "getUserCard.2",
+            SessionState(
+                ClientRequest(
+                    "GETCARD", mutableMapOf(
+                        "Owner" to adminWID.toString(),
+                        "Start-Index" to "1",
+                    )
+                ), null,
+                LoginState.NoSession
+            ), ::commandGetCard
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(104)
+            assert(response.checkFields(listOf(Pair("Item-Count", true), Pair("Total-Size", true))))
+            assertEquals("2", response.data["Item-Count"])
+
+            val entries = getEntries(db, adminWID, 1U).getOrThrow()
+            assertEquals(2, entries.size)
+            val expectedSize = entries[0].length + 48 + entries[1].length + 48
+            assertEquals(expectedSize, response.data["Total-Size"]!!.toInt())
+
+            ClientRequest("TRANSFER", mutableMapOf()).send(socket.getOutputStream())
+            response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(response.data.containsKey("Card-Data"))
+            assertEquals(expectedSize, response.data["Card-Data"]!!.length)
+        }.run()
     }
 }

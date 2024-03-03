@@ -382,9 +382,10 @@ fun setupUser(db: DBConn) {
 
 /**
  * Sets up the admin account's keycard. Just needed for tests that use keycards and those which
- * cover more advanced functionality
+ * cover more advanced functionality. If `chain` is true, a second entry in the admin's keycard is
+ * created and all necessary verification checks are made.
  */
-fun setupAdminKeycard(db: DBConn) {
+fun setupAdminKeycard(db: DBConn, chain: Boolean) {
     val adminEntry = UserEntry()
     with(adminEntry) {
         setField("Name", "Administrator")
@@ -410,8 +411,41 @@ fun setupAdminKeycard(db: DBConn) {
     }
     val card = Keycard.new("User")!!
     card.entries.add(adminEntry)
+    card.current!!.isDataCompliant()?.let { throw it }
+    val serverPair = getPrimarySigningPair(db).getOrThrow()
+    card.current!!.sign("Organization-Signature", serverPair)?.let { throw it }
 
-    // TODO: Finish setupAdminKeycard
+    val orgEntry = OrgEntry.fromString(getEntries(db, null, 0U).getOrThrow()[0])
+        .getOrThrow()
+    val prevHash = orgEntry.getAuthString("Previous-Hash")!!
+    card.current!!.addAuthString("Previous-Hash", prevHash)
+    card.current!!.hash()?.let { throw it }
+    val adminCRSPair = SigningPair.fromStrings(
+        ADMIN_PROFILE_DATA["crsigning.public"]!!,
+        ADMIN_PROFILE_DATA["crsigning.private"]!!
+    ).getOrThrow()
+    card.current!!.sign("User-Signature", adminCRSPair)?.let { throw it }
+    card.current!!.isCompliant()?.let { throw it }
+    addEntry(db, card.current!!)?.let { throw it }
+
+    if (!chain) return
+
+    val newKeys = card.chain(adminCRSPair).getOrThrow()
+    card.current!!.sign("Organization-Signature", serverPair)?.let { throw it }
+    card.current!!.hash()?.let { throw it }
+    card.current!!.sign("User-Signature", adminCRSPair)?.let { throw it }
+    card.current!!.isCompliant()?.let { throw it }
+    addEntry(db, card.current!!)?.let { throw it }
+    assert(card.verify().getOrThrow())
+
+    ADMIN_PROFILE_DATA["crsigning.public"] = newKeys["crsigning.public"]!!.toString()
+    ADMIN_PROFILE_DATA["crsigning.private"] = newKeys["crsigning.private"]!!.toString()
+    ADMIN_PROFILE_DATA["crencryption.public"] = newKeys["crencryption.public"]!!.toString()
+    ADMIN_PROFILE_DATA["crencryption.private"] = newKeys["crencryption.private"]!!.toString()
+    ADMIN_PROFILE_DATA["signing.public"] = newKeys["signing.public"]!!.toString()
+    ADMIN_PROFILE_DATA["signing.private"] = newKeys["signing.private"]!!.toString()
+    ADMIN_PROFILE_DATA["encryption.public"] = newKeys["encryption.public"]!!.toString()
+    ADMIN_PROFILE_DATA["encryption.private"] = newKeys["encryption.private"]!!.toString()
 }
 
 /**
