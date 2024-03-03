@@ -32,4 +32,9 @@ class MiscCmdTest {
             assertEquals(serverData["support_wid"]!!, response.data["Workspace-ID"])
         }.run()
     }
+
+    @Test
+    fun sendTest() {
+        // TODO: Implement test for commandSend()
+    }
 }

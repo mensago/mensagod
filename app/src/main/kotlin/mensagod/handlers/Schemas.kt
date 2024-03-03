@@ -40,4 +40,9 @@ object Schemas {
         MsgField("Password-Salt", MsgFieldType.String, false),
         MsgField("Password-Parameters", MsgFieldType.String, false),
     )
+
+    val send = Schema(
+        MsgField("Message", MsgFieldType.String, true),
+        MsgField("Domain", MsgFieldType.Domain, true),
+    )
 }

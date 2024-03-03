@@ -25,6 +25,7 @@ fun processCommand(state: ClientSession) {
         "PASSWORD" -> commandPassword(state)
         "PREREG" -> commandPreregister(state)
         "REGCODE" -> commandRegCode(state)
+        "SEND" -> commandSend(state)
         "UPLOAD" -> commandUpload(state)
         else -> commandUnrecognized(state)
     }

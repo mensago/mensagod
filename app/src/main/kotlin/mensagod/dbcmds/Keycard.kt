@@ -126,7 +126,8 @@ fun resolveAddress(db: DBConn, addr: MAddress): Result<RandomID?> {
 }
 
 /**
- * resolveWID returns a full workspace address given the workspace ID component
+ * resolveWID returns a full workspace address given the workspace ID component or null if not
+ * found.
  *
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
