@@ -1,5 +1,6 @@
 package mensagod.handlers
 
+import keznacl.Hash
 import keznacl.UnsupportedAlgorithmException
 import libkeycard.MissingFieldException
 import libkeycard.RandomID
@@ -195,7 +196,7 @@ fun commandUpload(state: ClientSession) {
         return
     }
 
-    val clientHash = state.getCryptoString("Hash", true)
+    val clientHash = Hash.fromString(state.message.data["Hash"]!!)
     if (clientHash == null) {
         QuickResponse.sendBadRequest("Invalid value for Hash", state.conn)
         return

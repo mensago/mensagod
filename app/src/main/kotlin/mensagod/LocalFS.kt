@@ -1,9 +1,6 @@
 package mensagod
 
-import keznacl.BadValueException
-import keznacl.CryptoString
-import keznacl.getPreferredHashAlgorithm
-import keznacl.toSuccess
+import keznacl.*
 import libkeycard.RandomID
 import libmensago.MServerPath
 import libmensago.ResourceNotFoundException
@@ -105,8 +102,8 @@ class LocalFSHandle(mpath: MServerPath, private var file: File) {
     /**
      * Creates a hash of the file.
      */
-    fun hashFile(algorithm: String = getPreferredHashAlgorithm()): Result<CryptoString> {
-        return keznacl.hashFile(file.path.toString(), algorithm)
+    fun hashFile(algorithm: String = getPreferredHashAlgorithm()): Result<Hash> {
+        return hashFile(file.path.toString(), algorithm)
     }
 
     /**
