@@ -31,6 +31,7 @@ data class MsgField(val name: String, val type: MsgFieldType, val req: Boolean)
  * The Schema class is used for validating attached message data and converting it to the desired
  * data types.
  *
+ * @return True on success and null on failure.
  * @see MsgField
  * @see MsgFieldType
  */
@@ -40,13 +41,14 @@ class Schema(vararg args: MsgField) {
     /**
      * Validates the data map passed to it and executes the handler code if validation should fail
      */
-    fun validate(data: Map<String, String>, failHandler: (String, Throwable) -> Unit) {
+    fun validate(data: Map<String, String>, failHandler: (String, Throwable) -> Unit): Boolean? {
         for (field in fields.values) {
 
             if (!data.containsKey(field.name)) {
                 if (field.req) {
-                    failHandler(field.name, MissingFieldException())
-                    return
+                    val out = MissingFieldException()
+                    failHandler(field.name, out)
+                    return null
                 }
                 continue
             }
@@ -77,10 +79,12 @@ class Schema(vararg args: MsgField) {
             }
 
             if (!isValid) {
-                failHandler(field.name, BadFieldValueException())
-                return
+                val out = BadFieldValueException()
+                failHandler(field.name, out)
+                return null
             }
         }
+        return true
     }
 
     /**

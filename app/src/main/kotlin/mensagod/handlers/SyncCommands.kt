@@ -16,7 +16,8 @@ fun commandGetUpdates(state: ClientSession) {
         else
             "Bad value for field $name"
         QuickResponse.sendBadRequest(msg, state.conn)
-    }
+    } ?: return
+
     val time = schema.getUnixTime("Time", state.message.data)!!
 
     val db = DBConn()
@@ -27,6 +28,7 @@ fun commandGetUpdates(state: ClientSession) {
     }
 
     val data = mutableMapOf<String, String>()
+    data["UpdateCount"] = recList.size.toString()
     recList.forEachIndexed { i, rec -> data["Update$i"] = rec.toString() }
     ServerResponse(200, "OK", "", data)
         .sendCatching(state.conn, "Failed to send update response")

@@ -16,7 +16,7 @@ fun commandGetWID(state: ClientSession) {
         else
             "Bad value for field $name"
         QuickResponse.sendBadRequest(msg, state.conn)
-    }
+    } ?: return
 
     val uid = schema.getUserID("User-ID", state.message.data)!!
     val domain = schema.getDomain("Domain", state.message.data) ?: gServerDomain

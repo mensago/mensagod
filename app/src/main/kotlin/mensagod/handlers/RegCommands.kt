@@ -144,7 +144,7 @@ fun commandRegCode(state: ClientSession) {
         else
             "Bad value for field $name"
         QuickResponse.sendBadRequest(msg, state.conn)
-    }
+    } ?: return
 
     var uid = schema.getUserID("User-ID", state.message.data)
     if (uid == null) {

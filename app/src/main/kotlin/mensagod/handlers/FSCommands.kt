@@ -105,7 +105,7 @@ fun commandMkDir(state: ClientSession) {
         else
             "Bad value for field $name"
         QuickResponse.sendBadRequest(msg, state.conn)
-    }
+    } ?: return
 
     val clientPath = schema.getCryptoString("ClientPath", state.message.data)!!
 
