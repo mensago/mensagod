@@ -48,6 +48,6 @@ class ServiceCache(capacity: Int) {
 
 private class ServiceNode(val hash: Int, val list: List<ServiceConfig>) {
     override fun toString(): String {
-        return "{${list.joinToString("")}}"
+        return list.joinToString("", "[", "]")
     }
 }
