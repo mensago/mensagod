@@ -12,6 +12,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.util.regex.Pattern
 
 @Serializable(with = TimestampSerializer::class)
 class Timestamp(i: Instant? = null) {
@@ -84,13 +85,15 @@ class Timestamp(i: Instant? = null) {
     }
 
     companion object {
+        private val dateTimePattern = Pattern.compile(
+            """\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z)"""
+        )
         private val dateFormatter =
             DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC)!!
 
         /** Returns true if the supplied data matches the expected data format */
         fun checkFormat(value: String): Boolean {
-            // TODO: Devise regex for Timestamp format strings
-            return Instant.parse(value) != null
+            return dateTimePattern.matcher(value).matches()
         }
 
 

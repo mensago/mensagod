@@ -22,5 +22,8 @@ class TimestampTest {
 
         val lts = Timestamp()
         assertEquals(20, lts.formatted.length)
+
+        assert(Timestamp.checkFormat("2022-05-02T00:00:00Z"))
+        assert(!Timestamp.checkFormat("2022-05-02"))
     }
 }
