@@ -1,6 +1,7 @@
 package mensagod.dbcmds
 
 import keznacl.BadValueException
+import keznacl.CryptoString
 import keznacl.toFailure
 import libkeycard.RandomID
 import libmensago.MServerPath
@@ -12,47 +13,33 @@ import mensagod.ServerConfig
 import java.io.IOException
 
 /**
- * Helper function for adding a quota record to the database.
+ * Adds a mapping of a server path to an encrypted client path.
  *
- * @throws ResourceNotFoundException Returned if the workspace doesn't exist
- * @throws IOException Returned if an I/O error occurs getting disk usage
- * @throws BadValueException Returned if given a bad path
- * @throws SecurityException Returned if a security manager exists and denies read access to the
- * file or directory
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with
- * the connection
+ * @exception BadValueException Returned if given a bad path
+ * @exception NotConnectedException Returned if not connected to the database
  */
-private fun addQuotaFromDisk(db: DBConn, wid: RandomID): Result<Pair<Long, Long>> {
-    val userWidPath = MServerPath("/ wsp $wid")
-    val handle = LocalFS.get().entry(userWidPath)
-    if (!handle.exists().getOrElse { return it.toFailure() }) {
-        val status = checkWorkspace(db, wid).getOrElse { return it.toFailure() }
-        if (status == null) return Result.failure(ResourceNotFoundException())
-    }
-
-    val usage = LocalFS.get().getDiskUsage(MServerPath("/ wsp $wid"))
-        .getOrElse { return it.toFailure() }
-    val defaultQuota = ServerConfig.get().getInteger("global.default_quota")!! * 1_048_576L
-
+fun addFolderEntry(db: DBConn, wid: RandomID, serverPath: MServerPath, clientPath: CryptoString):
+        Throwable? {
     db.execute(
-        "INSERT INTO quotas(wid, usage, quota) VALUES(?,?,?)", wid, usage,
-        defaultQuota
-    ).getOrElse { return it.toFailure() }
-    return Result.success(Pair(usage, defaultQuota))
+        "DELETE FROM iwkspc_folders WHERE wid=? AND serverpath=?", wid, serverPath
+    ).onFailure { return it }
+    return db.execute(
+        "INSERT INTO iwkspc_folders(wid, serverpath, clientpath) " +
+                "VALUES(?,?,?", wid, serverPath, clientPath
+    ).exceptionOrNull()
 }
 
 /**
  * Returns a pair of integers representing the current disk usage and quota size.
  *
- * @throws ResourceNotFoundException Returned if the workspace doesn't exist
- * @throws IOException Returned if an I/O error occurs getting disk usage
- * @throws BadValueException Returned if given a bad path
- * @throws SecurityException Returned if a security manager exists and denies read access to the
+ * @exception ResourceNotFoundException Returned if the workspace doesn't exist
+ * @exception IOException Returned if an I/O error occurs getting disk usage
+ * @exception BadValueException Returned if given a bad path
+ * @exception SecurityException Returned if a security manager exists and denies read access to the
  * file or directory
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with
- * the connection
+ * @exception NotConnectedException if not connected to the database
+ * @exception java.sql.SQLException for database problems, most likely either with your query or
+ * with the connection
  */
 fun getQuotaInfo(db: DBConn, wid: RandomID): Result<Pair<Long, Long>> {
     val rs = db.query("SELECT usage,quota FROM quotas WHERE wid=?", wid)
@@ -83,13 +70,13 @@ fun getQuotaInfo(db: DBConn, wid: RandomID): Result<Pair<Long, Long>> {
  * server started, the size parameter will be ignored and quota usage will be set from actual usage
  * on disk.
  *
- * @throws ResourceNotFoundException Returned if the workspace doesn't exist
- * @throws IOException Returned if an I/O error occurs getting disk usage
- * @throws BadValueException Returned if given a bad path
- * @throws SecurityException Returned if a security manager exists and denies read access to the
+ * @exception ResourceNotFoundException Returned if the workspace doesn't exist
+ * @exception IOException Returned if an I/O error occurs getting disk usage
+ * @exception BadValueException Returned if given a bad path
+ * @exception SecurityException Returned if a security manager exists and denies read access to the
  * file or directory
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with
+ * @exception NotConnectedException if not connected to the database
+ * @exception java.sql.SQLException for database problems, most likely either with your query or with
  * the connection
  */
 fun modifyQuotaUsage(db: DBConn, wid: RandomID, size: Long): Result<Long> {
@@ -120,8 +107,8 @@ fun modifyQuotaUsage(db: DBConn, wid: RandomID, size: Long): Result<Long> {
  * Resets the disk quota usage count in the database for all workspaces, forcing it to be
  * recalculated.
  *
- * @throws NotConnectedException Returned if not connected to the database
- * @throws java.sql.SQLException Returned for database problems, most likely either with your query
+ * @exception NotConnectedException Returned if not connected to the database
+ * @exception java.sql.SQLException Returned for database problems, most likely either with your query
  * or with the connection
  */
 fun resetQuotaUsage(db: DBConn): Throwable? {
@@ -131,13 +118,13 @@ fun resetQuotaUsage(db: DBConn): Throwable? {
 /**
  * Sets the disk quota for a workspace to the specified number of bytes.
  *
- * @throws ResourceNotFoundException Returned if the workspace doesn't exist
- * @throws IOException Returned if an I/O error occurs getting disk usage
- * @throws BadValueException Returned if given a bad path
- * @throws SecurityException Returned if a security manager exists and denies read access to the
+ * @exception ResourceNotFoundException Returned if the workspace doesn't exist
+ * @exception IOException Returned if an I/O error occurs getting disk usage
+ * @exception BadValueException Returned if given a bad path
+ * @exception SecurityException Returned if a security manager exists and denies read access to the
  * file or directory
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with
+ * @exception NotConnectedException if not connected to the database
+ * @exception java.sql.SQLException for database problems, most likely either with your query or with
  * the connection
  */
 fun setQuota(db: DBConn, wid: RandomID, quota: Long): Throwable? {
@@ -155,13 +142,13 @@ fun setQuota(db: DBConn, wid: RandomID, quota: Long): Throwable? {
  * Sets the disk quota for a workspace to the specified number of bytes. If the usage has not been
  * updated since boot, the total is ignored and the actual value from disk is used.
  *
- * @throws ResourceNotFoundException Returned if the workspace doesn't exist
- * @throws IOException Returned if an I/O error occurs getting disk usage
- * @throws BadValueException Returned if given a bad path
- * @throws SecurityException Returned if a security manager exists and denies read access to the
+ * @exception ResourceNotFoundException Returned if the workspace doesn't exist
+ * @exception IOException Returned if an I/O error occurs getting disk usage
+ * @exception BadValueException Returned if given a bad path
+ * @exception SecurityException Returned if a security manager exists and denies read access to the
  * file or directory
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with
+ * @exception NotConnectedException if not connected to the database
+ * @exception java.sql.SQLException for database problems, most likely either with your query or with
  * the connection
  */
 fun setQuotaUsage(db: DBConn, wid: RandomID, usage: Long): Throwable? {
@@ -173,3 +160,35 @@ fun setQuotaUsage(db: DBConn, wid: RandomID, usage: Long): Throwable? {
 
     return addQuotaFromDisk(db, wid).exceptionOrNull()
 }
+
+/**
+ * Helper function for adding a quota record to the database.
+ *
+ * @exception ResourceNotFoundException Returned if the workspace doesn't exist
+ * @exception IOException Returned if an I/O error occurs getting disk usage
+ * @exception BadValueException Returned if given a bad path
+ * @exception SecurityException Returned if a security manager exists and denies read access to the
+ * file or directory
+ * @exception NotConnectedException if not connected to the database
+ * @exception java.sql.SQLException for database problems, most likely either with your query or with
+ * the connection
+ */
+private fun addQuotaFromDisk(db: DBConn, wid: RandomID): Result<Pair<Long, Long>> {
+    val userWidPath = MServerPath("/ wsp $wid")
+    val handle = LocalFS.get().entry(userWidPath)
+    if (!handle.exists().getOrElse { return it.toFailure() }) {
+        val status = checkWorkspace(db, wid).getOrElse { return it.toFailure() }
+        if (status == null) return Result.failure(ResourceNotFoundException())
+    }
+
+    val usage = LocalFS.get().getDiskUsage(MServerPath("/ wsp $wid"))
+        .getOrElse { return it.toFailure() }
+    val defaultQuota = ServerConfig.get().getInteger("global.default_quota")!! * 1_048_576L
+
+    db.execute(
+        "INSERT INTO quotas(wid, usage, quota) VALUES(?,?,?)", wid, usage,
+        defaultQuota
+    ).getOrElse { return it.toFailure() }
+    return Result.success(Pair(usage, defaultQuota))
+}
+

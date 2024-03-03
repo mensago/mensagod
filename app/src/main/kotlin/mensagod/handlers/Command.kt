@@ -21,6 +21,7 @@ fun processCommand(state: ClientSession) {
         "ISCURRENT" -> commandIsCurrent(state)
         "LOGIN" -> commandLogin(state)
         "LOGOUT" -> commandLogout(state)
+        "MKDIR" -> commandMkDir(state)
         "PASSWORD" -> commandPassword(state)
         "PREREG" -> commandPreregister(state)
         "REGCODE" -> commandRegCode(state)

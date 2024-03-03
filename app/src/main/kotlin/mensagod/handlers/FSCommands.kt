@@ -1,6 +1,7 @@
 package mensagod.handlers
 
 import keznacl.UnsupportedAlgorithmException
+import libkeycard.MissingFieldException
 import libkeycard.RandomID
 import libmensago.ClientRequest
 import libmensago.MServerPath
@@ -91,6 +92,89 @@ fun commandDownload(state: ClientSession) {
     lfs.withLock(path) { state.sendFileData(path, fileSize, offset) }?.let {
         logDebug("commandDownload: sendFileData error for ${state.wid}: $it")
     }
+}
+
+// MKDIR(Path, ClientPath)
+fun commandMkDir(state: ClientSession) {
+    if (!state.requireLogin()) return
+
+    val schema = Schemas.mkDir
+    schema.validate(state.message.data) { name, e ->
+        val msg = if (e is MissingFieldException)
+            "Missing required field $name"
+        else
+            "Bad value for field $name"
+        QuickResponse.sendBadRequest(msg, state.conn)
+    }
+
+    val clientPath = schema.getCryptoString("ClientPath", state.message.data)!!
+
+    val serverPath = schema.getPath("Path", state.message.data)!!
+    if (serverPath.isFile() || serverPath.isRoot()) {
+        QuickResponse.sendBadRequest("Bad path $serverPath given", state.conn)
+        return
+    }
+
+    val parent = serverPath.parent()
+    if (parent == null) {
+        logError("Failed to get parent for path $serverPath")
+        QuickResponse.sendInternalError("Error getting parent for $serverPath", state.conn)
+        return
+    }
+
+    val lfs = LocalFS.get()
+    val exists = lfs.entry(parent).exists().getOrElse {
+        logError("Failed to check existence of parent path $parent: $it")
+        QuickResponse.sendInternalError("Error checking parent path", state.conn)
+        return
+    }
+    if (!exists) {
+        QuickResponse.sendNotFound("Parent path not found", state.conn)
+        return
+    }
+
+    val auth = DirectoryTarget.fromPath(parent)!!
+        .isAuthorized(WIDActor(state.wid!!), AuthAction.Create)
+        .getOrElse {
+            logError("Failed to check authorization of ${state.wid} in path $parent: $it")
+            QuickResponse.sendInternalError("Error checking authorization", state.conn)
+            return
+        }
+    if (!auth) {
+        QuickResponse.sendForbidden("", state.conn)
+        return
+    }
+
+    val dirHandle = lfs.entry(serverPath)
+    dirHandle.makeDirectory()?.let {
+        logError("Failed to create $serverPath: $it")
+        QuickResponse.sendInternalError("Error creating directory", state.conn)
+        return
+    }
+
+    val db = DBConn()
+    addFolderEntry(db, state.wid!!, serverPath, clientPath)?.let {
+        dirHandle.delete()?.let { e -> logError("Failed to delete folder $serverPath: $e") }
+        logError("Failed to add folder entry for $serverPath: $it")
+        QuickResponse.sendInternalError("Error creating folder entry", state.conn)
+        return
+    }
+
+    addSyncRecord(
+        db, state.wid!!, SyncRecord(
+            RandomID.generate(),
+            UpdateType.Create,
+            "$serverPath:$clientPath",
+            Instant.now().epochSecond.toString(),
+            state.devid!!
+        )
+    )?.let {
+        logError("commandMkDir: failed to add update entry for $serverPath: $it")
+        QuickResponse.sendInternalError("Error adding update entry", state.conn)
+        return
+    }
+    ServerResponse(200, "OK", "")
+        .sendCatching(state.conn, "Failed to send MKDIR confirmation")
 }
 
 // UPLOAD(Size,Hash,Path,Replaces="",Name="",Offset=0)

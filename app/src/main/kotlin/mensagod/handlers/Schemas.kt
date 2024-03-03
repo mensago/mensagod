@@ -19,6 +19,11 @@ object Schemas {
         MsgField("Time", MsgFieldType.UnixTime, true)
     )
 
+    val mkDir = Schema(
+        MsgField("ClientPath", MsgFieldType.CryptoString, true),
+        MsgField("Path", MsgFieldType.Path, true)
+    )
+
     val regCode = Schema(
         // One of these is required, so a bit more validation once the schema code validates. :/
         MsgField("Workspace-ID", MsgFieldType.RandomID, false),
