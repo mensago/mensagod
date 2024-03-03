@@ -40,6 +40,7 @@ class CryptoStringTest {
                 "CURVE25519:SNhj2K`hgBd8>G>lW$!pXiM7S-B!Fbd9jT2&{{Az"
             )
         )
+        assert(CryptoString.checkFormat("CURVE25519:SNhj2K`hgBd8>G>lW$!pXiM7S-B!Fbd9jT2&{{Az"))
     }
 
     @Test
