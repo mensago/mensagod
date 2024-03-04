@@ -102,4 +102,6 @@ fun commandSend(state: ClientSession) {
         return
     }
     queueMessageForDelivery(sender, domain, handle.path)
+    ServerResponse(200, "OK", "")
+        .sendCatching(state.conn, "Failed to send successful SEND response")
 }

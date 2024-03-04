@@ -5,8 +5,12 @@ import libmensago.*
 import libmensago.resolver.KCResolver
 import mensagod.*
 import mensagod.dbcmds.*
+import java.lang.Thread.currentThread
 import java.time.Instant
+import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Used for giving the necessary information for delivery threads to do their jobs.
@@ -15,6 +19,9 @@ class MessageInfo(val sender: DeliveryTarget, val receiver: DeliveryTarget, val 
 
 // The global message queue for delivery threads to process work from.
 private val gMessageQueue = ConcurrentLinkedQueue<MessageInfo>()
+private val gConcurrentMap = ConcurrentHashMap<Thread, Boolean>()
+private val gDeliveryThreads = Collections.newSetFromMap(gConcurrentMap)
+private val gQuitDeliveryThreads = AtomicBoolean(false)
 
 /**
  * Add a MessageInfo object to the delivery queue. It also spawns a delivery thread to handle the
@@ -30,11 +37,26 @@ fun queueMessageForDelivery(sender: WAddress, domain: Domain, path: MServerPath)
     return Thread.ofVirtual().start { deliveryWorker() }
 }
 
+fun shutdownDeliveryThreads() {
+    gQuitDeliveryThreads.set(true)
+    while (gDeliveryThreads.size > 0)
+        gDeliveryThreads.first().join()
+}
+
+/**
+ * This function only exists for testing. It merely turns off the flag signalling quitting time for
+ * delivery threads
+ */
+fun resetDelivery() {
+    gQuitDeliveryThreads.set(false)
+}
+
 fun deliveryWorker() {
 
     val lfs = LocalFS.get()
     val db = DBConn()
-    while (gMessageQueue.isNotEmpty()) {
+    gDeliveryThreads.add(currentThread())
+    while (!gQuitDeliveryThreads.get() && gMessageQueue.isNotEmpty()) {
         val msgInfo = gMessageQueue.poll() ?: break
 
         val handle = lfs.entry(msgInfo.path)
@@ -116,6 +138,7 @@ fun deliveryWorker() {
         lfs.withLock(msgInfo.path) { handle.delete() }
             ?.let { logError("Couldn't delete ${msgInfo.path}: $it") }
     }
+    gDeliveryThreads.remove(currentThread())
 }
 
 private fun sendBounce(errorCode: Int, info: MessageInfo, extraData: Map<String, String>):

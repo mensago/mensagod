@@ -6,9 +6,12 @@ import libkeycard.WAddress
 import libmensago.*
 import libmensago.resolver.KCResolver
 import mensagod.*
+import mensagod.dbcmds.getSyncRecords
+import mensagod.delivery.resetDelivery
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import testsupport.*
+import java.lang.Thread.sleep
 import java.net.InetAddress
 import java.net.Socket
 
@@ -71,9 +74,29 @@ class MiscCmdTest {
         ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            // This sleep call is needed to ensure the delivery thread has enough time to process
+            // the sent message and add the sync record to the database.
+            sleep(100)
 
             response.assertReturnCode(200)
+
+            // While the return code says that the item was successfully queued for delivery, the
+            // rest of this proves that it was successfully delivered and able to be read by the
+            // user. In short, this code proves that local delivery _completely_ works.
+            val syncList = getSyncRecords(db, userAddr.id, 0).getOrThrow()
+            assertEquals(1, syncList.size)
+            val item = syncList[0]
+            assertEquals(item.devid, gServerDevID)
+
+            val lfs = LocalFS.get()
+            val itemHandle = lfs.entry(MServerPath(item.data))
+            assert(itemHandle.exists().getOrThrow())
+            val received = Envelope.loadFile(itemHandle.getFile()).getOrThrow()
+            val openedMsg = received.open(userPair).getOrThrow()
+            assertEquals(msg1.subject, openedMsg.subject)
+            assertEquals(msg1.body, openedMsg.body)
         }.run()
+        resetDelivery()
 
 
         // TODO: Implement test for commandSend()

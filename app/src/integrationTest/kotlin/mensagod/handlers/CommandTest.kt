@@ -2,6 +2,8 @@ package mensagod.handlers
 
 import mensagod.ClientSession
 import mensagod.SessionState
+import mensagod.delivery.shutdownDeliveryThreads
+import java.lang.Thread.sleep
 import java.net.ServerSocket
 
 class CommandTest(
@@ -21,13 +23,16 @@ class CommandTest(
             it.uncaughtExceptionHandler { _, throwable -> serverException = throwable }
             it.start { serverWorker(srvSocket, state) }
         }
-        Thread.sleep(100)
+        // This little sleep call ensures that delivery threads have enough time to work and that
+        // client threads are waiting on the server thread
+        sleep(100)
 
         val clientThread = Thread.ofVirtual().let {
             it.name("$testName: Client")
             it.uncaughtExceptionHandler { _, throwable -> clientException = throwable }
             it.start { clientCode(srvSocket.localPort) }
         }
+
         serverThread.join()
         serverException?.let { throw it }
         clientThread.join()
@@ -44,5 +49,7 @@ class CommandTest(
             it.message = state.message
         }
         command(serverState)
+        sleep(100)
+        shutdownDeliveryThreads()
     }
 }
