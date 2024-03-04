@@ -339,7 +339,7 @@ class KeycardCmdTest {
         }.run()
 
         val db = DBConn()
-        setupAdminKeycard(db, true)
+        setupKeycard(db, true, ADMIN_PROFILE_DATA)
 
         // Test Case #2: Request entire keycard
         CommandTest(

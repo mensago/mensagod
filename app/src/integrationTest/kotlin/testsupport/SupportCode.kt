@@ -55,11 +55,7 @@ private const val adminKeycard = "Type:User\r\n" +
         "Verification-Key:ED25519:6|HBWrxMY6-?r&Sm)_^PLPerpqOj#b&x#N_#C3}p\r\n" +
         "Time-To-Live:14\r\n" +
         "Expires:2024-02-20\r\n" +
-        "Timestamp:2024-01-21T20:02:41Z\r\n" +
-        "Organization-Signature:ED25519:oC9NsUC-PNW\$G9N^7fZZknug=@KF(u>k4aj8W;=47{jxnrbGPki>YbG65!32y6@jX)Fq>*Uks<ZF-_(H\r\n" +
-        "Previous-Hash:BLAKE2B-256:p*{~#L}xycY{Ge3!vY))g&<!{^;Ef\$zd8s@)(Cb6\r\n" +
-        "Hash:BLAKE2B-256:aOXSB=4*;RdV;e)^39NR;`9L}^dFxN9rpW)hzNb!\r\n" +
-        "User-Signature:ED25519:Ge+1#zpzg|<Dj;p?<BTkARlq~&3ngMFc4?cWbqR-Y){b?h@1+4`b@B#^J-P!B)0E103}=-=oeoRKDNpY\r\n"
+        "Timestamp:2024-01-21T20:02:41Z\r\n"
 
 val ADMIN_PROFILE_DATA = mutableMapOf(
     "name" to "Administrator",
@@ -363,52 +359,12 @@ fun setupAdmin(db: DBConn) {
 }
 
 /**
- * Registers a regular user account and populates its workspace with test data.
- */
-fun setupUser(db: DBConn) {
-    val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
-    val userUID = UserID.fromString(USER_PROFILE_DATA["uid"])!!
-    val devid = RandomID.fromString(USER_PROFILE_DATA["devid"])!!
-    val devkey = CryptoString.fromString(USER_PROFILE_DATA["device.public"]!!)!!
-    val fakeInfo = CryptoString.fromString("XSALSA20:abcdefg1234567890")!!
-    addWorkspace(
-        db, userWID, userUID, gServerDomain, USER_PROFILE_DATA["passhash"]!!,
-        "argon2id", "ejzAtaom5H1y6wnLHvrb7g", "m=65536,t=2,p=1",
-        WorkspaceStatus.Active, WorkspaceType.Individual
-    )?.let { throw it }
-    addDevice(db, userWID, devid, devkey, fakeInfo, DeviceStatus.Registered)?.let { throw it }
-    deletePrereg(db, WAddress.fromParts(userWID, gServerDomain))?.let { throw it }
-}
-
-/**
  * Sets up the admin account's keycard. Just needed for tests that use keycards and those which
  * cover more advanced functionality. If `chain` is true, a second entry in the admin's keycard is
  * created and all necessary verification checks are made.
  */
-fun setupAdminKeycard(db: DBConn, chain: Boolean) {
-    val adminEntry = UserEntry()
-    with(adminEntry) {
-        setField("Name", "Administrator")
-        setField("User-ID", "admin")
-        setField("Workspace-ID", "ae406c5e-2673-4d3e-af20-91325d9623ca")
-        setField("Domain", "example.com")
-        setField(
-            "Contact-Request-Verification-Key",
-            "ED25519:E?_z~5@+tkQz!iXK?oV<Zx(ec;=27C8Pjm((kRc|"
-        )
-        setField(
-            "Contact-Request-Encryption-Key",
-            "CURVE25519:mO?WWA-k2B2O|Z%fA`~s3^\$iiN{5R->#jxO@cy6{"
-        )
-        setField(
-            "Verification-Key",
-            "ED25519:6|HBWrxMY6-?r&Sm)_^PLPerpqOj#b&x#N_#C3}p"
-        )
-        setField(
-            "Encryption-Key",
-            "CURVE25519:Umbw0Y<^cf1DN|>X38HCZO@Je(zSe6crC6X_C_0F"
-        )
-    }
+fun setupKeycard(db: DBConn, chain: Boolean, profileData: MutableMap<String, String>) {
+    val adminEntry = UserEntry.fromString(adminKeycard).getOrThrow()
     val card = Keycard.new("User")!!
     card.entries.add(adminEntry)
     card.current!!.isDataCompliant()?.let { throw it }
@@ -421,8 +377,8 @@ fun setupAdminKeycard(db: DBConn, chain: Boolean) {
     card.current!!.addAuthString("Previous-Hash", prevHash)
     card.current!!.hash()?.let { throw it }
     val adminCRSPair = SigningPair.fromStrings(
-        ADMIN_PROFILE_DATA["crsigning.public"]!!,
-        ADMIN_PROFILE_DATA["crsigning.private"]!!
+        profileData["crsigning.public"]!!,
+        profileData["crsigning.private"]!!
     ).getOrThrow()
     card.current!!.sign("User-Signature", adminCRSPair)?.let { throw it }
     card.current!!.isCompliant()?.let { throw it }
@@ -438,14 +394,32 @@ fun setupAdminKeycard(db: DBConn, chain: Boolean) {
     addEntry(db, card.current!!)?.let { throw it }
     assert(card.verify().getOrThrow())
 
-    ADMIN_PROFILE_DATA["crsigning.public"] = newKeys["crsigning.public"]!!.toString()
-    ADMIN_PROFILE_DATA["crsigning.private"] = newKeys["crsigning.private"]!!.toString()
-    ADMIN_PROFILE_DATA["crencryption.public"] = newKeys["crencryption.public"]!!.toString()
-    ADMIN_PROFILE_DATA["crencryption.private"] = newKeys["crencryption.private"]!!.toString()
-    ADMIN_PROFILE_DATA["signing.public"] = newKeys["signing.public"]!!.toString()
-    ADMIN_PROFILE_DATA["signing.private"] = newKeys["signing.private"]!!.toString()
-    ADMIN_PROFILE_DATA["encryption.public"] = newKeys["encryption.public"]!!.toString()
-    ADMIN_PROFILE_DATA["encryption.private"] = newKeys["encryption.private"]!!.toString()
+    profileData["crsigning.public"] = newKeys["crsigning.public"]!!.toString()
+    profileData["crsigning.private"] = newKeys["crsigning.private"]!!.toString()
+    profileData["crencryption.public"] = newKeys["crencryption.public"]!!.toString()
+    profileData["crencryption.private"] = newKeys["crencryption.private"]!!.toString()
+    profileData["signing.public"] = newKeys["signing.public"]!!.toString()
+    profileData["signing.private"] = newKeys["signing.private"]!!.toString()
+    profileData["encryption.public"] = newKeys["encryption.public"]!!.toString()
+    profileData["encryption.private"] = newKeys["encryption.private"]!!.toString()
+}
+
+/**
+ * Registers a regular user account and populates its workspace with test data.
+ */
+fun setupUser(db: DBConn) {
+    val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
+    val userUID = UserID.fromString(USER_PROFILE_DATA["uid"])!!
+    val devid = RandomID.fromString(USER_PROFILE_DATA["devid"])!!
+    val devkey = CryptoString.fromString(USER_PROFILE_DATA["device.public"]!!)!!
+    val fakeInfo = CryptoString.fromString("XSALSA20:abcdefg1234567890")!!
+    addWorkspace(
+        db, userWID, userUID, gServerDomain, USER_PROFILE_DATA["passhash"]!!,
+        "argon2id", "ejzAtaom5H1y6wnLHvrb7g", "m=65536,t=2,p=1",
+        WorkspaceStatus.Active, WorkspaceType.Individual
+    )?.let { throw it }
+    addDevice(db, userWID, devid, devkey, fakeInfo, DeviceStatus.Registered)?.let { throw it }
+    deletePrereg(db, WAddress.fromParts(userWID, gServerDomain))?.let { throw it }
 }
 
 /**
