@@ -176,13 +176,15 @@ fun setQuotaUsage(db: DBConn, wid: RandomID, usage: Long): Throwable? {
 private fun addQuotaFromDisk(db: DBConn, wid: RandomID): Result<Pair<Long, Long>> {
     val userWidPath = MServerPath("/ wsp $wid")
     val handle = LocalFS.get().entry(userWidPath)
-    if (!handle.exists().getOrElse { return it.toFailure() }) {
+    val usage = if (!handle.exists().getOrElse { return it.toFailure() }) {
         val status = checkWorkspace(db, wid).getOrElse { return it.toFailure() }
         if (status == null) return Result.failure(ResourceNotFoundException())
+        0
+    } else {
+        LocalFS.get().getDiskUsage(MServerPath("/ wsp $wid"))
+            .getOrElse { return it.toFailure() }
     }
 
-    val usage = LocalFS.get().getDiskUsage(MServerPath("/ wsp $wid"))
-        .getOrElse { return it.toFailure() }
     val defaultQuota = ServerConfig.get().getInteger("global.default_quota")!! * 1_048_576L
 
     db.execute(
