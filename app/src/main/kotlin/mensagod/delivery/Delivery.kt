@@ -81,7 +81,7 @@ fun deliveryWorker() {
             if (!exists) {
                 runCatching { destHandle.getFile().mkdirs() }
                     .onFailure {
-                        logError("Unable to check for path ${destHandle.path}")
+                        logError("Unable to create path ${destHandle.path}: $it")
                         return
                     }
             }

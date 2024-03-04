@@ -1,14 +1,14 @@
 package mensagod.handlers
 
-import libmensago.ClientRequest
-import libmensago.ServerResponse
-import mensagod.DBConn
-import mensagod.ServerConfig
-import mensagod.SessionState
-import mensagod.resetDB
+import keznacl.EncryptionPair
+import libkeycard.RandomID
+import libkeycard.WAddress
+import libmensago.*
+import libmensago.resolver.KCResolver
+import mensagod.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import testsupport.initDB
+import testsupport.*
 import java.net.InetAddress
 import java.net.Socket
 
@@ -35,6 +35,47 @@ class MiscCmdTest {
 
     @Test
     fun sendTest() {
+        setupTest("handlers.send")
+        KCResolver.dns = FakeDNSHandler()
+
+        val db = DBConn()
+        setupKeycard(db, false, ADMIN_PROFILE_DATA)
+        setupUser(db)
+        setupKeycard(db, false, USER_PROFILE_DATA)
+
+        val adminAddr = WAddress.fromString(ADMIN_PROFILE_DATA["waddress"])!!
+        val userAddr = WAddress.fromString(USER_PROFILE_DATA["waddress"])!!
+        val userPair = EncryptionPair.fromStrings(
+            USER_PROFILE_DATA["encryption.public"]!!,
+            USER_PROFILE_DATA["encryption.private"]!!
+        ).getOrThrow()
+
+        val msg1 = Message(adminAddr, userAddr, MsgFormat.Text)
+            .setSubject("Test Subject")
+            .setBody("This is a test message")
+        val sealed1 = Envelope.seal(userPair, msg1).getOrThrow()
+        val sealed1Str = sealed1.toStringResult().getOrThrow()
+
+        // Test Case #1: Success
+        CommandTest(
+            "send.1",
+            SessionState(
+                ClientRequest(
+                    "SEND", mutableMapOf(
+                        "Message" to sealed1Str,
+                        "Domain" to userAddr.domain.toString(),
+                    )
+                ), adminAddr.id,
+                LoginState.LoggedIn, RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+            ), ::commandSend
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(200)
+        }.run()
+
+
         // TODO: Implement test for commandSend()
     }
 }

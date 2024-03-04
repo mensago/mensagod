@@ -2,7 +2,6 @@ package mensagod.handlers
 
 import libkeycard.MAddress
 import libkeycard.MissingFieldException
-import libmensago.MServerPath
 import libmensago.ServerResponse
 import mensagod.*
 import mensagod.dbcmds.getQuotaInfo
@@ -97,9 +96,9 @@ fun commandSend(state: ClientSession) {
             QuickResponse.sendInternalError("Error saving message", state.conn)
             return
         }
-    handle.moveTo(MServerPath("/ out $gServerDevID"))?.let {
-        logError("commandSend::moveTo error: $it")
-        QuickResponse.sendInternalError("Error message to delivery outbox", state.conn)
+    handle.moveToOutbox(state.wid!!)?.let {
+        logError("commandSend::moveToOutbox error: $it")
+        QuickResponse.sendInternalError("Error moving message to delivery outbox", state.conn)
         return
     }
     queueMessageForDelivery(sender, domain, handle.path)

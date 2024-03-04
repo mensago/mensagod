@@ -151,6 +151,24 @@ class LocalFSHandle(mpath: MServerPath, private var file: File) {
     }
 
     /**
+     * Moves the file to the folder dedicated to outgoing messages. Unlike `moveTo`, this call
+     * ensures that the target directory exists
+     *
+     * @throws ResourceNotFoundException Returned if the destination path doesn't exist
+     * @throws TypeException Returned if the destination path points to a file
+     * @throws FileExistsException Returned if a file by the same name exists in the destination
+     * @throws IOException Returned for I/O errors
+     */
+    fun moveToOutbox(wid: RandomID): Throwable? {
+        val lfs = LocalFS.get()
+        val dest = MServerPath("/ out $wid")
+        val localDest = lfs.convertToLocal(dest)
+        if (!localDest.exists())
+            lfs.entry(dest).makeDirectory()?.let { return it }
+        return moveTo(dest)
+    }
+
+    /**
      * readAll reads data from a file into memory.
      *
      * @throws ResourceNotFoundException Returned if the file doesn't exist
