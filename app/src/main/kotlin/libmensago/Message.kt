@@ -131,6 +131,28 @@ open class Message(var from: WAddress, var to: WAddress, var format: MsgFormat) 
         return this
     }
 
+    override fun toString(): String {
+        val sl = mutableListOf<String>()
+        sl.add("Message($format):\nversion: $version\ntype: $type")
+        if (!subType.isNullOrEmpty()) sl.add("subtype: $subType")
+        sl.add("date: $date\nfrom: $from\nto: $to")
+        if (cc.isNotEmpty())
+            sl.add("cc: ${cc.joinToString(",")}")
+        if (bcc.isNotEmpty())
+            sl.add("bcc: ${cc.joinToString(",")}")
+        sl.add("id: $id\nthread id:$threadID")
+        sl.add("subject: $subject")
+        sl.add("_".repeat(10))
+        sl.add(body)
+        sl.add("_".repeat(10))
+        if (attachments.isNotEmpty()) {
+            attachments.forEachIndexed { i, a ->
+                sl.add("${i + 1}. ${a.name} (${a.mime})")
+            }
+        }
+        return sl.joinToString("\n")
+    }
+
     companion object {
 
         /** Private method just for making padding strings of random characters */

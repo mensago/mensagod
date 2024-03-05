@@ -6,6 +6,10 @@ import java.util.regex.Pattern
 @Serializable
 class MimeType private constructor(val value: String) {
 
+    override fun toString(): String {
+        return value
+    }
+
     companion object {
         private val mimePattern = Pattern.compile(
             "(application|audio|font|example|image|message|model|multipart|text|video|" +

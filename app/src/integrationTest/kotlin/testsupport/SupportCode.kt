@@ -367,9 +367,10 @@ fun setupTest(name: String): SetupData {
     val lfs = LocalFS.get()
     listOf("wsp", "out", "tmp", "keys").forEach { lfs.entry(MServerPath("/ $it")).makeDirectory() }
     KCResolver.dns = FakeDNSHandler()
-    
+
     val config = ServerConfig.load().getOrThrow()
     gServerDomain = Domain.fromString(config.getString("global.domain"))!!
+    gServerAddress = WAddress.fromParts(gServerDevID, gServerDomain)
     resetDB(config).getOrThrow()
     DBConn.initialize(config)?.let { throw it }
     val db = DBConn().connect().getOrThrow()
