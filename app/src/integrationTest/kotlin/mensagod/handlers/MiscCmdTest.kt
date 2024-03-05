@@ -98,7 +98,31 @@ class MiscCmdTest {
         }.run()
         resetDelivery()
 
+        // Test Case #2: Try to send a message that's too big
+        val tooBigSealed = Envelope.seal(
+            userPair, Message(adminAddr, userAddr, MsgFormat.Text)
+                .setSubject("This Message Is Too Big for SEND()")
+                .setBody("\uD83D\uDE08".repeat(6_500_000))
+        ).getOrThrow()
+        println("tooBig size: ${tooBigSealed.message.toString().length}")
 
-        // TODO: Implement test for commandSend()
+        CommandTest(
+            "send.2",
+            SessionState(
+                ClientRequest(
+                    "SEND", mutableMapOf(
+                        "Message" to tooBigSealed.toString(),
+                        "Domain" to userAddr.domain.toString(),
+                    )
+                ), adminAddr.id,
+                LoginState.LoggedIn, RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+            ), ::commandSend
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            sleep(100)
+
+            response.assertReturnCode(414)
+        }.run()
     }
 }

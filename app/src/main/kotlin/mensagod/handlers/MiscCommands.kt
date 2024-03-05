@@ -58,6 +58,12 @@ fun commandSend(state: ClientSession) {
     } ?: return
 
     val message = schema.getString("Message", state.message.data)!!
+    println("Message size: ${message.length}")
+    if (message.length > 25000000) {
+        ServerResponse(414, "LIMIT REACHED", "SEND has a limit of 25MB")
+            .sendCatching(state.conn, "Failed to send over-limit message for SEND")
+        return
+    }
     val domain = schema.getDomain("Domain", state.message.data)!!
 
     val db = DBConn()
