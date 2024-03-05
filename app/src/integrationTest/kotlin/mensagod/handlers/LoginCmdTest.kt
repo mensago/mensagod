@@ -84,6 +84,7 @@ class LoginCmdTest {
         // NOTE: This test is incomplete because it also needs a second case which goes through
         // the whole new-device-handling thing. That code is not yet implemented, but when it is,
         // a second test case will be added here to test it.
+        // TODO: Add multidevice test case to DEVICE
     }
 
     @Test
