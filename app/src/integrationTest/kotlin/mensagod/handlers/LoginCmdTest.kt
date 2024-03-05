@@ -6,10 +6,11 @@ import keznacl.EncryptionPair
 import libkeycard.RandomID
 import libkeycard.Timestamp
 import libmensago.ClientRequest
+import libmensago.Envelope
+import libmensago.MServerPath
 import libmensago.ServerResponse
-import mensagod.DBConn
-import mensagod.LoginState
-import mensagod.SessionState
+import mensagod.*
+import mensagod.dbcmds.getSyncRecords
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import testsupport.ADMIN_PROFILE_DATA
@@ -86,6 +87,10 @@ class LoginCmdTest {
         setupKeycard(db, false, ADMIN_PROFILE_DATA)
 
         // Test Case #2: Successfully complete second device auth phase
+        val adminPair = EncryptionPair.fromStrings(
+            ADMIN_PROFILE_DATA["encryption.public"]!!,
+            ADMIN_PROFILE_DATA["encryption.private"]!!
+        ).getOrThrow()
         val devid2 = RandomID.fromString("35ee6e0d-add8-49ea-a70a-edd0b53db3e8")!!
         val dev2pair = EncryptionPair.generate().getOrThrow()
         val devInfo2 = mapOf(
@@ -111,9 +116,22 @@ class LoginCmdTest {
             ), ::commandDevice
         ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
-            var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            Thread.sleep(100)
+
             response.assertReturnCode(105)
-            response.checkFields(listOf(Pair("Challenge", true)))
+
+            val syncList = getSyncRecords(db, adminWID, 0).getOrThrow()
+            assertEquals(1, syncList.size)
+            val item = syncList[0]
+            assertEquals(item.devid, gServerDevID)
+
+            val lfs = LocalFS.get()
+            val itemHandle = lfs.entry(MServerPath(item.data))
+            assert(itemHandle.exists().getOrThrow())
+            val received = Envelope.loadFile(itemHandle.getFile()).getOrThrow()
+            val devRequest = received.open(adminPair).getOrThrow()
+            println(devRequest)
 
             // TODO: Add multidevice test case to DEVICE
         }.run()
