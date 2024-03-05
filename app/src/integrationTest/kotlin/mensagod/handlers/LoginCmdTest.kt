@@ -7,12 +7,14 @@ import libkeycard.RandomID
 import libkeycard.Timestamp
 import libmensago.ClientRequest
 import libmensago.ServerResponse
+import mensagod.DBConn
 import mensagod.LoginState
 import mensagod.SessionState
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import testsupport.ADMIN_PROFILE_DATA
 import testsupport.assertReturnCode
+import testsupport.setupKeycard
 import testsupport.setupTest
 import java.net.InetAddress
 import java.net.Socket
@@ -80,11 +82,42 @@ class LoginCmdTest {
             response.assertReturnCode(200)
 
         }.run()
+        val db = DBConn()
+        setupKeycard(db, false, ADMIN_PROFILE_DATA)
 
-        // NOTE: This test is incomplete because it also needs a second case which goes through
-        // the whole new-device-handling thing. That code is not yet implemented, but when it is,
-        // a second test case will be added here to test it.
-        // TODO: Add multidevice test case to DEVICE
+        // Test Case #2: Successfully complete second device auth phase
+        val devid2 = RandomID.fromString("35ee6e0d-add8-49ea-a70a-edd0b53db3e8")!!
+        val dev2pair = EncryptionPair.generate().getOrThrow()
+        val devInfo2 = mapOf(
+            "Name" to "myframework",
+            "User" to "Corbin",
+            "OS" to "Windows 10 Pro",
+            "Device-ID" to devid2.toString(),
+            "Device-Key" to dev2pair.publicKey.toString(),
+            "Timestamp" to Timestamp().toString(),
+        )
+        val encInfo2 = userKey.encrypt(devInfo2.toString().encodeToByteArray()).getOrThrow()
+        CommandTest(
+            "device.2",
+            SessionState(
+                ClientRequest(
+                    "DEVICE", mutableMapOf(
+                        "Device-ID" to devid2.toString(),
+                        "Device-Key" to dev2pair.publicKey.toString(),
+                        "Device-Info" to encInfo2.toString(),
+                    )
+                ), adminWID,
+                LoginState.AwaitingDeviceID
+            ), ::commandDevice
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(105)
+            response.checkFields(listOf(Pair("Challenge", true)))
+
+            // TODO: Add multidevice test case to DEVICE
+        }.run()
+
     }
 
     @Test

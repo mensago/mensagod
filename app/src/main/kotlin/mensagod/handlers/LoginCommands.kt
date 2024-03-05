@@ -1,8 +1,8 @@
 package mensagod.handlers
 
 import keznacl.*
+import libkeycard.UserEntry
 import libmensago.*
-import libmensago.resolver.KCResolver
 import mensagod.*
 import mensagod.dbcmds.*
 import mensagod.delivery.queueMessageForDelivery
@@ -121,16 +121,25 @@ fun commandDevice(state: ClientSession) {
                     return
                 }
 
-                val userEntry =
-                    KCResolver.getCurrentEntry(EntrySubject.fromWAddress(recipient))
-                        .getOrElse {
-                            logError("commandDevice.getCurrentEntry exception: $it")
-                            QuickResponse.sendInternalError(
-                                "Error looking up user keycard",
-                                state.conn
-                            )
-                            return
-                        }
+                val entryList = getEntries(db, recipient.id, 0U)
+                    .getOrElse {
+                        logError("commandDevice.getEntries exception: $it")
+                        QuickResponse.sendInternalError(
+                            "Error looking up user keycard",
+                            state.conn
+                        )
+                        return
+                    }
+                if (entryList.size < 1) {
+                    logError("commandDevice: no entries for wid ${state.wid}")
+                    QuickResponse.sendInternalError("User keycard doesn't exist", state.conn)
+                    return
+                }
+                val userEntry = UserEntry.fromString(entryList[0]).getOrElse {
+                    logError("commandDevice: corrupted current entry for ${state.wid}")
+                    QuickResponse.sendInternalError("User keycard is corrupted", state.conn)
+                    return
+                }
                 val userKey = userEntry.getEncryptionKey("Encryption-Key")
                 if (userKey == null) {
                     logError("commandDevice.getEncryptionKey failure")

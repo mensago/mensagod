@@ -8,6 +8,7 @@ import libkeycard.*
 import libmensago.MServerPath
 import libmensago.ResourceNotFoundException
 import libmensago.ServerResponse
+import libmensago.resolver.KCResolver
 import mensagod.*
 import mensagod.dbcmds.*
 import mensagod.handlers.DeviceStatus
@@ -365,7 +366,8 @@ fun setupTest(name: String): SetupData {
     LocalFS.initialize(Paths.get(testpath, "topdir").toString())?.let { throw it }
     val lfs = LocalFS.get()
     listOf("wsp", "out", "tmp", "keys").forEach { lfs.entry(MServerPath("/ $it")).makeDirectory() }
-
+    KCResolver.dns = FakeDNSHandler()
+    
     val config = ServerConfig.load().getOrThrow()
     gServerDomain = Domain.fromString(config.getString("global.domain"))!!
     resetDB(config).getOrThrow()
