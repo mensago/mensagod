@@ -186,8 +186,8 @@ fun commandDevice(state: ClientSession) {
                     )
                     return
                 }
-                handle.moveTo(MServerPath("/ out $gServerDevID"))?.let {
-                    logError("commandDevice.moveTo failure: $it")
+                handle.moveToOutbox(gServerDevID)?.let {
+                    logError("commandDevice.moveToOutbox failure: $it")
                     QuickResponse.sendInternalError(
                         "Failure moving encrypted device request",
                         state.conn

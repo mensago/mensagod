@@ -4,12 +4,11 @@ import keznacl.CryptoString
 import libkeycard.Timestamp
 import libkeycard.WAddress
 import java.net.InetAddress
-import javax.activation.MimeType
 
 /**
  * The DeviceApprovalMsg class represents a device approval message.
  */
-class DeviceApprovalMsg(from: WAddress, to: WAddress, addr: InetAddress, devInfo: CryptoString):
+class DeviceApprovalMsg(from: WAddress, to: WAddress, addr: InetAddress, devInfo: CryptoString) :
     Message(from, to, MsgFormat.Text) {
 
     init {
@@ -19,9 +18,12 @@ class DeviceApprovalMsg(from: WAddress, to: WAddress, addr: InetAddress, devInfo
 
         val ts = Timestamp()
         body = "Timestamp:$ts\r\nIP-Address:$addr\r\n"
-        attach(Attachment("deviceinfo",
-            MimeType("application/vnd.mensago.encrypted-json"),
-            devInfo.toString().encodeToByteArray()
-        ))
+        attach(
+            Attachment(
+                "deviceinfo",
+                MimeType.fromString("application/vnd.mensago.encrypted-json")!!,
+                devInfo.toString().encodeToByteArray()
+            )
+        )
     }
 }
