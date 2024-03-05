@@ -56,7 +56,7 @@ fun deliveryWorker() {
     val lfs = LocalFS.get()
     val db = DBConn()
     gDeliveryThreads.add(currentThread())
-    while (!gQuitDeliveryThreads.get() && gMessageQueue.isNotEmpty()) {
+    do {
         val msgInfo = gMessageQueue.poll() ?: break
 
         val handle = lfs.entry(msgInfo.path)
@@ -137,7 +137,8 @@ fun deliveryWorker() {
         }
         lfs.withLock(msgInfo.path) { handle.delete() }
             ?.let { logError("Couldn't delete ${msgInfo.path}: $it") }
-    }
+
+    } while (!gQuitDeliveryThreads.get())
     gDeliveryThreads.remove(currentThread())
 }
 
