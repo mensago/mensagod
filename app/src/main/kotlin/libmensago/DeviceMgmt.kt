@@ -1,6 +1,7 @@
 package libmensago
 
 import keznacl.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import libkeycard.RandomID
@@ -11,6 +12,7 @@ import libkeycard.Timestamp
  * an identity workspace. It consists of a RandomID identifier, an asymmetric encryption keypair
  * used for login challenges and key exchange, and a
  */
+@Serializable
 class DeviceInfo(
     val id: RandomID, val keypair: EncryptionPair,
     var attributes: MutableMap<String, String> = mutableMapOf()

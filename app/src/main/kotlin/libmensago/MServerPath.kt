@@ -1,6 +1,14 @@
 package libmensago
 
 import keznacl.BadValueException
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import java.util.regex.Pattern
 
 /**
@@ -9,6 +17,7 @@ import java.util.regex.Pattern
  * top-level specifier ('wsp', 'tmp', or 'out') and a series of lowercase UUIDs. This is to ensure
  * maximum privacy for users.
  */
+@Serializable(with = MServerPathAsStringSerializer::class)
 class MServerPath(path: String? = null) {
     var value = "/"
         private set
@@ -129,5 +138,20 @@ class MServerPath(path: String? = null) {
         fun fromString(path: String): MServerPath? {
             return MServerPath().set(path)
         }
+    }
+}
+
+object MServerPathAsStringSerializer : KSerializer<MServerPath> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("MServerPath", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: MServerPath) {
+        encoder.encodeString(value.toString())
+    }
+
+    override fun deserialize(decoder: Decoder): MServerPath {
+        val out = MServerPath.fromString(decoder.decodeString())
+            ?: throw SerializationException("Invalid value for MServerPath")
+        return out
     }
 }
