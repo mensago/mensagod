@@ -2,6 +2,7 @@ package mensagod
 
 import java.io.File
 import java.nio.file.Path
+import java.time.Instant
 
 private var alsoStdout: Boolean = false
 private var logHandle: File? = null
@@ -24,25 +25,42 @@ fun initLogging(path: Path, includeStdout: Boolean) {
     logHandle = File(path.toString())
 }
 
-fun shutdownLogging() { logHandle = null }
+fun shutdownLogging() {
+    logHandle = null
+}
 
-fun logError(msg: String) { if (logLevel >= LOG_ERROR) log(msg) }
-fun logWarn(msg: String) { if (logLevel >= LOG_WARN) log(msg) }
-fun logInfo(msg: String) { if (logLevel >= LOG_INFO) log(msg) }
-fun logDebug(msg: String) { if (logLevel >= LOG_DEBUG) log(msg) }
+fun logError(msg: String) {
+    if (logLevel >= LOG_ERROR) log(msg)
+}
+
+fun logWarn(msg: String) {
+    if (logLevel >= LOG_WARN) log(msg)
+}
+
+fun logInfo(msg: String) {
+    if (logLevel >= LOG_INFO) log(msg)
+}
+
+fun logDebug(msg: String) {
+    if (logLevel >= LOG_DEBUG) log(msg)
+}
 
 /** Log function which runs regardless of application log level. */
 fun log(msg: String) {
     if (msg.endsWith(lineSep))
-        logHandle!!.appendText(msg)
+        logHandle!!.appendText("${Instant.now()}: $msg")
     else
-        logHandle!!.appendText(msg+lineSep)
+        logHandle!!.appendText("${Instant.now()}: $msg$lineSep")
 
     if (alsoStdout) println(msg)
 }
 
 /** Returns the current logging level */
-fun getLogLevel(): UInt { return logLevel }
+fun getLogLevel(): UInt {
+    return logLevel
+}
 
 /** Sets the logging level. System default is logging errors and warnings. */
-fun setLogLevel(level: UInt) { logLevel = level }
+fun setLogLevel(level: UInt) {
+    logLevel = level
+}

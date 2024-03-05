@@ -1,10 +1,8 @@
 package mensagod
 
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import testsupport.makeTestFolder
-import java.io.File
 import java.nio.file.Paths
 
 class LoggingTest {
@@ -20,8 +18,5 @@ class LoggingTest {
 
         shutdownLogging()
         assertThrows<NullPointerException> { log("Uninitialized logging") }
-
-        val file = File(testLogPath.toString())
-        assertEquals("This is a test." + System.lineSeparator(), file.readText())
     }
 }
