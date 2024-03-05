@@ -104,7 +104,6 @@ class MiscCmdTest {
                 .setSubject("This Message Is Too Big for SEND()")
                 .setBody("\uD83D\uDE08".repeat(6_500_000))
         ).getOrThrow()
-        println("tooBig size: ${tooBigSealed.message.toString().length}")
 
         CommandTest(
             "send.2",
