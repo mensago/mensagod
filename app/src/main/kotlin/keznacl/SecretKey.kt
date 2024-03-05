@@ -1,6 +1,7 @@
 package keznacl
 
 import com.iwebpp.crypto.TweetNaclFast.SecretBox
+import kotlinx.serialization.Serializable
 import java.security.SecureRandom
 
 /**
@@ -23,9 +24,8 @@ fun getPreferredSymmetricAlgorithm(): String {
 /**
  * The SecretKey class implements symmetric encryption.
  */
-class SecretKey private constructor(keyStr: CryptoString) : Encryptor, Decryptor {
-    val key: CryptoString = keyStr
-    private var keyHash: Hash? = null
+@Serializable
+class SecretKey private constructor(val key: CryptoString) : Encryptor, Decryptor {
 
     /**
      * Returns a [Hash] of the key using the specified algorithm.
@@ -34,9 +34,7 @@ class SecretKey private constructor(keyStr: CryptoString) : Encryptor, Decryptor
      * algorithm specified by the keys
      */
     fun getHash(algorithm: String = getPreferredHashAlgorithm()): Result<Hash> {
-        if (keyHash == null || keyHash!!.prefix != algorithm)
-            keyHash = hash(key.toByteArray(), algorithm).getOrElse { return it.toFailure() }
-        return Result.success(keyHash!!)
+        return getPublicHash(algorithm)
     }
 
     /**

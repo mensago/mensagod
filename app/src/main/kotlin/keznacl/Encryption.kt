@@ -1,6 +1,7 @@
 package keznacl
 
 import com.iwebpp.crypto.TweetNaclFast
+import kotlinx.serialization.Serializable
 
 /**
  * Returns the asymmetric encryption algorithms supported by the library. Currently the only
@@ -26,17 +27,15 @@ fun getPreferredAsymmetricAlgorithm(): String {
  * getPublicKey(), getPrivateKey(), decrypt(), and encrypt(). Instantiation can be done with from(),
  * fromStrings(), or generate().
  */
-class EncryptionPair private constructor(publicKeyStr: CryptoString, privateKeyStr: CryptoString) :
-    KeyPair(publicKeyStr, privateKeyStr), Encryptor, Decryptor {
+@Serializable
+class EncryptionPair private constructor(
+    val publicKey: CryptoString,
+    val privateKey: CryptoString
+) :
+    Encryptor, Decryptor {
 
-    /** Interface function for [KeyPair]. This implementation always returns true */
-    override fun canEncrypt(): Boolean {
-        return true
-    }
-
-    /** Interface function for [KeyPair]. This implementation always returns false */
-    override fun canSign(): Boolean {
-        return false
+    override fun getPublicHash(algorithm: String): Result<Hash> {
+        return publicKey.calcHash(algorithm)
     }
 
     /**

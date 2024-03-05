@@ -1,6 +1,7 @@
 package keznacl
 
 import com.iwebpp.crypto.TweetNaclFast.Signature
+import kotlinx.serialization.Serializable
 
 /**
  * Returns the digital signing algorithms supported by the library. Currently the only supported
@@ -23,17 +24,12 @@ fun getPreferredSigningAlgorithm(): String {
  * The SigningPair class represents a cryptographic keypair used for creating and verifying digital
  * signatures.
  */
-class SigningPair private constructor(publicKeyStr: CryptoString, privateKeyStr: CryptoString) :
-    KeyPair(publicKeyStr, privateKeyStr), Verifier {
+@Serializable
+class SigningPair private constructor(val publicKey: CryptoString, val privateKey: CryptoString) :
+    Verifier {
 
-    /** KeyPair interface override. Always returns false. */
-    override fun canEncrypt(): Boolean {
-        return false
-    }
-
-    /** KeyPair interface override. Always returns true. */
-    override fun canSign(): Boolean {
-        return true
+    override fun getPublicHash(algorithm: String): Result<Hash> {
+        return publicKey.calcHash(algorithm)
     }
 
     /**
@@ -147,7 +143,8 @@ class SigningPair private constructor(publicKeyStr: CryptoString, privateKeyStr:
 }
 
 /** The VerificationKey class is the public half of a signing keypair. */
-class VerificationKey : Verifier, PublicHasher {
+@Serializable
+class VerificationKey : Verifier {
 
     var publicKey: CryptoString? = null
         private set
