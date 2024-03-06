@@ -157,7 +157,7 @@ class LoginCmdTest {
         val encrypted = serverKey.encrypt(challenge.encodeToByteArray()).getOrThrow()
 
         // Test Case #1: Successfully log in in as admin
-        var session = SessionState(
+        val session = SessionState(
             ClientRequest(
                 "LOGIN", mutableMapOf(
                     "Login-Type" to "PLAIN",
