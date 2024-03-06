@@ -2,8 +2,6 @@ package libmensago
 
 import keznacl.*
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import libkeycard.RandomID
 import libkeycard.Timestamp
 
@@ -31,15 +29,11 @@ class DeviceInfo(
      * Method which encrypts the attributes with the provided key and stores them in the object's
      * encryptedInfo property.
      */
-    fun encryptAttributes(key: Encryptor): Result<DeviceInfo> {
-        val outJSON = try {
-            Json.encodeToString(attributes)
-        } catch (e: Exception) {
-            return Result.failure(e)
-        }
-        encryptedInfo = key.encrypt(outJSON.encodeToByteArray())
+    fun encryptAttributes(key: Encryptor): Result<CryptoString> {
+        val outStr = attributes.keys.joinToString("\r\n") { "$it=${attributes[it]}" }
+        encryptedInfo = key.encrypt(outStr.encodeToByteArray())
             .getOrElse { return it.toFailure() }
-        return Result.success(this)
+        return encryptedInfo!!.toSuccess()
     }
 
     companion object {

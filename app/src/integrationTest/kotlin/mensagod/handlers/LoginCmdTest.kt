@@ -5,10 +5,7 @@ import keznacl.EncryptionKey
 import keznacl.EncryptionPair
 import libkeycard.RandomID
 import libkeycard.Timestamp
-import libmensago.ClientRequest
-import libmensago.Envelope
-import libmensago.MServerPath
-import libmensago.ServerResponse
+import libmensago.*
 import mensagod.*
 import mensagod.dbcmds.getSyncRecords
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -26,19 +23,26 @@ class LoginCmdTest {
     fun deviceTest() {
         setupTest("handlers.deviceTest")
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val devID = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+        val devPair = EncryptionPair.fromStrings(
+            ADMIN_PROFILE_DATA["device.public"]!!,
+            ADMIN_PROFILE_DATA["device.private"]!!
+        ).getOrThrow()
 
         // Actually create some fake device info for the test
-        val devInfo = mapOf(
-            "Name" to "dellxps",
-            "User" to "CSimons",
-            "OS" to "Ubuntu 22.04",
-            "Device-ID" to ADMIN_PROFILE_DATA["devid"]!!,
-            "Device-Key" to ADMIN_PROFILE_DATA["device.public"]!!,
-            "Timestamp" to Timestamp().toString(),
+        val devInfo = DeviceInfo(
+            devID, devPair, mutableMapOf(
+                "Name" to "dellxps",
+                "User" to "CSimons",
+                "OS" to "Ubuntu 22.04",
+                "Device-ID" to ADMIN_PROFILE_DATA["devid"]!!,
+                "Device-Key" to ADMIN_PROFILE_DATA["device.public"]!!,
+                "Timestamp" to Timestamp().toString(),
+            )
         )
         val userKey = EncryptionKey.fromString(ADMIN_PROFILE_DATA["encryption.public"]!!)
             .getOrThrow()
-        val encInfo = userKey.encrypt(devInfo.toString().encodeToByteArray()).getOrThrow()
+        val encInfo = devInfo.encryptAttributes(userKey).getOrThrow()
 
         // Test Case #1: Successfully complete first device auth phase
         CommandTest(
@@ -63,10 +67,6 @@ class LoginCmdTest {
             // encrypted into a CryptoString. This means we decrypt the challenge and send the resulting
             // decrypted string back to the server as proof of device identity.
 
-            val devPair = EncryptionPair.fromStrings(
-                ADMIN_PROFILE_DATA["device.public"]!!,
-                ADMIN_PROFILE_DATA["device.private"]!!
-            ).getOrThrow()
             val challStr = CryptoString.fromString(response.data["Challenge"]!!)!!
             val challDecrypted = devPair.decrypt(challStr).getOrThrow().decodeToString()
 
@@ -131,7 +131,8 @@ class LoginCmdTest {
             assert(itemHandle.exists().getOrThrow())
             val received = Envelope.loadFile(itemHandle.getFile()).getOrThrow()
             val devRequest = received.open(adminPair).getOrThrow()
-            println(devRequest)
+            val items = DeviceApprovalMsg.getApprovalInfo(adminPair, devRequest).getOrThrow()
+            println(items)
 
             // TODO: Add multidevice test case to DEVICE
         }.run()

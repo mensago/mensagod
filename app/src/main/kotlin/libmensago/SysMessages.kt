@@ -33,10 +33,7 @@ class DeviceApprovalMsg(from: WAddress, to: WAddress, addr: InetAddress, devInfo
          * Decrypts the attached device info on an approval message and returns the expected message
          * body to be presented to the user after possible other processing.
          */
-        fun getApprovalInfo(
-            userPair: EncryptionPair,
-            msg: DeviceApprovalMsg
-        ): Result<Map<String, String>> {
+        fun getApprovalInfo(userPair: EncryptionPair, msg: Message): Result<Map<String, String>> {
             if (msg.attachments.size < 1)
                 return MissingDataException("DeviceInfo attachment missing").toFailure()
 
@@ -52,8 +49,10 @@ class DeviceApprovalMsg(from: WAddress, to: WAddress, addr: InetAddress, devInfo
 
             return msg.body.trim().split("\r\n")
                 .plus(infoStr.trim().split("\r\n"))
-                .associate { line -> line.trim().split(":").let { Pair(it[0], it[1]) } }
-                .toSuccess()
+                .associate { line ->
+                    println(line)
+                    line.trim().split(":").let { Pair(it[0], it[1]) }
+                }.toSuccess()
         }
     }
 }
