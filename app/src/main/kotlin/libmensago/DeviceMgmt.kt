@@ -61,11 +61,11 @@ fun collectInfoForDevice(
 ): Result<MutableMap<String, String>> {
 
     val out = hashMapOf(
-        "Name" to Platform.getHostname(),
-        "User" to Platform.getUsername().getOrElse { return it.toFailure() },
+        "Device Name" to Platform.getHostname(),
+        "User Name" to Platform.getUsername().getOrElse { return it.toFailure() },
         "OS" to Platform.getOS().getOrElse { return it.toFailure() },
-        "Device-ID" to devid.toString(),
-        "Device-Key" to devKey.toString(),
+        "Device ID" to devid.toString(),
+        "Device Key" to devKey.toString(),
         "Timestamp" to Timestamp().toString(),
     )
     return out.toSuccess()

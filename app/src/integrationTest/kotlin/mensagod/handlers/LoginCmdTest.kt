@@ -9,6 +9,7 @@ import libmensago.*
 import mensagod.*
 import mensagod.dbcmds.getSyncRecords
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 import testsupport.ADMIN_PROFILE_DATA
 import testsupport.assertReturnCode
@@ -93,15 +94,17 @@ class LoginCmdTest {
         ).getOrThrow()
         val devid2 = RandomID.fromString("35ee6e0d-add8-49ea-a70a-edd0b53db3e8")!!
         val dev2pair = EncryptionPair.generate().getOrThrow()
-        val devInfo2 = mapOf(
-            "Name" to "myframework",
-            "User" to "Corbin",
-            "OS" to "Windows 10 Pro",
-            "Device-ID" to devid2.toString(),
-            "Device-Key" to dev2pair.publicKey.toString(),
-            "Timestamp" to Timestamp().toString(),
+        val devInfo2 = DeviceInfo(
+            devid2, dev2pair, mutableMapOf(
+                "Device Name" to "myframework",
+                "User Name" to "Corbin",
+                "OS" to "Windows 10 Pro",
+                "Device ID" to devid2.toString(),
+                "Device Key" to dev2pair.publicKey.toString(),
+                "Timestamp" to Timestamp().toString(),
+            )
         )
-        val encInfo2 = userKey.encrypt(devInfo2.toString().encodeToByteArray()).getOrThrow()
+        val encInfo2 = devInfo2.encryptAttributes(userKey).getOrThrow()
         CommandTest(
             "device.2",
             SessionState(
@@ -132,9 +135,13 @@ class LoginCmdTest {
             val received = Envelope.loadFile(itemHandle.getFile()).getOrThrow()
             val devRequest = received.open(adminPair).getOrThrow()
             val items = DeviceApprovalMsg.getApprovalInfo(adminPair, devRequest).getOrThrow()
-            println(items)
-
-            // TODO: Add multidevice test case to DEVICE
+            assertNotNull(Timestamp.fromString(items["Timestamp"]!!))
+            assertEquals("127.0.0.1", items["IP Address"])
+            assertEquals("myframework", items["Device Name"])
+            assertEquals("Corbin", items["User Name"])
+            assertEquals("Windows 10 Pro", items["OS"])
+            assertEquals(devid2.toString(), items["Device ID"])
+            assertEquals(dev2pair.publicKey.toString(), items["Device Key"])
         }.run()
 
     }

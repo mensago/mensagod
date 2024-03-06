@@ -17,7 +17,11 @@ class DeviceApprovalMsg(from: WAddress, to: WAddress, addr: InetAddress, devInfo
         subject = "New Device Login"
 
         val ts = Timestamp()
-        body = "Timestamp:$ts\r\nIP-Address:$addr\r\n"
+        val addrStr = if (addr.toString().startsWith("/"))
+            addr.toString().substring(1)
+        else
+            addr.toString()
+        body = "Timestamp=$ts\r\nIP Address=$addrStr\r\n"
         attach(
             Attachment(
                 "deviceinfo",
@@ -47,12 +51,11 @@ class DeviceApprovalMsg(from: WAddress, to: WAddress, addr: InetAddress, devInfo
                 ?: return BadValueException("Bad deviceinfo attachment data").toFailure()
             val infoStr = userPair.decrypt(cs).getOrElse { return it.toFailure() }.decodeToString()
 
-            return msg.body.trim().split("\r\n")
+            val items = msg.body.trim().split("\r\n")
                 .plus(infoStr.trim().split("\r\n"))
-                .associate { line ->
-                    println(line)
-                    line.trim().split(":").let { Pair(it[0], it[1]) }
-                }.toSuccess()
+            return items.associate { line ->
+                line.trim().split("=").let { Pair(it[0], it[1]) }
+            }.toSuccess()
         }
     }
 }
