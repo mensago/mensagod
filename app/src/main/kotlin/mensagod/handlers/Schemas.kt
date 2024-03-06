@@ -10,6 +10,8 @@ import libmensago.Schema
  */
 object Schemas {
 
+    val exists = Schema(MsgField("Path", MsgFieldType.Path, true))
+
     val getWID = Schema(
         MsgField("User-ID", MsgFieldType.UserID, true),
         MsgField("Domain", MsgFieldType.Domain, false)

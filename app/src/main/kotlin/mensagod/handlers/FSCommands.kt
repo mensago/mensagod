@@ -95,6 +95,32 @@ fun commandDownload(state: ClientSession) {
     }
 }
 
+// EXISTS(Path)
+fun commandExists(state: ClientSession) {
+    if (!state.requireLogin()) return
+
+    val schema = Schemas.exists
+    schema.validate(state.message.data) { name, e ->
+        val msg = if (e is MissingFieldException)
+            "Missing required field $name"
+        else
+            "Bad value for field $name"
+        QuickResponse.sendBadRequest(msg, state.conn)
+    } ?: return
+
+    val path = schema.getPath("Path", state.message.data)!!
+    val lfs = LocalFS.get()
+
+    val exists = lfs.entry(path).exists().getOrElse {
+        logError("Error checking existence of $path: $it")
+        QuickResponse.sendInternalError("Error checking existence of path", state.conn)
+        return
+    }
+    val response = if (exists) ServerResponse(200, "OK", "")
+    else ServerResponse(404, "NOT FOUND", "")
+    response.sendCatching(state.conn, "Failed to send MKDIR confirmation")
+}
+
 // MKDIR(Path, ClientPath)
 fun commandMkDir(state: ClientSession) {
     if (!state.requireLogin()) return

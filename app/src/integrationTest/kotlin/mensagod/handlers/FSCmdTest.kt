@@ -101,6 +101,11 @@ class FSCmdTest {
     }
 
     @Test
+    fun existsTest() {
+        // TODO: Implement test for commandExists()
+    }
+
+    @Test
     fun mkDirTest() {
         setupTest("handlers.mkDirTest")
         ServerConfig.load().getOrThrow()
