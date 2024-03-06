@@ -41,7 +41,6 @@ class EncryptionTest {
 
         // Smoke test / lint removal
         keypair.getPublicHash().getOrThrow()
-        keypair.getPrivateHash().getOrThrow()
         CryptoString.fromString("CURVE25519:(B2XX5|<+lOSR>_0mQ=KX4o<aOvXe6M`Z5ldINd`")!!
             .toEncryptionKey()
             .getOrThrow()

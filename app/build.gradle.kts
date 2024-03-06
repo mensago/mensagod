@@ -27,7 +27,6 @@ repositories {
 dependencies {
     implementation("org.xerial:sqlite-jdbc:3.43.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
-    implementation("javax.activation:activation:1.1.1")
 
     // For Apache's awesome FileUtils
     implementation("commons-io:commons-io:2.13.0")
@@ -65,7 +64,6 @@ testing {
         val integrationTest by registering(JvmTestSuite::class) {
             dependencies {
                 implementation(project())
-                implementation("javax.activation:activation:1.1.1")
 
                 // TOML parsing needed for loading the mensagod server config file
                 implementation("com.moandjiezana.toml:toml4j:0.7.2")
