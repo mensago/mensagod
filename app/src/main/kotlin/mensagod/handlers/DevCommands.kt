@@ -10,7 +10,13 @@ import org.apache.commons.io.FileUtils
 
 // DEVKEY(Device-ID, Old-Key, New-Key)
 fun commandDevKey(state: ClientSession) {
-    TODO("Implement commandDevKey($state)")
+    val schema = Schemas.devkey
+    if (!state.requireLogin(schema)) return
+    val devid = schema.getRandomID("Device-ID", state.message.data)!!
+    val oldkey = schema.getCryptoString("Old-Key", state.message.data)!!
+    val newkey = schema.getCryptoString("New-Key", state.message.data)!!
+
+    TODO("Finish implementing commandDevKey($state)")
 }
 
 // GETDEVICEINFO(Device-ID=null)

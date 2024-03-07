@@ -18,6 +18,12 @@ object Schemas {
 
     // DELETE has a variable schema, so no entry exists here.
 
+    val devkey = Schema(
+        MsgField("Device-ID", MsgFieldType.RandomID, true),
+        MsgField("Old-Key", MsgFieldType.CryptoString, true),
+        MsgField("New-Key", MsgFieldType.CryptoString, true),
+    )
+
     val exists = Schema(MsgField("Path", MsgFieldType.Path, true))
 
     val getWID = Schema(
