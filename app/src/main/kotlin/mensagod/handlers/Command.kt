@@ -12,7 +12,6 @@ fun processCommand(state: ClientSession) {
     state.checkForUpdates()
     when (state.message.action) {
         "ADDENTRY" -> commandAddEntry(state)
-        "CANCEL" -> commandCancel(state)
         "COPY" -> commandCopy(state)
         "DELETE" -> commandDelete(state)
         "DEVICE" -> commandDevice(state)
@@ -33,7 +32,7 @@ fun processCommand(state: ClientSession) {
         "LOGOUT" -> commandLogout(state)
         "MKDIR" -> commandMkDir(state)
         "MOVE" -> commandMove(state)
-        
+
         // Feature: KeycardRevocation
         // FeatureTODO: Implement REVOKE and ORGREVOKE
         // "ORGREVOKE" -> commandOrgRevoke(state)
