@@ -12,9 +12,9 @@ fun processCommand(state: ClientSession) {
     state.checkForUpdates()
     when (state.message.action) {
         "ADDENTRY" -> commandAddEntry(state)
-        // "CANCEL" -> commandCancel(state)
-        // "COPY" -> commandCopy(state)
-        // "DELETE" -> commandDelete(state
+        "CANCEL" -> commandCancel(state)
+        "COPY" -> commandCopy(state)
+        "DELETE" -> commandDelete(state)
         "DEVICE" -> commandDevice(state)
         // "DEVKEY" -> commandDevKey(state)
         "DOWNLOAD" -> commandDownload(state)

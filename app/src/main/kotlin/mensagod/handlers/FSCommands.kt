@@ -16,6 +16,21 @@ import mensagod.dbcmds.*
 import java.time.Instant
 import java.util.*
 
+// COPY(SourceFile,DestDir)
+fun commandCopy(state: ClientSession) {
+    if (!state.requireLogin()) return
+    val schema = Schemas.copy
+
+    TODO("Implement commandCopy($state)")
+}
+
+// DELETE(PathCount,Path0...)
+fun commandDelete(state: ClientSession) {
+    if (!state.requireLogin()) return
+
+    TODO("Implement commandDelete($state)")
+}
+
 // DOWNLOAD(Path,Offset=0)
 fun commandDownload(state: ClientSession) {
 

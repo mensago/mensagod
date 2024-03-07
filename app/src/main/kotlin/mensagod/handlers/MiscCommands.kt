@@ -9,6 +9,11 @@ import mensagod.dbcmds.resolveAddress
 import mensagod.dbcmds.resolveWID
 import mensagod.delivery.queueMessageForDelivery
 
+// CANCEL()
+fun commandCancel(state: ClientSession) {
+    TODO("Implement commandCancel($state)")
+}
+
 // GETWID(User-ID, Domain="")
 fun commandGetWID(state: ClientSession) {
 
