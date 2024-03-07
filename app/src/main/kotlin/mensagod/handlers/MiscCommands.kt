@@ -4,6 +4,7 @@ import libkeycard.MAddress
 import libkeycard.MissingFieldException
 import libmensago.ServerResponse
 import mensagod.*
+import mensagod.dbcmds.countSyncRecords
 import mensagod.dbcmds.getQuotaInfo
 import mensagod.dbcmds.resolveAddress
 import mensagod.dbcmds.resolveWID
@@ -37,7 +38,22 @@ fun commandGetWID(state: ClientSession) {
 
 // IDLE(CountUpdates=null)
 fun commandIdle(state: ClientSession) {
-    TODO("Implement commandIdle($state)")
+    val schema = Schemas.idle
+    val updateTime = schema.getUnixTime("CountUpdates", state.message.data)
+    if (updateTime == null) {
+        QuickResponse.sendOK("", state.conn)
+        return
+    }
+
+    if (!state.requireLogin()) return
+
+    val count = countSyncRecords(DBConn(), state.wid!!, updateTime).getOrElse {
+        QuickResponse.sendInternalError("Server error counting updates", state.conn)
+        return
+    }
+
+    ServerResponse(200, "OK", "", mutableMapOf("UpdateCount" to count.toString()))
+        .sendCatching(state.conn, "Error sending idle response for ${state.wid}")
 }
 
 // SEND(Message, Domain)
