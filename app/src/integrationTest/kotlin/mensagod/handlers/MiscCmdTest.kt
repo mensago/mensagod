@@ -1,11 +1,15 @@
 package mensagod.handlers
 
+import keznacl.CryptoString
 import keznacl.EncryptionPair
 import libkeycard.RandomID
 import libkeycard.WAddress
 import libmensago.*
 import libmensago.resolver.KCResolver
 import mensagod.*
+import mensagod.dbcmds.SyncRecord
+import mensagod.dbcmds.UpdateType
+import mensagod.dbcmds.addSyncRecord
 import mensagod.dbcmds.getSyncRecords
 import mensagod.delivery.resetDelivery
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -33,6 +37,85 @@ class MiscCmdTest {
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             assertEquals(200, response.code)
             assertEquals(serverData["support_wid"]!!, response.data["Workspace-ID"])
+        }.run()
+    }
+
+    @Test
+    fun idleTest() {
+        setupTest("handlers.idleTest")
+        ServerConfig.load().getOrThrow()
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+
+        // Test Case #1: No Updates Requested
+        CommandTest(
+            "idle.1",
+            SessionState(
+                ClientRequest("IDLE"), null, LoginState.NoSession
+            ), ::commandIdle
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(200)
+        }.run()
+
+        val clientPath = CryptoString.fromString("XSALSA20:abcdefg")!!
+        val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+        val db = DBConn()
+
+        addSyncRecord(
+            db, adminWID, SyncRecord(
+                RandomID.generate(),
+                UpdateType.Mkdir,
+                "/ wsp $adminWID ad139db2-253e-49be-8981-5937ea9dfce0:$clientPath",
+                "1700000000",
+                devid
+            )
+        )
+        addSyncRecord(
+            db, adminWID, SyncRecord(
+                RandomID.generate(),
+                UpdateType.Mkdir,
+                "/ wsp $adminWID ad139db2-253e-49be-8981-5937ea9dfce0 " +
+                        "db4edc98-6eb3-4695-a48c-c7158050307e:$clientPath",
+                "1700001000",
+                devid
+            )
+        )
+        addSyncRecord(
+            db, adminWID, SyncRecord(
+                RandomID.generate(),
+                UpdateType.Mkdir,
+                "/ wsp $adminWID ff2b1e04-78af-42f8-8029-da3c2751aa84:$clientPath",
+                "1700002000",
+                devid
+            )
+        )
+
+        // Test Case #2: Success / Some Updates
+        CommandTest(
+            "idle.2",
+            SessionState(
+                ClientRequest("IDLE", mutableMapOf("CountUpdates" to "1700000050")), adminWID,
+                LoginState.LoggedIn, RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+            ), ::commandIdle
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(200)
+            assert(response.data.containsKey("UpdateCount"))
+            assertEquals("2", response.data["UpdateCount"])
+        }.run()
+
+        // Test Case #3: Failure / no login
+        CommandTest(
+            "idle.3",
+            SessionState(
+                ClientRequest("IDLE", mutableMapOf("CountUpdates" to "1700000050")), null,
+                LoginState.NoSession
+            ), ::commandIdle
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(401)
         }.run()
     }
 
