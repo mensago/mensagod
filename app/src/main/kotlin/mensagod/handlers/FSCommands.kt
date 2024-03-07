@@ -261,6 +261,11 @@ fun commandSelect(state: ClientSession) {
     TODO("Implement commandSelect($state)")
 }
 
+// SETQUOTA(Workspace)
+fun commandSetQuota(state: ClientSession) {
+    TODO("Implement commandSetQuota($state)")
+}
+
 // UPLOAD(Size,Hash,Path,Replaces="",Name="",Offset=0)
 fun commandUpload(state: ClientSession) {
 

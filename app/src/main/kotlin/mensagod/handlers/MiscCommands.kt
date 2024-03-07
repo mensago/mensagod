@@ -117,6 +117,11 @@ fun commandSendLarge(state: ClientSession) {
     TODO("Implement commandSendLarge($state)")
 }
 
+// SETSTATUS(Workspace-ID, Status)
+fun commandSetStatus(state: ClientSession) {
+    TODO("Implement commandSetStatus($state)")
+}
+
 /** Command used when the client's command isn't recognized */
 fun commandUnrecognized(state: ClientSession) {
     ServerResponse(

@@ -33,6 +33,9 @@ fun processCommand(state: ClientSession) {
         "LOGOUT" -> commandLogout(state)
         "MKDIR" -> commandMkDir(state)
         "MOVE" -> commandMove(state)
+        
+        // Feature: KeycardRevocation
+        // FeatureTODO: Implement REVOKE and ORGREVOKE
         // "ORGREVOKE" -> commandOrgRevoke(state)
         "PASSCODE" -> commandPassCode(state)
         "PASSWORD" -> commandPassword(state)
@@ -41,17 +44,24 @@ fun processCommand(state: ClientSession) {
         "REGISTER" -> commandRegister(state)
         "REMOVEDEVICE" -> commandRemoveDevice(state)
         "RESETPASSWORD" -> commandResetPassword(state)
+
+        // Feature: KeycardRevocation
+        // FeatureTODO: Implement REVOKE and ORGREVOKE
         // "REVOKE" -> commandRevoke(state)
         "RMDIR" -> commandRmDir(state)
         "SELECT" -> commandSelect(state)
         "SEND" -> commandSend(state)
         "SENDLARGE" -> commandSendLarge(state)
+
+        // Feature: ExternalDelivery
+        // FeatureTODO: Implement SERVERID
+
         // "SERVERID" -> commandServerID(state)
         "SETDEVICEINFO" -> commandSetDeviceInfo(state)
-        // "SETPASSWORD" -> command(state)
-        // "SETQUOTA" -> command(state)
-        // "SETSTATUS" -> command(state)
-        // "UNREGISTER" -> command(state)
+        "SETPASSWORD" -> commandSetPassword(state)
+        "SETQUOTA" -> commandSetQuota(state)
+        "SETSTATUS" -> commandSetStatus(state)
+        "UNREGISTER" -> commandUnregister(state)
         "UPLOAD" -> commandUpload(state)
         else -> commandUnrecognized(state)
     }

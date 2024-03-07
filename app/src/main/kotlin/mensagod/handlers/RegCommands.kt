@@ -263,3 +263,8 @@ fun commandRegCode(state: ClientSession) {
 fun commandRegister(state: ClientSession) {
     TODO("Implement commandRegister($state)")
 }
+
+// UNREGISTER(Password-Hash, Workspace-ID=null)
+fun commandUnregister(state: ClientSession) {
+    TODO("Implement commandUnregister($state)")
+}

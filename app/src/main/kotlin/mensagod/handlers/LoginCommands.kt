@@ -500,6 +500,11 @@ fun commandResetPassword(state: ClientSession) {
     TODO("Implement commandResetPassword($state)")
 }
 
+// SETPASSWORD(Workspace-ID, Reset-Code=null, Expires=null)
+fun commandSetPassword(state: ClientSession) {
+    TODO("Implement commandSetPassword($state)")
+}
+
 /**
  * Performs a challenge sequence for a client device.
  *
