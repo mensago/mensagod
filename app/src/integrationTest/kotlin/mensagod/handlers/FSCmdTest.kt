@@ -102,7 +102,43 @@ class FSCmdTest {
 
     @Test
     fun existsTest() {
-        // TODO: Implement test for commandExists()
+        val setupData = setupTest("handlers.existsTest")
+        ServerConfig.load().getOrThrow()
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+
+        // Test Case #1: Non-existent directory
+        CommandTest(
+            "exists.1",
+            SessionState(
+                ClientRequest("EXISTS", mutableMapOf("Path" to "/ wsp $adminWID")),
+                adminWID,
+                LoginState.LoggedIn,
+                RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+            ), ::commandExists
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(404)
+        }.run()
+
+        // Test Case #2: Success
+        val adminTopPath = Paths.get(setupData.testPath, "topdir", "wsp", adminWID.toString())
+        adminTopPath.toFile().mkdirs()
+        CommandTest(
+            "exists.2",
+            SessionState(
+                ClientRequest("EXISTS", mutableMapOf("Path" to "/ wsp $adminWID")),
+                adminWID,
+                LoginState.LoggedIn,
+                RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+            ), ::commandExists
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(200)
+        }.run()
     }
 
     @Test
