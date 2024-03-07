@@ -2,14 +2,8 @@ package mensagod
 
 import keznacl.CryptoString
 import keznacl.toFailure
-import libkeycard.Domain
-import libkeycard.MAddress
-import libkeycard.RandomID
-import libkeycard.UserID
-import libmensago.ClientRequest
-import libmensago.MServerPath
-import libmensago.NotConnectedException
-import libmensago.ServerResponse
+import libkeycard.*
+import libmensago.*
 import mensagod.dbcmds.countSyncRecords
 import mensagod.dbcmds.resolveAddress
 import org.apache.commons.io.FileUtils
@@ -222,11 +216,21 @@ class ClientSession(val conn: Socket) : SessionState() {
      * requireLogin() notifies the client that a login session is required and returns false. If
      * the session is logged in, it returns true.
      */
-    fun requireLogin(): Boolean {
+    fun requireLogin(schema: Schema? = null): Boolean {
         if (loginState != LoginState.LoggedIn) {
             ServerResponse(401, "UNAUTHORIZED", "Login required")
                 .sendCatching(conn, "requireLogin error message failure")
             return false
+        }
+
+        if (schema != null) {
+            return schema.validate(message.data) { name, e ->
+                val msg = if (e is MissingFieldException)
+                    "Missing required field $name"
+                else
+                    "Bad value for field $name"
+                QuickResponse.sendBadRequest(msg, conn)
+            } ?: false
         }
 
         return true
