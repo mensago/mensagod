@@ -255,3 +255,11 @@ fun commandRegCode(state: ClientSession) {
         logDebug("commandRegCode success message send error: $it")
     }
 }
+
+// REGISTER(User-ID, Password-Hash, Password-Algorithm, Device-ID, Device-Key,
+//     Device-Info, Password-Salt="", Password-Parameters="")
+// REGISTER(Workspace-ID, Password-Hash, Password-Algorithm, Device-ID, Device-Key,
+//     Device-Info, Password-Salt="", Password-Parameters="")
+fun commandRegister(state: ClientSession) {
+    TODO("Implement commandRegister($state)")
+}

@@ -19,7 +19,6 @@ import java.util.*
 // COPY(SourceFile,DestDir)
 fun commandCopy(state: ClientSession) {
     if (!state.requireLogin()) return
-    val schema = Schemas.copy
 
     TODO("Implement commandCopy($state)")
 }
@@ -141,6 +140,20 @@ fun commandGetQuotaInfo(state: ClientSession) {
     TODO("Implement commandGetQuotaInfo($state)")
 }
 
+// LIST(Path=null)
+fun commandList(state: ClientSession) {
+    if (!state.requireLogin()) return
+
+    TODO("Implement commandList($state)")
+}
+
+// LISTDIRS(Path=null)
+fun commandListDirs(state: ClientSession) {
+    if (!state.requireLogin()) return
+
+    TODO("Implement commandListDirs($state)")
+}
+
 // MKDIR(Path, ClientPath)
 fun commandMkDir(state: ClientSession) {
     if (!state.requireLogin()) return
@@ -231,6 +244,11 @@ fun commandMkDir(state: ClientSession) {
     }
     ServerResponse(200, "OK", "")
         .sendCatching(state.conn, "Failed to send MKDIR confirmation")
+}
+
+// MOVE(SourceFile,DestDir)
+fun commandMove(state: ClientSession) {
+    TODO("Implement commandMove($state)")
 }
 
 // UPLOAD(Size,Hash,Path,Replaces="",Name="",Offset=0)

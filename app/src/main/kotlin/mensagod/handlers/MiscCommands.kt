@@ -40,13 +40,9 @@ fun commandGetWID(state: ClientSession) {
         .sendCatching(state.conn, "commandGetWID: success message failure")
 }
 
-/** Command used when the client's command isn't recognized */
-fun commandUnrecognized(state: ClientSession) {
-    ServerResponse(
-        400, "BAD REQUEST",
-        "Unrecognized command '${state.message.action}'"
-    )
-        .sendCatching(state.conn, "commandUnrecognized message send error")
+// IDLE(CountUpdates=null)
+fun commandIdle(state: ClientSession) {
+    TODO("Implement commandIdle($state)")
 }
 
 // SEND(Message, Domain)
@@ -115,3 +111,13 @@ fun commandSend(state: ClientSession) {
     ServerResponse(200, "OK", "")
         .sendCatching(state.conn, "Failed to send successful SEND response")
 }
+
+/** Command used when the client's command isn't recognized */
+fun commandUnrecognized(state: ClientSession) {
+    ServerResponse(
+        400, "BAD REQUEST",
+        "Unrecognized command '${state.message.action}'"
+    )
+        .sendCatching(state.conn, "commandUnrecognized message send error")
+}
+

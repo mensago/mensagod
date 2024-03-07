@@ -490,6 +490,11 @@ fun commandPassword(state: ClientSession) {
     )
 }
 
+// PASSCODE(SourceFile,DestDir)
+fun commandPassCode(state: ClientSession) {
+    TODO("Implement commandPassCode($state)")
+}
+
 /**
  * Performs a challenge sequence for a client device.
  *
