@@ -42,6 +42,8 @@ class Schema(vararg args: MsgField) {
 
     /**
      * Validates the data map passed to it and executes the handler code if validation should fail
+     *
+     * @return True if the data map passes validation and null if not. False is never returned.
      */
     fun validate(data: Map<String, String>, failHandler: (String, Throwable) -> Unit): Boolean? {
         for (field in fields.values) {
