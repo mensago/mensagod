@@ -136,6 +136,11 @@ fun commandExists(state: ClientSession) {
     response.sendCatching(state.conn, "Failed to send MKDIR confirmation")
 }
 
+// GETQUOTAINFO(Workspace=null)
+fun commandGetQuotaInfo(state: ClientSession) {
+    TODO("Implement commandGetQuotaInfo($state)")
+}
+
 // MKDIR(Path, ClientPath)
 fun commandMkDir(state: ClientSession) {
     if (!state.requireLogin()) return

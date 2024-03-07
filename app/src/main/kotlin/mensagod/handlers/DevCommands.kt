@@ -8,6 +8,16 @@ import mensagod.dbcmds.getDeviceStatus
 import mensagod.dbcmds.updateDeviceStatus
 import org.apache.commons.io.FileUtils
 
+// DEVKEY(Device-ID, Old-Key, New-Key)
+fun commandDevKey(state: ClientSession) {
+    TODO("Implement commandDevKey($state)")
+}
+
+// GETDEVICEINFO(Device-ID=null)
+fun commandGetDeviceInfo(state: ClientSession) {
+    TODO("Implement commandGetDeviceInfo($state)")
+}
+
 fun commandKeyPkg(state: ClientSession) {
 
     if (!state.requireLogin()) return
