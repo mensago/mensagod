@@ -251,6 +251,16 @@ fun commandMove(state: ClientSession) {
     TODO("Implement commandMove($state)")
 }
 
+// RMDIR(Path, ClientPath)
+fun commandRmDir(state: ClientSession) {
+    TODO("Implement commandRmDir($state)")
+}
+
+// SELECT(Path)
+fun commandSelect(state: ClientSession) {
+    TODO("Implement commandSelect($state)")
+}
+
 // UPLOAD(Size,Hash,Path,Replaces="",Name="",Offset=0)
 fun commandUpload(state: ClientSession) {
 

@@ -121,6 +121,17 @@ fun commandKeyPkg(state: ClientSession) {
         .sendCatching(state.conn, "Error sending device approval message")
 }
 
+// REMOVEDEVICE(Device-ID=null)
+fun commandRemoveDevice(state: ClientSession) {
+    TODO("Implement commandRemoveDevice($state)")
+}
+
+// SETDEVICEINFO(Device-Info)
+fun commandSetDeviceInfo(state: ClientSession) {
+    TODO("Implement commandSetDeviceInfo($state)")
+}
+
+
 enum class DeviceStatus {
     Approved,
     Blocked,

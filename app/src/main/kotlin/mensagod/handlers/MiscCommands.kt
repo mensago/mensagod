@@ -112,6 +112,11 @@ fun commandSend(state: ClientSession) {
         .sendCatching(state.conn, "Failed to send successful SEND response")
 }
 
+// SENDLARGE(Size, Hash, Domain, Name=null, Offset=null)
+fun commandSendLarge(state: ClientSession) {
+    TODO("Implement commandSendLarge($state)")
+}
+
 /** Command used when the client's command isn't recognized */
 fun commandUnrecognized(state: ClientSession) {
     ServerResponse(
