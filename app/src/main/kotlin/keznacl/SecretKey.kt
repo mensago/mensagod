@@ -41,7 +41,7 @@ class SecretKey private constructor(val key: CryptoString) : Encryptor, Decrypto
      * Required function for the Encryptor interface. It merely calls getHash() internally.
      */
     override fun getPublicHash(algorithm: String): Result<Hash> {
-        return getHash(algorithm)
+        return key.calcHash(algorithm)
     }
 
     /**
