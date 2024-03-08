@@ -11,17 +11,17 @@ class HashTest {
     fun testHashSupport() {
         assert(isSupportedAlgorithm("BLAKE2B-256"))
         val hashSupport = getSupportedHashAlgorithms()
-        assertEquals(1, hashSupport.size)
+        assertEquals(2, hashSupport.size)
         assertEquals("BLAKE2B-256", hashSupport[0])
+        assertEquals("SHA-256", hashSupport[1])
 
         assertEquals("BLAKE2B-256", getPreferredHashAlgorithm())
     }
 
     @Test
     fun testBlake2B() {
-        val expectedBlake = CryptoString.fromString(
-            "BLAKE2B-256:?*e?y<{rF)B`7<5U8?bXQhNic6W4lmGlN}~Mu}la"
-        )!!.toHash()!!
+        val expectedBlake =
+            Hash.fromString("BLAKE2B-256:?*e?y<{rF)B`7<5U8?bXQhNic6W4lmGlN}~Mu}la")!!
         assertEquals(expectedBlake.value, blake2Hash("aaaaaaaa".toByteArray()).getOrThrow().value)
 
         assertEquals(
@@ -31,9 +31,22 @@ class HashTest {
     }
 
     @Test
+    fun testSHA256() {
+        val expectedSHA =
+            Hash.fromString("SHA-256:A3Wp)6`}|qqweQl!=L|-R>C51(W!W+B%4_+&b=VC")!!
+        assertEquals(expectedSHA.value, sha256Hash("aaaaaaaa".toByteArray()).getOrThrow().value)
+
+        assertEquals(
+            expectedSHA.value, hash("aaaaaaaa".toByteArray(), "SHA-256")
+                .getOrThrow().value
+        )
+    }
+
+    @Test
     fun testCheck() {
         val key = SecretKey.fromString("XSALSA20:Z%_Is*V6uc!_+QIG5F`UJ*cLYoO`=58RCuAk-`Bq")
             .getOrThrow()
+        // The call to toHash() is for lint removal, not necessity. :)
         val hash = key.getHash().getOrThrow().toHash()!!
         assert(hash.check(key.key.toByteArray()).getOrThrow())
     }

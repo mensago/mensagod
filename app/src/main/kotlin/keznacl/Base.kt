@@ -6,7 +6,7 @@ package keznacl
  */
 fun isSupportedAlgorithm(name: String): Boolean {
     return when (name) {
-        "CURVE25519", "ED25519", "XSALSA20", "BLAKE2B-256" -> true
+        "CURVE25519", "ED25519", "XSALSA20", "BLAKE2B-256", "SHA-256" -> true
         else -> false
     }
 }

@@ -11,13 +11,15 @@ import kotlinx.serialization.encoding.Encoder
 import ove.crypto.digest.Blake2b
 import java.io.File
 import java.io.FileInputStream
+import java.security.MessageDigest
+
 
 /**
  * Returns the hashing algorithms supported by the library. Currently the only supported algorithm
  * is BLAKE2B. Other algorithms may be added at a future time.
  */
 fun getSupportedHashAlgorithms(): List<String> {
-    return listOf("BLAKE2B-256")
+    return listOf("BLAKE2B-256", "SHA-256")
 }
 
 /**
@@ -41,6 +43,7 @@ fun hash(data: ByteArray, algorithm: String = getPreferredHashAlgorithm()): Resu
 
     return when (algorithm) {
         "BLAKE2B-256" -> blake2Hash(data)
+        "SHA-256" -> sha256Hash(data)
         else -> Result.failure(UnsupportedAlgorithmException())
     }
 }
@@ -84,6 +87,16 @@ fun blake2Hash(data: ByteArray): Result<Hash> {
     val blake2b = Blake2b.Digest.newInstance(32)
     blake2b.update(data)
     return Result.success(Hash.fromBytes("BLAKE2B-256", blake2b.digest())!!)
+}
+
+fun sha256Hash(data: ByteArray): Result<Hash> {
+    if (data.isEmpty()) return Result.failure(EmptyDataException())
+    return runCatching {
+        val hasher = MessageDigest.getInstance("SHA-256")
+        hasher.update(data)
+        val digest = hasher.digest()
+        Hash.fromBytes("SHA-256", digest)!!
+    }.getOrElse { return it.toFailure() }.toSuccess()
 }
 
 /**
