@@ -24,6 +24,11 @@ object Schemas {
         MsgField("New-Key", MsgFieldType.CryptoString, true),
     )
 
+    val devkeyClientResponse = Schema(
+        MsgField("Response", MsgFieldType.CryptoString, true),
+        MsgField("New-Response", MsgFieldType.CryptoString, true),
+    )
+
     val exists = Schema(MsgField("Path", MsgFieldType.Path, true))
 
     val getWID = Schema(

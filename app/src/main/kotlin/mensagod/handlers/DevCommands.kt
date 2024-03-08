@@ -1,6 +1,8 @@
 package mensagod.handlers
 
-import keznacl.CryptoString
+import keznacl.*
+import libkeycard.MissingFieldException
+import libmensago.ClientRequest
 import libmensago.MServerPath
 import libmensago.ServerResponse
 import mensagod.*
@@ -9,6 +11,7 @@ import mensagod.dbcmds.getDeviceStatus
 import mensagod.dbcmds.updateDeviceKey
 import mensagod.dbcmds.updateDeviceStatus
 import org.apache.commons.io.FileUtils
+import java.security.SecureRandom
 
 // DEVKEY(Device-ID, Old-Key, New-Key)
 fun commandDevKey(state: ClientSession) {
@@ -197,7 +200,56 @@ enum class DeviceStatus {
 }
 
 
-private fun dualChallengeDevice(state: ClientSession, oldkey: CryptoString, newKey: CryptoString):
+private fun dualChallengeDevice(state: ClientSession, oldKey: CryptoString, newKey: CryptoString):
         Result<Boolean> {
-    TODO("Implement dualChallengeDevice")
+
+    // This is much like challengeDevice(), but using two keys, an old one and a new one
+    // - receive 2 keys
+    // - send 2 challenges
+    // - receive and verify 2 responses and return the result
+
+    val rawOldKey = oldKey.toEncryptionKey().getOrElse { return it.toFailure() }
+    val challenge1 = generateChallenge(rawOldKey).getOrElse { return it.toFailure() }
+    val rawNewKey = newKey.toEncryptionKey().getOrElse { return it.toFailure() }
+    val challenge2 = generateChallenge(rawNewKey).getOrElse { return it.toFailure() }
+
+    ServerResponse(
+        100, "CONTINUE", "",
+        mutableMapOf(
+            "Challenge" to challenge1.second.toString(),
+            "New-Challenge" to challenge2.second.toString()
+        )
+    ).send(state.conn)?.let { return it.toFailure() }
+
+    val req = ClientRequest.receive(state.conn.getInputStream())
+        .getOrElse { return it.toFailure() }
+    if (req.action == "CANCEL") return Result.failure(CancelException())
+
+    if (req.action != "DEVKEY") {
+        QuickResponse.sendBadRequest("Session state mismatch", state.conn)
+        return false.toSuccess()
+    }
+
+    val schema = Schemas.devkeyClientResponse
+    schema.validate(req.data) { name, e ->
+        val msg = if (e is MissingFieldException)
+            "Missing required field $name"
+        else
+            "Bad value for field $name"
+        QuickResponse.sendBadRequest(msg, state.conn)
+    } ?: return false.toSuccess()
+
+    val response1 = schema.getString("Response", req.data)
+    val response2 = schema.getString("New-Response", req.data)
+
+    return Result.success(challenge1.first == response1 && challenge2.first == response2)
+}
+
+private fun generateChallenge(key: Encryptor): Result<Pair<String, CryptoString>> {
+    val rng = SecureRandom()
+    val rawBytes = ByteArray(32)
+    rng.nextBytes(rawBytes)
+    val challenge = Base85.encode(rawBytes)
+    val encrypted = key.encrypt(challenge.toByteArray()).getOrElse { return it.toFailure() }
+    return Pair(challenge, encrypted).toSuccess()
 }
