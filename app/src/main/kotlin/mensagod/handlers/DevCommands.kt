@@ -1,10 +1,12 @@
 package mensagod.handlers
 
+import keznacl.CryptoString
 import libmensago.MServerPath
 import libmensago.ServerResponse
 import mensagod.*
 import mensagod.dbcmds.addKeyInfo
 import mensagod.dbcmds.getDeviceStatus
+import mensagod.dbcmds.updateDeviceKey
 import mensagod.dbcmds.updateDeviceStatus
 import org.apache.commons.io.FileUtils
 
@@ -16,7 +18,30 @@ fun commandDevKey(state: ClientSession) {
     val oldkey = schema.getCryptoString("Old-Key", state.message.data)!!
     val newkey = schema.getCryptoString("New-Key", state.message.data)!!
 
-    TODO("Finish implementing commandDevKey($state)")
+    if (devid != state.devid) {
+        QuickResponse.sendForbidden("A device can update its own key", state.conn)
+        return
+    }
+
+    val success = dualChallengeDevice(state, oldkey, newkey).getOrElse {
+        logError("commandDevice.dualChallengeDevice exception: $it")
+        QuickResponse.sendInternalError(
+            "Error authenticating client device for key update",
+            state.conn
+        )
+        return
+    }
+    // We don't need to send an error message to the client because that's already taken care of in
+    // dualChallengeDevice()
+    if (!success) return
+
+    updateDeviceKey(DBConn(), state.wid!!, state.devid!!, newkey)?.let {
+        logError("commandDevice.updateDeviceKey exception: $it")
+        QuickResponse.sendInternalError("Error updating device key", state.conn)
+        return
+    }
+
+    QuickResponse.sendOK("", state.conn)
 }
 
 // GETDEVICEINFO(Device-ID=null)
@@ -169,4 +194,10 @@ enum class DeviceStatus {
         }
 
     }
+}
+
+
+private fun dualChallengeDevice(state: ClientSession, oldkey: CryptoString, newKey: CryptoString):
+        Result<Boolean> {
+    TODO("Implement dualChallengeDevice")
 }
