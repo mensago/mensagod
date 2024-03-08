@@ -15,6 +15,7 @@ enum class MsgFieldType {
     Domain,
     Hash,
     Integer,
+    MAddress,
     Path,
     RandomID,
     String,
@@ -70,6 +71,7 @@ class Schema(vararg args: MsgField) {
                         false
                 }
 
+                MsgFieldType.MAddress -> MAddress.checkFormat(data[field.name]!!)
                 MsgFieldType.Path -> MServerPath.checkFormat(data[field.name]!!)
                 MsgFieldType.RandomID -> RandomID.checkFormat(data[field.name]!!)
                 MsgFieldType.String -> data[field.name]!!.isNotEmpty()
@@ -131,6 +133,15 @@ class Schema(vararg args: MsgField) {
         } catch (e: Exception) {
             null
         }
+    }
+
+    /**
+     * Returns the requested field as a MAddress or null if (a) the field isn't in the schema or
+     * (b) the field's data is invalid or isn't present in the case of optional fields.
+     */
+    fun getMAddress(field: String, data: Map<String, String>): MAddress? {
+        if (field !in fields.keys) return null
+        return MAddress.fromString(data[field])
     }
 
     /**

@@ -29,11 +29,23 @@ object Schemas {
         MsgField("New-Response", MsgFieldType.CryptoString, true),
     )
 
+    val device = Schema(
+        MsgField("Device-ID", MsgFieldType.RandomID, true),
+        MsgField("Device-Key", MsgFieldType.CryptoString, true),
+        MsgField("Device-Info", MsgFieldType.CryptoString, false),
+    )
+
     val exists = Schema(MsgField("Path", MsgFieldType.Path, true))
 
     val getWID = Schema(
         MsgField("User-ID", MsgFieldType.UserID, true),
         MsgField("Domain", MsgFieldType.Domain, false)
+    )
+
+    val getCard = Schema(
+        MsgField("Owner", MsgFieldType.MAddress, false),
+        MsgField("Start-Index", MsgFieldType.Integer, true),
+        MsgField("End-Index", MsgFieldType.Integer, false)
     )
 
     val getUpdates = Schema(
