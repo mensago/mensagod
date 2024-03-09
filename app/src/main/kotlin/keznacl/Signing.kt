@@ -3,6 +3,7 @@ package keznacl
 import com.iwebpp.crypto.TweetNaclFast.Signature
 import kotlinx.serialization.Serializable
 
+/** Returns true if the string represents a supported digital signing algorithm */
 fun isSupportedSigning(s: String): Boolean {
     return s.uppercase() == "ED25519"
 }

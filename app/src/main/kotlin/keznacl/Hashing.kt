@@ -13,6 +13,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.security.MessageDigest
 
+/** Returns true if the string represents a supported hashing algorithm */
 fun isSupportedHash(s: String): Boolean {
     return when (s.uppercase()) {
         "BLAKE2B-256", "SHA-256" -> true

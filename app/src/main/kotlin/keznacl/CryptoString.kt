@@ -41,11 +41,13 @@ import java.util.regex.Pattern
  * - BLAKE3-256
  * - K12-256
  *
+ * All of the AES-related prefixes refer to AES GCM.
+ *
  * Regular usage of a CryptoString mostly involves creating an instance from other data. The
- * constructor can take a CryptoString-formatted string or a string prefix and some raw bytes. Once
- * data has been put into the instance, getting it back out is just a matter of casting to a string,
- * or calling [toString], [toByteArray], or [toRaw]. The last of these three methods only
- * returns the raw data stored in the object.
+ * factory functions can take a CryptoString-formatted string or a string prefix and some raw bytes.
+ * Once data has been put into the instance, getting it back out is just a matter of calling
+ * [toString], [toByteArray], or [toRaw]. The last of these three methods only returns the raw data
+ * stored in the object.
  */
 @Serializable(with = CryptoStringAsStringSerializer::class)
 open class CryptoString protected constructor(val prefix: String, val encodedData: String) {

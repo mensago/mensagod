@@ -3,6 +3,7 @@ package keznacl
 import com.iwebpp.crypto.TweetNaclFast
 import kotlinx.serialization.Serializable
 
+/** Returns true if the string represents a supported asymmetric encryption algorithm */
 fun isSupportedAsymmetric(s: String): Boolean {
     return s.uppercase() == "CURVE25519"
 }

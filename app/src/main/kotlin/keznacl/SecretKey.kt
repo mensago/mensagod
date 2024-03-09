@@ -4,6 +4,7 @@ import com.iwebpp.crypto.TweetNaclFast.SecretBox
 import kotlinx.serialization.Serializable
 import java.security.SecureRandom
 
+/** Returns true if the string represents a supported symmetric encryption algorithm */
 fun isSupportedSymmetric(s: String): Boolean {
     return s.uppercase() == "XSALSA20"
 }

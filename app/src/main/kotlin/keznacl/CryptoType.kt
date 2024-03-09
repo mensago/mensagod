@@ -3,7 +3,7 @@ package keznacl
 import kotlinx.serialization.Serializable
 
 /**
- * The CryptoType class represents a cryptography algorithm
+ * The CryptoType class represents a cryptography algorithm supported by the library.
  */
 @Serializable
 enum class CryptoType {
@@ -21,6 +21,7 @@ enum class CryptoType {
     BLAKE2B_256,
     SHA_256;
 
+    /* Returns true if the object represents a supported asymmetric encryption algorithm */
     fun isAsymmetric(): Boolean {
         return when (this) {
             CURVE25519 -> true
@@ -28,6 +29,7 @@ enum class CryptoType {
         }
     }
 
+    /* Returns true if the object represents a supported digital signing algorithm */
     fun isSigning(): Boolean {
         return when (this) {
             ED25519 -> true
@@ -35,6 +37,7 @@ enum class CryptoType {
         }
     }
 
+    /* Returns true if the object represents a supported symmetric encryption algorithm */
     fun isSymmetric(): Boolean {
         return when (this) {
             XSALSA20 -> true
@@ -42,6 +45,7 @@ enum class CryptoType {
         }
     }
 
+    /* Returns true if the object represents a supported hashing algorithm */
     fun isHash(): Boolean {
         return when (this) {
             BLAKE2B_256, SHA_256 -> true
