@@ -22,8 +22,8 @@ class SigningTest {
             "ED25519:PnY~pK2|;AYO#1Z;B%T$2}E$^kIpL=>>VzfMKsDx",
             "ED25519:{^A@`5N*T%5ybCU%be892x6%*Rb2rnYd=SGeO4jF",
         ).getOrThrow()
-        assertEquals(keypair.publicKey.value, "ED25519:PnY~pK2|;AYO#1Z;B%T$2}E$^kIpL=>>VzfMKsDx")
-        assertEquals(keypair.privateKey.value, "ED25519:{^A@`5N*T%5ybCU%be892x6%*Rb2rnYd=SGeO4jF")
+        assertEquals(keypair.pubKey.value, "ED25519:PnY~pK2|;AYO#1Z;B%T$2}E$^kIpL=>>VzfMKsDx")
+        assertEquals(keypair.privKey.value, "ED25519:{^A@`5N*T%5ybCU%be892x6%*Rb2rnYd=SGeO4jF")
 
         val testdata = "This is some signing test data"
         val signature = keypair.sign(testdata.toByteArray()).getOrThrow()
@@ -47,7 +47,7 @@ class SigningTest {
             "ED25519:PnY~pK2|;AYO#1Z;B%T$2}E$^kIpL=>>VzfMKsDx",
             "ED25519:{^A@`5N*T%5ybCU%be892x6%*Rb2rnYd=SGeO4jF",
         ).getOrThrow()
-        val key = VerificationKey.from(keypair.publicKey).getOrThrow()
+        val key = VerificationKey.from(keypair.pubKey).getOrThrow()
         assertEquals(key.key.value, "ED25519:PnY~pK2|;AYO#1Z;B%T$2}E$^kIpL=>>VzfMKsDx")
 
         val testdata = "This is some signing test data"

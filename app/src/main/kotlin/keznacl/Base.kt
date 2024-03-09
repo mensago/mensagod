@@ -30,3 +30,19 @@ interface Verifier : PublicHasher {
 interface PublicHasher {
     fun getPublicHash(algorithm: String = getPreferredHashAlgorithm()): Result<Hash>
 }
+
+/**
+ * The KeyPair interface brings together functionality which is common to both signing and encryption
+ * key pairs.
+ */
+interface KeyPair : PublicHasher {
+
+    /** Returns the public key as a [CryptoString] */
+    fun getPublicKey(): CryptoString
+
+    /** Returns the private key as a [CryptoString] */
+    fun getPrivateKey(): CryptoString
+
+    /** Returns a [Hash] of the private key using the specified algorithm. */
+    fun getPrivateHash(algorithm: String = getPreferredHashAlgorithm()): Result<Hash>
+}

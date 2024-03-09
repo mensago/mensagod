@@ -25,11 +25,23 @@ fun getPreferredSigningAlgorithm(): String {
  * signatures.
  */
 @Serializable
-class SigningPair private constructor(val publicKey: CryptoString, val privateKey: CryptoString) :
-    Verifier {
+class SigningPair private constructor(val pubKey: CryptoString, val privKey: CryptoString) :
+    Verifier, KeyPair {
+
+    override fun getPublicKey(): CryptoString {
+        return pubKey
+    }
+
+    override fun getPrivateKey(): CryptoString {
+        return privKey
+    }
 
     override fun getPublicHash(algorithm: String): Result<Hash> {
-        return publicKey.calcHash(algorithm)
+        return pubKey.calcHash(algorithm)
+    }
+
+    override fun getPrivateHash(algorithm: String): Result<Hash> {
+        return privKey.calcHash(algorithm)
     }
 
     /**
@@ -44,7 +56,7 @@ class SigningPair private constructor(val publicKey: CryptoString, val privateKe
         // TweetNaCl expects the private key to be 64-bytes -- the first 32 are the private key and
         // the last are the public key. We don't do that here -- they are split because they are
         // associated a different way.
-        val rawKey = Base85.decode(privateKey.encodedData + publicKey.encodedData)
+        val rawKey = Base85.decode(privKey.encodedData + pubKey.encodedData)
             .getOrElse { return it.toFailure() }
         val box = Signature(null, rawKey)
         val signature = box.detached(data)
@@ -56,7 +68,7 @@ class SigningPair private constructor(val publicKey: CryptoString, val privateKe
     }
 
     override fun toString(): String {
-        return "$publicKey,$privateKey"
+        return "$pubKey,$privKey"
     }
 
     /**
@@ -68,9 +80,9 @@ class SigningPair private constructor(val publicKey: CryptoString, val privateKe
      */
     override fun verify(data: ByteArray, signature: CryptoString): Result<Boolean> {
         if (data.isEmpty()) return Result.failure(EmptyDataException())
-        if (signature.prefix != publicKey.prefix) return Result.failure(AlgorithmMismatchException())
+        if (signature.prefix != pubKey.prefix) return Result.failure(AlgorithmMismatchException())
 
-        val rawPubKey = publicKey.toRaw().getOrElse { return it.toFailure() }
+        val rawPubKey = pubKey.toRaw().getOrElse { return it.toFailure() }
         val rawSignature = signature.toRaw().getOrElse { return it.toFailure() }
         val box = Signature(rawPubKey, null)
 

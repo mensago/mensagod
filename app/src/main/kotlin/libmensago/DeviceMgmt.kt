@@ -19,7 +19,7 @@ class DeviceInfo(
 
     /** Convenience method to update the object's attributes */
     fun collectAttributes(): Result<DeviceInfo> {
-        val info = collectInfoForDevice(id, keypair.publicKey)
+        val info = collectInfoForDevice(id, keypair.pubKey)
             .getOrElse { return it.toFailure() }
         attributes = info
         return Result.success(this)
@@ -43,7 +43,7 @@ class DeviceInfo(
 
             val id = RandomID.generate()
             val keypair = EncryptionPair.generate().getOrElse { return it.toFailure() }
-            val info = collectInfoForDevice(id, keypair.publicKey)
+            val info = collectInfoForDevice(id, keypair.pubKey)
                 .getOrElse { return it.toFailure() }
             return Result.success(DeviceInfo(id, keypair, info))
         }

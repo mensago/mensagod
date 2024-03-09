@@ -26,7 +26,7 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
      */
     fun open(keyPair: EncryptionPair): Result<Message> {
 
-        val pubHash = hash(keyPair.publicKey.toByteArray(), tag.keyHash.prefix)
+        val pubHash = hash(keyPair.pubKey.toByteArray(), tag.keyHash.prefix)
             .getOrElse { return it.toFailure() }
         if (pubHash != tag.keyHash) return HashMismatchException().toFailure()
 

@@ -100,7 +100,7 @@ class LoginCmdTest {
                 "User Name" to "Corbin",
                 "OS" to "Windows 10 Pro",
                 "Device ID" to devid2.toString(),
-                "Device Key" to dev2pair.publicKey.toString(),
+                "Device Key" to dev2pair.pubKey.toString(),
                 "Timestamp" to Timestamp().toString(),
             )
         )
@@ -111,7 +111,7 @@ class LoginCmdTest {
                 ClientRequest(
                     "DEVICE", mutableMapOf(
                         "Device-ID" to devid2.toString(),
-                        "Device-Key" to dev2pair.publicKey.toString(),
+                        "Device-Key" to dev2pair.pubKey.toString(),
                         "Device-Info" to encInfo2.toString(),
                     )
                 ), adminWID,
@@ -141,7 +141,7 @@ class LoginCmdTest {
             assertEquals("Corbin", items["User Name"])
             assertEquals("Windows 10 Pro", items["OS"])
             assertEquals(devid2.toString(), items["Device ID"])
-            assertEquals(dev2pair.publicKey.toString(), items["Device Key"])
+            assertEquals(dev2pair.pubKey.toString(), items["Device Key"])
         }.run()
 
     }

@@ -29,13 +29,24 @@ fun getPreferredAsymmetricAlgorithm(): String {
  */
 @Serializable
 class EncryptionPair private constructor(
-    val publicKey: CryptoString,
-    val privateKey: CryptoString
-) :
-    Encryptor, Decryptor {
+    val pubKey: CryptoString,
+    val privKey: CryptoString
+) : Encryptor, Decryptor, KeyPair {
+
+    override fun getPublicKey(): CryptoString {
+        return pubKey
+    }
+
+    override fun getPrivateKey(): CryptoString {
+        return privKey
+    }
 
     override fun getPublicHash(algorithm: String): Result<Hash> {
-        return publicKey.calcHash(algorithm)
+        return pubKey.calcHash(algorithm)
+    }
+
+    override fun getPrivateHash(algorithm: String): Result<Hash> {
+        return privKey.calcHash(algorithm)
     }
 
     /**
@@ -44,7 +55,7 @@ class EncryptionPair private constructor(
      * @exception IllegalArgumentException Returned if there was a decoding error
      */
     override fun encrypt(data: ByteArray): Result<CryptoString> {
-        val rawKey = publicKey.toRaw().getOrElse { return it.toFailure() }
+        val rawKey = pubKey.toRaw().getOrElse { return it.toFailure() }
         val box = SealedBox()
         val result = box.cryptoBoxSeal(data, rawKey)
         if (result.isFailure) {
@@ -63,12 +74,12 @@ class EncryptionPair private constructor(
         val ciphertext = encData.toRaw().getOrElse { return it.toFailure() }
         val box = SealedBox()
         return box.cryptoBoxSealOpen(ciphertext,
-            publicKey.toRaw().getOrElse { return it.toFailure() },
-            privateKey.toRaw().getOrElse { return it.toFailure() })
+            pubKey.toRaw().getOrElse { return it.toFailure() },
+            privKey.toRaw().getOrElse { return it.toFailure() })
     }
 
     override fun toString(): String {
-        return "$publicKey,$privateKey"
+        return "$pubKey,$privKey"
     }
 
     companion object {

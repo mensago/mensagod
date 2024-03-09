@@ -237,18 +237,18 @@ class OrgEntry : Entry() {
             ?: return Result.failure(BadFieldValueException("Bad Primary-Verification-Key"))
         // This should *never* have an error. If it does, we have big problems
         val newSPair = SigningPair.generate(signAlgo.prefix).getOrThrow()
-        outMap["primary.public"] = newSPair.publicKey
-        outMap["primary.private"] = newSPair.privateKey
-        outEntry.setField("Primary-Verification-Key", newSPair.publicKey.value)
+        outMap["primary.public"] = newSPair.pubKey
+        outMap["primary.private"] = newSPair.privKey
+        outEntry.setField("Primary-Verification-Key", newSPair.pubKey.value)
 
         val encAlgo =
             CryptoString.fromString(fields["Encryption-Key"]!!.toString()) ?: return Result.failure(
                 BadFieldValueException("Bad Encryption-Key")
             )
         val newEPair = EncryptionPair.generate(encAlgo.prefix).getOrThrow()
-        outMap["encryption.public"] = newEPair.publicKey
-        outMap["encryption.private"] = newEPair.privateKey
-        outEntry.setField("Encryption-Key", newEPair.publicKey.value)
+        outMap["encryption.public"] = newEPair.pubKey
+        outMap["encryption.private"] = newEPair.privKey
+        outEntry.setField("Encryption-Key", newEPair.pubKey.value)
 
         outEntry.setField(
             "Secondary-Verification-Key",
@@ -313,18 +313,18 @@ class OrgEntry : Entry() {
         val signAlgo = CryptoString.fromString(fields["Primary-Verification-Key"]!!.toString())
             ?: return Result.failure(BadFieldValueException("Bad Primary-Verification-Key"))
         val newSPair = SigningPair.generate(signAlgo.prefix).getOrThrow()
-        outMap["primary.public"] = newSPair.publicKey
-        outMap["primary.private"] = newSPair.privateKey
-        outEntry.setField("Primary-Verification-Key", newSPair.publicKey.value)
+        outMap["primary.public"] = newSPair.pubKey
+        outMap["primary.private"] = newSPair.privKey
+        outEntry.setField("Primary-Verification-Key", newSPair.pubKey.value)
 
         val encAlgo =
             CryptoString.fromString(fields["Encryption-Key"]!!.toString()) ?: return Result.failure(
                 BadFieldValueException("Bad Encryption-Key")
             )
         val newEPair = EncryptionPair.generate(encAlgo.prefix).getOrThrow()
-        outMap["encryption.public"] = newSPair.publicKey
-        outMap["encryption.private"] = newSPair.privateKey
-        outEntry.setField("Encryption-Key", newEPair.publicKey.value)
+        outMap["encryption.public"] = newSPair.pubKey
+        outMap["encryption.private"] = newSPair.privKey
+        outEntry.setField("Encryption-Key", newEPair.pubKey.value)
 
         if (expiration <= 0) setExpires(366)
         else setExpires(expiration)

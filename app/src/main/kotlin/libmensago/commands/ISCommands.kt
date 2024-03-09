@@ -113,8 +113,8 @@ fun devKey(
     var req = ClientRequest(
         "DEVKEY", mutableMapOf(
             "Device-ID" to devid.toString(),
-            "Old-Key" to oldPair.publicKey.toString(),
-            "New-Key" to newPair.publicKey.toString(),
+            "Old-Key" to oldPair.pubKey.toString(),
+            "New-Key" to newPair.pubKey.toString(),
         )
     )
     conn.send(req)?.let { return it }
@@ -175,7 +175,7 @@ fun device(conn: MConn, info: DeviceInfo): Result<Boolean> {
     var req = ClientRequest(
         "DEVICE", mutableMapOf(
             "Device-ID" to info.id.toString(),
-            "Device-Key" to info.keypair.publicKey.toString(),
+            "Device-Key" to info.keypair.pubKey.toString(),
             "Device-Info" to info.encryptedInfo!!.toString(),
         )
     )
@@ -207,7 +207,7 @@ fun device(conn: MConn, info: DeviceInfo): Result<Boolean> {
     req = ClientRequest(
         "DEVICE", mutableMapOf(
             "Device-ID" to info.id.toString(),
-            "Device-Key" to info.keypair.publicKey.toString(),
+            "Device-Key" to info.keypair.pubKey.toString(),
             "Device-Info" to info.encryptedInfo!!.toString(),
             "Response" to challDecrypted,
         )
@@ -498,7 +498,7 @@ fun regCode(conn: MConn, address: MAddress, regCode: String, pw: Password, devIn
         "Password-Hash" to pw.hash,
         "Password-Algorithm" to pw.algorithm,
         "Device-ID" to devInfo.id.toString(),
-        "Device-Key" to devInfo.keypair.publicKey.toString(),
+        "Device-Key" to devInfo.keypair.pubKey.toString(),
         "Domain" to address.domain.toString(),
         "Device-Info" to devInfo.encryptedInfo.toString(),
     )
@@ -569,7 +569,7 @@ fun register(
             "Password-Hash" to pw.hash,
             "Password-Algorithm" to pw.algorithm,
             "Device-ID" to devid.toString(),
-            "Device-Key" to devPair.publicKey.toString(),
+            "Device-Key" to devPair.pubKey.toString(),
             "Device-Info" to devInfo.toString(),
         )
         if (pw.salt.isNotEmpty()) regData["Password-Salt"] = pw.salt
