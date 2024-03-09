@@ -123,7 +123,7 @@ sealed class Entry {
         val baseField = fields["Expires"] ?: return Result.failure(MissingDataException())
         if (baseField !is DatestampField) return Result.failure(BadFieldException())
         val expires = baseField.value
-        return Result.success(expires.value.isBefore(Instant.now()))
+        return expires.value.isBefore(Instant.now()).toSuccess()
     }
 
     /** Returns the body text of the entry */
@@ -175,11 +175,6 @@ sealed class Entry {
         return signatures[astype]
     }
 
-    /** Deletes the requested auth string. */
-    fun deleteAuthString(astype: String) {
-        fields.remove(astype)
-    }
-
     /**
      * Creates the requested signature. Requirements for this call vary with the entry type implementation; see child
      * class documentation for specific details. OutOfOrderSignature is returned if other required authentication
@@ -201,7 +196,7 @@ sealed class Entry {
      * happened which prevented verification from occurring.
      */
     fun verifySignature(astype: String, key: Verifier): Result<Boolean> {
-        val signature = getAuthString(astype) ?: return Result.failure(BadValueException())
+        val signature = getAuthString(astype) ?: return BadValueException().toFailure()
         val totalData = getFullText(astype).getOrElse { return it.toFailure() }
         return key.verify(totalData.toByteArray(), signature)
     }
