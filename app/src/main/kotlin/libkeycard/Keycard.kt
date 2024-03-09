@@ -54,14 +54,14 @@ class Keycard private constructor(
      * `encryption.public`, and `encryption.private`.
      */
     fun chain(signingPair: SigningPair, expires: Int = -1): Result<Map<String, CryptoString>> {
-        if (entries.isEmpty()) return Result.failure(EmptyDataException())
+        if (entries.isEmpty()) return EmptyDataException().toFailure()
 
         val current = entries.last()
         val (newEntry, keys) = current.chain(signingPair, expires)
             .getOrElse { return it.toFailure() }
         entries.add(newEntry)
 
-        return Result.success(keys)
+        return keys.toSuccess()
     }
 
     /**
@@ -90,7 +90,7 @@ class Keycard private constructor(
 
     /** Verifies the keycard's complete chain of custody. */
     fun verify(): Result<Boolean> {
-        if (entries.isEmpty()) return Result.failure(EmptyDataException())
+        if (entries.isEmpty()) return EmptyDataException().toFailure()
 
         for (i in 0 until entries.size - 1) {
             entries[i].isCompliant().let {
