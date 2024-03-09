@@ -1,6 +1,7 @@
 package libkeycard
 
 import keznacl.CryptoString
+import keznacl.toFailure
 import keznacl.toSuccess
 import java.util.regex.Pattern
 
@@ -12,70 +13,57 @@ sealed class EntryField {
             return when (fieldName) {
                 "Type" -> {
                     val field = StringField.validatedEntryType(fieldValue)
-                        ?: return Result.failure(
-                            BadFieldValueException(
-                                "Entry type must be 'Organization' or 'User', not $fieldValue"
-                            )
-                        )
+                        ?: return BadFieldValueException(
+                            "Entry type must be 'Organization' or 'User', not $fieldValue"
+                        ).toFailure()
                     field.toSuccess()
                 }
 
                 "Index" -> {
-                    val field = IntegerField.fromString(fieldValue) ?: return Result.failure(
-                        BadFieldValueException(
+                    val field = IntegerField.fromString(fieldValue)
+                        ?: return BadFieldValueException(
                             "Bad $fieldName field value: $fieldValue"
-                        )
-                    )
+                        ).toFailure()
                     field.toSuccess()
                 }
 
                 "Name" -> {
                     val field = StringField.validatedName(fieldValue)
-                        ?: return Result.failure(
-                            BadFieldValueException(
-                                "Bad $fieldName field value: '$fieldValue'"
-                            )
-                        )
+                        ?: return BadFieldValueException(
+                            "Bad $fieldName field value: '$fieldValue'"
+                        ).toFailure()
                     field.toSuccess()
                 }
 
                 "Local-ID" -> {
                     val field = StringField.validatedLocalID(fieldValue)
-                        ?: return Result.failure(
-                            BadFieldValueException(
-                                "Bad $fieldName field value: '$fieldValue'"
-                            )
-                        )
+                        ?: return BadFieldValueException(
+                            "Bad $fieldName field value: '$fieldValue'"
+                        ).toFailure()
                     field.toSuccess()
                 }
 
                 "User-ID" -> {
                     val field = StringField.validatedUserID(fieldValue)
-                        ?: return Result.failure(
-                            BadFieldValueException(
-                                "Bad $fieldName field value: '$fieldValue'"
-                            )
-                        )
+                        ?: return BadFieldValueException(
+                            "Bad $fieldName field value: '$fieldValue'"
+                        ).toFailure()
                     field.toSuccess()
                 }
 
                 "Workspace-ID" -> {
                     val field = StringField.validatedRandomID(fieldValue)
-                        ?: return Result.failure(
-                            BadFieldValueException(
-                                "Bad $fieldName field value: '$fieldValue'"
-                            )
-                        )
+                        ?: return BadFieldValueException(
+                            "Bad $fieldName field value: '$fieldValue'"
+                        ).toFailure()
                     field.toSuccess()
                 }
 
                 "Domain" -> {
                     val field = StringField.validatedDomain(fieldValue)
-                        ?: return Result.failure(
-                            BadFieldValueException(
-                                "Bad $fieldName field value: '$fieldValue'"
-                            )
-                        )
+                        ?: return BadFieldValueException(
+                            "Bad $fieldName field value: '$fieldValue'"
+                        ).toFailure()
                     field.toSuccess()
                 }
 
@@ -83,11 +71,9 @@ sealed class EntryField {
                 "Contact-Abuse",
                 "Contact-Support" -> {
                     val field = WAddressField.fromString(fieldValue)
-                        ?: return Result.failure(
-                            BadFieldValueException(
-                                "Bad $fieldName field value: $fieldValue"
-                            )
-                        )
+                        ?: return BadFieldValueException(
+                            "Bad $fieldName field value: $fieldValue"
+                        ).toFailure()
                     field.toSuccess()
                 }
 
@@ -99,55 +85,45 @@ sealed class EntryField {
                 "Encryption-Key",
                 "Revoke" -> {
                     val field = CryptoStringField.fromString(fieldValue)
-                        ?: return Result.failure(
-                            BadFieldValueException(
-                                "Bad $fieldName field value: $fieldValue"
-                            )
-                        )
+                        ?: return BadFieldValueException(
+                            "Bad $fieldName field value: $fieldValue"
+                        ).toFailure()
                     field.toSuccess()
                 }
 
                 "Language" -> {
                     val field = StringField.validatedLanguage(fieldValue)
-                        ?: return Result.failure(
-                            BadFieldValueException(
-                                "Bad $fieldName field value: '$fieldValue'"
-                            )
-                        )
+                        ?: return BadFieldValueException(
+                            "Bad $fieldName field value: '$fieldValue'"
+                        ).toFailure()
                     field.toSuccess()
                 }
 
                 "Time-To-Live" -> {
                     val field = IntegerField.validatedTTL(fieldValue)
-                        ?: return Result.failure(
-                            BadFieldValueException(
-                                "Bad $fieldName field value: '$fieldValue'"
-                            )
-                        )
+                        ?: return BadFieldValueException(
+                            "Bad $fieldName field value: '$fieldValue'"
+                        ).toFailure()
                     field.toSuccess()
                 }
 
                 "Expires" -> {
                     val field = DatestampField.fromString(fieldValue)
-                        ?: return Result.failure(
-                            BadFieldValueException(
-                                "Bad $fieldName field value: $fieldValue"
-                            )
-                        )
+                        ?: return BadFieldValueException(
+                            "Bad $fieldName field value: $fieldValue"
+                        ).toFailure()
                     field.toSuccess()
                 }
 
                 "Timestamp" -> {
                     val field = TimestampField.fromString(fieldValue)
-                        ?: return Result.failure(
-                            BadFieldValueException(
-                                "Bad $fieldName field value: $fieldValue"
-                            )
-                        )
+                        ?: return BadFieldValueException(
+                            "Bad $fieldName field value: $fieldValue"
+                        ).toFailure()
                     field.toSuccess()
                 }
 
-                else -> Result.failure(BadFieldException(fieldName))
+                else -> BadFieldException(fieldName).toFailure()
             }
         }
     }
@@ -163,20 +139,14 @@ class IntegerField(val value: Int) : EntryField() {
     companion object {
 
         fun fromString(s: String): IntegerField? {
-            return try {
+            return runCatching {
                 val i = s.toInt()
                 if (i < 1) null else IntegerField(i)
-            } catch (e: Exception) {
-                null
-            }
+            }.getOrElse { null }
         }
 
         fun validatedTTL(s: String): IntegerField? {
-            val ttl = try {
-                IntegerField(s.toInt())
-            } catch (e: Exception) {
-                return null
-            }
+            val ttl = runCatching { IntegerField(s.toInt()) }.getOrElse { return null }
 
             return if (ttl.value in 1..30) ttl else null
         }
