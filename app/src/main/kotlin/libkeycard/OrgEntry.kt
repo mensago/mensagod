@@ -72,8 +72,7 @@ class OrgEntry : Entry() {
      * - Secondary-Verification-Key
      */
     override fun isCompliant(): Throwable? {
-        val dataComplianceError = isDataCompliant()
-        if (dataComplianceError != null) return dataComplianceError
+        isDataCompliant()?.let { return it }
 
         if (fields["Index"]!!.toString() == "1") {
             // An organization's first (and hopefully only) root entry should *never* have a Revoke
@@ -128,7 +127,7 @@ class OrgEntry : Entry() {
      */
     override fun getFullText(sigLevel: String?): Result<String> {
         if (!fields.containsKey("Index"))
-            return Result.failure(BadFieldException("Missing required field Index"))
+            return BadFieldException("Missing required field Index").toFailure()
 
         val lines = StringJoiner("\r\n")
         for (f in permittedFields) {
@@ -140,7 +139,7 @@ class OrgEntry : Entry() {
 
         when (sigLevel) {
             // This doesn't exist in an org entry
-            "User-Signature" -> return Result.failure(BadValueException())
+            "User-Signature" -> return BadValueException().toFailure()
             "Custody-Signature" -> {
                 // We don't need to do anything else for the custody signature
             }
@@ -162,7 +161,7 @@ class OrgEntry : Entry() {
                         lines.add("$it:${signatures[it]}")
                     else {
                         if (requirePrevious)
-                            return Result.failure(ComplianceFailureException("$it missing"))
+                            return ComplianceFailureException("$it missing").toFailure()
                     }
                 }
             }
@@ -173,7 +172,7 @@ class OrgEntry : Entry() {
                         lines.add("$it:${signatures[it]}")
                     else {
                         if (requirePrevious)
-                            return Result.failure(ComplianceFailureException("$it missing"))
+                            return ComplianceFailureException("$it missing").toFailure()
                     }
                 }
             }
@@ -184,7 +183,7 @@ class OrgEntry : Entry() {
                         lines.add("$it:${signatures[it]}")
                     else {
                         if (requirePrevious)
-                            return Result.failure(ComplianceFailureException("$it missing"))
+                            return ComplianceFailureException("$it missing").toFailure()
                     }
                 }
                 if (signatures.containsKey("Organization-Signature"))
@@ -195,10 +194,10 @@ class OrgEntry : Entry() {
                     )
             }
 
-            else -> return Result.failure(BadValueException())
+            else -> return BadValueException().toFailure()
         }
         lines.add("")
-        return Result.success(lines.toString())
+        return lines.toString().toSuccess()
     }
 
     /**
@@ -219,23 +218,23 @@ class OrgEntry : Entry() {
             Result<Pair<Entry, Map<String, CryptoString>>> {
 
         if (!fields.containsKey("Primary-Verification-Key"))
-            return Result.failure(
-                ComplianceFailureException("Required field Primary-Verification-Key missing")
-            )
+            return ComplianceFailureException("Required field Primary-Verification-Key missing")
+                .toFailure()
+
         if (!fields.containsKey("Encryption-Key"))
-            return Result.failure(
-                ComplianceFailureException("Required field Encryption-Key missing")
-            )
+            return ComplianceFailureException("Required field Encryption-Key missing")
+                .toFailure()
         if (!signatures.containsKey("Hash"))
-            return Result.failure(ComplianceFailureException("Required auth string Hash missing"))
+            return ComplianceFailureException("Required auth string Hash missing").toFailure()
 
         val outMap = mutableMapOf<String, CryptoString>()
-        val outEntry = copy().getOrThrow()
+        val outEntry = copy().getOrElse { return it.toFailure() }
 
 
         val signAlgo = getVerificationKey("Primary-Verification-Key")
-            ?: return Result.failure(BadFieldValueException("Bad Primary-Verification-Key"))
-        val newSPair = SigningPair.generate(signAlgo.getType()!!).getOrThrow()
+            ?: return BadFieldValueException("Bad Primary-Verification-Key").toFailure()
+        val newSPair = SigningPair.generate(signAlgo.getType()!!)
+            .getOrElse { return it.toFailure() }
         outMap["primary.public"] = newSPair.pubKey
         outMap["primary.private"] = newSPair.privKey
         outEntry.setField("Primary-Verification-Key", newSPair.pubKey.value)
@@ -243,7 +242,8 @@ class OrgEntry : Entry() {
         val encAlgo = getEncryptionKey("Encryption-Key")
             ?: return BadFieldValueException("Bad Encryption-Key").toFailure()
 
-        val newEPair = EncryptionPair.generate(encAlgo.getType()!!).getOrThrow()
+        val newEPair = EncryptionPair.generate(encAlgo.getType()!!)
+            .getOrElse { return it.toFailure() }
         outMap["encryption.public"] = newEPair.pubKey
         outMap["encryption.private"] = newEPair.privKey
         outEntry.setField("Encryption-Key", newEPair.pubKey.value)
@@ -276,20 +276,19 @@ class OrgEntry : Entry() {
      * custody hash does not match.
      */
     override fun verifyChain(previous: Entry): Result<Boolean> {
-        if (previous !is OrgEntry) return Result.failure(TypeCastException())
+        if (previous !is OrgEntry) return TypeCastException().toFailure()
 
-        val prevIndex = previous.getFieldInteger("Index") ?: return Result.failure(
-            MissingDataException("previous Index field missing")
-        )
+        val prevIndex = previous.getFieldInteger("Index")
+            ?: return MissingDataException("previous Index field missing").toFailure()
+
         val currentIndex = getFieldInteger("Index")
-            ?: return Result.failure(MissingDataException("Index field missing"))
+            ?: return MissingDataException("Index field missing").toFailure()
         if (prevIndex != currentIndex - 1)
-            return Result.failure(ComplianceFailureException("Non-sequential entries"))
+            return ComplianceFailureException("Non-sequential entries").toFailure()
 
         val verKeyStr =
-            previous.getFieldString("Primary-Verification-Key") ?: return Result.failure(
-                MissingDataException("Primary-Verification-Key field missing")
-            )
+            previous.getFieldString("Primary-Verification-Key")
+                ?: return MissingDataException("Primary-Verification-Key field missing").toFailure()
         val verKey = VerificationKey.fromString(verKeyStr).getOrElse { return it.toFailure() }
 
         return verifySignature("Custody-Signature", verKey)
@@ -302,11 +301,12 @@ class OrgEntry : Entry() {
      */
     override fun revoke(expiration: Int): Result<Pair<Entry, Map<String, CryptoString>>> {
         val outMap = mutableMapOf<String, CryptoString>()
-        val outEntry = copy().getOrThrow()
+        val outEntry = copy().getOrElse { return it.toFailure() }
 
         val signAlgo = getVerificationKey("Primary-Verification-Key")
-            ?: return Result.failure(BadFieldValueException("Bad Primary-Verification-Key"))
-        val newSPair = SigningPair.generate(signAlgo.getType()!!).getOrThrow()
+            ?: return BadFieldValueException("Bad Primary-Verification-Key").toFailure()
+        val newSPair = SigningPair.generate(signAlgo.getType()!!)
+            .getOrElse { return it.toFailure() }
         outMap["primary.public"] = newSPair.pubKey
         outMap["primary.private"] = newSPair.privKey
         outEntry.setField("Primary-Verification-Key", newSPair.pubKey.value)
@@ -314,7 +314,8 @@ class OrgEntry : Entry() {
         val encAlgo = getEncryptionKey("Encryption-Key")
             ?: return BadFieldValueException("Bad Encryption-Key").toFailure()
 
-        val newEPair = EncryptionPair.generate(encAlgo.getType()!!).getOrThrow()
+        val newEPair = EncryptionPair.generate(encAlgo.getType()!!)
+            .getOrElse { return it.toFailure() }
         outMap["encryption.public"] = newSPair.pubKey
         outMap["encryption.private"] = newSPair.privKey
         outEntry.setField("Encryption-Key", newEPair.pubKey.value)
@@ -377,7 +378,7 @@ class OrgEntry : Entry() {
             of ruling out obviously bad data.
              */
             if (s.length < 160) {
-                return Result.failure(BadValueException())
+                return BadValueException().toFailure()
             }
 
             val out = OrgEntry()
@@ -387,13 +388,12 @@ class OrgEntry : Entry() {
 
                 val parts = line.split(":", limit = 2)
                 if (parts.size != 2) {
-                    return Result.failure(BadFieldValueException(line))
+                    return BadFieldValueException(line).toFailure()
                 }
 
                 if (parts[1].length > 6144) {
-                    return Result.failure(
-                        RangeException("Field ${parts[0]} may not be longer than 6144 bytes")
-                    )
+                    return RangeException("Field ${parts[0]} may not be longer than 6144 bytes")
+                        .toFailure()
                 }
 
                 val fieldName = parts[0]
@@ -403,19 +403,17 @@ class OrgEntry : Entry() {
                     "Organization-Signature",
                     "Previous-Hash",
                     "Hash" -> {
-                        val cs = CryptoString.fromString(fieldValue) ?: return Result.failure(
-                            BadFieldValueException(fieldName)
-                        )
+                        val cs = CryptoString.fromString(fieldValue)
+                            ?: return BadFieldValueException(fieldName).toFailure()
                         out.addAuthString(fieldName, cs)
                         continue
                     }
                 }
 
                 val field = EntryField.fromStrings(fieldName, fieldValue)
-                if (field.isFailure) return Result.failure(field.exceptionOrNull()!!)
+                if (field.isFailure) return field.exceptionOrNull()!!.toFailure()
 
-                val err = out.setField(fieldName, fieldValue)
-                if (err != null) return Result.failure(err)
+                out.setField(fieldName, fieldValue)?.let { return it.toFailure() }
             }
 
             return out.toSuccess()
