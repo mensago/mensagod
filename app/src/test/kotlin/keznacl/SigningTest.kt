@@ -40,6 +40,8 @@ class SigningTest {
         CryptoString.fromString("ED25519:PnY~pK2|;AYO#1Z;B%T$2}E$^kIpL=>>VzfMKsDx")!!
             .toVerificationKey()
             .getOrThrow()
+        CryptoString.fromString("ED25519:PnY~pK2|;AYO#1Z;B%T$2}E$^kIpL=>>VzfMKsDx")!!
+            .getType()
     }
 
     @Test
@@ -49,6 +51,7 @@ class SigningTest {
             "ED25519:{^A@`5N*T%5ybCU%be892x6%*Rb2rnYd=SGeO4jF",
         ).getOrThrow()
         val key = VerificationKey.from(keypair.pubKey).getOrThrow()
+        assertEquals(CryptoType.ED25519, key.getType())
         assertEquals(key.key.value, "ED25519:PnY~pK2|;AYO#1Z;B%T$2}E$^kIpL=>>VzfMKsDx")
 
         val testdata = "This is some signing test data"

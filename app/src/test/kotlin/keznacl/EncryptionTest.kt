@@ -45,6 +45,10 @@ class EncryptionTest {
         CryptoString.fromString("CURVE25519:(B2XX5|<+lOSR>_0mQ=KX4o<aOvXe6M`Z5ldINd`")!!
             .toEncryptionKey()
             .getOrThrow()
+        EncryptionPair.from(
+            CryptoString.fromString("CURVE25519:(B2XX5|<+lOSR>_0mQ=KX4o<aOvXe6M`Z5ldINd`")!!,
+            CryptoString.fromString("CURVE25519:(Rj5)mmd1|YqlLCUP0vE;YZ#o;tJxtlAIzmPD7b&")!!
+        ).getOrThrow()
     }
 
     @Test
@@ -54,6 +58,7 @@ class EncryptionTest {
             "CURVE25519:(Rj5)mmd1|YqlLCUP0vE;YZ#o;tJxtlAIzmPD7b&"
         ).getOrThrow()
         val key = EncryptionKey.fromString(keypair.pubKey.toString()).getOrThrow()
+        assertEquals(CryptoType.CURVE25519, key.getType())
         assertEquals(key.key.value, "CURVE25519:(B2XX5|<+lOSR>_0mQ=KX4o<aOvXe6M`Z5ldINd`")
 
         val testdata = "This is some encryption test data"
