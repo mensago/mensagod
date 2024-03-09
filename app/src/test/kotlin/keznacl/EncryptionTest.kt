@@ -52,11 +52,28 @@ class EncryptionTest {
     }
 
     @Test
+    fun wrapTest() {
+        val keypair = EncryptionPair.fromStrings(
+            "CURVE25519:(B2XX5|<+lOSR>_0mQ=KX4o<aOvXe6M`Z5ldINd`",
+            "CURVE25519:(Rj5)mmd1|YqlLCUP0vE;YZ#o;tJxtlAIzmPD7b&"
+        ).getOrThrow()
+        val key =
+            SecretKey.fromString("XSALSA20:Z%_Is*V6uc!_+QIG5F`UJ*cLYoO`=58RCuAk-`Bq")
+                .getOrThrow()
+
+        val wrapped = keypair.wrap(key).getOrThrow()
+        keypair.unwrap(wrapped).getOrThrow()
+    }
+
+    @Test
     fun keyEncryptTest() {
         val keypair = EncryptionPair.fromStrings(
             "CURVE25519:(B2XX5|<+lOSR>_0mQ=KX4o<aOvXe6M`Z5ldINd`",
             "CURVE25519:(Rj5)mmd1|YqlLCUP0vE;YZ#o;tJxtlAIzmPD7b&"
         ).getOrThrow()
+
+        // Because fromString() calls from() internally, we use this less-efficient construction
+        // to ensure both functions are tested
         val key = EncryptionKey.fromString(keypair.pubKey.toString()).getOrThrow()
         assertEquals(CryptoType.CURVE25519, key.getType())
         assertEquals(key.key.value, "CURVE25519:(B2XX5|<+lOSR>_0mQ=KX4o<aOvXe6M`Z5ldINd`")

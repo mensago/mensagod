@@ -158,19 +158,9 @@ class EncryptionPair private constructor(
  * The EncryptionKey class represents just an encryption key without its corresponding
  * decryption key.
  */
-class EncryptionKey private constructor() : Encryptor {
-    var publicKey: CryptoString? = null
-        private set
+class EncryptionKey private constructor(val key: CryptoString) : Encryptor {
 
     private var publicHash: Hash? = null
-
-    /**
-     * The textual representation of the encryption key in CryptoString format
-     */
-    val key: CryptoString
-        get() {
-            return publicKey!!
-        }
 
     /**
      * Encrypts the passed data and returns the encrypted data encoded as a [CryptoString].
@@ -178,26 +168,28 @@ class EncryptionKey private constructor() : Encryptor {
      * @exception IllegalArgumentException Returned if there was a decoding error
      */
     override fun encrypt(data: ByteArray): Result<CryptoString> {
-        val rawKey = publicKey!!.toRaw()
-        val box = SealedBox()
-        val result = box.cryptoBoxSeal(data, rawKey.getOrElse { return it.toFailure() })
-        if (result.isFailure) {
-            return Result.failure(result.exceptionOrNull()!!)
-        }
+        val rawKey = key.toRaw().getOrElse { return it.toFailure() }
+        val encrypted = SealedBox().cryptoBoxSeal(data, rawKey)
+            .getOrElse { return it.toFailure() }
 
-        return Result.success(CryptoString.fromBytes(CryptoType.CURVE25519, result.getOrNull()!!)!!)
+        return CryptoString.fromBytes(CryptoType.CURVE25519, encrypted)!!.toSuccess()
     }
 
-    /** Interface override inherited from [PublicHasher] */
+    /** Interface override inherited from [PublicKey] */
+    override fun getPublicKey(): CryptoString {
+        return key
+    }
+
+    /** Interface override inherited from [PublicKey] */
     override fun getPublicHash(algorithm: CryptoType): Result<Hash> {
         if (publicHash == null || publicHash!!.prefix != algorithm.toString())
             publicHash =
-                hash(publicKey!!.toByteArray(), algorithm).getOrElse { return it.toFailure() }
+                hash(key.toByteArray(), algorithm).getOrElse { return it.toFailure() }
         return Result.success(publicHash!!)
     }
 
     override fun toString(): String {
-        return publicKey.toString()
+        return key.toString()
     }
 
     companion object {
@@ -211,9 +203,9 @@ class EncryptionKey private constructor() : Encryptor {
         fun from(pubKey: CryptoString): Result<EncryptionKey> {
 
             if (!isSupportedAsymmetric(pubKey.prefix))
-                return Result.failure(UnsupportedAlgorithmException())
+                return UnsupportedAlgorithmException().toFailure()
 
-            return Result.success(EncryptionKey().also { it.publicKey = pubKey })
+            return EncryptionKey(pubKey).toSuccess()
         }
 
         /**
@@ -223,13 +215,10 @@ class EncryptionKey private constructor() : Encryptor {
          * @exception UnsupportedAlgorithmException Returned if the library does not support the
          * algorithm specified by the key string
          */
-        fun fromString(pubKeyStr: String): Result<EncryptionKey> {
+        fun fromString(s: String): Result<EncryptionKey> {
 
-            val pubKey = CryptoString.fromString(pubKeyStr) ?: return Result.failure(
-                BadValueException("bad public key")
-            )
-            if (!isSupportedAsymmetric(pubKey.prefix))
-                return Result.failure(UnsupportedAlgorithmException())
+            val pubKey = CryptoString.fromString(s)
+                ?: return BadValueException("bad public key").toFailure()
 
             return from(pubKey)
         }

@@ -163,17 +163,9 @@ class SigningPair private constructor(val pubKey: CryptoString, val privKey: Cry
 
 /** The VerificationKey class is the public half of a signing keypair. */
 @Serializable
-class VerificationKey : Verifier {
-
-    var publicKey: CryptoString? = null
-        private set
+class VerificationKey private constructor(val key: CryptoString) : Verifier {
 
     private var publicHash: Hash? = null
-
-    val key: CryptoString
-        get() {
-            return publicKey!!
-        }
 
     /**
      * Verifies the given signature for the data passed and returns true if it verifies and false if
@@ -183,8 +175,8 @@ class VerificationKey : Verifier {
      * of the SigningPair object.
      */
     override fun verify(data: ByteArray, signature: CryptoString): Result<Boolean> {
-        if (data.isEmpty()) return Result.failure(EmptyDataException())
-        if (signature.prefix != key.prefix) return Result.failure(AlgorithmMismatchException())
+        if (data.isEmpty()) return EmptyDataException().toFailure()
+        if (signature.prefix != key.prefix) return AlgorithmMismatchException().toFailure()
 
         val rawKey = key.toRaw().getOrElse { return it.toFailure() }
         val box = Signature(rawKey, null)
@@ -192,6 +184,11 @@ class VerificationKey : Verifier {
         return Result.success(
             box.detached_verify(data, signature.toRaw().getOrElse { return it.toFailure() })
         )
+    }
+
+    /** Interface override inherited from [PublicKey] */
+    override fun getPublicKey(): CryptoString {
+        return key
     }
 
     /**
@@ -203,12 +200,12 @@ class VerificationKey : Verifier {
     override fun getPublicHash(algorithm: CryptoType): Result<Hash> {
         if (publicHash == null || publicHash!!.prefix != algorithm.toString())
             publicHash =
-                hash(publicKey!!.toByteArray(), algorithm).getOrElse { return it.toFailure() }
+                hash(key.toByteArray(), algorithm).getOrElse { return it.toFailure() }
         return Result.success(publicHash!!)
     }
 
     override fun toString(): String {
-        return publicKey.toString()
+        return key.toString()
     }
 
     companion object {
@@ -224,9 +221,7 @@ class VerificationKey : Verifier {
             if (!isSupportedSigning(key.prefix))
                 return Result.failure(UnsupportedAlgorithmException())
 
-            return Result.success(VerificationKey().also {
-                it.publicKey = key
-            })
+            return VerificationKey(key).toSuccess()
         }
 
         /**
@@ -236,12 +231,11 @@ class VerificationKey : Verifier {
          * @exception UnsupportedAlgorithmException Returned if the library does not support the
          * algorithm specified by the key string
          */
-        fun fromString(pubKeyStr: String): Result<VerificationKey> {
+        fun fromString(s: String): Result<VerificationKey> {
 
-            val publicKeyCS =
-                CryptoString.fromString(pubKeyStr)
-                    ?: return Result.failure(BadValueException("bad public key"))
-            return from(publicKeyCS)
+            val cs = CryptoString.fromString(s)
+                ?: return BadValueException("bad public key").toFailure()
+            return from(cs)
         }
     }
 }

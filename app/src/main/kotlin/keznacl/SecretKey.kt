@@ -43,9 +43,30 @@ class SecretKey private constructor(val key: CryptoString) : Encryptor, Decrypto
     }
 
     /**
-     * Required function for the Encryptor interface. It merely calls getHash() internally.
+     * Required function for the Encryptor interface. It merely returns the key's value.
+     */
+    override fun getPublicKey(): CryptoString {
+        return key
+    }
+
+    /**
+     * Required function for the Decryptor interface. It merely returns the key's value.
+     */
+    override fun getPrivateKey(): CryptoString {
+        return key
+    }
+
+    /**
+     * Required function for the Encryptor interface. It merely calls hash() internally.
      */
     override fun getPublicHash(algorithm: CryptoType): Result<Hash> {
+        return key.hash(algorithm)
+    }
+
+    /**
+     * Required function for the Encryptor interface. It merely calls hash() internally.
+     */
+    override fun getPrivateHash(algorithm: CryptoType): Result<Hash> {
         return key.hash(algorithm)
     }
 
@@ -152,4 +173,13 @@ class SecretKey private constructor(val key: CryptoString) : Encryptor, Decrypto
 /** Converts a CryptoString into an [SecretKey] object */
 fun CryptoString.toSecretKey(): Result<SecretKey> {
     return SecretKey.from(this)
+}
+
+fun EncryptionPair.unwrap(encKey: CryptoString): Result<SecretKey> {
+    return SecretKey.fromString(decrypt(encKey).getOrElse { return it.toFailure() }
+        .decodeToString())
+}
+
+fun EncryptionPair.wrap(key: SecretKey): Result<CryptoString> {
+    return encrypt(key.key.toByteArray())
 }
