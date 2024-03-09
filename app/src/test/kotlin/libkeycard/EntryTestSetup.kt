@@ -1,6 +1,7 @@
 package libkeycard
 
 import keznacl.CryptoString
+import keznacl.CryptoType
 import keznacl.EncryptionPair
 import keznacl.SigningPair
 
@@ -56,7 +57,7 @@ fun makeCompliantOrgEntry(): Result<Pair<Entry, Map<String, CryptoString>>> {
                 "Timestamp:2022-05-20T12:00:00Z\r\n"
     val outEntry = OrgEntry.fromString(cardData).getOrThrow()
 
-    outEntry.hash("BLAKE2B-256").let { if (it != null) throw it }
+    outEntry.hash(CryptoType.BLAKE2B_256).let { if (it != null) throw it }
     outEntry.sign("Organization-Signature", primarySPair).let { if (it != null) throw it }
     val valid = outEntry.verifySignature("Organization-Signature", primarySPair).getOrThrow()
     if (!valid) throw ComplianceFailureException()
@@ -149,7 +150,7 @@ fun makeCompliantUserEntry(): Result<Pair<Entry, Map<String, CryptoString>>> {
         "Previous-Hash",
         getExpectedUserEntryAuthString("Previous-Hash")!!
     )
-    outEntry.hash("BLAKE2B-256").let { if (it != null) throw it }
+    outEntry.hash(CryptoType.BLAKE2B_256).let { if (it != null) throw it }
     outEntry.sign("User-Signature", crSPair).let { if (it != null) throw it }
 
     if (!outEntry.verifySignature("Organization-Signature", orgSPair).getOrThrow())

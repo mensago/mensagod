@@ -47,18 +47,16 @@ class CryptoStringTest {
     fun conversionTests() {
 
         // Failure cases
-        assertNull(CryptoString.fromBytes("", ":123456789".toByteArray()))
-        assertNull(CryptoString.fromBytes("\$ILLEGAL", "123456789".toByteArray()))
-        assertNull(CryptoString.fromBytes("TEST", "".toByteArray()))
+        assertNull(CryptoString.fromBytes(CryptoType.XSALSA20, "".toByteArray()))
 
-        val cs = CryptoString.fromBytes("TEST", "aaaaaa".toByteArray())
+        val cs = CryptoString.fromBytes(CryptoType.XSALSA20, "aaaaaa".toByteArray())
         assertNotNull(cs)
-        assertEquals("TEST", cs.prefix)
-        assertEquals("TEST:VPRomVPO", cs.toString())
+        assertEquals("XSALSA20", cs.prefix)
+        assertEquals("XSALSA20:VPRomVPO", cs.toString())
         assert("aaaaaa".toByteArray().contentEquals(cs.toRaw().getOrThrow()))
-        assertNull(Hash.fromBytes("TEST", "aaaaaa".toByteArray()))
+        assertNull(Hash.fromBytes(CryptoType.CURVE25519, "aaaaaa".toByteArray()))
 
-        val expectedHash = hash("TEST:VPRomVPO".encodeToByteArray()).getOrThrow()
+        val expectedHash = hash("XSALSA20:VPRomVPO".encodeToByteArray()).getOrThrow()
         assertEquals(expectedHash.toString(), cs.hash().getOrThrow().toString())
     }
 }

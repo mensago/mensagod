@@ -66,6 +66,12 @@ sealed class Entry {
         return EncryptionKey.fromString(field.toString()).getOrNull()
     }
 
+    /** Obtains the requested hash from the entry, if it exists */
+    fun getHash(fieldName: String): Hash? {
+        val field = signatures[fieldName] ?: return null
+        return Hash.fromString(field.toString())
+    }
+
     /** Obtains the requested verification key from the entry, if it exists */
     fun getVerificationKey(fieldName: String): VerificationKey? {
         val field = fields[fieldName] ?: return null
@@ -205,7 +211,7 @@ sealed class Entry {
      * please see the documentation for `getFullText()` for the corresponding type of entry. OutOfOrderSignature is
      * returned if other required authentication strings are missing when hashing is requested.
      */
-    fun hash(algorithm: String = getPreferredHashAlgorithm()): Throwable? {
+    fun hash(algorithm: CryptoType = getPreferredHashAlgorithm()): Throwable? {
         val totalData = getFullText("Hash").getOrElse { return it }
 
         val hashValue = hash(totalData.toByteArray(), algorithm)
@@ -217,19 +223,18 @@ sealed class Entry {
     }
 
     /**
-     * Verifies the data of the entry with the hash currently assigned. Returns true/false on success/mismatch and an
-     * error if something went wrong which prevented the hash comparison.
+     * Verifies the data of the entry with the hash currently assigned. Returns true/false on
+     * success/mismatch and an error if something went wrong which prevented the hash comparison.
+     *
+     * @exception MissingDataException Returned if the entry is missing its hash
+     * @exception BadFieldValueException Returned if the stored hash is unsupported or invalid
      */
     fun verifyHash(): Result<Boolean> {
-        val currentHash = getAuthString("Hash") ?: return Result.failure(MissingDataException())
+        val hashCS = getAuthString("Hash") ?: return MissingDataException().toFailure()
+        val currentHash = hashCS.toHash() ?: return BadFieldValueException().toFailure()
 
-        val totalData = getFullText("Hash")
-        if (totalData.isFailure) return Result.failure(totalData.exceptionOrNull()!!)
-
-        val hashValue = hash(totalData.getOrNull()!!.toByteArray(), currentHash.prefix)
-        if (hashValue.isFailure) return Result.failure(hashValue.exceptionOrNull()!!)
-
-        return Result.success(currentHash.value == hashValue.getOrNull()!!.value)
+        val totalData = getFullText("Hash").getOrElse { return it.toFailure() }
+        return currentHash.check(totalData.encodeToByteArray())
     }
 
     /**

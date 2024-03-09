@@ -10,12 +10,13 @@ class HashTest {
     @Test
     fun testHashSupport() {
         assert(isSupportedAlgorithm("BLAKE2B-256"))
+        assert(isSupportedHash("BLAKE2B-256"))
         val hashSupport = getSupportedHashAlgorithms()
         assertEquals(2, hashSupport.size)
-        assertEquals("BLAKE2B-256", hashSupport[0])
-        assertEquals("SHA-256", hashSupport[1])
+        assertEquals(CryptoType.BLAKE2B_256, hashSupport[0])
+        assertEquals(CryptoType.SHA_256, hashSupport[1])
 
-        assertEquals("BLAKE2B-256", getPreferredHashAlgorithm())
+        assertEquals(CryptoType.BLAKE2B_256, getPreferredHashAlgorithm())
     }
 
     @Test
@@ -25,7 +26,7 @@ class HashTest {
         assertEquals(expectedBlake.value, blake2Hash("aaaaaaaa".toByteArray()).getOrThrow().value)
 
         assertEquals(
-            expectedBlake.value, hash("aaaaaaaa".toByteArray(), "BLAKE2B-256")
+            expectedBlake.value, hash("aaaaaaaa".toByteArray(), CryptoType.BLAKE2B_256)
                 .getOrThrow().value
         )
     }
@@ -37,7 +38,7 @@ class HashTest {
         assertEquals(expectedSHA.value, sha256Hash("aaaaaaaa".toByteArray()).getOrThrow().value)
 
         assertEquals(
-            expectedSHA.value, hash("aaaaaaaa".toByteArray(), "SHA-256")
+            expectedSHA.value, hash("aaaaaaaa".toByteArray(), CryptoType.SHA_256)
                 .getOrThrow().value
         )
     }

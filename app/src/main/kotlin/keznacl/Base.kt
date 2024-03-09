@@ -5,10 +5,7 @@ package keznacl
  * algorithm's purpose.
  */
 fun isSupportedAlgorithm(name: String): Boolean {
-    return when (name) {
-        "CURVE25519", "ED25519", "XSALSA20", "BLAKE2B-256", "SHA-256" -> true
-        else -> false
-    }
+    return CryptoType.fromString(name) != null
 }
 
 /** Interface for classes which can decrypt data */
@@ -28,7 +25,7 @@ interface Verifier : PublicHasher {
 
 /** Interface for classes which can have a method to get the hash of a public key */
 interface PublicHasher {
-    fun getPublicHash(algorithm: String = getPreferredHashAlgorithm()): Result<Hash>
+    fun getPublicHash(algorithm: CryptoType = getPreferredHashAlgorithm()): Result<Hash>
 }
 
 /**
@@ -44,5 +41,5 @@ interface KeyPair : PublicHasher {
     fun getPrivateKey(): CryptoString
 
     /** Returns a [Hash] of the private key using the specified algorithm. */
-    fun getPrivateHash(algorithm: String = getPreferredHashAlgorithm()): Result<Hash>
+    fun getPrivateHash(algorithm: CryptoType = getPreferredHashAlgorithm()): Result<Hash>
 }

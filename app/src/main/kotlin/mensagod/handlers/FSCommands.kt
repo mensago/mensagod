@@ -2,6 +2,7 @@ package mensagod.handlers
 
 import keznacl.Hash
 import keznacl.UnsupportedAlgorithmException
+import keznacl.getType
 import libkeycard.MissingFieldException
 import libkeycard.RandomID
 import libmensago.ClientRequest
@@ -436,7 +437,7 @@ fun commandUpload(state: ClientSession) {
         return
     }
 
-    val serverHash = tempHandle.hashFile(clientHash.prefix).getOrElse {
+    val serverHash = tempHandle.hashFile(clientHash.getType()!!).getOrElse {
         if (it is UnsupportedAlgorithmException) {
             ServerResponse(
                 309, "UNSUPPORTED ALGORITHM",

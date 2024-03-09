@@ -10,9 +10,9 @@ class SecretKeyTest {
         assert(isSupportedAlgorithm("XSALSA20"))
         val symSupport = getSupportedSymmetricAlgorithms()
         assertEquals(1, symSupport.size)
-        assertEquals("XSALSA20", symSupport[0])
+        assertEquals(CryptoType.XSALSA20, symSupport[0])
 
-        assertEquals("XSALSA20", getPreferredSymmetricAlgorithm())
+        assertEquals(CryptoType.XSALSA20, getPreferredSymmetricAlgorithm())
     }
 
     @Test
@@ -21,6 +21,7 @@ class SecretKeyTest {
         val key =
             SecretKey.fromString("XSALSA20:Z%_Is*V6uc!_+QIG5F`UJ*cLYoO`=58RCuAk-`Bq")
                 .getOrThrow()
+        assertEquals(CryptoType.XSALSA20, key.getType())
 
         val encdata = key.encrypt(testdata.toByteArray()).getOrThrow()
         val decdata = key.decrypt(encdata)
@@ -28,7 +29,7 @@ class SecretKeyTest {
 
         assertEquals(key.key.value, "XSALSA20:Z%_Is*V6uc!_+QIG5F`UJ*cLYoO`=58RCuAk-`Bq")
 
-        val key2 = SecretKey.generate("XSALSA20").getOrThrow()
+        val key2 = SecretKey.generate(CryptoType.XSALSA20).getOrThrow()
         val encdata2 = key2.encrypt(testdata.toByteArray()).getOrThrow()
         val decdata2 = key2.decrypt(encdata2)
         assert(decdata2.isSuccess)

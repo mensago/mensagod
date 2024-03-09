@@ -13,13 +13,19 @@ import java.io.File
 import java.io.FileInputStream
 import java.security.MessageDigest
 
+fun isSupportedHash(s: String): Boolean {
+    return when (s.uppercase()) {
+        "BLAKE2B-256", "SHA-256" -> true
+        else -> false
+    }
+}
 
 /**
  * Returns the hashing algorithms supported by the library. Currently the only supported algorithm
  * is BLAKE2B. Other algorithms may be added at a future time.
  */
-fun getSupportedHashAlgorithms(): List<String> {
-    return listOf("BLAKE2B-256", "SHA-256")
+fun getSupportedHashAlgorithms(): List<CryptoType> {
+    return listOf(CryptoType.BLAKE2B_256, CryptoType.SHA_256)
 }
 
 /**
@@ -27,8 +33,8 @@ fun getSupportedHashAlgorithms(): List<String> {
  * a hashing algorithm for your implementation, this will provide a good default which balances
  * speed and security.
  */
-fun getPreferredHashAlgorithm(): String {
-    return "BLAKE2B-256"
+fun getPreferredHashAlgorithm(): CryptoType {
+    return CryptoType.BLAKE2B_256
 }
 
 /**
@@ -37,13 +43,13 @@ fun getPreferredHashAlgorithm(): String {
  * @exception UnsupportedAlgorithmException Returned if the library does not support the algorithm
  * specified
  */
-fun hash(data: ByteArray, algorithm: String = getPreferredHashAlgorithm()): Result<Hash> {
-    if (!getSupportedHashAlgorithms().contains(algorithm))
+fun hash(data: ByteArray, type: CryptoType = getPreferredHashAlgorithm()): Result<Hash> {
+    if (!getSupportedHashAlgorithms().contains(type))
         return Result.failure(UnsupportedAlgorithmException())
 
-    return when (algorithm) {
-        "BLAKE2B-256" -> blake2Hash(data)
-        "SHA-256" -> sha256Hash(data)
+    return when (type) {
+        CryptoType.BLAKE2B_256 -> blake2Hash(data)
+        CryptoType.SHA_256 -> sha256Hash(data)
         else -> Result.failure(UnsupportedAlgorithmException())
     }
 }
@@ -52,7 +58,7 @@ fun hash(data: ByteArray, algorithm: String = getPreferredHashAlgorithm()): Resu
  * Computes a [Hash] of the file specified by the path parameter. This call is often helpful
  * in that the entire contents of the file are not loaded into memory during computation.
  */
-fun hashFile(path: String, algorithm: String = getPreferredHashAlgorithm()): Result<Hash> {
+fun hashFile(path: String, algorithm: CryptoType = getPreferredHashAlgorithm()): Result<Hash> {
     if (path.isEmpty()) return Result.failure(EmptyDataException())
     if (!getSupportedHashAlgorithms().contains(algorithm))
         return Result.failure(UnsupportedAlgorithmException())
@@ -86,7 +92,7 @@ fun blake2Hash(data: ByteArray): Result<Hash> {
 
     val blake2b = Blake2b.Digest.newInstance(32)
     blake2b.update(data)
-    return Result.success(Hash.fromBytes("BLAKE2B-256", blake2b.digest())!!)
+    return Result.success(Hash.fromBytes(CryptoType.BLAKE2B_256, blake2b.digest())!!)
 }
 
 fun sha256Hash(data: ByteArray): Result<Hash> {
@@ -95,7 +101,7 @@ fun sha256Hash(data: ByteArray): Result<Hash> {
         val hasher = MessageDigest.getInstance("SHA-256")
         hasher.update(data)
         val digest = hasher.digest()
-        Hash.fromBytes("SHA-256", digest)!!
+        Hash.fromBytes(CryptoType.SHA_256, digest)!!
     }.getOrElse { return it.toFailure() }.toSuccess()
 }
 
@@ -109,7 +115,7 @@ class Hash private constructor(prefix: String, encodedData: String) :
 
     fun check(data: ByteArray): Result<Boolean> {
         return Result.success(
-            hash(data, prefix)
+            hash(data, CryptoType.fromString(prefix)!!)
                 .getOrElse { return it.toFailure() }
                 .toString() == value
         )
@@ -124,13 +130,13 @@ class Hash private constructor(prefix: String, encodedData: String) :
          * version, this function will return null if given an algorithm that is not a hash
          * algorithm supported by the library.
          */
-        fun fromBytes(algorithm: String, buffer: ByteArray): Hash? {
-            return if (!isValidPrefix(algorithm) || buffer.isEmpty() ||
+        fun fromBytes(algorithm: CryptoType, buffer: ByteArray): Hash? {
+            return if (!algorithm.isHash() || buffer.isEmpty() ||
                 !getSupportedHashAlgorithms().contains(algorithm)
             ) {
                 null
             } else {
-                Hash(algorithm, Base85.encode(buffer))
+                Hash(algorithm.toString(), Base85.encode(buffer))
             }
         }
 
@@ -145,7 +151,8 @@ class Hash private constructor(prefix: String, encodedData: String) :
             if (parts.size != 2)
                 return null
 
-            if (!getSupportedHashAlgorithms().contains(parts[0])) return null
+            val ctype = CryptoType.fromString(parts[0]) ?: return null
+            if (!ctype.isHash()) return null
 
             return Hash(parts[0], parts[1])
         }

@@ -295,7 +295,7 @@ fun commandAddEntry(state: ClientSession) {
             )
         return
     }
-    if (!getSupportedHashAlgorithms().contains(clientHash.prefix)) {
+    if (!isSupportedHash(clientHash.prefix)) {
         ServerResponse(
             412, "ALGORITHM NOT SUPPORTED",
             "This server doesn't support hashing with ${clientHash.prefix}"
@@ -307,7 +307,7 @@ fun commandAddEntry(state: ClientSession) {
             )
         return
     }
-    entry.hash(clientHash.prefix)?.let {
+    entry.hash(clientHash.getType()!!)?.let {
         logError("commandAddEntry.hashEntry exception: $it")
         QuickResponse.sendInternalError("Server error hashing entry", state.conn)
         return

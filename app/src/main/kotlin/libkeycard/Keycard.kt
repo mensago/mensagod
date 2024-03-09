@@ -79,7 +79,7 @@ class Keycard private constructor(
      * the current entry and add the final user signature. Once this has been applied, the current
      * entry for the keycard should be compliant and pass verification.
      */
-    fun userSign(hashAlgorithm: String, signingPair: SigningPair): Throwable? {
+    fun userSign(hashAlgorithm: CryptoType, signingPair: SigningPair): Throwable? {
         if (entries.isEmpty()) return EmptyDataException()
 
         val current = entries.last()

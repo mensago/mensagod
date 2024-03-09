@@ -11,9 +11,9 @@ class EncryptionTest {
         assert(isSupportedAlgorithm("CURVE25519"))
         val enc = getSupportedAsymmetricAlgorithms()
         assertEquals(1, enc.size)
-        assertEquals("CURVE25519", enc[0])
+        assertEquals(CryptoType.CURVE25519, enc[0])
 
-        assertEquals("CURVE25519", getPreferredAsymmetricAlgorithm())
+        assertEquals(CryptoType.CURVE25519, getPreferredAsymmetricAlgorithm())
     }
 
     @Test
@@ -22,6 +22,7 @@ class EncryptionTest {
             "CURVE25519:(B2XX5|<+lOSR>_0mQ=KX4o<aOvXe6M`Z5ldINd`",
             "CURVE25519:(Rj5)mmd1|YqlLCUP0vE;YZ#o;tJxtlAIzmPD7b&"
         ).getOrThrow()
+        assertEquals(CryptoType.CURVE25519, keypair.getType())
 
         assertEquals(keypair.pubKey.value, "CURVE25519:(B2XX5|<+lOSR>_0mQ=KX4o<aOvXe6M`Z5ldINd`")
         assertEquals(
@@ -34,7 +35,7 @@ class EncryptionTest {
         val decdata = keypair.decrypt(encdata)
         assert(decdata.isSuccess)
 
-        val keypair2 = EncryptionPair.generate("CURVE25519").getOrThrow()
+        val keypair2 = EncryptionPair.generate(CryptoType.CURVE25519).getOrThrow()
         val encdata2 = keypair2.encrypt(testdata.toByteArray()).getOrThrow()
         val decdata2 = keypair2.decrypt(encdata2)
         assert(decdata2.isSuccess)

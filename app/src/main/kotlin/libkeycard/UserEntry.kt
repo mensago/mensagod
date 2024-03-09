@@ -247,28 +247,26 @@ class UserEntry : Entry() {
         val outEntry = copy().getOrThrow()
 
 
-        val signAlgo = CryptoString.fromString(
-            fields["Contact-Request-Verification-Key"]!!.toString()
-        ) ?: return Result.failure(BadFieldValueException("Bad Contact-Request-Verification-Key"))
-        val newCRSPair = SigningPair.generate(signAlgo.prefix).getOrThrow()
+        val signAlgo = getVerificationKey("Contact-Request-Verification-Key")
+            ?: return BadFieldValueException("Bad Contact-Request-Verification-Key").toFailure()
+        val newCRSPair = SigningPair.generate(signAlgo.getType()!!).getOrThrow()
         outMap["crsigning.public"] = newCRSPair.pubKey
         outMap["crsigning.private"] = newCRSPair.privKey
         outEntry.setField("Contact-Request-Verification-Key", newCRSPair.pubKey.value)
 
-        val encAlgo = CryptoString.fromString(
-            fields["Contact-Request-Encryption-Key"]!!.toString()
-        ) ?: return Result.failure(BadFieldValueException("Bad Contact-Request-Encryption-Key"))
-        val newCREPair = EncryptionPair.generate(encAlgo.prefix).getOrThrow()
+        val encAlgo = getEncryptionKey("Contact-Request-Encryption-Key")
+            ?: return BadFieldValueException("Bad Contact-Request-Encryption-Key").toFailure()
+        val newCREPair = EncryptionPair.generate(encAlgo.getType()!!).getOrThrow()
         outMap["crencryption.public"] = newCREPair.pubKey
         outMap["crencryption.private"] = newCREPair.privKey
         outEntry.setField("Contact-Request-Encryption-Key", newCREPair.pubKey.value)
 
-        val newSPair = SigningPair.generate(signAlgo.prefix).getOrThrow()
+        val newSPair = SigningPair.generate(signAlgo.getType()!!).getOrThrow()
         outMap["signing.public"] = newSPair.pubKey
         outMap["signing.private"] = newSPair.privKey
         outEntry.setField("Verification-Key", newSPair.pubKey.value)
 
-        val newEPair = EncryptionPair.generate(encAlgo.prefix).getOrThrow()
+        val newEPair = EncryptionPair.generate(encAlgo.getType()!!).getOrThrow()
         outMap["encryption.public"] = newEPair.pubKey
         outMap["encryption.private"] = newEPair.privKey
         outEntry.setField("Encryption-Key", newEPair.pubKey.value)
@@ -389,28 +387,26 @@ class UserEntry : Entry() {
         val outEntry = copy().getOrThrow()
 
 
-        val signAlgo = CryptoString.fromString(
-            fields["Contact-Request-Verification-Key"]!!.toString()
-        ) ?: return Result.failure(BadFieldValueException("Bad Contact-Request-Verification-Key"))
-        val newCRSPair = SigningPair.generate(signAlgo.prefix).getOrThrow()
+        val signAlgo = getVerificationKey("Contact-Request-Verification-Key")
+            ?: return BadFieldValueException("Bad Contact-Request-Verification-Key").toFailure()
+        val newCRSPair = SigningPair.generate(signAlgo.getType()!!).getOrThrow()
         outMap["crsigning.public"] = newCRSPair.pubKey
         outMap["crsigning.private"] = newCRSPair.privKey
         outEntry.setField("Contact-Request-Verification-Key", newCRSPair.pubKey.value)
 
-        val encAlgo = CryptoString.fromString(
-            fields["Contact-Request-Encryption-Key"]!!.toString()
-        ) ?: return Result.failure(BadFieldValueException("Bad Contact-Request-Encryption-Key"))
-        val newCREPair = EncryptionPair.generate(encAlgo.prefix).getOrThrow()
+        val encAlgo = getEncryptionKey("Contact-Request-Encryption-Key")
+            ?: return BadFieldValueException("Bad Contact-Request-Encryption-Key").toFailure()
+        val newCREPair = EncryptionPair.generate(encAlgo.getType()!!).getOrThrow()
         outMap["crencryption.public"] = newCRSPair.pubKey
         outMap["crencryption.private"] = newCRSPair.privKey
         outEntry.setField("Contact-Request-Encryption-Key", newCREPair.pubKey.value)
 
-        val newSPair = SigningPair.generate(signAlgo.prefix).getOrThrow()
+        val newSPair = SigningPair.generate(signAlgo.getType()!!).getOrThrow()
         outMap["signing.public"] = newSPair.pubKey
         outMap["signing.private"] = newSPair.privKey
         outEntry.setField("Verification-Key", newSPair.pubKey.value)
 
-        val newEPair = EncryptionPair.generate(encAlgo.prefix).getOrThrow()
+        val newEPair = EncryptionPair.generate(encAlgo.getType()!!).getOrThrow()
         outMap["encryption.public"] = newSPair.pubKey
         outMap["encryption.private"] = newSPair.privKey
         outEntry.setField("Encryption-Key", newEPair.pubKey.value)

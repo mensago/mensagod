@@ -2,6 +2,7 @@ package mensagod.handlers
 
 import keznacl.Argon2idPassword
 import keznacl.getSupportedAsymmetricAlgorithms
+import keznacl.isSupportedAsymmetric
 import libkeycard.*
 import libmensago.MServerPath
 import libmensago.ResourceExistsException
@@ -175,7 +176,7 @@ fun commandRegCode(state: ClientSession) {
 
     val devid = schema.getRandomID("Device-ID", state.message.data)!!
     val devkey = schema.getCryptoString("Device-Key", state.message.data)!!
-    if (!getSupportedAsymmetricAlgorithms().contains(devkey.prefix)) {
+    if (!isSupportedAsymmetric(devkey.prefix)) {
         ServerResponse(
             309, "ENCRYPTION TYPE NOT SUPPORTED",
             "Supported: " + getSupportedAsymmetricAlgorithms().joinToString(",")

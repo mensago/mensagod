@@ -102,7 +102,7 @@ class LocalFSHandle(mpath: MServerPath, private var file: File) {
     /**
      * Creates a hash of the file.
      */
-    fun hashFile(algorithm: String = getPreferredHashAlgorithm()): Result<Hash> {
+    fun hashFile(algorithm: CryptoType = getPreferredHashAlgorithm()): Result<Hash> {
         return hashFile(file.path.toString(), algorithm)
     }
 

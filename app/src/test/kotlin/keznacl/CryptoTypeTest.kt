@@ -12,5 +12,14 @@ class CryptoTypeTest {
             if (!CryptoType.isSupported(it))
                 throw TestFailureException("$it should be supported and wasn't")
         }
+
+        assert(CryptoType.CURVE25519.isAsymmetric())
+        assert(!CryptoType.XSALSA20.isAsymmetric())
+        assert(CryptoType.ED25519.isSigning())
+        assert(!CryptoType.BLAKE2B_256.isSigning())
+        assert(CryptoType.XSALSA20.isSymmetric())
+        assert(!CryptoType.CURVE25519.isSymmetric())
+        assert(CryptoType.BLAKE2B_256.isHash())
+        assert(!CryptoType.ED25519.isHash())
     }
 }

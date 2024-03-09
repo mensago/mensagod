@@ -1,8 +1,11 @@
 package keznacl
 
+import kotlinx.serialization.Serializable
+
 /**
  * The CryptoType class represents a cryptography algorithm
  */
+@Serializable
 enum class CryptoType {
 
     // Asymmetric Encryption
@@ -17,6 +20,35 @@ enum class CryptoType {
     // Hash Algorithms
     BLAKE2B_256,
     SHA_256;
+
+    fun isAsymmetric(): Boolean {
+        return when (this) {
+            CURVE25519 -> true
+            else -> false
+        }
+    }
+
+    fun isSigning(): Boolean {
+        return when (this) {
+            ED25519 -> true
+            else -> false
+        }
+    }
+
+    fun isSymmetric(): Boolean {
+        return when (this) {
+            XSALSA20 -> true
+            else -> false
+        }
+    }
+
+    fun isHash(): Boolean {
+        return when (this) {
+            BLAKE2B_256, SHA_256 -> true
+            else -> false
+        }
+    }
+
 
     override fun toString(): String {
         return when (this) {
@@ -53,3 +85,28 @@ enum class CryptoType {
         }
     }
 }
+
+fun CryptoString.getType(): CryptoType? {
+    return CryptoType.fromString(prefix)
+}
+
+fun EncryptionPair.getType(): CryptoType? {
+    return CryptoType.fromString(pubKey.prefix)
+}
+
+fun EncryptionKey.getType(): CryptoType? {
+    return CryptoType.fromString(key.prefix)
+}
+
+fun SigningPair.getType(): CryptoType? {
+    return CryptoType.fromString(pubKey.prefix)
+}
+
+fun VerificationKey.getType(): CryptoType? {
+    return CryptoType.fromString(key.prefix)
+}
+
+fun SecretKey.getType(): CryptoType? {
+    return CryptoType.fromString(key.prefix)
+}
+

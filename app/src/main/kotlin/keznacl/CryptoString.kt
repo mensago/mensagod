@@ -88,7 +88,7 @@ open class CryptoString protected constructor(val prefix: String, val encodedDat
     }
 
     /** Calculates and returns the hash of the string value of the instance */
-    fun hash(algorithm: String = getPreferredHashAlgorithm()): Result<Hash> {
+    fun hash(algorithm: CryptoType = getPreferredHashAlgorithm()): Result<Hash> {
         return hash(value.encodeToByteArray(), algorithm)
     }
 
@@ -96,10 +96,6 @@ open class CryptoString protected constructor(val prefix: String, val encodedDat
         private val csPattern = Pattern.compile(
             "^([A-Z0-9-]{1,24}):([0-9A-Za-z!#\$%&()*+-;<=>?@^_`{|}~]+)\$"
         )!!
-
-        private val csPrefixPattern = Pattern.compile(
-            "^([A-Z0-9-]{1,24})\$"
-        )
 
         /** Returns true if the supplied data matches the expected data format */
         fun checkFormat(value: String): Boolean {
@@ -116,21 +112,16 @@ open class CryptoString protected constructor(val prefix: String, val encodedDat
         }
 
         /** Creates a new CryptoString from a string containing the algorithm name and raw data */
-        fun fromBytes(algorithm: String, buffer: ByteArray): CryptoString? {
-            return if (!csPrefixPattern.matcher(algorithm).matches() || buffer.isEmpty())
+        fun fromBytes(type: CryptoType, buffer: ByteArray): CryptoString? {
+            return if (buffer.isEmpty())
                 null
             else
-                CryptoString(algorithm, Base85.encode(buffer))
+                CryptoString(type.toString(), Base85.encode(buffer))
         }
 
         /** Returns true if the string passed conforms to CryptoString format */
         fun isValid(s: String): Boolean {
             return csPattern.matcher(s).matches()
-        }
-
-        @JvmStatic
-        protected fun isValidPrefix(s: String): Boolean {
-            return csPrefixPattern.matcher(s).matches()
         }
     }
 }

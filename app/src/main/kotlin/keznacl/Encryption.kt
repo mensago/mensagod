@@ -3,13 +3,17 @@ package keznacl
 import com.iwebpp.crypto.TweetNaclFast
 import kotlinx.serialization.Serializable
 
+fun isSupportedAsymmetric(s: String): Boolean {
+    return s.uppercase() == "CURVE25519"
+}
+
 /**
  * Returns the asymmetric encryption algorithms supported by the library. Currently the only
  * supported algorithm is CURVE25519, which is included in drafts for FIPS 186-5. Other algorithms
  * may be added at a future time.
  */
-fun getSupportedAsymmetricAlgorithms(): List<String> {
-    return listOf("CURVE25519")
+fun getSupportedAsymmetricAlgorithms(): List<CryptoType> {
+    return listOf(CryptoType.CURVE25519)
 }
 
 /**
@@ -17,8 +21,8 @@ fun getSupportedAsymmetricAlgorithms(): List<String> {
  * know what to choose for your implementation, this will provide a good default which balances
  * speed and security.
  */
-fun getPreferredAsymmetricAlgorithm(): String {
-    return "CURVE25519"
+fun getPreferredAsymmetricAlgorithm(): CryptoType {
+    return CryptoType.CURVE25519
 }
 
 /**
@@ -41,11 +45,11 @@ class EncryptionPair private constructor(
         return privKey
     }
 
-    override fun getPublicHash(algorithm: String): Result<Hash> {
+    override fun getPublicHash(algorithm: CryptoType): Result<Hash> {
         return pubKey.hash(algorithm)
     }
 
-    override fun getPrivateHash(algorithm: String): Result<Hash> {
+    override fun getPrivateHash(algorithm: CryptoType): Result<Hash> {
         return privKey.hash(algorithm)
     }
 
@@ -62,7 +66,7 @@ class EncryptionPair private constructor(
             return Result.failure(result.exceptionOrNull()!!)
         }
 
-        return Result.success(CryptoString.fromBytes("CURVE25519", result.getOrNull()!!)!!)
+        return Result.success(CryptoString.fromBytes(CryptoType.CURVE25519, result.getOrNull()!!)!!)
     }
 
     /**
@@ -95,7 +99,7 @@ class EncryptionPair private constructor(
 
             if (pubKeyCS.prefix != privKeyCS.prefix)
                 return Result.failure(KeyErrorException())
-            if (!getSupportedAsymmetricAlgorithms().contains(pubKeyCS.prefix))
+            if (!isSupportedAsymmetric(pubKeyCS.prefix))
                 return Result.failure(UnsupportedAlgorithmException())
 
             return Result.success(EncryptionPair(pubKeyCS, privKeyCS))
@@ -127,26 +131,23 @@ class EncryptionPair private constructor(
          * @exception UnsupportedAlgorithmException Returned if the library does not support the
          * algorithm specified
          */
-        fun generate(algorithm: String = getPreferredAsymmetricAlgorithm()):
+        fun generate(algorithm: CryptoType = getPreferredAsymmetricAlgorithm()):
                 Result<EncryptionPair> {
 
-            if (!getSupportedAsymmetricAlgorithms().contains(algorithm))
-                return Result.failure(UnsupportedAlgorithmException())
-
             when (algorithm) {
-                "CURVE25519" -> {
+                CryptoType.CURVE25519 -> {
                     val keyPair = TweetNaclFast.Box.keyPair()
-                    val pubKey = CryptoString.fromBytes("CURVE25519", keyPair.publicKey)
+                    val pubKey = CryptoString.fromBytes(CryptoType.CURVE25519, keyPair.publicKey)
                         ?: return Result.failure(KeyErrorException())
 
-                    val privKey = CryptoString.fromBytes("CURVE25519", keyPair.secretKey)
+                    val privKey = CryptoString.fromBytes(CryptoType.CURVE25519, keyPair.secretKey)
                         ?: return Result.failure(KeyErrorException())
 
                     return from(pubKey, privKey)
                 }
-            }
 
-            return Result.failure(UnsupportedAlgorithmException())
+                else -> return Result.failure(UnsupportedAlgorithmException())
+            }
         }
 
     }
@@ -183,12 +184,12 @@ class EncryptionKey private constructor() : Encryptor {
             return Result.failure(result.exceptionOrNull()!!)
         }
 
-        return Result.success(CryptoString.fromBytes("CURVE25519", result.getOrNull()!!)!!)
+        return Result.success(CryptoString.fromBytes(CryptoType.CURVE25519, result.getOrNull()!!)!!)
     }
 
     /** Interface override inherited from [PublicHasher] */
-    override fun getPublicHash(algorithm: String): Result<Hash> {
-        if (publicHash == null || publicHash!!.prefix != algorithm)
+    override fun getPublicHash(algorithm: CryptoType): Result<Hash> {
+        if (publicHash == null || publicHash!!.prefix != algorithm.toString())
             publicHash =
                 hash(publicKey!!.toByteArray(), algorithm).getOrElse { return it.toFailure() }
         return Result.success(publicHash!!)
@@ -208,7 +209,7 @@ class EncryptionKey private constructor() : Encryptor {
          */
         fun from(pubKey: CryptoString): Result<EncryptionKey> {
 
-            if (!getSupportedAsymmetricAlgorithms().contains(pubKey.prefix))
+            if (!isSupportedAsymmetric(pubKey.prefix))
                 return Result.failure(UnsupportedAlgorithmException())
 
             return Result.success(EncryptionKey().also { it.publicKey = pubKey })
@@ -226,7 +227,7 @@ class EncryptionKey private constructor() : Encryptor {
             val pubKey = CryptoString.fromString(pubKeyStr) ?: return Result.failure(
                 BadValueException("bad public key")
             )
-            if (!getSupportedAsymmetricAlgorithms().contains(pubKey.prefix))
+            if (!isSupportedAsymmetric(pubKey.prefix))
                 return Result.failure(UnsupportedAlgorithmException())
 
             return from(pubKey)

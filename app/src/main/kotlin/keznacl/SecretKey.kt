@@ -4,12 +4,16 @@ import com.iwebpp.crypto.TweetNaclFast.SecretBox
 import kotlinx.serialization.Serializable
 import java.security.SecureRandom
 
+fun isSupportedSymmetric(s: String): Boolean {
+    return s.uppercase() == "XSALSA20"
+}
+
 /**
  * Returns the symmetric encryption algorithms supported by the library. Currently the only
  * supported algorithm is XSALSA20. Other algorithms may be added at a future time.
  */
-fun getSupportedSymmetricAlgorithms(): List<String> {
-    return listOf("XSALSA20")
+fun getSupportedSymmetricAlgorithms(): List<CryptoType> {
+    return listOf(CryptoType.XSALSA20)
 }
 
 /**
@@ -17,8 +21,8 @@ fun getSupportedSymmetricAlgorithms(): List<String> {
  * know what to choose for your implementation, this will provide a good default which balances
  * speed and security.
  */
-fun getPreferredSymmetricAlgorithm(): String {
-    return "XSALSA20"
+fun getPreferredSymmetricAlgorithm(): CryptoType {
+    return CryptoType.XSALSA20
 }
 
 /**
@@ -33,14 +37,14 @@ class SecretKey private constructor(val key: CryptoString) : Encryptor, Decrypto
      * @exception UnsupportedAlgorithmException Returned if the library does not support the
      * algorithm specified by the keys
      */
-    fun getHash(algorithm: String = getPreferredHashAlgorithm()): Result<Hash> {
+    fun getHash(algorithm: CryptoType = getPreferredHashAlgorithm()): Result<Hash> {
         return getPublicHash(algorithm)
     }
 
     /**
      * Required function for the Encryptor interface. It merely calls getHash() internally.
      */
-    override fun getPublicHash(algorithm: String): Result<Hash> {
+    override fun getPublicHash(algorithm: CryptoType): Result<Hash> {
         return key.hash(algorithm)
     }
 
@@ -61,7 +65,7 @@ class SecretKey private constructor(val key: CryptoString) : Encryptor, Decrypto
         val ciphertext: ByteArray =
             box.box(data, nonce) ?: return Result.failure(EncryptionFailureException())
 
-        return Result.success(CryptoString.fromBytes("XSALSA20", nonce + ciphertext)!!)
+        return Result.success(CryptoString.fromBytes(CryptoType.XSALSA20, nonce + ciphertext)!!)
     }
 
     /**
@@ -96,7 +100,7 @@ class SecretKey private constructor(val key: CryptoString) : Encryptor, Decrypto
          */
         fun from(keyCS: CryptoString): Result<SecretKey> {
 
-            if (!getSupportedSymmetricAlgorithms().contains(keyCS.prefix))
+            if (!isSupportedSymmetric(keyCS.prefix))
                 return Result.failure(UnsupportedAlgorithmException())
 
             return Result.success(SecretKey(keyCS))
@@ -114,7 +118,7 @@ class SecretKey private constructor(val key: CryptoString) : Encryptor, Decrypto
             val key = CryptoString.fromString(keyStr) ?: return Result.failure(
                 BadValueException("bad key")
             )
-            if (!getSupportedSymmetricAlgorithms().contains(key.prefix))
+            if (!isSupportedSymmetric(key.prefix))
                 return Result.failure(UnsupportedAlgorithmException())
 
             return from(key)
@@ -127,19 +131,19 @@ class SecretKey private constructor(val key: CryptoString) : Encryptor, Decrypto
          * @exception UnsupportedAlgorithmException Returned if the library does not support the
          * algorithm specified
          */
-        fun generate(algorithm: String = getPreferredSymmetricAlgorithm()): Result<SecretKey> {
+        fun generate(algorithm: CryptoType = getPreferredSymmetricAlgorithm()): Result<SecretKey> {
 
             when (algorithm) {
-                "XSALSA20" -> {
+                CryptoType.XSALSA20 -> {
                     val rng = SecureRandom()
                     val keyData = ByteArray(SecretBox.keyLength)
                     rng.nextBytes(keyData)
 
-                    return from(CryptoString.fromBytes(algorithm, keyData)!!)
+                    return from(CryptoString.fromBytes(CryptoType.XSALSA20, keyData)!!)
                 }
-            }
 
-            return Result.failure(UnsupportedAlgorithmException())
+                else -> return Result.failure(UnsupportedAlgorithmException())
+            }
         }
     }
 }

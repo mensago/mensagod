@@ -233,19 +233,17 @@ class OrgEntry : Entry() {
         val outEntry = copy().getOrThrow()
 
 
-        val signAlgo = CryptoString.fromString(fields["Primary-Verification-Key"]!!.toString())
+        val signAlgo = getVerificationKey("Primary-Verification-Key")
             ?: return Result.failure(BadFieldValueException("Bad Primary-Verification-Key"))
-        // This should *never* have an error. If it does, we have big problems
-        val newSPair = SigningPair.generate(signAlgo.prefix).getOrThrow()
+        val newSPair = SigningPair.generate(signAlgo.getType()!!).getOrThrow()
         outMap["primary.public"] = newSPair.pubKey
         outMap["primary.private"] = newSPair.privKey
         outEntry.setField("Primary-Verification-Key", newSPair.pubKey.value)
 
-        val encAlgo =
-            CryptoString.fromString(fields["Encryption-Key"]!!.toString()) ?: return Result.failure(
-                BadFieldValueException("Bad Encryption-Key")
-            )
-        val newEPair = EncryptionPair.generate(encAlgo.prefix).getOrThrow()
+        val encAlgo = getEncryptionKey("Encryption-Key")
+            ?: return BadFieldValueException("Bad Encryption-Key").toFailure()
+
+        val newEPair = EncryptionPair.generate(encAlgo.getType()!!).getOrThrow()
         outMap["encryption.public"] = newEPair.pubKey
         outMap["encryption.private"] = newEPair.privKey
         outEntry.setField("Encryption-Key", newEPair.pubKey.value)
@@ -259,16 +257,12 @@ class OrgEntry : Entry() {
         if (expiration <= 0) setExpires(366)
         else setExpires(expiration)
 
-        var result = outEntry.sign("Custody-Signature", signingPair)
-        if (result != null) return Result.failure(result)
-        val hashAlgo =
-            CryptoString.fromString(signatures["Hash"]!!.toString()) ?: return Result.failure(
-                BadFieldValueException("Bad Hash")
-            )
-        result = outEntry.hash(hashAlgo.prefix)
-        if (result != null) return Result.failure(result)
-        result = outEntry.sign("Organization-Signature", newSPair)
-        if (result != null) return Result.failure(result)
+        outEntry.sign("Custody-Signature", signingPair)?.let { return it.toFailure() }
+        val hashAlgo = getHash("Hash")
+            ?: return BadFieldValueException("Bad Hash").toFailure()
+
+        outEntry.hash(hashAlgo.getType()!!)?.let { return it.toFailure() }
+        outEntry.sign("Organization-Signature", newSPair)?.let { return it.toFailure() }
 
         return Result.success(Pair(outEntry, outMap))
     }
@@ -310,18 +304,17 @@ class OrgEntry : Entry() {
         val outMap = mutableMapOf<String, CryptoString>()
         val outEntry = copy().getOrThrow()
 
-        val signAlgo = CryptoString.fromString(fields["Primary-Verification-Key"]!!.toString())
+        val signAlgo = getVerificationKey("Primary-Verification-Key")
             ?: return Result.failure(BadFieldValueException("Bad Primary-Verification-Key"))
-        val newSPair = SigningPair.generate(signAlgo.prefix).getOrThrow()
+        val newSPair = SigningPair.generate(signAlgo.getType()!!).getOrThrow()
         outMap["primary.public"] = newSPair.pubKey
         outMap["primary.private"] = newSPair.privKey
         outEntry.setField("Primary-Verification-Key", newSPair.pubKey.value)
 
-        val encAlgo =
-            CryptoString.fromString(fields["Encryption-Key"]!!.toString()) ?: return Result.failure(
-                BadFieldValueException("Bad Encryption-Key")
-            )
-        val newEPair = EncryptionPair.generate(encAlgo.prefix).getOrThrow()
+        val encAlgo = getEncryptionKey("Encryption-Key")
+            ?: return BadFieldValueException("Bad Encryption-Key").toFailure()
+
+        val newEPair = EncryptionPair.generate(encAlgo.getType()!!).getOrThrow()
         outMap["encryption.public"] = newSPair.pubKey
         outMap["encryption.private"] = newSPair.privKey
         outEntry.setField("Encryption-Key", newEPair.pubKey.value)
@@ -331,15 +324,11 @@ class OrgEntry : Entry() {
 
         // This new entry has no custody signature--it's a new root entry
 
-        val hash =
-            CryptoString.fromString(signatures["Hash"]!!.toString()) ?: return Result.failure(
-                BadFieldValueException("Bad Hash")
-            )
+        val hash = getHash("Hash") ?: return BadFieldValueException("Bad Hash").toFailure()
+
         outEntry.setField("Revoke", hash.toString())
-        var result = outEntry.hash(hash.prefix)
-        if (result != null) return Result.failure(result)
-        result = outEntry.sign("Organization-Signature", newSPair)
-        if (result != null) return Result.failure(result)
+        outEntry.hash(hash.getType()!!)?.let { return it.toFailure() }
+        outEntry.sign("Organization-Signature", newSPair)?.let { return it.toFailure() }
 
         return Result.success(Pair(outEntry, outMap))
     }

@@ -3,12 +3,16 @@ package keznacl
 import com.iwebpp.crypto.TweetNaclFast.Signature
 import kotlinx.serialization.Serializable
 
+fun isSupportedSigning(s: String): Boolean {
+    return s.uppercase() == "ED25519"
+}
+
 /**
  * Returns the digital signing algorithms supported by the library. Currently the only supported
  * algorithm is ED25519. Other algorithms may be added at a future time.
  */
-fun getSupportedSigningAlgorithms(): List<String> {
-    return listOf("ED25519")
+fun getSupportedSigningAlgorithms(): List<CryptoType> {
+    return listOf(CryptoType.ED25519)
 }
 
 /**
@@ -16,8 +20,8 @@ fun getSupportedSigningAlgorithms(): List<String> {
  * what to choose for your implementation, this will provide a good default which balances speed and
  * security.
  */
-fun getPreferredSigningAlgorithm(): String {
-    return "ED25519"
+fun getPreferredSigningAlgorithm(): CryptoType {
+    return CryptoType.ED25519
 }
 
 /**
@@ -36,11 +40,11 @@ class SigningPair private constructor(val pubKey: CryptoString, val privKey: Cry
         return privKey
     }
 
-    override fun getPublicHash(algorithm: String): Result<Hash> {
+    override fun getPublicHash(algorithm: CryptoType): Result<Hash> {
         return pubKey.hash(algorithm)
     }
 
-    override fun getPrivateHash(algorithm: String): Result<Hash> {
+    override fun getPrivateHash(algorithm: CryptoType): Result<Hash> {
         return privKey.hash(algorithm)
     }
 
@@ -64,7 +68,7 @@ class SigningPair private constructor(val pubKey: CryptoString, val privKey: Cry
         if (signature == null || signature.isEmpty())
             return Result.failure(SigningFailureException())
 
-        return Result.success(CryptoString.fromBytes("ED25519", signature)!!)
+        return Result.success(CryptoString.fromBytes(CryptoType.ED25519, signature)!!)
     }
 
     override fun toString(): String {
@@ -102,7 +106,7 @@ class SigningPair private constructor(val pubKey: CryptoString, val privKey: Cry
 
             if (pubKeyStr.prefix != privKeyStr.prefix)
                 return Result.failure(KeyErrorException())
-            if (!getSupportedSigningAlgorithms().contains(pubKeyStr.prefix))
+            if (!isSupportedSigning(pubKeyStr.prefix))
                 return Result.failure(UnsupportedAlgorithmException())
 
             return Result.success(SigningPair(pubKeyStr, privKeyStr))
@@ -134,22 +138,24 @@ class SigningPair private constructor(val pubKey: CryptoString, val privKey: Cry
          * @exception UnsupportedAlgorithmException Returned if the library does not support the
          * algorithm specified
          */
-        fun generate(algorithm: String = getPreferredSigningAlgorithm()): Result<SigningPair> {
+        fun generate(algorithm: CryptoType = getPreferredSigningAlgorithm()): Result<SigningPair> {
 
             when (algorithm) {
-                "ED25519" -> {
+                CryptoType.ED25519 -> {
                     val keyPair = Signature.keyPair()
-                    val publicKeyCS = CryptoString.fromBytes("ED25519", keyPair.publicKey)
+                    val publicKeyCS = CryptoString.fromBytes(CryptoType.ED25519, keyPair.publicKey)
                         ?: return Result.failure(KeyErrorException())
 
                     val privateKeyCS =
-                        CryptoString.fromBytes("ED25519", keyPair.secretKey.copyOfRange(0, 32))
-                            ?: return Result.failure(KeyErrorException())
+                        CryptoString.fromBytes(
+                            CryptoType.ED25519,
+                            keyPair.secretKey.copyOfRange(0, 32)
+                        ) ?: return Result.failure(KeyErrorException())
                     return from(publicKeyCS, privateKeyCS)
                 }
-            }
 
-            return Result.failure(UnsupportedAlgorithmException())
+                else -> return Result.failure(UnsupportedAlgorithmException())
+            }
         }
     }
 }
@@ -193,8 +199,8 @@ class VerificationKey : Verifier {
      * @exception UnsupportedAlgorithmException Returned if the library does not support the
      * algorithm specified by the keys
      */
-    override fun getPublicHash(algorithm: String): Result<Hash> {
-        if (publicHash == null || publicHash!!.prefix != algorithm)
+    override fun getPublicHash(algorithm: CryptoType): Result<Hash> {
+        if (publicHash == null || publicHash!!.prefix != algorithm.toString())
             publicHash =
                 hash(publicKey!!.toByteArray(), algorithm).getOrElse { return it.toFailure() }
         return Result.success(publicHash!!)
@@ -214,7 +220,7 @@ class VerificationKey : Verifier {
          */
         fun from(key: CryptoString): Result<VerificationKey> {
 
-            if (!getSupportedSigningAlgorithms().contains(key.prefix))
+            if (!isSupportedSigning(key.prefix))
                 return Result.failure(UnsupportedAlgorithmException())
 
             return Result.success(VerificationKey().also {
