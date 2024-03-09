@@ -6,10 +6,7 @@ import libmensago.ClientRequest
 import libmensago.MServerPath
 import libmensago.ServerResponse
 import mensagod.*
-import mensagod.dbcmds.addKeyInfo
-import mensagod.dbcmds.getDeviceStatus
-import mensagod.dbcmds.updateDeviceKey
-import mensagod.dbcmds.updateDeviceStatus
+import mensagod.dbcmds.*
 import org.apache.commons.io.FileUtils
 import java.security.SecureRandom
 
@@ -49,7 +46,32 @@ fun commandDevKey(state: ClientSession) {
 
 // GETDEVICEINFO(Device-ID=null)
 fun commandGetDeviceInfo(state: ClientSession) {
-    TODO("Implement commandGetDeviceInfo($state)")
+
+    if (!state.requireLogin()) return
+    val devID = state.getRandomID("Device-ID", false)
+    val db = DBConn()
+    val infoList = getDeviceInfo(db, state.wid!!, devID).getOrElse {
+        logError("commandGetDeviceInfo.getDeviceInfo exception for ${state.wid!!}: $it")
+        QuickResponse.sendInternalError("Error getting device info", state.conn)
+        return
+    }
+    if (infoList.isEmpty()) {
+        QuickResponse.sendNotFound("", state.conn)
+        return
+    }
+    val response = if (devID != null) {
+        ServerResponse(
+            200, "OK", "", mutableMapOf(
+                "Device-Info" to infoList[0].second.toString()
+            )
+        )
+    } else {
+        val data = infoList.associate { Pair(it.first.toString(), it.second.toString()) }
+            .toMutableMap()
+        data["Devices"] = infoList.map { it.first }.joinToString(",")
+        ServerResponse(200, "OK", "", data)
+    }
+    response.sendCatching(state.conn, "Error sending device info to $state.wid")
 }
 
 fun commandKeyPkg(state: ClientSession) {

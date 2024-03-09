@@ -19,6 +19,12 @@ import java.net.Socket
 class DevCommandTest {
 
     @Test
+    fun getDeviceInfoTest() {
+
+        // TODO: Implement test for commandGetDeviceInfo()
+    }
+
+    @Test
     fun keyPkgTest() {
         setupTest("handlers.keyPkgTest")
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
