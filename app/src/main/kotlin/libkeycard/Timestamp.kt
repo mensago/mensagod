@@ -109,7 +109,8 @@ class Timestamp(i: Instant? = null) {
         }
 
         /**
-         * Creates a Timestamp object from just a date, which is stored internally as midnight on that date.
+         * Creates a Timestamp object from just a date, which is stored internally as midnight on
+         * that date.
          */
         fun fromDateString(s: String): Timestamp? {
             val date = try {
@@ -122,8 +123,8 @@ class Timestamp(i: Instant? = null) {
         }
 
         /**
-         * Creates a new Timestamp object using the current time plus the specified number of days into the future, if
-         * positive, or the past, if negative.
+         * Creates a new Timestamp object using the current time plus the specified number of days
+         * into the future, if positive, or the past, if negative.
          */
         fun plusDays(days: Int): Timestamp {
             return Timestamp().set(Instant.now().plusSeconds(days.toLong() * 86400))
