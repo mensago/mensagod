@@ -88,7 +88,7 @@ open class CryptoString protected constructor(val prefix: String, val encodedDat
     }
 
     /** Calculates and returns the hash of the string value of the instance */
-    fun calcHash(algorithm: String = getPreferredHashAlgorithm()): Result<Hash> {
+    fun hash(algorithm: String = getPreferredHashAlgorithm()): Result<Hash> {
         return hash(value.encodeToByteArray(), algorithm)
     }
 

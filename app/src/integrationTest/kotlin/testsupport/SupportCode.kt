@@ -121,7 +121,7 @@ fun initDB(db: Connection): Map<String, String> {
     stmt.setString(1, rootEntry.getFieldString("Timestamp")!!)
     stmt.setString(2, initialOEPair.pubKey.toString())
     stmt.setString(3, initialOEPair.privKey.toString())
-    stmt.setString(4, initialOEPair.pubKey.calcHash().getOrThrow().toString())
+    stmt.setString(4, initialOEPair.pubKey.hash().getOrThrow().toString())
     stmt.execute()
 
     stmt = db.prepareStatement(
@@ -131,7 +131,7 @@ fun initDB(db: Connection): Map<String, String> {
     stmt.setString(1, rootEntry.getFieldString("Timestamp")!!)
     stmt.setString(2, initialOSPair.pubKey.toString())
     stmt.setString(3, initialOSPair.privKey.toString())
-    stmt.setString(4, initialOSPair.pubKey.calcHash().getOrThrow().toString())
+    stmt.setString(4, initialOSPair.pubKey.hash().getOrThrow().toString())
     stmt.execute()
 
     // Now that we've added the organization's root keycard entry and keys, chain a new entry and
@@ -157,7 +157,7 @@ fun initDB(db: Connection): Map<String, String> {
     stmt.setString(1, newEntry.getFieldString("Timestamp")!!)
     stmt.setString(2, keys["encryption.public"].toString())
     stmt.setString(3, keys["encryption.private"].toString())
-    stmt.setString(4, keys["encryption.public"]!!.calcHash().getOrThrow().toString())
+    stmt.setString(4, keys["encryption.public"]!!.hash().getOrThrow().toString())
     stmt.execute()
 
     stmt = db.prepareStatement(
@@ -167,7 +167,7 @@ fun initDB(db: Connection): Map<String, String> {
     stmt.setString(1, newEntry.getFieldString("Timestamp")!!)
     stmt.setString(2, keys["primary.public"].toString())
     stmt.setString(3, keys["primary.private"].toString())
-    stmt.setString(4, keys["primary.public"]!!.calcHash().getOrThrow().toString())
+    stmt.setString(4, keys["primary.public"]!!.hash().getOrThrow().toString())
     stmt.execute()
 
     stmt = db.prepareStatement(
@@ -177,7 +177,7 @@ fun initDB(db: Connection): Map<String, String> {
     stmt.setString(1, rootEntry.getFieldString("Timestamp")!!)
     stmt.setString(2, initialOSPair.pubKey.toString())
     stmt.setString(3, initialOSPair.privKey.toString())
-    stmt.setString(4, initialOSPair.pubKey.calcHash().getOrThrow().toString())
+    stmt.setString(4, initialOSPair.pubKey.hash().getOrThrow().toString())
     stmt.execute()
 
     // Preregister the admin account

@@ -42,11 +42,11 @@ class EncryptionPair private constructor(
     }
 
     override fun getPublicHash(algorithm: String): Result<Hash> {
-        return pubKey.calcHash(algorithm)
+        return pubKey.hash(algorithm)
     }
 
     override fun getPrivateHash(algorithm: String): Result<Hash> {
-        return privKey.calcHash(algorithm)
+        return privKey.hash(algorithm)
     }
 
     /**

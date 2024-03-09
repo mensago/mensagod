@@ -59,6 +59,6 @@ class CryptoStringTest {
         assertNull(Hash.fromBytes("TEST", "aaaaaa".toByteArray()))
 
         val expectedHash = hash("TEST:VPRomVPO".encodeToByteArray()).getOrThrow()
-        assertEquals(expectedHash.toString(), cs.calcHash().getOrThrow().toString())
+        assertEquals(expectedHash.toString(), cs.hash().getOrThrow().toString())
     }
 }

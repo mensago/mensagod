@@ -37,11 +37,11 @@ class SigningPair private constructor(val pubKey: CryptoString, val privKey: Cry
     }
 
     override fun getPublicHash(algorithm: String): Result<Hash> {
-        return pubKey.calcHash(algorithm)
+        return pubKey.hash(algorithm)
     }
 
     override fun getPrivateHash(algorithm: String): Result<Hash> {
-        return privKey.calcHash(algorithm)
+        return privKey.hash(algorithm)
     }
 
     /**
