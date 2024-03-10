@@ -186,7 +186,21 @@ fun commandKeyPkg(state: ClientSession) {
 
 // REMOVEDEVICE(Device-ID=null)
 fun commandRemoveDevice(state: ClientSession) {
-    TODO("Implement commandRemoveDevice($state)")
+
+    val schema = Schemas.removeDevice
+    if (!state.requireLogin(schema)) return
+    val devid = schema.getRandomID("Device-ID", state.message.data)!!
+
+    val db = DBConn()
+    removeDevice(db, state.wid!!, devid)?.let {
+        logError("commandRemoveDevice.removeDevice exception for ${state.wid!!}: $it")
+        QuickResponse.sendInternalError("Error removing device", state.conn)
+        return
+    }
+    QuickResponse.sendOK("", state.conn)
+
+    if (devid == state.devid)
+        state.isTerminating = true
 }
 
 // SETDEVICEINFO(Device-Info)

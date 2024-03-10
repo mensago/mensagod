@@ -23,7 +23,7 @@ class DevCommandTest {
 
     @Test
     fun devKeyTest() {
-        setupTest("handlers.devKeyTest")
+        setupTest("handlers.devKey")
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
         val oldPair = EncryptionPair.fromStrings(
@@ -305,5 +305,56 @@ class DevCommandTest {
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(403)
         }.run()
+    }
+
+    @Test
+    fun removeDeviceTest() {
+        setupTest("handlers.removeDevice")
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+        val devid2 = RandomID.fromString("61ae62b5-28f0-4b44-9eb4-8f81b761ad18")!!
+        val devPair2 = EncryptionPair.fromStrings(
+            "CURVE25519:wv-Q}5&La(d-vZ?Mq@<|ad&e73)eaP%NAh{HDUo;",
+            "CURVE25519:X5@Vi_4_JZ_mOPeNWKY5hOIi&1ddz#C9K`L=_&M^"
+        ).getOrThrow()
+        val fakeInfo = CryptoString.fromString("XSALSA20:myfakedevInfoYAY")!!
+
+        val db = DBConn()
+        db.execute(
+            "INSERT INTO iwkspc_devices(wid,devid,devkey,devinfo,lastlogin,status) " +
+                    "VALUES(?,?,?,?,?,?)",
+            adminWID,
+            devid2,
+            devPair2.pubKey,
+            fakeInfo,
+            Instant.now(),
+            "registered"
+        ).getOrThrow()
+
+        // Case #1: Success
+        CommandTest(
+            "removedevice.1",
+            SessionState(
+                ClientRequest(
+                    "REMOVEDEVICE", mutableMapOf(
+                        "Device-ID" to devid2.toString(),
+                    )
+                ),
+                adminWID, LoginState.LoggedIn, devid,
+            ), ::commandRemoveDevice
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+
+            val rs = db.query(
+                """SELECT devid FROM iwkspc_devices WHERE wid=? AND devid=?""",
+                adminWID, devid2
+            ).getOrThrow()
+            assert(!rs.next())
+        }.run()
+
+        // Because of how the test itself is set up, we can't test connection termination if the
+        // current device is removed. That will have to be tested via a client integration test
     }
 }

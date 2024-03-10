@@ -107,6 +107,10 @@ object Schemas {
         MsgField("Password-Parameters", MsgFieldType.String, false),
     )
 
+    val removeDevice = Schema(
+        MsgField("Device-ID", MsgFieldType.RandomID, true),
+    )
+
     val rmDir = Schema(MsgField("Path", MsgFieldType.Path, true))
 
     val select = Schema(MsgField("Path", MsgFieldType.Path, true))
