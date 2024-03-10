@@ -538,21 +538,21 @@ fun challengeDevice(state: ClientSession, devkey: CryptoString): Result<Boolean>
 
     val req = ClientRequest.receive(state.conn.getInputStream())
         .getOrElse { return it.toFailure() }
-    if (req.action == "CANCEL") return Result.failure(CancelException())
+    if (req.action == "CANCEL") return CancelException().toFailure()
 
     if (req.action != "DEVICE") {
         QuickResponse.sendBadRequest("Session state mismatch", state.conn)
-        return Result.success(false)
+        return false.toSuccess()
     }
 
     val missingField = req.validate(setOf("Device-ID", "Device-Key", "Response"))
     if (missingField != null) {
         QuickResponse.sendBadRequest("Missing required field $missingField", state.conn)
-        return Result.success(false)
+        return false.toSuccess()
     }
     if (devkey.toString() != req.data["Device-Key"]) {
         QuickResponse.sendBadRequest("Device key mismatch", state.conn)
-        return Result.success(false)
+        return false.toSuccess()
     }
 
     return Result.success(challenge == req.data["Response"])

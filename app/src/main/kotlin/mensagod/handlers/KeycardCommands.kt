@@ -567,11 +567,11 @@ fun commandIsCurrent(state: ClientSession) {
 private fun resolveOwner(db: DBConn, owner: String): Result<RandomID?> {
     val wid = RandomID.fromString(owner)
     if (wid != null)
-        return Result.success(wid)
+        return wid.toSuccess()
 
     val waddr = WAddress.fromString(owner)
     if (waddr != null)
-        return Result.success(waddr.id)
+        return waddr.id.toSuccess()
 
     val maddr = MAddress.fromString(owner)
     if (maddr != null) {

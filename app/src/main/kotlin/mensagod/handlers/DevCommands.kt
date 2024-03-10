@@ -294,7 +294,7 @@ private fun dualChallengeDevice(state: ClientSession, oldKey: CryptoString, newK
 
     val req = ClientRequest.receive(state.conn.getInputStream())
         .getOrElse { return it.toFailure() }
-    if (req.action == "CANCEL") return Result.failure(CancelException())
+    if (req.action == "CANCEL") return CancelException().toFailure()
 
     if (req.action != "DEVKEY") {
         state.quickResponse(400, "BAD REQUEST", "Sesion state mismatch")
