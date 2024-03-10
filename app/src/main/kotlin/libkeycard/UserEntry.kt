@@ -122,7 +122,7 @@ class UserEntry : Entry() {
      */
     override fun getFullText(sigLevel: String?): Result<String> {
         if (!fields.containsKey("Index"))
-            return Result.failure(BadFieldException("Missing required field Index"))
+            return BadFieldException("Missing required field Index").toFailure()
 
         val lines = StringJoiner("\r\n")
         for (f in permittedFields) {
@@ -143,7 +143,7 @@ class UserEntry : Entry() {
                     lines.add("Custody-Signature:${signatures["Custody-Signature"]}")
                 else {
                     if (requirePrevious)
-                        return Result.failure(ComplianceFailureException("Custody-Signature missing"))
+                        return ComplianceFailureException("Custody-Signature missing").toFailure()
                 }
             }
 
@@ -153,7 +153,7 @@ class UserEntry : Entry() {
                         lines.add("$it:${signatures[it]}")
                     else {
                         if (requirePrevious)
-                            return Result.failure(ComplianceFailureException("$it missing"))
+                            return ComplianceFailureException("$it missing").toFailure()
                     }
                 }
             }
@@ -164,7 +164,7 @@ class UserEntry : Entry() {
                         lines.add("$it:${signatures[it]}")
                     else {
                         if (requirePrevious)
-                            return Result.failure(ComplianceFailureException("$it missing"))
+                            return ComplianceFailureException("$it missing").toFailure()
                     }
                 }
             }
@@ -178,7 +178,7 @@ class UserEntry : Entry() {
                         lines.add("$it:${signatures[it]}")
                     else {
                         if (requirePrevious)
-                            return Result.failure(ComplianceFailureException("$it missing"))
+                            return ComplianceFailureException("$it missing").toFailure()
                     }
                 }
             }
@@ -192,15 +192,15 @@ class UserEntry : Entry() {
                         lines.add("$it:${signatures[it]}")
                     else {
                         if (requirePrevious)
-                            return Result.failure(ComplianceFailureException("$it missing"))
+                            return ComplianceFailureException("$it missing").toFailure()
                     }
                 }
             }
 
-            else -> return Result.failure(BadValueException())
+            else -> return BadValueException().toFailure()
         }
         lines.add("")
-        return Result.success(lines.toString())
+        return lines.toString().toSuccess()
     }
 
     /**
@@ -305,40 +305,38 @@ class UserEntry : Entry() {
     override fun verifyChain(previous: Entry): Result<Boolean> {
 
         if (!signatures.containsKey("Previous-Hash"))
-            return Result.failure(
-                ComplianceFailureException(
-                    "Required auth string Previous-Hash missing"
-                )
-            )
+            return ComplianceFailureException(
+                "Required auth string Previous-Hash missing"
+            ).toFailure()
         if (!fields.containsKey("Index"))
-            return Result.failure(ComplianceFailureException("Required field Index missing"))
+            return ComplianceFailureException("Required field Index missing").toFailure()
 
         // If the current entry revokes the previous one, there can be no chain verification
-        if (isRevoked()) return Result.failure(RevokedEntryException())
+        if (isRevoked()) return RevokedEntryException().toFailure()
 
         val complianceError = previous.isCompliant()
-        if (complianceError != null) return Result.failure(complianceError)
+        if (complianceError != null) return complianceError.toFailure()
 
         if (previous.getAuthString("Hash")!!.toString() !=
             getAuthString("Previous-Hash")!!.toString()
         )
-            return Result.failure(HashMismatchException())
+            return HashMismatchException().toFailure()
 
         val className = previous.javaClass.toString()
         val result = when {
             className.endsWith("UserEntry") -> {
                 val selfIndex = getFieldInteger("Index")!!
                 if (selfIndex == 1)
-                    return Result.failure(OutOfOrderException())
+                    return OutOfOrderException().toFailure()
 
                 if (previous.getFieldInteger("Index")!! != selfIndex - 1)
-                    return Result.failure(OutOfOrderException())
+                    return OutOfOrderException().toFailure()
                 val verKeyStr = previous.getFieldString(
                     "Contact-Request-Verification-Key"
                 )!!
                 val verKey = VerificationKey.fromString(verKeyStr)
                     .getOrElse {
-                        return Result.failure(BadFieldValueException("Bad CR verification key"))
+                        return BadFieldValueException("Bad CR verification key").toFailure()
                     }
 
                 verifySignature("Custody-Signature", verKey)
@@ -348,13 +346,13 @@ class UserEntry : Entry() {
                 val verKeyStr = previous.getFieldString("Primary-Verification-Key")!!
                 val verKey = VerificationKey.fromString(verKeyStr)
                     .getOrElse {
-                        return Result.failure(BadFieldValueException("Bad org verification key"))
+                        return BadFieldValueException("Bad org verification key").toFailure()
                     }
 
                 verifySignature("Organization-Signature", verKey)
             }
 
-            else -> return Result.failure(EntryTypeException())
+            else -> return EntryTypeException().toFailure()
         }
 
         return result
@@ -368,19 +366,15 @@ class UserEntry : Entry() {
     override fun revoke(expiration: Int): Result<Pair<Entry, Map<String, CryptoString>>> {
 
         if (!fields.containsKey("Contact-Request-Verification-Key"))
-            return Result.failure(
-                ComplianceFailureException(
-                    "Required field Contact-Request-Verification-Key missing"
-                )
-            )
+            return ComplianceFailureException(
+                "Required field Contact-Request-Verification-Key missing"
+            ).toFailure()
         if (!fields.containsKey("Contact-Request-Encryption-Key"))
-            return Result.failure(
-                ComplianceFailureException(
-                    "Required field Contact-Request-Encryption-Key missing"
-                )
-            )
+            return ComplianceFailureException(
+                "Required field Contact-Request-Encryption-Key missing"
+            ).toFailure()
         if (!signatures.containsKey("Hash"))
-            return Result.failure(ComplianceFailureException("Required auth string Hash missing"))
+            return ComplianceFailureException("Required auth string Hash missing").toFailure()
 
         val outMap = mutableMapOf<String, CryptoString>()
         val outEntry = copy().getOrElse { return it.toFailure() }
@@ -420,7 +414,7 @@ class UserEntry : Entry() {
         if (expiration <= 0) setExpires(30)
         else setExpires(expiration)
 
-        return Result.success(Pair(outEntry, outMap))
+        return Pair(outEntry, outMap).toSuccess()
     }
 
     companion object {
@@ -465,9 +459,8 @@ class UserEntry : Entry() {
             length for any variable-length fields, including keys. It's a good, quick way of ruling out
              obviously bad data.
              */
-            if (s.length < 160) {
-                return Result.failure(BadValueException())
-            }
+            if (s.length < 160)
+                return BadValueException().toFailure()
 
             val out = UserEntry()
             for (rawLine in s.split("\r\n")) {
@@ -475,13 +468,12 @@ class UserEntry : Entry() {
                 if (line.isEmpty()) continue
 
                 val parts = line.split(":", limit = 2)
-                if (parts.size != 2) {
-                    return Result.failure(BadFieldValueException(line))
-                }
+                if (parts.size != 2)
+                    return BadFieldValueException(line).toFailure()
 
-                if (parts[1].length > 6144) {
-                    return Result.failure(RangeException("Field ${parts[0]} may not be longer than 6144 bytes"))
-                }
+                if (parts[1].length > 6144)
+                    return RangeException("Field ${parts[0]} may not be longer than 6144 bytes")
+                        .toFailure()
 
                 val fieldName = parts[0]
                 val fieldValue = parts[1]
@@ -491,19 +483,15 @@ class UserEntry : Entry() {
                     "Previous-Hash",
                     "Hash",
                     "User-Signature" -> {
-                        val cs = CryptoString.fromString(fieldValue) ?: return Result.failure(
-                            BadFieldValueException(fieldName)
-                        )
+                        val cs = CryptoString.fromString(fieldValue)
+                            ?: return BadFieldValueException(fieldName).toFailure()
                         out.addAuthString(fieldName, cs)
                         continue
                     }
                 }
 
-                val field = EntryField.fromStrings(fieldName, fieldValue)
-                if (field.isFailure) return Result.failure(field.exceptionOrNull()!!)
-
-                val err = out.setField(fieldName, fieldValue)
-                if (err != null) return Result.failure(err)
+                EntryField.fromStrings(fieldName, fieldValue).onFailure { return it.toFailure() }
+                out.setField(fieldName, fieldValue)?.let { return it.toFailure() }
             }
 
             return out.toSuccess()

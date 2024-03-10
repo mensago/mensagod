@@ -12,17 +12,17 @@ import java.util.*
  * @exception BadValueException Returned if given a string that isn't an Argon2 hash
  */
 fun argonPassFromHash(hashStr: String): Result<Argon2Password> {
-    hashStr.ifEmpty { return Result.failure(EmptyDataException()) }
+    hashStr.ifEmpty { return EmptyDataException().toFailure() }
 
     val parts = hashStr.trim().split('$', limit = 3).filter { it.isNotEmpty() }
-    if (parts.isEmpty()) return Result.failure(BadValueException())
+    if (parts.isEmpty()) return BadValueException().toFailure()
     val out = when (parts[0]) {
         "argon2d" -> Argon2dPassword()
         "argon2i" -> Argon2idPassword()
         "argon2id" -> Argon2idPassword()
-        else -> return Result.failure(BadValueException())
+        else -> return BadValueException().toFailure()
     }
-    out.setFromHash(hashStr)?.let { return Result.failure(BadValueException()) }
+    out.setFromHash(hashStr)?.let { return BadValueException().toFailure() }
 
     return out.toSuccess()
 }
@@ -119,10 +119,10 @@ sealed class Argon2Password : Password() {
                 Charset.defaultCharset(), rawSalt
             )
         } catch (e: Exception) {
-            return Result.failure(e)
+            return e.toFailure()
         }
 
-        return Result.success(hash)
+        return hash.toSuccess()
     }
 
     /**
@@ -186,17 +186,13 @@ sealed class Argon2Password : Password() {
         val paramParts = paramStr
             .split(',')
             .associateBy({ it.split('=')[0] }, { it.split('=')[1] })
-        return try {
-            Result.success(
-                Triple(
-                    paramParts["m"]!!.toInt(),
-                    paramParts["t"]!!.toInt(),
-                    paramParts["p"]!!.toInt()
-                )
-            )
-        } catch (e: Exception) {
-            return Result.failure(e)
-        }
+        return runCatching {
+            Triple(
+                paramParts["m"]!!.toInt(),
+                paramParts["t"]!!.toInt(),
+                paramParts["p"]!!.toInt()
+            ).toSuccess()
+        }.getOrElse { it.toFailure() }
     }
 
     companion object {

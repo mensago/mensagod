@@ -13,11 +13,7 @@ import java.security.GeneralSecurityException
  * @exception GeneralSecurityException Returned for errors during the encryption process.
  */
 inline fun <reified T> serializeAndEncrypt(obj: T, key: Encryptor): Result<CryptoString> {
-    val rawJSON = try {
-        Json.encodeToString(obj)
-    } catch (e: Exception) {
-        return Result.failure(e)
-    }
+    val rawJSON = runCatching { Json.encodeToString(obj) }.getOrElse { return it.toFailure() }
     return key.encrypt(rawJSON.encodeToByteArray())
 }
 
@@ -31,10 +27,7 @@ inline fun <reified T> serializeAndEncrypt(obj: T, key: Encryptor): Result<Crypt
  */
 inline fun <reified T> decryptAndDeserialize(cs: CryptoString, key: Decryptor): Result<T> {
     val rawJSON = key.decrypt(cs).getOrElse { return it.toFailure() }.decodeToString()
-    val out = try {
-        Json.decodeFromString<T>(rawJSON)
-    } catch (e: Exception) {
-        return Result.failure(e)
-    }
+    val out = runCatching { Json.decodeFromString<T>(rawJSON) }.getOrElse { return it.toFailure() }
+    
     return out.toSuccess()
 }

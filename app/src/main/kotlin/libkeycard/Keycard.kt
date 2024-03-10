@@ -97,9 +97,8 @@ class Keycard private constructor(
                 if (it != null)
                     return it.toFailure()
             }
-            val result = entries[i + 1].verifyChain(entries[i])
-            if (result.isFailure) return result
-            if (!result.getOrNull()!!) return false.toSuccess()
+            val result = entries[i + 1].verifyChain(entries[i]).getOrElse { return it.toFailure() }
+            if (!result) return false.toSuccess()
         }
 
         return true.toSuccess()
@@ -162,7 +161,7 @@ class Keycard private constructor(
                         val entry: Entry = when (cardType) {
                             "User" -> UserEntry.fromString(accumulator.toString())
                             "Organization" -> OrgEntry.fromString(accumulator.toString())
-                            else -> return Result.failure(InvalidKeycardException())
+                            else -> return InvalidKeycardException().toFailure()
                         }.getOrElse { return it.toFailure() }
 
                         out.add(entry)

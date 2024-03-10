@@ -56,7 +56,7 @@ class SigningPair private constructor(val pubKey: CryptoString, val privKey: Cry
      * @exception SigningFailureException Returned if there was an error signing the data
      */
     fun sign(data: ByteArray): Result<CryptoString> {
-        if (data.isEmpty()) return Result.failure(EmptyDataException())
+        if (data.isEmpty()) return EmptyDataException().toFailure()
 
         // TweetNaCl expects the private key to be 64-bytes -- the first 32 are the private key and
         // the last are the public key. We don't do that here -- they are split because they are
@@ -67,9 +67,9 @@ class SigningPair private constructor(val pubKey: CryptoString, val privKey: Cry
         val signature = box.detached(data)
 
         if (signature == null || signature.isEmpty())
-            return Result.failure(SigningFailureException())
+            return SigningFailureException().toFailure()
 
-        return Result.success(CryptoString.fromBytes(CryptoType.ED25519, signature)!!)
+        return CryptoString.fromBytes(CryptoType.ED25519, signature)!!.toSuccess()
     }
 
     override fun toString(): String {
@@ -84,14 +84,14 @@ class SigningPair private constructor(val pubKey: CryptoString, val privKey: Cry
      * of the SigningPair object.
      */
     override fun verify(data: ByteArray, signature: CryptoString): Result<Boolean> {
-        if (data.isEmpty()) return Result.failure(EmptyDataException())
-        if (signature.prefix != pubKey.prefix) return Result.failure(AlgorithmMismatchException())
+        if (data.isEmpty()) return EmptyDataException().toFailure()
+        if (signature.prefix != pubKey.prefix) return AlgorithmMismatchException().toFailure()
 
         val rawPubKey = pubKey.toRaw().getOrElse { return it.toFailure() }
         val rawSignature = signature.toRaw().getOrElse { return it.toFailure() }
         val box = Signature(rawPubKey, null)
 
-        return Result.success(box.detached_verify(data, rawSignature))
+        return box.detached_verify(data, rawSignature).toSuccess()
     }
 
     companion object {
@@ -106,11 +106,11 @@ class SigningPair private constructor(val pubKey: CryptoString, val privKey: Cry
         fun from(pubKeyStr: CryptoString, privKeyStr: CryptoString): Result<SigningPair> {
 
             if (pubKeyStr.prefix != privKeyStr.prefix)
-                return Result.failure(KeyErrorException())
+                return KeyErrorException().toFailure()
             if (!isSupportedSigning(pubKeyStr.prefix))
-                return Result.failure(UnsupportedAlgorithmException())
+                return UnsupportedAlgorithmException().toFailure()
 
-            return Result.success(SigningPair(pubKeyStr, privKeyStr))
+            return SigningPair(pubKeyStr, privKeyStr).toSuccess()
         }
 
         /**
@@ -123,12 +123,10 @@ class SigningPair private constructor(val pubKey: CryptoString, val privKey: Cry
          */
         fun fromStrings(pubKeyStr: String, privKeyStr: String): Result<SigningPair> {
 
-            val publicKeyCS = CryptoString.fromString(pubKeyStr) ?: return Result.failure(
-                BadValueException("bad public key")
-            )
-            val privateKeyCS = CryptoString.fromString(privKeyStr) ?: return Result.failure(
-                BadValueException("bad private key")
-            )
+            val publicKeyCS = CryptoString.fromString(pubKeyStr)
+                ?: return BadValueException("bad public key").toFailure()
+            val privateKeyCS = CryptoString.fromString(privKeyStr)
+                ?: return BadValueException("bad private key").toFailure()
             return from(publicKeyCS, privateKeyCS)
         }
 
@@ -145,17 +143,17 @@ class SigningPair private constructor(val pubKey: CryptoString, val privKey: Cry
                 CryptoType.ED25519 -> {
                     val keyPair = Signature.keyPair()
                     val publicKeyCS = CryptoString.fromBytes(CryptoType.ED25519, keyPair.publicKey)
-                        ?: return Result.failure(KeyErrorException())
+                        ?: return KeyErrorException().toFailure()
 
                     val privateKeyCS =
                         CryptoString.fromBytes(
                             CryptoType.ED25519,
                             keyPair.secretKey.copyOfRange(0, 32)
-                        ) ?: return Result.failure(KeyErrorException())
+                        ) ?: return KeyErrorException().toFailure()
                     return from(publicKeyCS, privateKeyCS)
                 }
 
-                else -> return Result.failure(UnsupportedAlgorithmException())
+                else -> return UnsupportedAlgorithmException().toFailure()
             }
         }
     }
@@ -181,9 +179,8 @@ class VerificationKey private constructor(val key: CryptoString) : Verifier {
         val rawKey = key.toRaw().getOrElse { return it.toFailure() }
         val box = Signature(rawKey, null)
 
-        return Result.success(
-            box.detached_verify(data, signature.toRaw().getOrElse { return it.toFailure() })
-        )
+        return box.detached_verify(data, signature.toRaw().getOrElse { return it.toFailure() })
+            .toSuccess()
     }
 
     /** Interface override inherited from [PublicKey] */
@@ -199,9 +196,8 @@ class VerificationKey private constructor(val key: CryptoString) : Verifier {
      */
     override fun getPublicHash(algorithm: CryptoType): Result<Hash> {
         if (publicHash == null || publicHash!!.prefix != algorithm.toString())
-            publicHash =
-                hash(key.toByteArray(), algorithm).getOrElse { return it.toFailure() }
-        return Result.success(publicHash!!)
+            publicHash = hash(key.toByteArray(), algorithm).getOrElse { return it.toFailure() }
+        return publicHash!!.toSuccess()
     }
 
     override fun toString(): String {
@@ -219,7 +215,7 @@ class VerificationKey private constructor(val key: CryptoString) : Verifier {
         fun from(key: CryptoString): Result<VerificationKey> {
 
             if (!isSupportedSigning(key.prefix))
-                return Result.failure(UnsupportedAlgorithmException())
+                return UnsupportedAlgorithmException().toFailure()
 
             return VerificationKey(key).toSuccess()
         }

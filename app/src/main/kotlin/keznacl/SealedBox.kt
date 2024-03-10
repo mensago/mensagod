@@ -29,12 +29,12 @@ internal class SealedBox {
 
         val ephkeypair = TweetNaclFast.Box.keyPair()
         val nonce =
-            cryptoBoxSealNonce(ephkeypair.publicKey, receiverPubKey) ?: return Result.failure(
-                ProgramException("Nonce generation failure")
-            )
+            cryptoBoxSealNonce(ephkeypair.publicKey, receiverPubKey)
+                ?: return ProgramException("Nonce generation failure").toFailure()
+
         val box = TweetNacl.Box(receiverPubKey, ephkeypair.secretKey)
         val ciphertext = box.box(clearText, nonce)
-            ?: return Result.failure(GeneralSecurityException("NaCl error: couldn't create box"))
+            ?: return GeneralSecurityException("NaCl error: couldn't create box").toFailure()
 
         val sealedbox = ByteArray(ciphertext.size + cryptoBoxPublicKeyBytes)
         val ephpubkey: ByteArray = ephkeypair.publicKey
@@ -42,7 +42,7 @@ internal class SealedBox {
             sealedbox[i] = ephpubkey[i]
         for (i in ciphertext.indices)
             sealedbox[i + cryptoBoxPublicKeyBytes] = ciphertext[i]
-        return Result.success(sealedbox)
+        return sealedbox.toSuccess()
     }
     //  libsodium:
     //      int
@@ -63,17 +63,17 @@ internal class SealedBox {
         privKey: ByteArray
     ): Result<ByteArray> {
         if (cipherText.size < cryptoBoxSealBytes)
-            return Result.failure(BadValueException("Ciphertext too short"))
+            return BadValueException("Ciphertext too short").toFailure()
 
         val pksender = cipherText.copyOfRange(0, cryptoBoxPublicKeyBytes)
         val ciphertextwithmac = cipherText.copyOfRange(cryptoBoxPublicKeyBytes, cipherText.size)
         val nonce = cryptoBoxSealNonce(pksender, pubKey)
-            ?: return Result.failure(ProgramException("Nonce generation failure"))
+            ?: return ProgramException("Nonce generation failure").toFailure()
         val box: TweetNacl.Box = TweetNacl.Box(pksender, privKey)
 
         val result = box.open(ciphertextwithmac, nonce)
-        return if (result != null) Result.success(result)
-        else Result.failure(GeneralSecurityException("NaCl error: Could not open box"))
+        return result?.toSuccess()
+            ?: GeneralSecurityException("NaCl error: Could not open box").toFailure()
     }
 
     /**

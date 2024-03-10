@@ -50,7 +50,7 @@ object Base85 {
 
         val decodedSize = decodedLength(stringData)
         if (decodedSize < 0)
-            return Result.failure(IllegalArgumentException("Malformed Base85/RFC1924 data"))
+            return IllegalArgumentException("Malformed Base85/RFC1924 data").toFailure()
 
         val out = ByteArray(decodedSize)
         decodeInternal(stringData.toByteArray(StandardCharsets.US_ASCII), out)
@@ -82,7 +82,7 @@ object Base85 {
         leftover: Int
     ): Result<Int> {
         if (leftover == 1)
-            return Result.failure(IllegalArgumentException("Malformed Base85/RFC1924 data", null))
+            return IllegalArgumentException("Malformed Base85/RFC1924 data", null).toFailure()
         var sum =
             decodeMap[`in`[ri].toInt()] * POWER4 + decodeMap[`in`[ri + 1].toInt()] * POWER3 + 85
         if (leftover >= 3) {
@@ -109,7 +109,7 @@ object Base85 {
             rIndex += 5
         }
         var leftover = inData.size % 5
-        if (leftover == 0) return Result.success(wIndex)
+        if (leftover == 0) return wIndex.toSuccess()
         leftover = decodeRemainder(decodeMap, inData, rIndex, buffer, leftover)
             .getOrElse { return it.toFailure() }
         System.arraycopy(buf, 0, outData as Any, wIndex, leftover)

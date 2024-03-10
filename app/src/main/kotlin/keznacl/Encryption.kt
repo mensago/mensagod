@@ -62,12 +62,9 @@ class EncryptionPair private constructor(
     override fun encrypt(data: ByteArray): Result<CryptoString> {
         val rawKey = pubKey.toRaw().getOrElse { return it.toFailure() }
         val box = SealedBox()
-        val result = box.cryptoBoxSeal(data, rawKey)
-        if (result.isFailure) {
-            return Result.failure(result.exceptionOrNull()!!)
-        }
+        val result = box.cryptoBoxSeal(data, rawKey).getOrElse { return it.toFailure() }
 
-        return Result.success(CryptoString.fromBytes(CryptoType.CURVE25519, result.getOrNull()!!)!!)
+        return CryptoString.fromBytes(CryptoType.CURVE25519, result)!!.toSuccess()
     }
 
     /**
@@ -99,11 +96,11 @@ class EncryptionPair private constructor(
         fun from(pubKeyCS: CryptoString, privKeyCS: CryptoString): Result<EncryptionPair> {
 
             if (pubKeyCS.prefix != privKeyCS.prefix)
-                return Result.failure(KeyErrorException())
+                return KeyErrorException().toFailure()
             if (!isSupportedAsymmetric(pubKeyCS.prefix))
-                return Result.failure(UnsupportedAlgorithmException())
+                return UnsupportedAlgorithmException().toFailure()
 
-            return Result.success(EncryptionPair(pubKeyCS, privKeyCS))
+            return EncryptionPair(pubKeyCS, privKeyCS).toSuccess()
         }
 
         /**
@@ -115,13 +112,10 @@ class EncryptionPair private constructor(
          * algorithm specified by the keys
          */
         fun fromStrings(pubKeyStr: String, privKeyStr: String): Result<EncryptionPair> {
-
-            val pubKey = CryptoString.fromString(pubKeyStr) ?: return Result.failure(
-                BadValueException("bad public key")
-            )
-            val privKey = CryptoString.fromString(privKeyStr) ?: return Result.failure(
-                BadValueException("bad private key")
-            )
+            val pubKey = CryptoString.fromString(pubKeyStr)
+                ?: return BadValueException("bad public key").toFailure()
+            val privKey = CryptoString.fromString(privKeyStr)
+                ?: return BadValueException("bad private key").toFailure()
             return from(pubKey, privKey)
         }
 
@@ -139,15 +133,15 @@ class EncryptionPair private constructor(
                 CryptoType.CURVE25519 -> {
                     val keyPair = TweetNaclFast.Box.keyPair()
                     val pubKey = CryptoString.fromBytes(CryptoType.CURVE25519, keyPair.publicKey)
-                        ?: return Result.failure(KeyErrorException())
+                        ?: return KeyErrorException().toFailure()
 
                     val privKey = CryptoString.fromBytes(CryptoType.CURVE25519, keyPair.secretKey)
-                        ?: return Result.failure(KeyErrorException())
+                        ?: return KeyErrorException().toFailure()
 
                     return from(pubKey, privKey)
                 }
 
-                else -> return Result.failure(UnsupportedAlgorithmException())
+                else -> return UnsupportedAlgorithmException().toFailure()
             }
         }
 
@@ -183,9 +177,8 @@ class EncryptionKey private constructor(val key: CryptoString) : Encryptor {
     /** Interface override inherited from [PublicKey] */
     override fun getPublicHash(algorithm: CryptoType): Result<Hash> {
         if (publicHash == null || publicHash!!.prefix != algorithm.toString())
-            publicHash =
-                hash(key.toByteArray(), algorithm).getOrElse { return it.toFailure() }
-        return Result.success(publicHash!!)
+            publicHash = hash(key.toByteArray(), algorithm).getOrElse { return it.toFailure() }
+        return publicHash!!.toSuccess()
     }
 
     override fun toString(): String {

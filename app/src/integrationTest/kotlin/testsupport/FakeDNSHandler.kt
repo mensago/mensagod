@@ -1,6 +1,8 @@
 package testsupport
 
 import keznacl.EmptyDataException
+import keznacl.toFailure
+import keznacl.toSuccess
 import libkeycard.Domain
 import libmensago.DNSHandler
 import libmensago.NetworkErrorException
@@ -23,14 +25,15 @@ class FakeDNSHandler : DNSHandler() {
     override fun lookupA(d: String): Result<List<InetAddress>> {
         if (errors.isNotEmpty()) {
             return when (errors.removeAt(0)) {
-                FakeDNSError.Empty -> Result.failure(EmptyDataException())
-                FakeDNSError.Misconfig -> Result.success(
-                    listOf(InetAddress.getByAddress(byteArrayOf(0,0,0,0))))
-                FakeDNSError.NoResponse -> Result.failure(NetworkErrorException("No response"))
-                FakeDNSError.NotFound -> Result.failure(ResourceNotFoundException())
+                FakeDNSError.Empty -> EmptyDataException().toFailure()
+                FakeDNSError.Misconfig ->
+                    listOf(InetAddress.getByAddress(byteArrayOf(0, 0, 0, 0))).toSuccess()
+
+                FakeDNSError.NoResponse -> NetworkErrorException("No response").toFailure()
+                FakeDNSError.NotFound -> ResourceNotFoundException().toFailure()
             }
         }
-        return Result.success(listOf(InetAddress.getByName("127.0.0.1")))
+        return listOf(InetAddress.getByName("127.0.0.1")).toSuccess()
     }
 
     /**
@@ -40,14 +43,35 @@ class FakeDNSHandler : DNSHandler() {
     override fun lookupAAAA(d: String): Result<List<InetAddress>> {
         if (errors.isNotEmpty()) {
             return when (errors.removeAt(0)) {
-                FakeDNSError.Empty -> Result.failure(EmptyDataException())
-                FakeDNSError.Misconfig -> Result.success(
-                    listOf(InetAddress.getByAddress(byteArrayOf(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0))))
-                FakeDNSError.NoResponse -> Result.failure(NetworkErrorException("No response"))
-                FakeDNSError.NotFound -> Result.failure(ResourceNotFoundException())
+                FakeDNSError.Empty -> EmptyDataException().toFailure()
+                FakeDNSError.Misconfig -> listOf(
+                    InetAddress.getByAddress(
+                        byteArrayOf(
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0
+                        )
+                    )
+                ).toSuccess()
+
+                FakeDNSError.NoResponse -> NetworkErrorException("No response").toFailure()
+                FakeDNSError.NotFound -> ResourceNotFoundException().toFailure()
             }
         }
-        return Result.success(listOf(Inet6Address.getByName("::1")))
+        return listOf(Inet6Address.getByName("::1")).toSuccess()
     }
 
     /**
@@ -57,19 +81,21 @@ class FakeDNSHandler : DNSHandler() {
     override fun lookupSRV(d: String): Result<List<ServiceConfig>> {
         if (errors.isNotEmpty()) {
             return when (errors.removeAt(0)) {
-                FakeDNSError.Empty -> Result.failure(EmptyDataException())
-                FakeDNSError.Misconfig -> Result.success(listOf(
+                FakeDNSError.Empty -> EmptyDataException().toFailure()
+                FakeDNSError.Misconfig -> listOf(
                     ServiceConfig(
-                        Domain.fromString("myhostname")!!, 100, 0)
-                ))
-                FakeDNSError.NoResponse -> Result.failure(NetworkErrorException("No response"))
-                FakeDNSError.NotFound -> Result.failure(ResourceNotFoundException())
+                        Domain.fromString("myhostname")!!, 100, 0
+                    )
+                ).toSuccess()
+
+                FakeDNSError.NoResponse -> NetworkErrorException("No response").toFailure()
+                FakeDNSError.NotFound -> ResourceNotFoundException().toFailure()
             }
         }
-        return Result.success(listOf(
+        return listOf(
             ServiceConfig(Domain.fromString("mensago1.example.com")!!, 2001, 0),
             ServiceConfig(Domain.fromString("mensago2.example.com")!!, 2001, 1),
-        ))
+        ).toSuccess()
     }
 
     /**
@@ -79,12 +105,14 @@ class FakeDNSHandler : DNSHandler() {
     override fun lookupTXT(d: String): Result<List<String>> {
         if (errors.isNotEmpty()) {
             return when (errors.removeAt(0)) {
-                FakeDNSError.Empty -> Result.failure(EmptyDataException())
-                FakeDNSError.Misconfig -> Result.success(
-                    listOf("pvk=K12:r#r*RiXIN-0n)BzP3bv`LA&t4LFEQNF0Q@\$N~RF*",
-                        "svk=CURVE25519:SNhj2K`hgBd8>G>lW\$!pXiM7S-B!Fbd9jT2&{{Az"))
-                FakeDNSError.NoResponse -> Result.failure(NetworkErrorException("No response"))
-                FakeDNSError.NotFound -> Result.failure(ResourceNotFoundException())
+                FakeDNSError.Empty -> EmptyDataException().toFailure()
+                FakeDNSError.Misconfig -> listOf(
+                    "pvk=K12:r#r*RiXIN-0n)BzP3bv`LA&t4LFEQNF0Q@\$N~RF*",
+                    "svk=CURVE25519:SNhj2K`hgBd8>G>lW\$!pXiM7S-B!Fbd9jT2&{{Az"
+                ).toSuccess()
+
+                FakeDNSError.NoResponse -> NetworkErrorException("No response").toFailure()
+                FakeDNSError.NotFound -> ResourceNotFoundException().toFailure()
             }
         }
 
@@ -99,9 +127,9 @@ class FakeDNSHandler : DNSHandler() {
 
         rs = db.query("SELECT pubkey FROM orgkeys WHERE purpose = 'altsign';").getOrThrow()
         return if (rs.next())
-            Result.success(listOf("ek=$ek", "pvk=$pvk", "avk=${rs.getString(1)}"))
+            listOf("ek=$ek", "pvk=$pvk", "avk=${rs.getString(1)}").toSuccess()
         else
-            Result.success(listOf("ek=$ek", "pvk=$pvk"))
+            listOf("ek=$ek", "pvk=$pvk").toSuccess()
     }
 }
 

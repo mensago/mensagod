@@ -149,9 +149,8 @@ class OrgEntry : Entry() {
                     lines.add("Custody-Signature:${signatures["Custody-Signature"]}")
                 else {
                     if (requirePrevious)
-                        return Result.failure(
-                            ComplianceFailureException("Custody-Signature missing")
-                        )
+                        return ComplianceFailureException("Custody-Signature missing")
+                            .toFailure()
                 }
             }
 
@@ -189,9 +188,8 @@ class OrgEntry : Entry() {
                 if (signatures.containsKey("Organization-Signature"))
                     lines.add("Organization-Signature:${signatures["Organization-Signature"]}")
                 else
-                    return Result.failure(
-                        ComplianceFailureException("Organization-Signature missing")
-                    )
+                    return ComplianceFailureException("Organization-Signature missing")
+                        .toFailure()
             }
 
             else -> return BadValueException().toFailure()
@@ -264,7 +262,7 @@ class OrgEntry : Entry() {
         outEntry.hash(hashAlgo.getType()!!)?.let { return it.toFailure() }
         outEntry.sign("Organization-Signature", newSPair)?.let { return it.toFailure() }
 
-        return Result.success(Pair(outEntry, outMap))
+        return Pair(outEntry, outMap).toSuccess()
     }
 
     /**
@@ -331,7 +329,7 @@ class OrgEntry : Entry() {
         outEntry.hash(hash.getType()!!)?.let { return it.toFailure() }
         outEntry.sign("Organization-Signature", newSPair)?.let { return it.toFailure() }
 
-        return Result.success(Pair(outEntry, outMap))
+        return Pair(outEntry, outMap).toSuccess()
     }
 
     companion object {

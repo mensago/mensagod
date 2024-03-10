@@ -85,9 +85,9 @@ class SecretKey private constructor(val key: CryptoString) : Encryptor, Decrypto
         rng.nextBytes(nonce)
 
         val ciphertext: ByteArray =
-            box.box(data, nonce) ?: return Result.failure(EncryptionFailureException())
+            box.box(data, nonce) ?: return EncryptionFailureException().toFailure()
 
-        return Result.success(CryptoString.fromBytes(CryptoType.XSALSA20, nonce + ciphertext)!!)
+        return CryptoString.fromBytes(CryptoType.XSALSA20, nonce + ciphertext)!!.toSuccess()
     }
 
     /**
@@ -104,8 +104,8 @@ class SecretKey private constructor(val key: CryptoString) : Encryptor, Decrypto
 
         val decData: ByteArray =
             box.open(ciphertext.drop(SecretBox.nonceLength).toByteArray(), nonce)
-                ?: return Result.failure(DecryptionFailureException())
-        return Result.success(decData)
+                ?: return DecryptionFailureException().toFailure()
+        return decData.toSuccess()
     }
 
     override fun toString(): String {
@@ -123,9 +123,9 @@ class SecretKey private constructor(val key: CryptoString) : Encryptor, Decrypto
         fun from(keyCS: CryptoString): Result<SecretKey> {
 
             if (!isSupportedSymmetric(keyCS.prefix))
-                return Result.failure(UnsupportedAlgorithmException())
+                return UnsupportedAlgorithmException().toFailure()
 
-            return Result.success(SecretKey(keyCS))
+            return SecretKey(keyCS).toSuccess()
         }
 
         /**
@@ -137,11 +137,11 @@ class SecretKey private constructor(val key: CryptoString) : Encryptor, Decrypto
          */
         fun fromString(keyStr: String): Result<SecretKey> {
 
-            val key = CryptoString.fromString(keyStr) ?: return Result.failure(
-                BadValueException("bad key")
-            )
+            val key = CryptoString.fromString(keyStr)
+                ?: return BadValueException("bad key").toFailure()
+
             if (!isSupportedSymmetric(key.prefix))
-                return Result.failure(UnsupportedAlgorithmException())
+                return UnsupportedAlgorithmException().toFailure()
 
             return from(key)
 
@@ -164,7 +164,7 @@ class SecretKey private constructor(val key: CryptoString) : Encryptor, Decrypto
                     return from(CryptoString.fromBytes(CryptoType.XSALSA20, keyData)!!)
                 }
 
-                else -> return Result.failure(UnsupportedAlgorithmException())
+                else -> return UnsupportedAlgorithmException().toFailure()
             }
         }
     }

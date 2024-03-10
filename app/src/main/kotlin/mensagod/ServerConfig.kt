@@ -50,7 +50,7 @@ class ServerConfig {
         args["user"] = getString("database.user")
 
         if (getString("database.password")!!.isEmpty())
-            return Result.failure(MissingDataException("Database password must not be empty"))
+            return MissingDataException("Database password must not be empty").toFailure()
         args["password"] = getString("database.password")
 
         return runCatching {

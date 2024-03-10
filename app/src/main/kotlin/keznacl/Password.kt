@@ -94,32 +94,30 @@ fun passhasherForInfo(pi: PasswordInfo): Result<Password> {
     return when (pi.algorithm.uppercase()) {
         "ARGON2D" -> {
             Argon2dPassword().let {
-                it.setFromInfo(pi)?.let { err -> return Result.failure(err) }
+                it.setFromInfo(pi)?.let { err -> return err.toFailure() }
                 it.toSuccess()
             }
         }
 
         "ARGON2I" -> {
             Argon2iPassword().let {
-                it.setFromInfo(pi)?.let { err -> return Result.failure(err) }
+                it.setFromInfo(pi)?.let { err -> return err.toFailure() }
                 it.toSuccess()
             }
         }
 
         "ARGON2ID" -> {
             Argon2idPassword().let {
-                it.setFromInfo(pi)?.let { err -> return Result.failure(err) }
+                it.setFromInfo(pi)?.let { err -> return err.toFailure() }
                 it.toSuccess()
             }
         }
 
         else -> {
-            Result.failure(
-                ProgramException(
-                    "Unreachable code in passhasherForInfo reached. " +
-                            "Algorithm: ${pi.algorithm.uppercase()}"
-                )
-            )
+            ProgramException(
+                "Unreachable code in passhasherForInfo reached. " +
+                        "Algorithm: ${pi.algorithm.uppercase()}"
+            ).toFailure()
         }
     }
 }

@@ -46,12 +46,12 @@ fun getPreferredHashAlgorithm(): CryptoType {
  */
 fun hash(data: ByteArray, type: CryptoType = getPreferredHashAlgorithm()): Result<Hash> {
     if (!getSupportedHashAlgorithms().contains(type))
-        return Result.failure(UnsupportedAlgorithmException())
+        return UnsupportedAlgorithmException().toFailure()
 
     return when (type) {
         CryptoType.BLAKE2B_256 -> blake2Hash(data)
         CryptoType.SHA_256 -> sha256Hash(data)
-        else -> Result.failure(UnsupportedAlgorithmException())
+        else -> UnsupportedAlgorithmException().toFailure()
     }
 }
 
@@ -60,15 +60,11 @@ fun hash(data: ByteArray, type: CryptoType = getPreferredHashAlgorithm()): Resul
  * in that the entire contents of the file are not loaded into memory during computation.
  */
 fun hashFile(path: String, algorithm: CryptoType = getPreferredHashAlgorithm()): Result<Hash> {
-    if (path.isEmpty()) return Result.failure(EmptyDataException())
+    if (path.isEmpty()) return EmptyDataException().toFailure()
     if (!getSupportedHashAlgorithms().contains(algorithm))
-        return Result.failure(UnsupportedAlgorithmException())
+        return UnsupportedAlgorithmException().toFailure()
 
-    val file = try {
-        File(path)
-    } catch (e: Exception) {
-        return Result.failure(e)
-    }
+    val file = runCatching { File(path) }.getOrElse { return it.toFailure() }
 
     val buffer = ByteArray(8192)
     val istream = FileInputStream(file)
@@ -80,7 +76,7 @@ fun hashFile(path: String, algorithm: CryptoType = getPreferredHashAlgorithm()):
         bytesRead = istream.read(buffer)
     }
 
-    return Result.success(Hash.fromBytes(algorithm, blake2b.digest())!!)
+    return Hash.fromBytes(algorithm, blake2b.digest())!!.toSuccess()
 }
 
 /**
@@ -89,15 +85,15 @@ fun hashFile(path: String, algorithm: CryptoType = getPreferredHashAlgorithm()):
  * @exception EmptyDataException Returned if the ByteArray given is empty
  */
 fun blake2Hash(data: ByteArray): Result<Hash> {
-    if (data.isEmpty()) return Result.failure(EmptyDataException())
+    if (data.isEmpty()) return EmptyDataException().toFailure()
 
     val blake2b = Blake2b.Digest.newInstance(32)
     blake2b.update(data)
-    return Result.success(Hash.fromBytes(CryptoType.BLAKE2B_256, blake2b.digest())!!)
+    return Hash.fromBytes(CryptoType.BLAKE2B_256, blake2b.digest())!!.toSuccess()
 }
 
 fun sha256Hash(data: ByteArray): Result<Hash> {
-    if (data.isEmpty()) return Result.failure(EmptyDataException())
+    if (data.isEmpty()) return EmptyDataException().toFailure()
     return runCatching {
         val hasher = MessageDigest.getInstance("SHA-256")
         hasher.update(data)

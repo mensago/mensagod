@@ -29,10 +29,7 @@ sealed class Entry {
         if (!isFieldAllowed(fieldName)) {
             return BadFieldException("$fieldName not allowed")
         }
-
-        val result = EntryField.fromStrings(fieldName, fieldValue)
-        if (result.isFailure) return result.exceptionOrNull()!!
-        fields[fieldName] = result.getOrNull()!!
+        fields[fieldName] = EntryField.fromStrings(fieldName, fieldValue).getOrElse { return it }
 
         return null
     }
@@ -120,8 +117,8 @@ sealed class Entry {
      * Returns true if the entry has exceeded its expiration date or an error if an unexpected error occurred.
      */
     fun isExpired(): Result<Boolean> {
-        val baseField = fields["Expires"] ?: return Result.failure(MissingDataException())
-        if (baseField !is DatestampField) return Result.failure(BadFieldException())
+        val baseField = fields["Expires"] ?: return MissingDataException().toFailure()
+        if (baseField !is DatestampField) return BadFieldException().toFailure()
         val expires = baseField.value
         return expires.value.isBefore(Instant.now()).toSuccess()
     }
@@ -262,11 +259,11 @@ sealed class Entry {
 
     fun copy(): Result<Entry> {
         val entryType: StringField =
-            fields["Type"] as StringField? ?: return Result.failure(BadFieldException())
+            fields["Type"] as StringField? ?: return BadFieldException().toFailure()
         val out = when (entryType.value) {
             "User" -> UserEntry()
             "Organization" -> OrgEntry()
-            else -> return Result.failure(BadFieldValueException())
+            else -> return BadFieldValueException().toFailure()
         }
 
         for (f in fields) {
@@ -281,8 +278,7 @@ sealed class Entry {
                 }
 
                 else -> {
-                    val result = out.setField(f.key, f.value.toString())
-                    if (result != null) return Result.failure(result)
+                    out.setField(f.key, f.value.toString())?.let { return it.toFailure() }
                 }
             }
         }
