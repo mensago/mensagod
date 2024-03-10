@@ -90,7 +90,6 @@ object Schemas {
     )
 
     val register = Schema(
-        // One of these is required, so a bit more validation once the schema code validates. :/
         MsgField("Workspace-ID", MsgFieldType.RandomID, false),
         MsgField("User-ID", MsgFieldType.UserID, false),
 

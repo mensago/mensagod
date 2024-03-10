@@ -17,7 +17,7 @@ import java.net.Socket
 class RegCmdTest {
     @Test
     fun preregTest() {
-        setupTest("handlers.preregTest")
+        setupTest("handlers.prereg")
         val config = ServerConfig.load().getOrThrow()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
@@ -93,7 +93,7 @@ class RegCmdTest {
 
     @Test
     fun regCodeTest() {
-        setupTest("handlers.regCodeTest")
+        setupTest("handlers.regCode")
 
         val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
         val devkey = CryptoString.fromString(ADMIN_PROFILE_DATA["device.public"]!!)
@@ -140,5 +140,12 @@ class RegCmdTest {
             assertEquals("somekindofsalt", rs.getString("salt"))
             assert(rs.getString("passparams").isNullOrEmpty())
         }.run()
+    }
+
+    @Test
+    fun registerTest() {
+        setupTest("handlers.register")
+
+        // TODO: Implement test for REGISTER
     }
 }

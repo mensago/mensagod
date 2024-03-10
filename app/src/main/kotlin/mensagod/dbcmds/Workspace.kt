@@ -11,11 +11,13 @@ import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
 
 enum class WorkspaceType {
-    Individual;
+    Individual,
+    Shared;
 
     override fun toString(): String {
         return when (this) {
             Individual -> "individual"
+            Shared -> "shared"
         }
     }
 
@@ -24,6 +26,7 @@ enum class WorkspaceType {
         fun fromString(s: String): WorkspaceType? {
             return when (s.lowercase()) {
                 "individual" -> Individual
+                "shared" -> Shared
                 else -> null
             }
         }
@@ -124,13 +127,31 @@ fun checkWorkspace(db: DBConn, wid: RandomID): Result<WorkspaceStatus?> {
 }
 
 /**
+ * Returns a workspace ID which does not already exist in the system.
+ */
+fun getFreeWID(db: DBConn): Result<RandomID> {
+    var out: RandomID? = null
+
+    while (out == null) {
+        val tempWID = RandomID.generate()
+        val rs = db.query("SELECT wid FROM workspaces WHERE wid=?", tempWID)
+            .getOrElse { return it.toFailure() }
+        if (!rs.next())
+            out = tempWID
+    }
+    return out.toSuccess()
+}
+
+/**
  * resolveUserID attempts to return the RandomID corresponding to the specified UserID. If it does
  * not exist, null is returned.
  *
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun resolveUserID(db: DBConn, uid: UserID): Result<RandomID?> {
+fun resolveUserID(db: DBConn, uid: UserID?): Result<RandomID?> {
+    if (uid == null) return Result.success(null)
+    
     for (table in listOf("workspaces", "prereg")) {
         val rs = db.query("""SELECT wid FROM $table WHERE uid=?""", uid)
             .getOrElse { return it.toFailure() }
