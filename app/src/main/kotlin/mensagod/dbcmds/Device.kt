@@ -28,8 +28,7 @@ fun addDevice(
     return db.execute(
         """INSERT INTO iwkspc_devices(wid, devid, devkey, lastlogin, devinfo, status)
         VALUES(?,?,?,?,?,?)""", wid, devid, devkey, now, devInfo, status
-    )
-        .exceptionOrNull()
+    ).exceptionOrNull()
 }
 
 /**
@@ -44,8 +43,7 @@ fun addKeyInfo(db: DBConn, wid: RandomID, devid: RandomID, path: MServerPath): T
     db.execute("""DELETE FROM keyinfo WHERE wid=? AND devid=?""", wid, devid)
         .exceptionOrNull()?.let { return it }
     return db.execute(
-        """INSERT INTO keyinfo(wid, devid, path) VALUES(?,?,?) """, wid, devid,
-        path
+        """INSERT INTO keyinfo(wid, devid, path) VALUES(?,?,?) """, wid, devid, path
     ).exceptionOrNull()
 }
 
@@ -60,7 +58,7 @@ fun countDevices(db: DBConn, wid: RandomID): Result<Int> {
     val rs = db.query("""SELECT COUNT(*) FROM iwkspc_devices WHERE wid=?""", wid)
         .getOrElse { return it.toFailure() }
     if (!rs.next()) return 0.toSuccess()
-    return Result.success(rs.getInt(1))
+    return rs.getInt(1).toSuccess()
 }
 
 /**
@@ -80,11 +78,9 @@ fun getDeviceKey(db: DBConn, wid: RandomID, devid: RandomID): Result<CryptoStrin
 
     val key = rs.getString("devkey")
     val out = CryptoString.fromString(key)
-        ?: return Result.failure(
-            DatabaseCorruptionException(
-                "Bad device key '$key' for device $devid in workspace $wid"
-            )
-        )
+        ?: return DatabaseCorruptionException(
+            "Bad device key '$key' for device $devid in workspace $wid"
+        ).toFailure()
     return out.toSuccess()
 }
 
@@ -114,9 +110,9 @@ fun getDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID?):
     val out = mutableListOf<Pair<RandomID, CryptoString>>()
     while (rs.next()) {
         val dev = RandomID.fromString(rs.getString("devid"))
-            ?: return Result.failure(DatabaseCorruptionException("Bad device ID in wid $wid"))
+            ?: return DatabaseCorruptionException("Bad device ID in wid $wid").toFailure()
         val info = CryptoString.fromString(rs.getString("devinfo"))
-            ?: return Result.failure(DatabaseCorruptionException("Bad device info for wid $wid"))
+            ?: return DatabaseCorruptionException("Bad device info for wid $wid").toFailure()
         out.add(Pair(dev, info))
     }
     return out.toSuccess()
@@ -139,14 +135,12 @@ fun getDeviceStatus(db: DBConn, wid: RandomID, devid: RandomID): Result<DeviceSt
     if (rs.next()) {
         val stat = rs.getString("status")
         val out = DeviceStatus.fromString(stat)
-            ?: return Result.failure(
-                DatabaseCorruptionException(
-                    "Bad device status '$stat' for device $devid in workspace $wid"
-                )
-            )
+            ?: return DatabaseCorruptionException(
+                "Bad device status '$stat' for device $devid in workspace $wid"
+            ).toFailure()
         return out.toSuccess()
     }
-    return Result.success(DeviceStatus.NotRegistered)
+    return DeviceStatus.NotRegistered.toSuccess()
 }
 
 /**
@@ -164,11 +158,9 @@ fun getKeyInfo(db: DBConn, wid: RandomID, devid: RandomID): Result<MServerPath?>
     if (rs.next()) {
         val infopath = rs.getString("path")
         val out = MServerPath.fromString(infopath)
-            ?: return Result.failure(
-                DatabaseCorruptionException(
-                    "Bad key info path '$infopath' for device $devid in workspace $wid"
-                )
-            )
+            ?: return DatabaseCorruptionException(
+                "Bad key info path '$infopath' for device $devid in workspace $wid"
+            ).toFailure()
         return out.toSuccess()
     }
     return Result.success(null)
@@ -190,11 +182,9 @@ fun getLastDeviceLogin(db: DBConn, wid: RandomID, devid: RandomID): Result<Times
     if (rs.next()) {
         val lastlogin = rs.getString("lastlogin")
         val out = Timestamp.fromString(lastlogin)
-            ?: return Result.failure(
-                DatabaseCorruptionException(
-                    "Bad device timestamp '$lastlogin' for device $devid in workspace $wid"
-                )
-            )
+            ?: return DatabaseCorruptionException(
+                "Bad device timestamp '$lastlogin' for device $devid in workspace $wid"
+            ).toFailure()
         return out.toSuccess()
     }
     return Result.success(null)

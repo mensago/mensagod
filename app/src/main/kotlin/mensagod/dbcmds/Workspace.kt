@@ -113,15 +113,16 @@ fun checkWorkspace(db: DBConn, wid: RandomID): Result<WorkspaceStatus?> {
         .getOrElse { return it.toFailure() }
     if (rs.next()) {
         val stat = rs.getString("status")
-        val out = WorkspaceStatus.fromString(stat) ?: return Result.failure(
-            DatabaseCorruptionException("Bad workspace status '$stat' for workspace $wid")
-        )
+        val out = WorkspaceStatus.fromString(stat)
+            ?: return DatabaseCorruptionException("Bad workspace status '$stat' for workspace $wid")
+                .toFailure()
+
         return out.toSuccess()
     }
     rs = db.query("""SELECT wid FROM prereg WHERE wid=?""", wid)
         .getOrElse { return it.toFailure() }
     if (rs.next())
-        return Result.success(WorkspaceStatus.Preregistered)
+        return WorkspaceStatus.Preregistered.toSuccess()
 
     return Result.success(null)
 }
@@ -151,15 +152,16 @@ fun getFreeWID(db: DBConn): Result<RandomID> {
  */
 fun resolveUserID(db: DBConn, uid: UserID?): Result<RandomID?> {
     if (uid == null) return Result.success(null)
-    
+
     for (table in listOf("workspaces", "prereg")) {
         val rs = db.query("""SELECT wid FROM $table WHERE uid=?""", uid)
             .getOrElse { return it.toFailure() }
         if (rs.next()) {
             val widStr = rs.getString("wid")
-            val out = RandomID.fromString(widStr) ?: return Result.failure(
-                DatabaseCorruptionException("Bad workspace ID '$widStr' for userID $uid")
-            )
+            val out = RandomID.fromString(widStr)
+                ?: return DatabaseCorruptionException("Bad workspace ID '$widStr' for userID $uid")
+                    .toFailure()
+            
             return out.toSuccess()
         }
     }

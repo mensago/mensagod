@@ -3,6 +3,7 @@ package mensagod.dbcmds
 import keznacl.BadValueException
 import keznacl.CryptoString
 import keznacl.toFailure
+import keznacl.toSuccess
 import libkeycard.RandomID
 import libmensago.MServerPath
 import libmensago.NotConnectedException
@@ -53,7 +54,7 @@ fun getQuotaInfo(db: DBConn, wid: RandomID): Result<Pair<Long, Long>> {
     val dbUsage = rs.getLong("usage")
     val dbQuota = rs.getLong("quota")
     if (dbUsage >= 0) {
-        return Result.success(Pair(dbUsage, dbQuota))
+        return Pair(dbUsage, dbQuota).toSuccess()
     }
 
     // We got this far, which means that the usage has not yet been loaded since the server was
@@ -61,7 +62,7 @@ fun getQuotaInfo(db: DBConn, wid: RandomID): Result<Pair<Long, Long>> {
     val fsUsage = LocalFS.get().getDiskUsage(widPath).getOrElse { return it.toFailure() }
     setQuotaUsage(db, wid, fsUsage)?.let { return it.toFailure() }
 
-    return Result.success(Pair(fsUsage, dbQuota))
+    return Pair(fsUsage, dbQuota).toSuccess()
 }
 
 /**
@@ -85,7 +86,7 @@ fun modifyQuotaUsage(db: DBConn, wid: RandomID, size: Long): Result<Long> {
 
     if (!rs.next()) {
         val info = addQuotaFromDisk(db, wid).getOrElse { return it.toFailure() }
-        return Result.success(info.first)
+        return info.first.toSuccess()
     }
 
     // Disk usage is lazily updated after each boot. If it has yet to be updated, the value in the
@@ -95,12 +96,12 @@ fun modifyQuotaUsage(db: DBConn, wid: RandomID, size: Long): Result<Long> {
         val usage = LocalFS.get().getDiskUsage(MServerPath("/ wsp $wid"))
             .getOrElse { return it.toFailure() }
         setQuotaUsage(db, wid, usage)?.let { return it.toFailure() }
-        return Result.success(usage)
+        return usage.toSuccess()
     }
 
     val newTotal = dbUsage + size
     setQuotaUsage(db, wid, newTotal)?.let { return it.toFailure() }
-    return Result.success(newTotal)
+    return newTotal.toSuccess()
 }
 
 /**
@@ -178,7 +179,7 @@ private fun addQuotaFromDisk(db: DBConn, wid: RandomID): Result<Pair<Long, Long>
     val handle = LocalFS.get().entry(userWidPath)
     val usage = if (!handle.exists().getOrElse { return it.toFailure() }) {
         val status = checkWorkspace(db, wid).getOrElse { return it.toFailure() }
-        if (status == null) return Result.failure(ResourceNotFoundException())
+        if (status == null) return ResourceNotFoundException().toFailure()
         0
     } else {
         LocalFS.get().getDiskUsage(MServerPath("/ wsp $wid"))
@@ -191,6 +192,6 @@ private fun addQuotaFromDisk(db: DBConn, wid: RandomID): Result<Pair<Long, Long>
         "INSERT INTO quotas(wid, usage, quota) VALUES(?,?,?)", wid, usage,
         defaultQuota
     ).getOrElse { return it.toFailure() }
-    return Result.success(Pair(usage, defaultQuota))
+    return Pair(usage, defaultQuota).toSuccess()
 }
 

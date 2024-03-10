@@ -24,14 +24,14 @@ fun getEncryptionPair(db: DBConn): Result<EncryptionPair> {
         ORDER BY rowid DESC LIMIT 1"""
     ).getOrElse { return it.toFailure() }
     if (!rs.next())
-        return Result.failure(ResourceNotFoundException("org encryption keypair not found"))
+        return ResourceNotFoundException("org encryption keypair not found").toFailure()
 
     val out = EncryptionPair.fromStrings(
         rs.getString("pubkey"),
         rs.getString("privkey")
     )
         .getOrElse {
-            return Result.failure(DatabaseCorruptionException("bad org encryption keypair"))
+            return DatabaseCorruptionException("bad org encryption keypair").toFailure()
         }
     return out.toSuccess()
 }
@@ -52,14 +52,14 @@ fun getPrimarySigningPair(db: DBConn): Result<SigningPair> {
         ORDER BY rowid DESC LIMIT 1"""
     ).getOrElse { return it.toFailure() }
     if (!rs.next())
-        return Result.failure(ResourceNotFoundException("org encryption keypair not found"))
+        return ResourceNotFoundException("org encryption keypair not found").toFailure()
 
     val out = SigningPair.fromStrings(
         rs.getString("pubkey"),
         rs.getString("privkey")
     )
         .getOrElse {
-            return Result.failure(DatabaseCorruptionException("bad org primary signing keypair"))
+            return DatabaseCorruptionException("bad org primary signing keypair").toFailure()
         }
     return out.toSuccess()
 }

@@ -89,7 +89,7 @@ fun getEntries(db: DBConn, wid: RandomID?, startIndex: UInt = 1U, endIndex: UInt
 fun isDomainLocal(db: DBConn, domain: Domain): Result<Boolean> {
     val rs = db.query("SELECT domain FROM workspaces WHERE domain=?", domain)
         .getOrElse { return it.toFailure() }
-    return Result.success(rs.next())
+    return rs.next().toSuccess()
 }
 
 /**
@@ -111,7 +111,7 @@ fun resolveAddress(db: DBConn, addr: MAddress): Result<RandomID?> {
         val inAliases = db.exists("""SELECT wid FROM aliases WHERE wid=?""", addr.userid.value)
             .getOrElse { return it.toFailure() }
         return if (inWorkspaces || inAliases)
-            Result.success(addr.userid.toWID()!!)
+            addr.userid.toWID()!!.toSuccess()
         else Result.success(null)
     }
 
@@ -120,9 +120,9 @@ fun resolveAddress(db: DBConn, addr: MAddress): Result<RandomID?> {
     if (!rs.next()) return Result.success(null)
 
     RandomID.fromString(rs.getString("wid"))?.let { return it.toSuccess() }
-    return Result.failure(
-        DatabaseCorruptionException("Bad wid '${rs.getString("wid")}' for address $addr")
-    )
+    return DatabaseCorruptionException(
+        "Bad wid '${rs.getString("wid")}' for address $addr"
+    ).toFailure()
 }
 
 /**
@@ -137,8 +137,9 @@ fun resolveWID(db: DBConn, wid: RandomID): Result<WAddress?> {
         .getOrElse { return it.toFailure() }
     if (!rs.next()) return Result.success(null)
 
-    val dom = Domain.fromString(rs.getString("domain")) ?: return Result.failure(
-        DatabaseCorruptionException("Bad domain '${rs.getString("domain")}' for workspace ID $wid")
-    )
-    return Result.success(WAddress.fromParts(wid, dom))
+    val dom = Domain.fromString(rs.getString("domain"))
+        ?: return DatabaseCorruptionException(
+            "Bad domain '${rs.getString("domain")}' for workspace ID $wid"
+        ).toFailure()
+    return WAddress.fromParts(wid, dom).toSuccess()
 }

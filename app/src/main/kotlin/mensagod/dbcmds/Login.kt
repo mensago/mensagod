@@ -1,9 +1,6 @@
 package mensagod.dbcmds
 
-import keznacl.Argon2idPassword
-import keznacl.EmptyDataException
-import keznacl.PasswordInfo
-import keznacl.toFailure
+import keznacl.*
 import libkeycard.*
 import libmensago.NotConnectedException
 import libmensago.ResourceExistsException
@@ -21,14 +18,14 @@ import mensagod.DatabaseCorruptionException
  */
 fun checkPassword(db: DBConn, wid: RandomID, password: String): Result<Boolean> {
     val rs = db.query("""SELECT password FROM workspaces WHERE wid=?""", wid).getOrThrow()
-    if (!rs.next()) return Result.failure(ResourceNotFoundException())
+    if (!rs.next()) return ResourceNotFoundException().toFailure()
 
     val hasher = Argon2idPassword()
     hasher.setFromHash(rs.getString("password"))?.let {
-        return Result.failure(DatabaseCorruptionException("Bad argon2id hash for $wid"))
+        return DatabaseCorruptionException("Bad argon2id hash for $wid").toFailure()
     }
 
-    return Result.success(hasher.verify(password))
+    return hasher.verify(password).toSuccess()
 }
 
 /**
@@ -56,34 +53,28 @@ fun checkRegCode(db: DBConn, addr: MAddress, regcode: String): Result<Pair<Rando
 
     val rawHash = rs.getString("regcode")
     if (rawHash.isEmpty()) {
-        return Result.failure(
-            DatabaseCorruptionException(
-                "Prereg entry missing regcode for workspace $addr"
-            )
-        )
+        return DatabaseCorruptionException(
+            "Prereg entry missing regcode for workspace $addr"
+        ).toFailure()
     }
     val regHash = Argon2idPassword()
     regHash.setFromHash(rawHash)?.let {
-        return Result.failure(
-            DatabaseCorruptionException(
-                "Prereg entry has bad regcode for workspace $addr"
-            )
-        )
+        return DatabaseCorruptionException(
+            "Prereg entry has bad regcode for workspace $addr"
+        ).toFailure()
     }
     if (!regHash.verify(regcode)) return Result.success(null)
 
     if (addr.isWorkspace) {
         val outUID = UserID.fromString(rs.getString("uid"))
-        return Result.success(Pair(addr.userid.toWID()!!, outUID))
+        return Pair(addr.userid.toWID()!!, outUID).toSuccess()
     }
 
     val outWID = RandomID.fromString(rs.getString("wid"))
-        ?: return Result.failure(
-            DatabaseCorruptionException(
-                "Bad prereg workspace ID ${rs.getString("wid")}"
-            )
-        )
-    return Result.success(Pair(outWID, addr.userid))
+        ?: return DatabaseCorruptionException(
+            "Bad prereg workspace ID ${rs.getString("wid")}"
+        ).toFailure()
+    return Pair(outWID, addr.userid).toSuccess()
 }
 
 /**
@@ -110,7 +101,7 @@ fun getPasswordInfo(db: DBConn, wid: RandomID): Result<PasswordInfo?> {
         val type = rs.getString("passtype")
         val salt = rs.getString("salt")
         val params = rs.getString("passparams")
-        return Result.success(PasswordInfo(type, salt, params))
+        return PasswordInfo(type, salt, params).toSuccess()
     }
     return Result.success(null)
 }
