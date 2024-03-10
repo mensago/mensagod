@@ -17,6 +17,7 @@ import testsupport.assertReturnCode
 import testsupport.setupTest
 import java.net.InetAddress
 import java.net.Socket
+import java.time.Instant
 
 class DevCommandTest {
 
@@ -136,7 +137,92 @@ class DevCommandTest {
 
     @Test
     fun getDeviceInfoTest() {
-        // TODO: Implement test for commandGetDeviceInfo()
+        setupTest("handlers.getDeviceInfo")
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+        val devid2 = RandomID.fromString("61ae62b5-28f0-4b44-9eb4-8f81b761ad18")!!
+        val devPair2 = EncryptionPair.fromStrings(
+            "CURVE25519:wv-Q}5&La(d-vZ?Mq@<|ad&e73)eaP%NAh{HDUo;",
+            "CURVE25519:X5@Vi_4_JZ_mOPeNWKY5hOIi&1ddz#C9K`L=_&M^"
+        ).getOrThrow()
+        val fakeInfo = CryptoString.fromString("XSALSA20:myfakedevInfoYAY")!!
+
+        val db = DBConn()
+        db.execute(
+            "INSERT INTO iwkspc_devices(wid,devid,devkey,devinfo,lastlogin,status) " +
+                    "VALUES(?,?,?,?,?,?)",
+            adminWID,
+            devid2,
+            devPair2.pubKey,
+            fakeInfo,
+            Instant.now(),
+            "registered"
+        ).getOrThrow()
+
+        // Case #1: Successful get for 1 device
+        CommandTest(
+            "getDeviceInfo.1",
+            SessionState(
+                ClientRequest(
+                    "GETDEVICEINFO", mutableMapOf(
+                        "Device-ID" to ADMIN_PROFILE_DATA["devid"]!!,
+                    )
+                ), adminWID, LoginState.LoggedIn
+            ), ::commandGetDeviceInfo
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(response.data.containsKey("Device-Info"))
+
+            val rs = db.query(
+                """SELECT devid,devinfo FROM iwkspc_devices WHERE wid=? AND devid=?""",
+                adminWID,
+                devid
+            ).getOrThrow()
+            assert(rs.next())
+            assertEquals(devid.toString(), rs.getString("devid"))
+            assert(rs.getString("devinfo").isNotEmpty())
+        }.run()
+
+        // Case #2: Successful get for multiple devices
+        CommandTest(
+            "getDeviceInfo.2",
+            SessionState(
+                ClientRequest(
+                    "GETDEVICEINFO", mutableMapOf()
+                ), adminWID, LoginState.LoggedIn
+            ), ::commandGetDeviceInfo
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(response.data.containsKey("Devices"))
+
+            val devices = response.data["Devices"]!!.split(",")
+            assertEquals(devid.toString(), devices[0])
+            assertEquals(devid2.toString(), devices[1])
+
+            assertEquals("XSALSA20:ABCDEFG1234567890", response.data[devid.toString()])
+            assertEquals(fakeInfo.toString(), response.data[devid2.toString()])
+
+        }.run()
+
+        // Case #3: Device not found
+        CommandTest(
+            "getDeviceInfo.3",
+            SessionState(
+                ClientRequest(
+                    "GETDEVICEINFO", mutableMapOf(
+                        "Device-ID" to "4171c1e9-fab2-47bf-b383-f2342282b301",
+                    )
+                ), adminWID, LoginState.LoggedIn
+            ), ::commandGetDeviceInfo
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(404)
+        }.run()
     }
 
     @Test
