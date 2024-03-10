@@ -183,6 +183,20 @@ class ClientSession(val conn: Socket) : SessionState() {
     }
 
     /**
+     * Static method which sends a basic message to the client. It suppresses network errors because
+     * we're already in an error state.
+     *
+     * @throws kotlinx.serialization.SerializationException encoding-specific errors
+     * @throws IllegalArgumentException if the encoded input does not comply format's specification
+     */
+    fun quickResponse(code: Int, status: String, info: String = "") {
+        ServerResponse(code, status, info).sendCatching(
+            conn,
+            "Error sending quick response($code, $status, $info)"
+        )
+    }
+
+    /**
      * Reads file data from a client and writes it directly to the file, optionally resuming from a
      * specified file offset.
      */
