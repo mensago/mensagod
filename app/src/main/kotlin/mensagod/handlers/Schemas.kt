@@ -25,8 +25,8 @@ object Schemas {
     )
 
     val devkeyClientResponse = Schema(
-        MsgField("Response", MsgFieldType.CryptoString, true),
-        MsgField("New-Response", MsgFieldType.CryptoString, true),
+        MsgField("Response", MsgFieldType.String, true),
+        MsgField("New-Response", MsgFieldType.String, true),
     )
 
     val device = Schema(

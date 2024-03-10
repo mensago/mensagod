@@ -19,7 +19,7 @@ fun commandDevKey(state: ClientSession) {
     val newkey = schema.getCryptoString("New-Key", state.message.data)!!
 
     if (devid != state.devid) {
-        QuickResponse.sendForbidden("A device can update its own key", state.conn)
+        QuickResponse.sendForbidden("A device can update only its own key", state.conn)
         return
     }
 
@@ -33,7 +33,14 @@ fun commandDevKey(state: ClientSession) {
     }
     // We don't need to send an error message to the client because that's already taken care of in
     // dualChallengeDevice()
-    if (!success) return
+    if (!success) {
+        ServerResponse(401, "UNAUTHORIZED")
+            .sendCatching(
+                state.conn, "Unable to send unauthorized message to $devid " +
+                        "for ${state.wid}"
+            )
+        return
+    }
 
     updateDeviceKey(DBConn(), state.wid!!, state.devid!!, newkey)?.let {
         logError("commandDevice.updateDeviceKey exception: $it")
