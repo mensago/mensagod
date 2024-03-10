@@ -1,6 +1,7 @@
 package mensagod.auth
 
 import keznacl.toFailure
+import keznacl.toSuccess
 import libkeycard.RandomID
 import libmensago.MServerPath
 
@@ -14,40 +15,38 @@ class FileTarget private constructor(private val path: MServerPath) : AuthTarget
     private val parent = path.parent()
 
     override fun getActions(actor: AuthActor, action: AuthAction): Result<List<AuthAction>> {
-        if (actor.getType() != AuthActorType.WID) return Result.success(listOf())
+        if (actor.getType() != AuthActorType.WID) return listOf<AuthAction>().toSuccess()
         actor as WIDActor
 
         if (actor.isAdmin().getOrElse { return it.toFailure() } ||
             isKeysDirectory(actor.wid) || ownsParent(actor.wid))
-            return Result.success(
-                listOf(
-                    AuthAction.Create, AuthAction.Delete, AuthAction.Read, AuthAction.Modify
-                )
-            )
+            return listOf(
+                AuthAction.Create, AuthAction.Delete, AuthAction.Read, AuthAction.Modify
+            ).toSuccess()
 
-        return Result.success(listOf())
+        return listOf<AuthAction>().toSuccess()
     }
 
     override fun isAuthorized(actor: AuthActor, action: AuthAction): Result<Boolean> {
         when (action) {
             AuthAction.Create, AuthAction.Delete, AuthAction.Read, AuthAction.Modify -> {
-                if (actor.getType() != AuthActorType.WID) return Result.success(false)
+                if (actor.getType() != AuthActorType.WID) return false.toSuccess()
                 actor as WIDActor
 
                 // Admins can access all directories and files
                 val isAdmin = actor.isAdmin().getOrElse { return it.toFailure() }
                 if (isAdmin)
-                    return Result.success(true)
+                    return true.toSuccess()
 
                 // Users have admin access over their identity workspaces and their corresponding
                 // key directories
-                if (isKeysDirectory(actor.wid)) return Result.success(true)
-                if (ownsParent(actor.wid)) return Result.success(true)
+                if (isKeysDirectory(actor.wid)) return true.toSuccess()
+                if (ownsParent(actor.wid)) return true.toSuccess()
             }
 
-            else -> return Result.success(false)
+            else -> return false.toSuccess()
         }
-        return Result.success(false)
+        return false.toSuccess()
     }
 
     private fun isKeysDirectory(wid: RandomID): Boolean {

@@ -15,11 +15,11 @@ import java.net.Inet4Address
 class ServerTarget : AuthTarget {
 
     override fun getActions(actor: AuthActor, action: AuthAction): Result<List<AuthAction>> {
-        if (actor.getType() != AuthActorType.WID) return Result.success(listOf())
+        if (actor.getType() != AuthActorType.WID) return listOf<AuthAction>().toSuccess()
         actor as WIDActor
 
         if (actor.isAdmin().getOrElse { return it.toFailure() })
-            return Result.success(listOf(AuthAction.Preregister, AuthAction.Unregister))
+            return listOf(AuthAction.Preregister, AuthAction.Unregister).toSuccess()
 
         val out = mutableListOf(AuthAction.Unregister)
         val regType = ServerConfig.get().getString("global.registration")!!
@@ -48,21 +48,20 @@ class ServerTarget : AuthTarget {
         when (action) {
             AuthAction.Preregister -> {
                 // At this point only users may preregister a workspace
-                if (actor.getType() != AuthActorType.WID) return Result.success(false)
+                if (actor.getType() != AuthActorType.WID) return false.toSuccess()
                 actor as WIDActor
 
                 // For the moment, only the administrator can preregister workspaces
                 val addr = MAddress.fromParts(UserID.fromString("admin")!!, gServerDomain)
                 val adminWID = resolveAddress(DBConn().connect().getOrThrow(), addr)
                     .getOrElse { return it.toFailure() }
-                    ?: return Result.failure(
-                        DatabaseCorruptionException("Administrator WID missing from database")
-                    )
+                    ?: return DatabaseCorruptionException("Administrator WID missing from database")
+                        .toFailure()
 
                 return Result.success(actor.wid == adminWID)
             }
 
-            else -> return Result.success(false)
+            else -> return false.toSuccess()
         }
     }
 }
