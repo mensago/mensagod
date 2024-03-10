@@ -38,6 +38,7 @@ object Schemas {
     val exists = Schema(MsgField("Path", MsgFieldType.Path, true))
 
     // GETCARD is too complicated for standard schema verification
+    // GETDEVICEINFO doesn't needs a preallocated schema - 1 optional parameter
 
     val getWID = Schema(
         MsgField("User-ID", MsgFieldType.UserID, true),
@@ -103,9 +104,7 @@ object Schemas {
         MsgField("Password-Parameters", MsgFieldType.String, false),
     )
 
-    val removeDevice = Schema(
-        MsgField("Device-ID", MsgFieldType.RandomID, true),
-    )
+    val removeDevice = Schema(MsgField("Device-ID", MsgFieldType.RandomID, true))
 
     val rmDir = Schema(MsgField("Path", MsgFieldType.Path, true))
 
@@ -115,4 +114,6 @@ object Schemas {
         MsgField("Message", MsgFieldType.String, true),
         MsgField("Domain", MsgFieldType.Domain, true),
     )
+
+    val setDeviceInfo = Schema(MsgField("Device-Info", MsgFieldType.CryptoString, true))
 }

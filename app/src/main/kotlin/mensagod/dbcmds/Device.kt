@@ -12,7 +12,7 @@ import mensagod.DatabaseCorruptionException
 import mensagod.handlers.DeviceStatus
 
 /**
- * Adds a device to a workspcae. The device's initial last login is set to when this method is
+ * Adds a device to a workspace. The device's initial last login is set to when this method is
  * called because a new device is added only at certain times, such as at registration or when a
  * user logs into a workspace on a new device.
  *
@@ -221,6 +221,20 @@ fun removeKeyInfo(db: DBConn, wid: RandomID, devid: RandomID): Throwable? {
     return db.execute("""DELETE FROM keyinfo WHERE wid=? AND devid=?""", wid, devid)
         .exceptionOrNull()
 }
+
+/**
+ * Updates the info for a device.
+ *
+ * @throws NotConnectedException Returned if not connected to the database
+ * @throws java.sql.SQLException Returned for database problems, most likely either with your query
+ * or with the connection
+ */
+fun setDeviceInfo(db: DBConn, wid: RandomID, devid: RandomID, devInfo: CryptoString): Throwable? {
+    return db.execute(
+        """UPDATE iwkspc_devices SET devinfo=? WHERE wid=? AND devid=?""", devInfo, wid, devid
+    ).exceptionOrNull()
+}
+
 
 /**
  * Updates a device's encrypted client info. If the device ID specified doesn't exist, this call

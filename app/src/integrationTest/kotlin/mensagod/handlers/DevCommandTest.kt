@@ -357,4 +357,35 @@ class DevCommandTest {
         // Because of how the test itself is set up, we can't test connection termination if the
         // current device is removed. That will have to be tested via a client integration test
     }
+
+    @Test
+    fun setDeviceInfoTest() {
+        setupTest("handlers.setDeviceInfo")
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+        val fakeInfo = "XSALSA20:myNewFakeInfoWOOT"
+
+        // Case #1: Success
+        CommandTest(
+            "setdeviceinfo.1",
+            SessionState(
+                ClientRequest("SETDEVICEINFO", mutableMapOf("Device-Info" to fakeInfo)),
+                adminWID, LoginState.LoggedIn, devid,
+            ), ::commandSetDeviceInfo
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+
+            val rs = DBConn().query(
+                """SELECT devinfo FROM iwkspc_devices WHERE wid=? AND devid=?""",
+                adminWID, devid
+            ).getOrThrow()
+            assert(rs.next())
+            assertEquals(fakeInfo, rs.getString("devinfo"))
+        }.run()
+
+        // This call only really needs 1 test because it's so simple and shouldn't fail unless
+        // there is a problem with the database itself.
+    }
 }

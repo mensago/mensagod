@@ -205,7 +205,16 @@ fun commandRemoveDevice(state: ClientSession) {
 
 // SETDEVICEINFO(Device-Info)
 fun commandSetDeviceInfo(state: ClientSession) {
-    TODO("Implement commandSetDeviceInfo($state)")
+    val schema = Schemas.setDeviceInfo
+    if (!state.requireLogin(schema)) return
+    val devInfo = schema.getCryptoString("Device-Info", state.message.data)!!
+
+    setDeviceInfo(DBConn(), state.wid!!, state.devid!!, devInfo)?.let {
+        logError("commandSetDeviceInfo.setDeviceInfo exception for ${state.wid!!}: $it")
+        QuickResponse.sendInternalError("Error updating device info", state.conn)
+        return
+    }
+    QuickResponse.sendOK("", state.conn)
 }
 
 
