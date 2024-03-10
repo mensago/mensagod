@@ -138,6 +138,10 @@ class LocalFSHandle(mpath: MServerPath, private var file: File) {
 
         val destFile = File(localDest.toString())
         try {
+            // TODO: Change moveTo to use Java filesystem move
+            // Apache's FileUtils doesn't actually move the file. It creates a new one and deletes
+            // the old. On Windows the old file can't be deleted because there is an existing file
+            // handle.
             FileUtils.moveFileToDirectory(file, destFile, false)
         } catch (e: Exception) {
             return e
