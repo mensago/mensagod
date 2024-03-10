@@ -37,15 +37,11 @@ object Schemas {
 
     val exists = Schema(MsgField("Path", MsgFieldType.Path, true))
 
+    // GETCARD is too complicated for standard schema verification
+
     val getWID = Schema(
         MsgField("User-ID", MsgFieldType.UserID, true),
         MsgField("Domain", MsgFieldType.Domain, false)
-    )
-
-    val getCard = Schema(
-        MsgField("Owner", MsgFieldType.MAddress, false),
-        MsgField("Start-Index", MsgFieldType.Integer, true),
-        MsgField("End-Index", MsgFieldType.Integer, false)
     )
 
     val getUpdates = Schema(
