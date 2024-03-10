@@ -2,6 +2,7 @@ package mensagod
 
 import com.moandjiezana.toml.Toml
 import keznacl.BadValueException
+import keznacl.toFailure
 import keznacl.toSuccess
 import libkeycard.BadFieldValueException
 import libkeycard.Domain
@@ -52,11 +53,9 @@ class ServerConfig {
             return Result.failure(MissingDataException("Database password must not be empty"))
         args["password"] = getString("database.password")
 
-        return try {
-            Result.success(DriverManager.getConnection(sb.toString(), args))
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        return runCatching {
+            DriverManager.getConnection(sb.toString(), args).toSuccess()
+        }.getOrElse { it.toFailure() }
     }
 
     /**
@@ -386,7 +385,7 @@ class ServerConfig {
 
         sl.add("")
 
-        return Result.success(sl.joinToString(System.lineSeparator()))
+        return sl.joinToString(System.lineSeparator()).toSuccess()
     }
 
     /**
@@ -578,7 +577,7 @@ class ServerConfig {
                 Paths.get("/etc/mensagod/serverconfig.toml")
 
             if (!configFilePath.exists())
-                return Result.failure(ResourceNotFoundException("Server config file not found"))
+                return ResourceNotFoundException("Server config file not found").toFailure()
 
             val out = fromString(Files.readString(configFilePath))
             serverConfigSingleton = out

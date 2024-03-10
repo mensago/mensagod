@@ -79,7 +79,7 @@ class Server private constructor(val config: ServerConfig) {
         /** Performs setup needed for the server to run. */
         fun initialize(): Result<Server> {
             val config = ServerConfig.load().getOrElse { return it.toFailure() }
-            config.validate()?.let { return Result.failure(BadValueException(it)) }
+            config.validate()?.let { return BadValueException(it).toFailure() }
 
             val logLocation = Paths.get(config.getString("global.log_dir")!!, "mensagod.log")
             initLogging(logLocation, false)

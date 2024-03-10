@@ -174,11 +174,9 @@ class ClientSession(val conn: Socket) : SessionState() {
     fun isAdmin(): Result<Boolean> {
         val adminWID = resolveAddress(DBConn(), MAddress.fromString("admin/$gServerDomain")!!)
             .getOrElse { return it.toFailure() }
-            ?: return Result.failure(
-                DatabaseCorruptionException(
-                    "isAdmin couldn't find the admin's workspace ID"
-                )
-            )
+            ?: return DatabaseCorruptionException(
+                "isAdmin couldn't find the admin's workspace ID"
+            ).toFailure()
         return Result.success(adminWID == wid)
     }
 

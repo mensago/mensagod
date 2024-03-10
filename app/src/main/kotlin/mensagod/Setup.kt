@@ -1,6 +1,7 @@
 package mensagod
 
 import keznacl.toFailure
+import keznacl.toSuccess
 import java.sql.Connection
 
 /**
@@ -127,5 +128,5 @@ fun resetDB(config: ServerConfig): Result<Connection> {
 
     stmt.executeBatch()
 
-    return Result.success(db)
+    return db.toSuccess()
 }

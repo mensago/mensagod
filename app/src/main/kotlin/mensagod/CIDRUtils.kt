@@ -28,6 +28,8 @@ package mensagod
 // This code is heavily modified from Edin's original Java code. It was translated to Kotlin for
 // all the benefits it provides and then restructured to use more functional concepts.
 
+import keznacl.toFailure
+import keznacl.toSuccess
 import java.math.BigInteger
 import java.net.InetAddress
 import java.net.UnknownHostException
@@ -36,10 +38,12 @@ import java.nio.ByteBuffer
 /**
  * A class that enables to get an IP range from CIDR specification. It supports both IPv4 and IPv6.
  */
-class CIDRUtils private constructor(val value: String,
-                                    private val startAddress: InetAddress,
-                                    private val endAddress: InetAddress,
-                                    val prefix: Int) {
+class CIDRUtils private constructor(
+    val value: String,
+    private val startAddress: InetAddress,
+    private val endAddress: InetAddress,
+    val prefix: Int
+) {
 
     val networkAddress: String
         get() = startAddress.hostAddress
@@ -53,8 +57,11 @@ class CIDRUtils private constructor(val value: String,
      * @throws UnknownHostException Returned if given a hostname or FQDN that doesn't resolve.
      */
     fun isInRange(ipAddress: String?): Result<Boolean> {
-        val address = try { InetAddress.getByName(ipAddress)
-        } catch (e: Exception) { return Result.failure(e) }
+        val address = try {
+            InetAddress.getByName(ipAddress)
+        } catch (e: Exception) {
+            return e.toFailure()
+        }
 
         val start = BigInteger(
             1,
@@ -85,10 +92,15 @@ class CIDRUtils private constructor(val value: String,
 
                 CIDRUtils(s, addrPair.first, addrPair.second, prefixLength)
 
-            } catch (e: Exception) { null }
+            } catch (e: Exception) {
+                null
+            }
         }
 
-        private fun calculate(addr: InetAddress, prefix: Int): Result<Pair<InetAddress, InetAddress>> {
+        private fun calculate(
+            addr: InetAddress,
+            prefix: Int
+        ): Result<Pair<InetAddress, InetAddress>> {
             val maskBuffer: ByteBuffer
             val targetSize: Int
             if (addr.address.size == 4) {
@@ -114,11 +126,12 @@ class CIDRUtils private constructor(val value: String,
             val startIpArr = toBytes(startIp.toByteArray(), targetSize)
             val endIpArr = toBytes(endIp.toByteArray(), targetSize)
 
-            return try {
-                Result.success(
-                    Pair(InetAddress.getByAddress(startIpArr), InetAddress.getByAddress(endIpArr))
-                )
-            } catch (e: Exception) { Result.failure(e) }
+            return runCatching {
+                Pair(
+                    InetAddress.getByAddress(startIpArr),
+                    InetAddress.getByAddress(endIpArr)
+                ).toSuccess()
+            }.getOrElse { it.toFailure() }
         }
 
         private fun toBytes(array: ByteArray, targetSize: Int): ByteArray {

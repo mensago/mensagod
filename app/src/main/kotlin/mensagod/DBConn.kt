@@ -33,14 +33,14 @@ class DBConn {
      * @throws java.sql.SQLException if there are problems connecting to the database
      */
     fun connect(): Result<DBConn> {
-        if (dbURL.isEmpty()) return Result.failure(EmptyDataException())
+        if (dbURL.isEmpty()) return EmptyDataException().toFailure()
 
         // No sense in creating a new connection if we're already connected
-        if (conn != null) return Result.success(this)
+        if (conn != null) return this.toSuccess()
 
         conn = if (dbArgs.isNotEmpty()) DriverManager.getConnection(dbURL, dbArgs)
         else DriverManager.getConnection(dbURL)
-        return Result.success(this)
+        return this.toSuccess()
     }
 
     /**
@@ -77,15 +77,11 @@ class DBConn {
      * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
      */
     fun query(q: String, vararg args: Any): Result<ResultSet> {
-        if (q.isEmpty()) return Result.failure(EmptyDataException())
-        if (!isConnected()) return Result.failure(NotConnectedException())
+        if (q.isEmpty()) return EmptyDataException().toFailure()
+        if (!isConnected()) return NotConnectedException().toFailure()
 
         val stmt = prepStatement(q, args).getOrElse { return it.toFailure() }
-        return try {
-            stmt.executeQuery().toSuccess()
-        } catch (e: Exception) {
-            e.toFailure()
-        }
+        return runCatching { stmt.executeQuery().toSuccess() }.getOrElse { it.toFailure() }
     }
 
     /**
@@ -97,8 +93,8 @@ class DBConn {
      * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
      */
     fun execute(s: String, vararg args: Any): Result<Int?> {
-        if (s.isEmpty()) return Result.failure(EmptyDataException())
-        if (!isConnected()) return Result.failure(NotConnectedException())
+        if (s.isEmpty()) return EmptyDataException().toFailure()
+        if (!isConnected()) return NotConnectedException().toFailure()
 
         val stmt = prepStatement(s, args).getOrElse { return it.toFailure() }
         return try {
@@ -106,7 +102,7 @@ class DBConn {
             val count = stmt.updateCount
             return Result.success(if (count < 0) null else count)
         } catch (e: Exception) {
-            Result.failure(e)
+            e.toFailure()
         }
     }
 
@@ -162,15 +158,15 @@ class DBConn {
      * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
      */
     fun exists(q: String, vararg args: Any): Result<Boolean> {
-        if (q.isEmpty()) return Result.failure(EmptyDataException())
-        if (!isConnected()) return Result.failure(NotConnectedException())
+        if (q.isEmpty()) return EmptyDataException().toFailure()
+        if (!isConnected()) return NotConnectedException().toFailure()
 
         return try {
             val stmt = prepStatement(q, args).getOrThrow()
             val rs = stmt.executeQuery()
-            Result.success(rs.next())
+            rs.next().toSuccess()
         } catch (e: Exception) {
-            Result.failure(e)
+            e.toFailure()
         }
     }
 
@@ -186,11 +182,9 @@ class DBConn {
         // Make sure the ? count in s matches the number of args
         val qCount = s.split("?").size - 1
         if (qCount != args.size)
-            return Result.failure(
-                BadValueException(
-                    "Parameter count $qCount does not match number of placeholders"
-                )
-            )
+            return BadValueException(
+                "Parameter count $qCount does not match number of placeholders"
+            ).toFailure()
 
         // This is an internal call for query() and execute(). The null check is done there.
         return try {
@@ -206,7 +200,7 @@ class DBConn {
             }
             out.toSuccess()
         } catch (e: Exception) {
-            Result.failure(e)
+            e.toFailure()
         }
     }
 
