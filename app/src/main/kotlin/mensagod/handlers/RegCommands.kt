@@ -4,6 +4,7 @@ import keznacl.*
 import libkeycard.*
 import libmensago.MServerPath
 import libmensago.ResourceExistsException
+import libmensago.ServerException
 import libmensago.ServerResponse
 import mensagod.*
 import mensagod.auth.AuthAction
@@ -425,5 +426,29 @@ fun commandUnregister(state: ClientSession) {
 }
 
 private fun checkInRegNetwork(addr: SocketAddress): Result<Boolean> {
-    TODO("Implement checkInRegNetwork($addr")
+    val addrStr = addr.toString()
+    val ip4networks = ServerConfig.get()
+        .getString("global.registration_subnet")
+        ?.split(",")
+        ?: return ServerException("Missing registration subnet in server config").toFailure()
+    ip4networks.forEach {
+        val cidrCheck = CIDRUtils.fromString(it)
+        if (cidrCheck != null) {
+            if (cidrCheck.isInRange(addrStr).getOrElse { e -> return e.toFailure() })
+                return true.toSuccess()
+        }
+    }
+
+    val ip6networks = ServerConfig.get()
+        .getString("global.registration_subnet6")
+        ?.split(",")
+        ?: return ServerException("Missing registration subnet in server config").toFailure()
+    ip6networks.forEach {
+        val cidrCheck = CIDRUtils.fromString(it)
+        if (cidrCheck != null) {
+            if (cidrCheck.isInRange(addrStr).getOrElse { e -> return e.toFailure() })
+                return true.toSuccess()
+        }
+    }
+    return false.toSuccess()
 }
