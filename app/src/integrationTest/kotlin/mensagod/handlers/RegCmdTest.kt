@@ -145,6 +145,41 @@ class RegCmdTest {
     @Test
     fun registerTest() {
         setupTest("handlers.register")
+        val config = ServerConfig.load().getOrThrow()
+
+        /*
+            | * Workspace-ID
+            * Password-Hash
+            * Password-Algorithm
+            * Password-Salt _(optional)_
+            * Password-Parameters _(optional)_
+            * Device-ID
+            * Device-Key
+            * Device-Info
+            * _optional:_ User-ID
+         */
+        // Test Case #1: Supply no data. Expect WID, Domain, and reg code
+        var regUser = RandomID.generate()
+        CommandTest(
+            "register.1",
+            SessionState(
+                ClientRequest(
+                    "REGISTER", mutableMapOf(
+                        "Password-Hash" to "This is a pretty terrible password",
+                        "Password-Algorithm" to "cleartext",
+                        "Device-ID" to "adcf13a6-fe21-4a8e-9ebf-2546ec9657b9",
+                        "Device-Key" to "CURVE25519:MyFakeDeviceKeyLOL",
+                        "Device-Info" to "CURVE25519:MyDeviceInfoIsFake2"
+                    )
+                ), null, LoginState.NoSession
+            ),
+            ::commandRegister
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            assertEquals(200, response.code)
+        }.run()
 
         // TODO: Implement test for REGISTER
     }
