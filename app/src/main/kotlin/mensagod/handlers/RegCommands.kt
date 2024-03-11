@@ -11,7 +11,7 @@ import mensagod.auth.AuthAction
 import mensagod.auth.ServerTarget
 import mensagod.auth.WIDActor
 import mensagod.dbcmds.*
-import java.net.SocketAddress
+import java.net.InetAddress
 
 // PREREG(User-ID="", Workspace-ID="",Domain="")
 fun commandPreregister(state: ClientSession) {
@@ -349,7 +349,7 @@ fun commandRegister(state: ClientSession) {
 
     val wStatus = when (regType) {
         "network" -> {
-            val ok = checkInRegNetwork(state.conn.remoteSocketAddress).getOrElse {
+            val ok = checkInRegNetwork(state.conn.inetAddress).getOrElse {
                 logError("commandRegister.checkInRegNetwork error: $it")
                 QuickResponse.sendInternalError(
                     "Error validating user remote IP",
@@ -409,15 +409,13 @@ fun commandRegister(state: ClientSession) {
         }
     }
 
-    if (regType == "moderated")
-        state.quickResponse(101, "PENDING")
-    else {
-        ServerResponse(
-            201, "REGISTERED", "", mutableMapOf(
-                "Domain" to gServerDomain.toString()
-            )
-        ).sendCatching(state.conn, "Error sending registration confirmation msg")
-    }
+    val response = if (regType == "moderated")
+        ServerResponse(101, "PENDING")
+    else
+        ServerResponse(201, "REGISTERED")
+    response.data["Domain"] = gServerDomain.toString()
+    response.data["Workspace-ID"] = wid.toString()
+    response.sendCatching(state.conn, "Error sending registration confirmation msg")
 }
 
 // UNREGISTER(Password-Hash, Workspace-ID=null)
@@ -425,8 +423,11 @@ fun commandUnregister(state: ClientSession) {
     TODO("Implement commandUnregister($state)")
 }
 
-private fun checkInRegNetwork(addr: SocketAddress): Result<Boolean> {
-    val addrStr = addr.toString()
+private fun checkInRegNetwork(addr: InetAddress): Result<Boolean> {
+    // Loopback is always allowed
+    if (addr.isLoopbackAddress) return true.toSuccess()
+
+    val addrStr = addr.toString().split('/')[1]
     val ip4networks = ServerConfig.get()
         .getString("global.registration_subnet")
         ?.split(",")

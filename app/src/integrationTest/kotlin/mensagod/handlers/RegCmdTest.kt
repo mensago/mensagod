@@ -146,20 +146,9 @@ class RegCmdTest {
     fun registerTest() {
         setupTest("handlers.register")
         val config = ServerConfig.load().getOrThrow()
+        config.setValue("global.registration", "network")?.let { throw it }
 
-        /*
-            | * Workspace-ID
-            * Password-Hash
-            * Password-Algorithm
-            * Password-Salt _(optional)_
-            * Password-Parameters _(optional)_
-            * Device-ID
-            * Device-Key
-            * Device-Info
-            * _optional:_ User-ID
-         */
-        // Test Case #1: Supply no data. Expect WID, Domain, and reg code
-        var regUser = RandomID.generate()
+        // Test Case #1: Supply no data. Expect WID and Domain
         CommandTest(
             "register.1",
             SessionState(
@@ -178,7 +167,42 @@ class RegCmdTest {
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
-            assertEquals(200, response.code)
+            assertEquals(201, response.code)
+            assertEquals(gServerDomain.toString(), response.data["Domain"])
+            assertNotNull(RandomID.fromString(response.data["Workspace-ID"]))
+        }.run()
+
+        // Test Case #2: Supply wid and user ID
+        val regUser = RandomID.fromString("994c3383-2cde-4fc2-a486-a0e5e7a034dc")
+        CommandTest(
+            "register.2",
+            SessionState(
+                ClientRequest(
+                    "REGISTER", mutableMapOf(
+                        "Workspace-ID" to regUser.toString(),
+                        "User-ID" to "csimons",
+                        "Password-Hash" to "This is a pretty terrible password",
+                        "Password-Algorithm" to "cleartext",
+                        "Device-ID" to "adcf13a6-fe21-4a8e-9ebf-2546ec9657b9",
+                        "Device-Key" to "CURVE25519:MyFakeDeviceKeyLOL",
+                        "Device-Info" to "CURVE25519:MyDeviceInfoIsFake2"
+                    )
+                ), null, LoginState.NoSession
+            ),
+            ::commandRegister
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            assertEquals(201, response.code)
+            assertEquals(gServerDomain.toString(), response.data["Domain"])
+            assertEquals(regUser.toString(), response.data["Workspace-ID"])
+
+            val db = DBConn()
+            val rs = db.query("SELECT uid FROM workspaces WHERE wid=?", regUser.toString())
+                .getOrThrow()
+            assert(rs.next())
+            assertEquals("csimons", rs.getString("uid"))
         }.run()
 
         // TODO: Implement test for REGISTER
