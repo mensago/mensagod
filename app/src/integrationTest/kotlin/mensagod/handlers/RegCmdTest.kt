@@ -252,8 +252,5 @@ class RegCmdTest {
                     }
                 }.run()
             }
-
-
-        // TODO: Implement test for REGISTER
     }
 }
