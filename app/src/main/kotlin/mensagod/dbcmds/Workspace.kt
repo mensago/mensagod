@@ -106,7 +106,13 @@ fun addWorkspace(
  * reused. Archiving is a permanent change, so don't do this unless you're sure!
  */
 fun archiveWorkspace(db: DBConn, wid: RandomID): Throwable? {
-    TODO("Implement archiveWorkspace($db, $wid)")
+
+    db.execute("UPDATE workspaces SET password='-',status='archived' WHERE wid=?", wid)
+        .getOrElse { return it }
+    db.execute("DELETE FROM iwkspc_folders WHERE wid=?", wid).getOrElse { return it }
+    db.execute("DELETE FROM quotas WHERE wid=?", wid).getOrElse { return it }
+    db.execute("DELETE FROM updates WHERE wid=?", wid).getOrElse { return it }
+    return null
 }
 
 /**
@@ -160,7 +166,9 @@ fun getFreeWID(db: DBConn): Result<RandomID> {
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun isAlias(db: DBConn, wid: RandomID): Result<Boolean> {
-    TODO("Implement db command isAlias($db, $wid)")
+    val rs = db.query("SELECT alias FROM aliases WHERE wid=?", wid)
+        .getOrElse { return it.toFailure() }
+    return rs.next().toSuccess()
 }
 
 /**
