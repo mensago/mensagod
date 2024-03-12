@@ -19,9 +19,9 @@ class ServerTarget : AuthTarget {
         actor as WIDActor
 
         if (actor.isAdmin().getOrElse { return it.toFailure() })
-            return listOf(AuthAction.Preregister, AuthAction.Unregister).toSuccess()
+            return listOf(AuthAction.Preregister, AuthAction.Archive).toSuccess()
 
-        val out = mutableListOf(AuthAction.Unregister)
+        val out = mutableListOf(AuthAction.Archive)
         val regType = ServerConfig.get().getString("global.registration")!!
         when (regType) {
             "public", "moderated" -> out.add(AuthAction.Register)

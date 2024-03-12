@@ -12,6 +12,7 @@ fun processCommand(state: ClientSession) {
     state.checkForUpdates()
     when (state.message.action) {
         "ADDENTRY" -> commandAddEntry(state)
+        "ARCHIVE" -> commandArchive(state)
         "COPY" -> commandCopy(state)
         "DELETE" -> commandDelete(state)
         "DEVICE" -> commandDevice(state)
@@ -60,7 +61,6 @@ fun processCommand(state: ClientSession) {
         "SETPASSWORD" -> commandSetPassword(state)
         "SETQUOTA" -> commandSetQuota(state)
         "SETSTATUS" -> commandSetStatus(state)
-        "UNREGISTER" -> commandUnregister(state)
         "UPLOAD" -> commandUpload(state)
         else -> commandUnrecognized(state)
     }

@@ -256,7 +256,7 @@ class RegCmdTest {
     }
 
     @Test
-    fun unregisterTest() {
-        // TODO: Implement test for commandUnregister()
+    fun archiveTest() {
+        // TODO: Implement test for commandArchive()
     }
 }

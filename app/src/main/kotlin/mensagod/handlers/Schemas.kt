@@ -9,6 +9,11 @@ import libmensago.Schema
  * Mensago protocol.
  */
 object Schemas {
+    val archive = Schema(
+        MsgField("Password-Hash", MsgFieldType.String, true),
+        MsgField("Workspace-ID", MsgFieldType.RandomID, false),
+    )
+
     // CANCEL has no schema
 
     val copy = Schema(
@@ -115,9 +120,4 @@ object Schemas {
     )
 
     val setDeviceInfo = Schema(MsgField("Device-Info", MsgFieldType.CryptoString, true))
-
-    val unregister = Schema(
-        MsgField("Password-Hash", MsgFieldType.String, true),
-        MsgField("Workspace-ID", MsgFieldType.RandomID, false),
-    )
 }

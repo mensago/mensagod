@@ -17,17 +17,17 @@ class WorkspaceTarget private constructor(val wid: RandomID) : AuthTarget {
         actor as WIDActor
 
         if (actor.isAdmin().getOrElse { return it.toFailure() })
-            return listOf(AuthAction.Modify, AuthAction.Unregister).toSuccess()
+            return listOf(AuthAction.Modify, AuthAction.Archive).toSuccess()
 
         if (wid == actor.wid)
-            return listOf(AuthAction.Unregister).toSuccess()
+            return listOf(AuthAction.Archive).toSuccess()
 
         return listOf<AuthAction>().toSuccess()
     }
 
     override fun isAuthorized(actor: AuthActor, action: AuthAction): Result<Boolean> {
         return when (action) {
-            AuthAction.Unregister -> {
+            AuthAction.Archive -> {
                 if (actor.getType() != AuthActorType.WID) return false.toSuccess()
                 actor as WIDActor
                 (wid == actor.wid || actor.isAdmin().getOrElse { return it.toFailure() })
