@@ -262,6 +262,12 @@ fun commandRegCode(state: ClientSession) {
 // REGISTER(Workspace-ID, Password-Hash, Password-Algorithm, Device-ID, Device-Key,
 //     Device-Info, Password-Salt="", Password-Parameters="")
 fun commandRegister(state: ClientSession) {
+    val regType = ServerConfig.get().getString("global.registration")!!.lowercase()
+    if (regType == "private") {
+        state.quickResponse(304, "REGISTRATION CLOSED")
+        return
+    }
+
     val schema = Schemas.register
     schema.validate(state.message.data) { name, e ->
         val msg = if (e is MissingFieldException)
@@ -318,13 +324,6 @@ fun commandRegister(state: ClientSession) {
             state.quickResponse(301, "NOT IMPLEMENTED")
             return
         }
-    }
-
-
-    val regType = ServerConfig.get().getString("global.registration")!!.lowercase()
-    if (regType == "private") {
-        state.quickResponse(304, "REGISTRATION CLOSED")
-        return
     }
 
     val widExists = checkWorkspace(db, wid).getOrElse {

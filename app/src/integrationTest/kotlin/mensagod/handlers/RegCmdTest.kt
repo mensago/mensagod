@@ -7,10 +7,7 @@ import libmensago.ServerResponse
 import mensagod.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import testsupport.ADMIN_PROFILE_DATA
-import testsupport.assertReturnCode
-import testsupport.preregUser
-import testsupport.setupTest
+import testsupport.*
 import java.net.InetAddress
 import java.net.Socket
 
@@ -146,11 +143,34 @@ class RegCmdTest {
     fun registerTest() {
         setupTest("handlers.register")
         val config = ServerConfig.load().getOrThrow()
-        config.setValue("global.registration", "network")?.let { throw it }
 
-        // Test Case #1: Supply no data. Expect WID and Domain
+        // Test Case #1: Try to register on a server with private registration
+        config.setValue("global.registration", "private")?.let { throw it }
         CommandTest(
             "register.1",
+            SessionState(
+                ClientRequest(
+                    "REGISTER", mutableMapOf(
+                        "Password-Hash" to "This is a pretty terrible password",
+                        "Password-Algorithm" to "cleartext",
+                        "Device-ID" to "adcf13a6-fe21-4a8e-9ebf-2546ec9657b9",
+                        "Device-Key" to "CURVE25519:MyFakeDeviceKeyLOL",
+                        "Device-Info" to "CURVE25519:MyDeviceInfoIsFake2"
+                    )
+                ), null, LoginState.NoSession
+            ),
+            ::commandRegister
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            assertEquals(304, response.code)
+        }.run()
+
+        config.setValue("global.registration", "network")?.let { throw it }
+
+        // Test Case #2: Supply no data. Expect WID and Domain
+        CommandTest(
+            "register.2",
             SessionState(
                 ClientRequest(
                     "REGISTER", mutableMapOf(
@@ -172,7 +192,7 @@ class RegCmdTest {
             assertNotNull(RandomID.fromString(response.data["Workspace-ID"]))
         }.run()
 
-        // Test Case #2: Supply wid and user ID
+        // Test Case #3: Supply wid and user ID
         val regUser = RandomID.fromString("994c3383-2cde-4fc2-a486-a0e5e7a034dc")
         CommandTest(
             "register.2",
@@ -204,6 +224,35 @@ class RegCmdTest {
             assert(rs.next())
             assertEquals("csimons", rs.getString("uid"))
         }.run()
+
+        // Test Case #4: Try to register with missing required information
+        listOf("Password-Hash", "Password-Algorithm", "Device-ID", "Device-Key", "Device-Info")
+            .forEach {
+                val data = mutableMapOf(
+                    "Password-Hash" to "This is a pretty terrible password",
+                    "Password-Algorithm" to "cleartext",
+                    "Device-ID" to "adcf13a6-fe21-4a8e-9ebf-2546ec9657b9",
+                    "Device-Key" to "CURVE25519:MyFakeDeviceKeyLOL",
+                    "Device-Info" to "CURVE25519:MyDeviceInfoIsFake2"
+                )
+                data.remove(it)
+
+                CommandTest(
+                    "register.4",
+                    SessionState(
+                        ClientRequest("REGISTER", data), null, LoginState.NoSession
+                    ),
+                    ::commandRegister
+                ) { port ->
+                    val socket = Socket(InetAddress.getByName("localhost"), port)
+                    val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+                    if (response.code != 400) {
+                        throw TestFailureException("Failed to catch missing required field $it")
+                    }
+                }.run()
+            }
+
 
         // TODO: Implement test for REGISTER
     }
