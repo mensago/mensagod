@@ -14,3 +14,18 @@ inline fun <reified T> Throwable.toFailure(): Result<T> {
     return Result.failure(this)
 }
 
+/**
+ * Executes the code block if the the Boolean value is true
+ */
+inline fun Boolean.onTrue(block: () -> Unit) {
+    if (this)
+        block()
+}
+
+/**
+ * Executes the code block if the the Boolean value is true
+ */
+inline fun Boolean.onFalse(block: () -> Unit) {
+    if (!this)
+        block()
+}

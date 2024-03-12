@@ -107,7 +107,7 @@ open class CryptoString protected constructor(val prefix: String, val encodedDat
         /** Creates a new instance from a string in CryptoString format or null if invalid.
          */
         fun fromString(value: String): CryptoString? {
-            if (!isValid(value)) return null
+            isValid(value).onFalse { return null }
 
             val parts = value.split(":")
             return if (parts.size != 2) null else CryptoString(parts[0], parts[1])

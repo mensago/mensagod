@@ -85,7 +85,7 @@ fun hashFile(path: String, algorithm: CryptoType = getPreferredHashAlgorithm()):
  * @exception EmptyDataException Returned if the ByteArray given is empty
  */
 fun blake2Hash(data: ByteArray): Result<Hash> {
-    if (data.isEmpty()) return EmptyDataException().toFailure()
+    data.isEmpty().onTrue { return EmptyDataException().toFailure() }
 
     val blake2b = Blake2b.Digest.newInstance(32)
     blake2b.update(data)
