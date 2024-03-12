@@ -4,6 +4,8 @@ import keznacl.CryptoString
 import keznacl.toFailure
 import libkeycard.*
 import libmensago.*
+import mensagod.dbcmds.WorkspaceStatus
+import mensagod.dbcmds.checkWorkspace
 import mensagod.dbcmds.countSyncRecords
 import mensagod.dbcmds.resolveAddress
 import org.apache.commons.io.FileUtils
@@ -36,6 +38,14 @@ class ClientSession(val conn: Socket) : SessionState() {
 
     private var lastUpdateCheck = Instant.now().epochSecond
     private var updateCount = 0
+
+    fun checkIfArchived(): Boolean {
+        if (wid == null || loginState != LoginState.NoSession)
+            return false
+
+        val result = checkWorkspace(DBConn(), wid!!).getOrNull() ?: return false
+        return result == WorkspaceStatus.Archived
+    }
 
     /**
      * Checks the database for updates and update the session state update count.

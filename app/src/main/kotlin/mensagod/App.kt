@@ -45,10 +45,10 @@ class Server private constructor(val config: ServerConfig) {
 
         // Main listener loop
 
-        val listener = try {
+        val listener = runCatching {
             ServerSocket(config.getInteger("network.port")!!)
-        } catch (e: IOException) {
-            println("Unable to open network connection:\n$e")
+        }.getOrElse {
+            println("Unable to open network connection:\n$it")
             exitProcess(-1)
         }
         println("Listening on port ${config.getInteger("network.port")}")
@@ -107,27 +107,27 @@ fun sendGreeting(conn: Socket, code: Int, status: String): Boolean {
         "Mensago", "0.1", code, status,
         DateTimeFormatter.ISO_INSTANT.format(now)
     )
-    val greetingJSON = try {
+    val greetingJSON = runCatching {
         Json.encodeToString(greeting) + "\r\n"
-    } catch (e: SerializationException) {
+    }.getOrElse {
         logError("Unable to serialize unavailability greeting")
         return false
     }
 
-    val ostream = try {
+    val ostream = runCatching {
         conn.getOutputStream()
-    } catch (e: IOException) {
+    }.getOrElse {
         logError("Unable to open client socket for writing")
         return false
     }
 
-    try {
+    return runCatching {
         ostream.write(greetingJSON.encodeToByteArray())
-    } catch (e: Exception) {
+        true
+    }.getOrElse {
         // At this point, it doesn't really matter if we fail out anyway :(
-        return false
+        false
     }
-    return true
 }
 
 /**
@@ -141,10 +141,10 @@ fun connectionWorker(conn: Socket) {
         return
     }
 
-    val istream = try {
+    val istream = runCatching {
         conn.getInputStream()
-    } catch (e: IOException) {
-        logError("Failed to open input stream for client: $e")
+    }.getOrElse {
+        logError("Failed to open input stream for client: $it")
         conn.close()
         return
     }
@@ -152,27 +152,32 @@ fun connectionWorker(conn: Socket) {
     var networkErrorCount = 0
     while (true) {
         val result = ClientRequest.receive(istream)
-        if (result.isFailure) {
-            when (val ex = result.exceptionOrNull()) {
-                is SerializationException -> {
-                    // If there was a serialization problem, that means the client is having problems. For
-                    // now, we'll just ignore this and move on unless it becomes a problem.
-                }
-
-                is IllegalArgumentException -> {
-                    // Don't know why we'd get this error, so for now, just ignore and continue
-                }
-
-                is IOException -> {
-                    networkErrorCount++
-                    if (networkErrorCount >= gMaxNetworkErrors) break
-                }
-
-                else -> {
-                    logError("connectionWorker: Unhandled error receiving client request: $ex")
-                }
+        when (val ex = result.exceptionOrNull()) {
+            null -> {
+                // No error. Keep going. :)
             }
-            continue
+
+            is SerializationException -> {
+                // If there was a serialization problem, that means the client is having problems. For
+                // now, we'll just ignore this and move on unless it becomes a problem.
+                continue
+            }
+
+            is IllegalArgumentException -> {
+                // Don't know why we'd get this error, so for now, just ignore and continue
+                continue
+            }
+
+            is IOException -> {
+                networkErrorCount++
+                if (networkErrorCount >= gMaxNetworkErrors) break
+                continue
+            }
+
+            else -> {
+                logError("connectionWorker: Unhandled error receiving client request: $ex")
+                continue
+            }
         }
         val req = result.getOrThrow()
         networkErrorCount = 0
@@ -180,11 +185,13 @@ fun connectionWorker(conn: Socket) {
 
         if (req.action.uppercase() == "QUIT") break
 
-        try {
-            processCommand(state)
-        } catch (e: IOException) {
-            networkErrorCount++
+        if (state.checkIfArchived()) {
+            state.quickResponse(202, "ARCHIVED")
+            state.loginState = LoginState.NoSession
+            continue
         }
+
+        runCatching { processCommand(state) }.onFailure { networkErrorCount++ }
 
         if (state.isTerminating) break
     }
