@@ -1,12 +1,11 @@
 package mensagod.dbcmds
 
+import keznacl.BadValueException
+import keznacl.onTrue
 import libkeycard.RandomID
 import libkeycard.UserID
 import libmensago.ResourceExistsException
-import mensagod.DBConn
-import mensagod.ServerConfig
-import mensagod.gServerDomain
-import mensagod.resetDB
+import mensagod.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -56,7 +55,16 @@ class DBWorkspaceCmdTest {
 
     @Test
     fun archiveWorkspaceTest() {
-        // TODO: Implement archiveWorkspaceTest
+        val setupData = setupTest("dbcmds.isAlias")
+        val db = DBConn()
+
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        assert(archiveWorkspace(db, adminWID) is UnauthorizedException)
+        val supportWID = RandomID.fromString(setupData.serverSetupData["support_wid"])!!
+        isAlias(db, supportWID).getOrThrow().onTrue {
+            assert(archiveWorkspace(db, supportWID) is BadValueException)
+        }
+        // TODO: Finish implementing archiveWorkspaceTest
     }
 
     @Test
@@ -84,6 +92,11 @@ class DBWorkspaceCmdTest {
     }
 
     @Test
+    fun getAliasesTest() {
+        // TODO: Implement test for getAliases()
+    }
+
+    @Test
     fun isAliasTest() {
         val setupData = setupTest("dbcmds.isAlias")
         val db = DBConn()
@@ -93,5 +106,10 @@ class DBWorkspaceCmdTest {
         assert(isAlias(db, supportWID).getOrThrow())
         val abuseWID = RandomID.fromString(setupData.serverSetupData["abuse_wid"])!!
         assert(isAlias(db, abuseWID).getOrThrow())
+    }
+
+    @Test
+    fun makeAliasTest() {
+        // TODO: Implement test for makeAlias()
     }
 }
