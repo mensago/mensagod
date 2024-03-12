@@ -102,6 +102,14 @@ fun addWorkspace(
 }
 
 /**
+ * Archives a workspace. Mensago workspaces are never deleted, as they are not intended to be
+ * reused. Archiving is a permanent change, so don't do this unless you're sure!
+ */
+fun archiveWorkspace(db: DBConn, wid: RandomID): Throwable? {
+    TODO("Implement archiveWorkspace($db, $wid)")
+}
+
+/**
  * checkWorkspace checks to see if a workspace exists. If it does exist, its status is returned. If
  * not, null is returned.
  *
@@ -143,6 +151,18 @@ fun getFreeWID(db: DBConn): Result<RandomID> {
     return out.toSuccess()
 }
 
+
+/**
+ * resolveUserID attempts to return the RandomID corresponding to the specified UserID. If it does
+ * not exist, null is returned.
+ *
+ * @throws NotConnectedException if not connected to the database
+ * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ */
+fun isAlias(db: DBConn, wid: RandomID): Result<Boolean> {
+    TODO("Implement db command isAlias($db, $wid)")
+}
+
 /**
  * resolveUserID attempts to return the RandomID corresponding to the specified UserID. If it does
  * not exist, null is returned.
@@ -161,7 +181,7 @@ fun resolveUserID(db: DBConn, uid: UserID?): Result<RandomID?> {
             val out = RandomID.fromString(widStr)
                 ?: return DatabaseCorruptionException("Bad workspace ID '$widStr' for userID $uid")
                     .toFailure()
-            
+
             return out.toSuccess()
         }
     }
@@ -169,7 +189,8 @@ fun resolveUserID(db: DBConn, uid: UserID?): Result<RandomID?> {
 }
 
 /**
- * Sets the status of a workspace.
+ * Sets the status of a workspace. NOTE: this call only changes status. If you pass ARCHIVED to
+ * this call, it will internally call [archiveWorkspace].
  *
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection

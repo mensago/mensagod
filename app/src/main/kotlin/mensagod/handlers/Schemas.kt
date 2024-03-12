@@ -115,4 +115,9 @@ object Schemas {
     )
 
     val setDeviceInfo = Schema(MsgField("Device-Info", MsgFieldType.CryptoString, true))
+
+    val unregister = Schema(
+        MsgField("Password-Hash", MsgFieldType.String, true),
+        MsgField("Workspace-ID", MsgFieldType.RandomID, false),
+    )
 }

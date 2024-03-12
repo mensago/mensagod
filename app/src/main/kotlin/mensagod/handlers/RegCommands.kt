@@ -10,6 +10,7 @@ import mensagod.*
 import mensagod.auth.AuthAction
 import mensagod.auth.ServerTarget
 import mensagod.auth.WIDActor
+import mensagod.auth.WorkspaceTarget
 import mensagod.dbcmds.*
 import java.net.InetAddress
 
@@ -419,7 +420,115 @@ fun commandRegister(state: ClientSession) {
 
 // UNREGISTER(Password-Hash, Workspace-ID=null)
 fun commandUnregister(state: ClientSession) {
-    TODO("Implement commandUnregister($state)")
+    val schema = Schemas.unregister
+    if (!state.requireLogin(schema)) return
+
+    val passHash = schema.getString("Password-Hash", state.message.data)!!
+    if (passHash.codePoints().count() !in 16..128) {
+        QuickResponse.sendBadRequest("Invalid password hash", state.conn)
+        return
+    }
+
+    checkPassword(DBConn(), state.wid!!, passHash).getOrElse {
+        logError("commandUnregister: error checking password: $it")
+        state.quickResponse(300, "INTERNAL SERVER ERROR", "error checking password")
+        return
+    }.onFalse {
+        state.quickResponse(401, "UNAUTHORIZED")
+        return
+    }
+
+    val targetWID = schema.getRandomID("Workspace-ID", state.message.data)
+    if (targetWID != null) {
+        val target = WorkspaceTarget.fromWID((targetWID)).getOrElse {
+            logError("commandUnregister: error checking workspace status: $it")
+            state.quickResponse(
+                300, "INTERNAL SERVER ERROR",
+                "error checking workspace status"
+            )
+            return
+        }
+
+        if (target == null) {
+            state.quickResponse(404, "NOT FOUND")
+            return
+        }
+
+        val isAuthorized = target.isAuthorized(WIDActor(state.wid!!), AuthAction.Unregister)
+            .getOrElse {
+                logError("commandUnregister.checkAuth exception: $it")
+                state.quickResponse(
+                    300, "INTERNAL SERVER ERROR",
+                    "authorization check error"
+                )
+                return
+            }
+        if (!isAuthorized) {
+            state.quickResponse(403, "FORBIDDEN")
+            return
+        }
+    }
+
+    val db = DBConn()
+    // The support and abuse built-in accounts can't be deleted
+    listOf("support", "abuse").forEach {
+        val builtinWID = resolveUserID(db, UserID.fromString(it)!!).getOrElse {
+            state.quickResponse(300, "INTERNAL SERVER ERROR", "user ID lookup error")
+            return
+        }
+        if (state.wid!! == builtinWID) {
+            state.quickResponse(
+                403, "FORBIDDEN",
+                "Can't unregister the built-in $it account"
+            )
+            return
+        }
+    }
+
+    isAlias(db, state.wid!!).getOrElse {
+        state.quickResponse(300, "INTERNAL SERVER ERROR", "alias check error")
+        return
+    }.onTrue {
+        state.quickResponse(403, "FORBIDDEN", "Can't unregister aliases")
+        return
+    }
+
+    // The admin account can immediately unregister any workspace. Users attempting to unregister
+    // their own account on a private or moderated server have to get administrator approval.
+    if (state.wid!! == targetWID) {
+        val regType = ServerConfig.get().getString("global.registration")!!
+        if (regType == "private" || regType == "moderated") {
+            // FEATURE: ModeratedRegistration
+            // FEATURETODO: submit admin request to delete workspace
+            // state.quickResponse(101, "PENDING", "Pending administrator approval")
+            state.quickResponse(
+                301, "NOT IMPLEMENTED",
+                "Not implemented yet. Sorry!"
+            )
+            return
+        }
+        archiveWorkspace(db, state.wid!!)?.let {
+            logError("commandUnregister: error archiving workspace: $it")
+            state.quickResponse(
+                300, "INTERNAL SERVER ERROR",
+                "error archiving workspace"
+            )
+            return
+        }
+        state.isTerminating = true
+        return
+    }
+
+    archiveWorkspace(db, state.wid!!)?.let {
+        logError("commandUnregister: error archiving workspace: $it")
+        state.quickResponse(
+            300, "INTERNAL SERVER ERROR",
+            "error archiving workspace"
+        )
+        return
+    }
+
+    state.quickResponse(200, "OK")
 }
 
 private fun checkInRegNetwork(addr: InetAddress): Result<Boolean> {

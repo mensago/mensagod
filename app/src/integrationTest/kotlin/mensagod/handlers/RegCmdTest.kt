@@ -12,6 +12,7 @@ import java.net.InetAddress
 import java.net.Socket
 
 class RegCmdTest {
+
     @Test
     fun preregTest() {
         setupTest("handlers.prereg")
@@ -252,5 +253,10 @@ class RegCmdTest {
                     }
                 }.run()
             }
+    }
+
+    @Test
+    fun unregisterTest() {
+        // TODO: Implement test for commandUnregister()
     }
 }
