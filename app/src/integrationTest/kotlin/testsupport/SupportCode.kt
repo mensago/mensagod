@@ -266,9 +266,9 @@ fun setupAdmin(db: DBConn) {
  * created and all necessary verification checks are made.
  */
 fun setupKeycard(db: DBConn, chain: Boolean, profileData: MutableMap<String, String>) {
-    val adminEntry = UserEntry.fromString(ADMIN_PROFILE_DATA["keycard"]!!).getOrThrow()
+    val userEntry = UserEntry.fromString(profileData["keycard"]!!).getOrThrow()
     val card = Keycard.new("User")!!
-    card.entries.add(adminEntry)
+    card.entries.add(userEntry)
     card.current!!.isDataCompliant()?.let { throw it }
     val serverPair = getPrimarySigningPair(db).getOrThrow()
     card.current!!.sign("Organization-Signature", serverPair)?.let { throw it }
