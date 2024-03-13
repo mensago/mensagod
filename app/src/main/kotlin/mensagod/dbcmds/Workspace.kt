@@ -9,6 +9,7 @@ import libkeycard.RandomID
 import libkeycard.UserID
 import libmensago.NotConnectedException
 import libmensago.ResourceExistsException
+import libmensago.ResourceNotFoundException
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
 import mensagod.UnauthorizedException
@@ -198,10 +199,11 @@ fun getFreeWID(db: DBConn): Result<RandomID> {
  * @exception java.sql.SQLException for database problems, most likely either with your query or
  * with the connection
  */
-fun isAlias(db: DBConn, wid: RandomID): Result<Boolean> {
-    val rs = db.query("SELECT alias FROM aliases WHERE wid=?", wid)
+fun isAlias(db: DBConn, aliasWID: RandomID): Result<Boolean> {
+    val rs = db.query("SELECT wtype FROM workspaces WHERE wid=?", aliasWID)
         .getOrElse { return it.toFailure() }
-    return rs.next().toSuccess()
+    if (!rs.next()) return ResourceNotFoundException().toFailure()
+    return Result.success(rs.getString("wtype")!! == "alias")
 }
 
 /**
@@ -219,12 +221,12 @@ fun makeAlias(db: DBConn, wid: RandomID, domain: Domain, uid: UserID?): Result<R
     if (uid != null)
         db.execute(
             "INSERT INTO WORKSPACES(wid,uid,domain,wtype,status,password,passtype) " +
-                    "VALUES(?,?,?,?,?,?,?)", wid, uid, domain, "alias", "active", "-", "none"
+                    "VALUES(?,?,?,?,?,?,?)", alias, uid, domain, "alias", "active", "-", "none"
         )
     else
         db.execute(
             "INSERT INTO WORKSPACES(wid,domain,wtype,status,password,passtype) " +
-                    "VALUES(?,?,?,?,?,?)", wid, domain, "alias", "active", "-", "none"
+                    "VALUES(?,?,?,?,?,?)", alias, domain, "alias", "active", "-", "none"
         )
     return alias.toSuccess()
 }

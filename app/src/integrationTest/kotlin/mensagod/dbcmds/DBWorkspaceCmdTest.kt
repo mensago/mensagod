@@ -110,6 +110,13 @@ class DBWorkspaceCmdTest {
 
     @Test
     fun makeAliasTest() {
-        // TODO: Implement test for makeAlias()
+        val setupData = setupTest("dbcmds.isAlias")
+        val db = DBConn()
+
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val adminUID = UserID.fromString("admin2")!!
+        val aliasWID = makeAlias(db, adminWID, gServerDomain, adminUID).getOrThrow()
+        assertFalse(isAlias(db, adminWID).getOrThrow())
+        assert(isAlias(db, aliasWID).getOrThrow())
     }
 }
