@@ -202,8 +202,8 @@ fun initDB(db: Connection): Map<String, String> {
     stmt.execute()
 
     stmt = db.prepareStatement("""INSERT INTO aliases(wid,alias) VALUES(?,?)""")
-    stmt.setString(1, abuseWID.toString())
-    stmt.setString(2, ADMIN_PROFILE_DATA["waddress"]!!)
+    stmt.setString(1, ADMIN_PROFILE_DATA["wid"]!!)
+    stmt.setString(2, abuseWID.toString())
     stmt.execute()
 
     val supportWID = RandomID.fromString("f0309ef1-a155-4655-836f-55173cc1bc3b")!!
@@ -215,8 +215,8 @@ fun initDB(db: Connection): Map<String, String> {
     stmt.execute()
 
     stmt = db.prepareStatement("""INSERT INTO aliases(wid,alias) VALUES(?,?)""")
-    stmt.setString(1, supportWID.toString())
-    stmt.setString(2, ADMIN_PROFILE_DATA["waddress"]!!)
+    stmt.setString(1, ADMIN_PROFILE_DATA["wid"]!!)
+    stmt.setString(2, supportWID.toString())
     stmt.execute()
 
     return mutableMapOf(

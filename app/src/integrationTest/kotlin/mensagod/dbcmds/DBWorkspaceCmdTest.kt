@@ -92,11 +92,6 @@ class DBWorkspaceCmdTest {
     }
 
     @Test
-    fun getAliasesTest() {
-        // TODO: Implement test for getAliases()
-    }
-
-    @Test
     fun isAliasTest() {
         val setupData = setupTest("dbcmds.isAlias")
         val db = DBConn()
@@ -109,14 +104,25 @@ class DBWorkspaceCmdTest {
     }
 
     @Test
-    fun makeAliasTest() {
+    fun makeGetAliasTest() {
         val setupData = setupTest("dbcmds.isAlias")
         val db = DBConn()
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
-        val adminUID = UserID.fromString("admin2")!!
-        val aliasWID = makeAlias(db, adminWID, gServerDomain, adminUID).getOrThrow()
+        val adminUID2 = UserID.fromString("admin2")!!
+        val aliasWID2 = makeAlias(db, adminWID, gServerDomain, adminUID2).getOrThrow()
         assertFalse(isAlias(db, adminWID).getOrThrow())
-        assert(isAlias(db, aliasWID).getOrThrow())
+        assert(isAlias(db, aliasWID2).getOrThrow())
+
+        val adminUID3 = UserID.fromString("admin3")!!
+        makeAlias(db, adminWID, gServerDomain, adminUID3).getOrThrow()
+        val aliases = getAliases(db, adminWID).getOrThrow()
+
+        var expectedAliasCount = 2
+        val supportWID = RandomID.fromString(setupData.serverSetupData["support_wid"])!!
+        val abuseWID = RandomID.fromString(setupData.serverSetupData["abuse_wid"])!!
+        if (isAlias(db, supportWID).getOrThrow()) expectedAliasCount++
+        if (isAlias(db, abuseWID).getOrThrow()) expectedAliasCount++
+        assertEquals(expectedAliasCount, aliases.size)
     }
 }

@@ -33,7 +33,7 @@ fun resetDB(config: ServerConfig): Result<Connection> {
     // userid is optional. wtype can be 'individual', 'sharing', 'group', or 'alias'
     stmt.addBatch(
         """CREATE TABLE aliases(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
-            alias CHAR(292) NOT NULL);"""
+            alias VARCHAR(64) NOT NULL);"""
     )
 
     // For logging different types of failures, such as failed usernanme entry or a server's failure

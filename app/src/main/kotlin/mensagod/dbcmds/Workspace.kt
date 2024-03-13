@@ -128,7 +128,7 @@ fun archiveWorkspace(db: DBConn, wid: RandomID): Throwable? {
     if (aliases.isNotEmpty()) {
         db.execute("DELETE FROM aliases WHERE wid=?", wid).getOrElse { return it }
         aliases.forEach {
-            db.execute("DELETE FROM aliases WHERE alias=?", it).getOrElse { return it }
+            db.execute("DELETE FROM aliases WHERE alias=?", it).getOrElse { e -> return e }
         }
     }
 
@@ -171,7 +171,16 @@ fun checkWorkspace(db: DBConn, wid: RandomID): Result<WorkspaceStatus?> {
  * Returns all the aliases for a workspace ID
  */
 fun getAliases(db: DBConn, wid: RandomID): Result<List<RandomID>> {
-    TODO("Implement getAliases($db, $wid)")
+    val rs = db.query("SELECT alias FROM aliases WHERE wid=?", wid)
+        .getOrElse { return it.toFailure() }
+    val out = mutableListOf<RandomID>()
+    while (rs.next()) {
+        out.add(
+            RandomID.fromString(rs.getString("alias"))
+                ?: return DatabaseCorruptionException("bad alias info for wid $wid").toFailure()
+        )
+    }
+    return out.toSuccess()
 }
 
 /**
