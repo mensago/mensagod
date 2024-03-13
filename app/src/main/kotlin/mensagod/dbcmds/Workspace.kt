@@ -211,8 +211,22 @@ fun isAlias(db: DBConn, wid: RandomID): Result<Boolean> {
  * @exception java.sql.SQLException for database problems, most likely either with your query or
  * with the connection
  */
-fun makeAlias(db: DBConn, wid: RandomID, uid: UserID?): Result<RandomID> {
-    TODO("Implement makeAlias($db, $wid, $uid")
+fun makeAlias(db: DBConn, wid: RandomID, domain: Domain, uid: UserID?): Result<RandomID> {
+    val alias = getFreeWID(db).getOrElse { return it.toFailure() }
+
+    db.execute("INSERT INTO aliases(wid,alias) VALUES(?,?)", wid, alias)
+        .onFailure { return it.toFailure() }
+    if (uid != null)
+        db.execute(
+            "INSERT INTO WORKSPACES(wid,uid,domain,wtype,status,password,passtype) " +
+                    "VALUES(?,?,?,?,?,?,?)", wid, uid, domain, "alias", "active", "-", "none"
+        )
+    else
+        db.execute(
+            "INSERT INTO WORKSPACES(wid,domain,wtype,status,password,passtype) " +
+                    "VALUES(?,?,?,?,?,?)", wid, domain, "alias", "active", "-", "none"
+        )
+    return alias.toSuccess()
 }
 
 /**
