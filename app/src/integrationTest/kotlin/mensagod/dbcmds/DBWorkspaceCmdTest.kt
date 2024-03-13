@@ -1,7 +1,5 @@
 package mensagod.dbcmds
 
-import keznacl.BadValueException
-import keznacl.onTrue
 import libkeycard.RandomID
 import libkeycard.UserID
 import libmensago.ResourceExistsException
@@ -60,10 +58,6 @@ class DBWorkspaceCmdTest {
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         assert(archiveWorkspace(db, adminWID) is UnauthorizedException)
-        val supportWID = RandomID.fromString(setupData.serverSetupData["support_wid"])!!
-        isAlias(db, supportWID).getOrThrow().onTrue {
-            assert(archiveWorkspace(db, supportWID) is BadValueException)
-        }
         // TODO: Finish implementing archiveWorkspaceTest
     }
 
@@ -93,36 +87,42 @@ class DBWorkspaceCmdTest {
 
     @Test
     fun isAliasTest() {
-        val setupData = setupTest("dbcmds.isAlias")
+        setupTest("dbcmds.isAlias")
         val db = DBConn()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
-        assertFalse(isAlias(db, adminWID).getOrThrow())
-        val supportWID = RandomID.fromString(setupData.serverSetupData["support_wid"])!!
-        assert(isAlias(db, supportWID).getOrThrow())
-        val abuseWID = RandomID.fromString(setupData.serverSetupData["abuse_wid"])!!
-        assert(isAlias(db, abuseWID).getOrThrow())
+        assertNull(
+            resolveAlias(db, UserID.fromString("admin")!!, gServerDomain)
+                .getOrThrow()
+        )
+        assertEquals(
+            adminWID, resolveAlias(db, UserID.fromString("support")!!, gServerDomain)
+                .getOrThrow()
+        )
+        assertEquals(
+            adminWID,
+            resolveAlias(db, UserID.fromString("abuse")!!, gServerDomain).getOrThrow()
+        )
     }
 
     @Test
     fun makeGetAliasTest() {
-        val setupData = setupTest("dbcmds.isAlias")
+        setupTest("dbcmds.isAlias")
         val db = DBConn()
 
+        val adminUID = UserID.fromString("admin")!!
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
-        val adminUID2 = UserID.fromString("admin2")!!
-        val aliasWID2 = makeAlias(db, adminWID, gServerDomain, adminUID2).getOrThrow()
-        assertFalse(isAlias(db, adminWID).getOrThrow())
-        assert(isAlias(db, aliasWID2).getOrThrow())
+        assert(
+            makeAlias(
+                db,
+                adminWID,
+                adminUID,
+                gServerDomain
+            ) is ResourceExistsException
+        )
 
-        val adminUID3 = UserID.fromString("admin3")!!
-        makeAlias(db, adminWID, gServerDomain, adminUID3).getOrThrow()
+        makeAlias(db, adminWID, UserID.fromString("admin2")!!, gServerDomain)?.let { throw it }
+        makeAlias(db, adminWID, UserID.fromString("admin3")!!, gServerDomain)?.let { throw it }
         val aliases = getAliases(db, adminWID).getOrThrow()
-
-        var expectedAliasCount = 2
-        val supportWID = RandomID.fromString(setupData.serverSetupData["support_wid"])!!
-        val abuseWID = RandomID.fromString(setupData.serverSetupData["abuse_wid"])!!
-        if (isAlias(db, supportWID).getOrThrow()) expectedAliasCount++
-        if (isAlias(db, abuseWID).getOrThrow()) expectedAliasCount++
-        assertEquals(expectedAliasCount, aliases.size)
+        assertEquals(4, aliases.size)
     }
 }

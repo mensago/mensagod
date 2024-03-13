@@ -193,30 +193,18 @@ fun initDB(db: Connection): Map<String, String> {
 
     // Set up abuse/support forwarding to admin
 
-    val abuseWID = RandomID.fromString("f8cfdbdf-62fe-4275-b490-736f5fdc82e3")!!
     stmt = db.prepareStatement(
         """INSERT INTO workspaces(wid,uid,domain,password,passtype,status,wtype) 
         VALUES(?,'abuse','example.com','-', '','active','alias');"""
     )
-    stmt.setString(1, abuseWID.toString())
+    stmt.setString(1, adminWID.toString())
     stmt.execute()
 
-    stmt = db.prepareStatement("""INSERT INTO aliases(wid,alias) VALUES(?,?)""")
-    stmt.setString(1, ADMIN_PROFILE_DATA["wid"]!!)
-    stmt.setString(2, abuseWID.toString())
-    stmt.execute()
-
-    val supportWID = RandomID.fromString("f0309ef1-a155-4655-836f-55173cc1bc3b")!!
     stmt = db.prepareStatement(
         """INSERT INTO workspaces(wid,uid,domain,password,passtype,status,wtype) 
         VALUES(?,'support','example.com','-', '','active','alias');"""
     )
-    stmt.setString(1, supportWID.toString())
-    stmt.execute()
-
-    stmt = db.prepareStatement("""INSERT INTO aliases(wid,alias) VALUES(?,?)""")
-    stmt.setString(1, ADMIN_PROFILE_DATA["wid"]!!)
-    stmt.setString(2, supportWID.toString())
+    stmt.setString(1, adminWID.toString())
     stmt.execute()
 
     return mutableMapOf(
@@ -226,8 +214,6 @@ fun initDB(db: Connection): Map<String, String> {
         "odkey" to keys["encryption.private"].toString(),
         "admin_wid" to adminWID.toString(),
         "admin_regcode" to ADMIN_PROFILE_DATA["regcode"]!!,
-        "abuse_wid" to abuseWID.toString(),
-        "support_wid" to supportWID.toString(),
     )
 }
 

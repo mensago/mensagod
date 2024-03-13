@@ -81,14 +81,6 @@ fun commandArchive(state: ClientSession) {
         }
     }
 
-    isAlias(db, state.wid!!).getOrElse {
-        state.quickResponse(300, "INTERNAL SERVER ERROR", "alias check error")
-        return
-    }.onTrue {
-        state.quickResponse(403, "FORBIDDEN", "Can't archive aliases")
-        return
-    }
-
     // Admin mode
     if (targetWID != null) {
         archiveWorkspace(db, targetWID)?.let {

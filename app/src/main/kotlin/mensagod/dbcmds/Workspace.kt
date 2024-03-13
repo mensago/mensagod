@@ -1,7 +1,6 @@
 package mensagod.dbcmds
 
 import keznacl.BadValueException
-import keznacl.onTrue
 import keznacl.toFailure
 import keznacl.toSuccess
 import libkeycard.Domain
@@ -117,7 +116,6 @@ fun addWorkspace(
  * @exception DatabaseCorruptionException Returned if there's a problem with the data in the db
  */
 fun archiveWorkspace(db: DBConn, wid: RandomID): Throwable? {
-    isAlias(db, wid).getOrElse { return it }.onTrue { return BadValueException() }
     val rs = db.query("SELECT wid FROM workspaces WHERE uid='admin'").getOrElse { return it }
     if (!rs.next()) return DatabaseCorruptionException("admin workspace missing")
     val adminWID = RandomID.fromString(rs.getString("wid"))
@@ -149,7 +147,7 @@ fun archiveWorkspace(db: DBConn, wid: RandomID): Throwable? {
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun checkWorkspace(db: DBConn, wid: RandomID): Result<WorkspaceStatus?> {
-    var rs = db.query("""SELECT status FROM workspaces WHERE wid=?""", wid)
+    var rs = db.query("""SELECT status FROM workspaces WHERE wid=? AND wtype!='alias'""", wid)
         .getOrElse { return it.toFailure() }
     if (rs.next()) {
         val stat = rs.getString("status")
@@ -170,14 +168,14 @@ fun checkWorkspace(db: DBConn, wid: RandomID): Result<WorkspaceStatus?> {
 /**
  * Returns all the aliases for a workspace ID
  */
-fun getAliases(db: DBConn, wid: RandomID): Result<List<RandomID>> {
-    val rs = db.query("SELECT alias FROM aliases WHERE wid=?", wid)
+fun getAliases(db: DBConn, wid: RandomID): Result<List<UserID>> {
+    val rs = db.query("SELECT uid FROM workspaces WHERE wid=? AND wtype='alias'", wid)
         .getOrElse { return it.toFailure() }
-    val out = mutableListOf<RandomID>()
+    val out = mutableListOf<UserID>()
     while (rs.next()) {
         out.add(
-            RandomID.fromString(rs.getString("alias"))
-                ?: return DatabaseCorruptionException("bad alias info for wid $wid").toFailure()
+            UserID.fromString(rs.getString("uid"))
+                ?: return DatabaseCorruptionException("bad alias uid for wid $wid").toFailure()
         )
     }
     return out.toSuccess()
@@ -201,18 +199,23 @@ fun getFreeWID(db: DBConn): Result<RandomID> {
 
 
 /**
- * resolveUserID attempts to return the RandomID corresponding to the specified UserID. If it does
- * not exist, null is returned.
+ * resolveAlias returns the owning workspace ID for the specified userID and domain. It returns null
+ * if the specified combination is not an alias.
  *
+ * @exception ResourceNotFoundException Returned if the userID/domain combination is not found.
  * @exception NotConnectedException if not connected to the database
  * @exception java.sql.SQLException for database problems, most likely either with your query or
  * with the connection
  */
-fun isAlias(db: DBConn, aliasWID: RandomID): Result<Boolean> {
-    val rs = db.query("SELECT wtype FROM workspaces WHERE wid=?", aliasWID)
+fun resolveAlias(db: DBConn, uid: UserID, domain: Domain): Result<RandomID?> {
+    val rs = db.query("SELECT wid,wtype FROM workspaces WHERE uid=? AND domain=?", uid, domain)
         .getOrElse { return it.toFailure() }
     if (!rs.next()) return ResourceNotFoundException().toFailure()
-    return Result.success(rs.getString("wtype")!! == "alias")
+    if (rs.getString("wtype")!! != "alias") return Result.success(null)
+
+    val out = RandomID.fromString(rs.getString("wid"))
+        ?: return DatabaseCorruptionException("Bad random ID for $uid/$domain").toFailure()
+    return out.toSuccess()
 }
 
 /**
@@ -222,22 +225,16 @@ fun isAlias(db: DBConn, aliasWID: RandomID): Result<Boolean> {
  * @exception java.sql.SQLException for database problems, most likely either with your query or
  * with the connection
  */
-fun makeAlias(db: DBConn, wid: RandomID, domain: Domain, uid: UserID?): Result<RandomID> {
-    val alias = getFreeWID(db).getOrElse { return it.toFailure() }
+fun makeAlias(db: DBConn, wid: RandomID, uid: UserID, domain: Domain): Throwable? {
+    val rs = db.query("SELECT wtype FROM workspaces WHERE uid=? AND domain=?", uid, domain)
+        .getOrThrow()
+    if (rs.next()) return ResourceExistsException()
 
-    db.execute("INSERT INTO aliases(wid,alias) VALUES(?,?)", wid, alias)
-        .onFailure { return it.toFailure() }
-    if (uid != null)
-        db.execute(
-            "INSERT INTO WORKSPACES(wid,uid,domain,wtype,status,password,passtype) " +
-                    "VALUES(?,?,?,?,?,?,?)", alias, uid, domain, "alias", "active", "-", "none"
-        )
-    else
-        db.execute(
-            "INSERT INTO WORKSPACES(wid,domain,wtype,status,password,passtype) " +
-                    "VALUES(?,?,?,?,?,?)", alias, domain, "alias", "active", "-", "none"
-        )
-    return alias.toSuccess()
+    db.execute(
+        "INSERT INTO workspaces(wid,uid,domain,wtype,status,password,passtype) " +
+                "VALUES(?,?,?,?,?,?,?)", wid, uid, domain, "alias", "active", "-", "none"
+    )
+    return null
 }
 
 /**

@@ -29,13 +29,6 @@ fun resetDB(config: ServerConfig): Result<Connection> {
 
     // Create new ones
 
-    // Lookup table for all workspaces. When any workspace is created, its wid is added here.
-    // userid is optional. wtype can be 'individual', 'sharing', 'group', or 'alias'
-    stmt.addBatch(
-        """CREATE TABLE aliases(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
-            alias VARCHAR(64) NOT NULL);"""
-    )
-
     // For logging different types of failures, such as failed usernanme entry or a server's failure
     // to authenticate for delivery. Information stored here is to ensure that all parties which the
     // server interacts with behave themselves.
@@ -119,6 +112,8 @@ fun resetDB(config: ServerConfig): Result<Connection> {
         update_type VARCHAR(16), update_data VARCHAR(2048), unixtime BIGINT, devid CHAR(36) NOT NULL);"""
     )
 
+    // Lookup table for all workspaces. When any workspace is created, its wid is added here.
+    // userid is optional. wtype can be 'individual', 'sharing', 'group', or 'alias'
     stmt.addBatch(
         """CREATE TABLE workspaces(rowid BIGSERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
             uid VARCHAR(64), domain VARCHAR(255) NOT NULL, wtype VARCHAR(32) NOT NULL,
