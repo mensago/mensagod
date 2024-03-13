@@ -122,20 +122,16 @@ fun archiveWorkspace(db: DBConn, wid: RandomID): Throwable? {
         ?: return DatabaseCorruptionException("invalid WID for admin workspace")
     if (adminWID == wid) return UnauthorizedException("admin can't be archived")
 
-    val aliases = getAliases(db, wid).getOrElse { return it }
-    if (aliases.isNotEmpty()) {
-        db.execute("DELETE FROM aliases WHERE wid=?", wid).getOrElse { return it }
-        aliases.forEach {
-            db.execute("DELETE FROM aliases WHERE alias=?", it).getOrElse { e -> return e }
-        }
-    }
-
-    db.execute("UPDATE workspaces SET password='-',status='archived' WHERE wid=?", wid)
-        .getOrElse { return it }
-    db.execute("DELETE FROM keycards WHERE wid=?", wid).getOrElse { return it }
-    db.execute("DELETE FROM iwkspc_folders WHERE wid=?", wid).getOrElse { return it }
-    db.execute("DELETE FROM quotas WHERE wid=?", wid).getOrElse { return it }
-    db.execute("DELETE FROM updates WHERE wid=?", wid).getOrElse { return it }
+    db.execute("DELETE FROM workspaces WHERE wid=? AND wtype='alias'", wid)
+        .onFailure { return it }
+    db.execute(
+        "UPDATE workspaces SET status='archived',password='-',salt='-',passtype='-'," +
+                "passparams='-' WHERE wid=?", wid
+    ).onFailure { return it }
+    db.execute("DELETE FROM keycards WHERE owner=?", wid).onFailure { return it }
+    db.execute("DELETE FROM iwkspc_folders WHERE wid=?", wid).onFailure { return it }
+    db.execute("DELETE FROM quotas WHERE wid=?", wid).onFailure { return it }
+    db.execute("DELETE FROM updates WHERE wid=?", wid).onFailure { return it }
     return null
 }
 

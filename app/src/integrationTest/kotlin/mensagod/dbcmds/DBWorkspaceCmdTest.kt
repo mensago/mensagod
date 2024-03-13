@@ -7,9 +7,7 @@ import mensagod.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import testsupport.ADMIN_PROFILE_DATA
-import testsupport.initDB
-import testsupport.setupTest
+import testsupport.*
 
 class DBWorkspaceCmdTest {
 
@@ -53,12 +51,15 @@ class DBWorkspaceCmdTest {
 
     @Test
     fun archiveWorkspaceTest() {
-        val setupData = setupTest("dbcmds.isAlias")
+        setupTest("dbcmds.archiveWorkspace")
         val db = DBConn()
+        setupUser(db)
+        setupKeycard(db, true, USER_PROFILE_DATA)
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         assert(archiveWorkspace(db, adminWID) is UnauthorizedException)
-        // TODO: Finish implementing archiveWorkspaceTest
+        val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
+        archiveWorkspace(db, userWID)?.let { throw it }
     }
 
     @Test
