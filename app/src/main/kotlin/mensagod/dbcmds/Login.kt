@@ -164,3 +164,7 @@ fun preregWorkspace(db: DBConn, wid: RandomID, userID: UserID?, domain: Domain, 
         reghash
     ).exceptionOrNull()
 }
+
+fun resetPassword(db: DBConn, resetCode: String, expires: Timestamp): Throwable? {
+    TODO("Implement dbcmds.resetPassword($db, $resetCode, $expires")
+}

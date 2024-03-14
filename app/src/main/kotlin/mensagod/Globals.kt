@@ -7,9 +7,6 @@ import libkeycard.WAddress
 /** Max number of network errors before we close the connection */
 const val gMaxNetworkErrors = 10
 
-/** A generator of registration passphrases */
-val gRegCodeGenerator = RegCodeGenerator()
-
 /** The server's default domain. */
 var gServerDomain = Domain.fromString("localdomain.priv")!!
 

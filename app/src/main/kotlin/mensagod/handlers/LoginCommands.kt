@@ -2,9 +2,13 @@ package mensagod.handlers
 
 import keznacl.*
 import libkeycard.MissingFieldException
+import libkeycard.Timestamp
 import libkeycard.UserEntry
 import libmensago.*
 import mensagod.*
+import mensagod.auth.AuthAction
+import mensagod.auth.WIDActor
+import mensagod.auth.WorkspaceTarget
 import mensagod.dbcmds.*
 import mensagod.delivery.queueMessageForDelivery
 import java.security.GeneralSecurityException
@@ -520,12 +524,64 @@ fun commandPassCode(state: ClientSession) {
         return
     }
 
-    TODO("Finish omplementing commandPassCode($state)")
+    TODO("Finish implementing commandPassCode($state)")
 }
 
 // RESETPASSWORD(Workspace-ID, Reset-Code=null, Expires=null)
 fun commandResetPassword(state: ClientSession) {
-    TODO("Implement commandResetPassword($state)")
+    val schema = Schemas.resetPassword
+    state.requireLogin(schema).onFalse { return }
+
+    val targetWID = schema.getRandomID("Workspace-ID", state.message.data)!!
+
+    val workspace = WorkspaceTarget.fromWID(targetWID).getOrElse {
+        logError("commandResetPassword.WorkspaceTarget exception: $it")
+        state.quickResponse(300, "INTERNAL SERVER ERROR", "Error finding workspace")
+        return
+    }
+    if (workspace == null) {
+        state.quickResponse(404, "NOT FOUND")
+        return
+    }
+
+    workspace.isAuthorized(WIDActor(state.wid!!), AuthAction.Modify)
+        .getOrElse {
+            logError("commandResetPassword.checkAuth exception: $it")
+            state.quickResponse(
+                300, "INTERNAL SERVER ERROR",
+                "authorization check error"
+            )
+            return
+        }.onFalse {
+            state.quickResponse(
+                403, "FORBIDDEN",
+                "Regular users can't reset passwords"
+            )
+            return
+        }
+    val config = ServerConfig.get()
+    val resetCode = schema.getString("Reset-Code", state.message.data)
+        ?: RegCodeGenerator.getPassphrase(
+            config.getInteger("security.diceware_wordcount")!!
+        )
+    val expires = Timestamp.fromString(schema.getString("Expires", state.message.data))
+        ?: Timestamp().plusMinutes(config.getInteger("security.password_reset_min")!!)
+
+    resetPassword(DBConn(), resetCode, expires)?.let {
+        logError("commandResetPassword.reset exception: $it")
+        state.quickResponse(
+            300, "INTERNAL SERVER ERROR",
+            "Internal error resetting password"
+        )
+        return
+    }
+
+    ServerResponse(
+        200, "OK", "", mutableMapOf(
+            "Reset-Code" to resetCode,
+            "Expires" to expires.toString(),
+        )
+    ).sendCatching(state.conn, "Error sending password reset code")
 }
 
 // SETPASSWORD(Workspace-ID, Reset-Code=null, Expires=null)

@@ -313,4 +313,9 @@ class LoginCmdTest {
             assert(response.data.isEmpty())
         }.run()
     }
+
+    @Test
+    fun resetPasswordTest() {
+        // TODO: Implement test for resetPassword()
+    }
 }

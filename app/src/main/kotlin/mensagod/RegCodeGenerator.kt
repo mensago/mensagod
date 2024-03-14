@@ -9,7 +9,7 @@ import java.security.SecureRandom
  * chosen from the long EFF list, which has 7776 words, is rolled with 5d7776 instead of 25d6. The
  * advantage to this method is that word list size is not arbitrarily limited.
  */
-class RegCodeGenerator {
+object RegCodeGenerator {
 
     private val wordSet = loadWordList()!!
 

@@ -223,7 +223,7 @@ fun preregUser(
     wid: String? = null
 ): Map<String, String> {
 
-    val rcode = regcode ?: gRegCodeGenerator.getPassphrase(
+    val rcode = regcode ?: RegCodeGenerator.getPassphrase(
         ServerConfig.get().getInteger("security.diceware_wordcount")!!
     )
     val rhash = reghash ?: Argon2idPassword().updateHash(rcode).getOrThrow()

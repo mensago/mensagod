@@ -120,6 +120,12 @@ object Schemas {
 
     val removeDevice = Schema(MsgField("Device-ID", MsgFieldType.RandomID, true))
 
+    val resetPassword = Schema(
+        MsgField("Workspace-ID", MsgFieldType.RandomID, true),
+        MsgField("Reset-Code", MsgFieldType.String, true),
+        MsgField("Expires", MsgFieldType.String, true),
+    )
+
     val rmDir = Schema(MsgField("Path", MsgFieldType.Path, true))
 
     val select = Schema(MsgField("Path", MsgFieldType.Path, true))
