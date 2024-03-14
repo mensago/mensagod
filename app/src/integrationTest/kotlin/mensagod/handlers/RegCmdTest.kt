@@ -1,10 +1,16 @@
 package mensagod.handlers
 
 import keznacl.CryptoString
+import keznacl.EncryptionPair
 import libkeycard.RandomID
+import libkeycard.UserID
 import libmensago.ClientRequest
 import libmensago.ServerResponse
 import mensagod.*
+import mensagod.dbcmds.WorkspaceStatus
+import mensagod.dbcmds.WorkspaceType
+import mensagod.dbcmds.addDevice
+import mensagod.dbcmds.addWorkspace
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import testsupport.*
@@ -12,6 +18,67 @@ import java.net.InetAddress
 import java.net.Socket
 
 class RegCmdTest {
+    @Test
+    fun archiveTest() {
+        setupTest("handlers.archive")
+        val db = DBConn()
+        setupUser(db)
+        setupKeycard(db, true, USER_PROFILE_DATA)
+
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
+
+        // Test Case #1: Try to archive admin
+        CommandTest(
+            "archive.1",
+            SessionState(
+                ClientRequest(
+                    "ARCHIVE", mutableMapOf(
+                        "Password-Hash" to ADMIN_PROFILE_DATA["passhash"]!!,
+                    )
+                ), adminWID,
+                LoginState.LoggedIn
+            ), ::commandArchive
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(401)
+        }.run()
+
+        // Create a quickie user account for the next few test cases
+        val user2WID = RandomID.fromString("fe46d15f-eb31-43f2-8fee-fd9088e8fba3")!!
+        val user2UID = UserID.fromString("rbrannan")
+        val dev2id = RandomID.fromString("ac669438-0954-4dd7-b698-a71e33b06eee")!!
+        val dev2key = EncryptionPair.generate().getOrThrow().pubKey
+        val fakeInfo = CryptoString.fromString("XSALSA20:abcdefg1234567890")!!
+        addWorkspace(
+            db, user2WID, user2UID, gServerDomain, USER_PROFILE_DATA["passhash"]!!,
+            "argon2id", "ejzAtaom5H1y6wnLHvrb7g", "m=65536,t=2,p=1",
+            WorkspaceStatus.Active, WorkspaceType.Individual
+        )?.let { throw it }
+        addDevice(db, userWID, dev2id, dev2key, fakeInfo, DeviceStatus.Registered)?.let { throw it }
+
+        // Test Case #2: User tries to unregister someone else
+        CommandTest(
+            "archive.2",
+            SessionState(
+                ClientRequest(
+                    "ARCHIVE", mutableMapOf(
+                        "Password-Hash" to USER_PROFILE_DATA["password"]!!,
+                        "Workspace-ID" to user2WID.toString(),
+                    )
+                ), userWID,
+                LoginState.LoggedIn
+            ), ::commandArchive
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(403)
+        }.run()
+
+
+        // TODO: Implement test for commandArchive()
+    }
 
     @Test
     fun preregTest() {
@@ -253,10 +320,5 @@ class RegCmdTest {
                     }
                 }.run()
             }
-    }
-
-    @Test
-    fun archiveTest() {
-        // TODO: Implement test for commandArchive()
     }
 }

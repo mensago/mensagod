@@ -17,7 +17,10 @@ import mensagod.DatabaseCorruptionException
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
 fun checkPassword(db: DBConn, wid: RandomID, password: String): Result<Boolean> {
-    val rs = db.query("""SELECT password FROM workspaces WHERE wid=?""", wid).getOrThrow()
+    val rs = db.query(
+        """SELECT password FROM workspaces WHERE wid=? AND wtype='individual'""",
+        wid
+    ).getOrThrow()
     if (!rs.next()) return ResourceNotFoundException().toFailure()
 
     val hasher = Argon2idPassword()
