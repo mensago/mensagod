@@ -58,7 +58,7 @@ class RegCmdTest {
         )?.let { throw it }
         addDevice(db, userWID, dev2id, dev2key, fakeInfo, DeviceStatus.Registered)?.let { throw it }
 
-        // Test Case #2: User tries to unregister someone else
+        // Test Case #2: User tries to archive someone else
         CommandTest(
             "archive.2",
             SessionState(
@@ -76,8 +76,40 @@ class RegCmdTest {
             response.assertReturnCode(403)
         }.run()
 
+        // Test Case #3: User successfully archives themselves
+        CommandTest(
+            "archive.3",
+            SessionState(
+                ClientRequest(
+                    "ARCHIVE", mutableMapOf(
+                        "Password-Hash" to USER_PROFILE_DATA["password"]!!,
+                    )
+                ), userWID,
+                LoginState.LoggedIn
+            ), ::commandArchive
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(202)
+        }.run()
 
-        // TODO: Implement test for commandArchive()
+        // Test Case #4: Admin archives another workspace
+        CommandTest(
+            "archive.4",
+            SessionState(
+                ClientRequest(
+                    "ARCHIVE", mutableMapOf(
+                        "Password-Hash" to ADMIN_PROFILE_DATA["passhash"]!!,
+                        "Workspace-ID" to USER_PROFILE_DATA["wid"]!!,
+                    )
+                ), adminWID,
+                LoginState.LoggedIn
+            ), ::commandArchive
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(401)
+        }.run()
     }
 
     @Test
