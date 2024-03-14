@@ -1,8 +1,8 @@
 package mensagod
 
+import libkeycard.Timestamp
 import java.io.File
 import java.nio.file.Path
-import java.time.Instant
 
 private var alsoStdout: Boolean = false
 private var logHandle: File? = null
@@ -47,12 +47,13 @@ fun logDebug(msg: String) {
 
 /** Log function which runs regardless of application log level. */
 fun log(msg: String) {
-    if (msg.endsWith(lineSep))
-        logHandle!!.appendText("${Instant.now()}: $msg")
-    else
-        logHandle!!.appendText("${Instant.now()}: $msg$lineSep")
-
-    if (alsoStdout) println(msg)
+    if (msg.endsWith(lineSep)) {
+        logHandle!!.appendText("${Timestamp()}: $msg")
+        if (alsoStdout) print(msg)
+    } else {
+        logHandle!!.appendText("${Timestamp()}: $msg$lineSep")
+        if (alsoStdout) println(msg)
+    }
 }
 
 /** Returns the current logging level */
