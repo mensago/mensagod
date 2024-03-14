@@ -1,9 +1,12 @@
 package mensagod.dbcmds
 
-import keznacl.*
-import libkeycard.*
+import keznacl.Argon2idPassword
+import keznacl.PasswordInfo
+import keznacl.toFailure
+import keznacl.toSuccess
+import libkeycard.RandomID
+import libkeycard.Timestamp
 import libmensago.NotConnectedException
-import libmensago.ResourceExistsException
 import libmensago.ResourceNotFoundException
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
@@ -60,66 +63,6 @@ fun checkResetCode(db: DBConn, wid: RandomID, resetCode: String): Result<Boolean
 }
 
 /**
- * checkRegCode handles authenticating a host using a userID/workspaceID and registration code
- * provided by preregWorkspace(). Based on authentication, it either returns a Pair containing the
- * workspace ID and the user ID (if it exists) or null on failure. This call is responsible for
- * authentication only and does not perform any other registration-related tasks.
- *
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
- */
-fun checkRegCode(db: DBConn, addr: MAddress, regcode: String): Result<Pair<RandomID, UserID?>?> {
-    val rs = if (addr.isWorkspace) {
-        db.query(
-            """SELECT uid,regcode FROM prereg WHERE wid=? AND domain=?""",
-            addr.userid, addr.domain
-        ).getOrElse { return it.toFailure() }
-    } else {
-        db.query(
-            """SELECT wid,regcode FROM prereg WHERE uid=? AND domain=?""",
-            addr.userid, addr.domain
-        ).getOrThrow()
-    }
-    if (!rs.next()) return Result.success(null)
-
-    val rawHash = rs.getString("regcode")
-    if (rawHash.isEmpty()) {
-        return DatabaseCorruptionException(
-            "Prereg entry missing regcode for workspace $addr"
-        ).toFailure()
-    }
-    val regHash = Argon2idPassword()
-    regHash.setFromHash(rawHash)?.let {
-        return DatabaseCorruptionException(
-            "Prereg entry has bad regcode for workspace $addr"
-        ).toFailure()
-    }
-    if (!regHash.verify(regcode)) return Result.success(null)
-
-    if (addr.isWorkspace) {
-        val outUID = UserID.fromString(rs.getString("uid"))
-        return Pair(addr.userid.toWID()!!, outUID).toSuccess()
-    }
-
-    val outWID = RandomID.fromString(rs.getString("wid"))
-        ?: return DatabaseCorruptionException(
-            "Bad prereg workspace ID ${rs.getString("wid")}"
-        ).toFailure()
-    return Pair(outWID, addr.userid).toSuccess()
-}
-
-/**
- * deletePrereg removes preregistration data from the database.
- *
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
- */
-fun deletePrereg(db: DBConn, addr: WAddress): Throwable? {
-    return db.execute("DELETE FROM prereg WHERE wid=? AND domain=?", addr.id, addr.domain)
-        .exceptionOrNull()
-}
-
-/**
  * Gets the password metadata for the specified workspace or null if not found.
  *
  * @throws NotConnectedException if not connected to the database
@@ -138,45 +81,35 @@ fun getPasswordInfo(db: DBConn, wid: RandomID): Result<PasswordInfo?> {
 }
 
 /**
- * preregWorkspace preregisters a workspace in the database.
+ * Adds a hashed reset code to the table for the specified workspace. Only one reset code can be
+ * active at a time; subsequent calls will delete old codes. Also, the resetHash here is expected to
+ * be an Argon2idPassword hash.
  *
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
- * @throws ResourceExistsException if the user ID or workspace ID given already exist.
- * @throws EmptyDataException if the registration code hash string is empty
  */
-fun preregWorkspace(db: DBConn, wid: RandomID, userID: UserID?, domain: Domain, reghash: String):
-        Throwable? {
-
-    if (reghash.isEmpty())
-        return EmptyDataException("registration code hash may not be empty")
-
-    if (userID != null) {
-        val resolvedWID = resolveUserID(db, userID).getOrElse { return it }
-        if (resolvedWID != null)
-            return ResourceExistsException("User-ID $userID already exists")
-        val resolvedWAddr = resolveWID(db, wid).getOrElse { return it }
-        if (resolvedWAddr != null)
-            return ResourceExistsException("Workspcae-ID $wid already exists")
-
-        return db.execute(
-            """INSERT INTO prereg(wid, uid, domain, regcode) VALUES(?,?,?,?)""",
-            wid, userID, domain, reghash
-        ).exceptionOrNull()
-    }
-
-    if (resolveWID(db, wid).getOrElse { return it } != null)
-        return ResourceExistsException("Workspace-ID $wid already exists")
+fun resetPassword(db: DBConn, wid: RandomID, resetHash: String, expires: Timestamp): Throwable? {
+    db.execute("DELETE FROM resetcodes WHERE wid=?", wid).onFailure { return it }
     return db.execute(
-        """INSERT INTO prereg(wid, domain, regcode) VALUES(?,?,?)""", wid, domain,
-        reghash
+        "INSERT INTO resetcodes(wid,resethash,expires) VALUES(?,?,?)", wid, resetHash,
+        expires
     ).exceptionOrNull()
 }
 
-fun resetPassword(db: DBConn, wid: RandomID, resetCode: String, expires: Timestamp): Throwable? {
-    db.execute("DELETE FROM resetcodes WHERE wid=?", wid).onFailure { return it }
+/**
+ * Changes the password for a workspace. Note that the hashed password is expected to be given here,
+ * not the cleartext password.
+ */
+fun setPassword(
+    db: DBConn,
+    wid: RandomID,
+    passhash: String,
+    algorithm: String,
+    salt: String,
+    params: String
+): Throwable? {
     return db.execute(
-        "INSERT INTO resetcodes(wid,resethash,expires) VALUES(?,?,?)", wid, resetCode,
-        expires
+        "UPDATE workspaces SET password=?,passtype=?,salt=?,passparams=? WHERE wid=?",
+        passhash, algorithm, salt, params, wid
     ).exceptionOrNull()
 }

@@ -504,15 +504,17 @@ fun commandPassCode(state: ClientSession) {
             "Missing required field $name"
         else
             "Bad value for field $name"
-        QuickResponse.sendBadRequest(msg, state.conn)
+        state.quickResponse(400, "BAD REQUEST", msg)
     } ?: return
+
+    val wid = schema.getRandomID("Workspace-ID", state.message.data)!!
 
     // The password field must pass some basic checks for length, but because we will be hashing
     // the thing with Argon2id, even if the client does a dumb thing and submit a cleartext
     // password, there will be a pretty decent baseline of security in place.
     val passHash = schema.getString("Password-Hash", state.message.data)!!
     if (passHash.codePoints().count() !in 16..128) {
-        QuickResponse.sendBadRequest("Invalid password hash", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Invalid password hash")
         return
     }
 
@@ -520,11 +522,43 @@ fun commandPassCode(state: ClientSession) {
 
     val resetCode = schema.getString("Reset-Code", state.message.data)!!
     if (resetCode.codePoints().count() !in 16..128) {
-        QuickResponse.sendBadRequest("Invalid reset code", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Invalid reset code")
         return
     }
 
-    TODO("Finish implementing commandPassCode($state)")
+    val passSalt = schema.getString("Password-Salt", state.message.data) ?: ""
+    val passParams = schema.getString("Password-Parameters", state.message.data) ?: ""
+
+    val db = DBConn()
+    checkResetCode(db, wid, resetCode).getOrElse {
+        if (it is ExpiredException) {
+            state.quickResponse(415, "EXPIRED", "reset code has expired")
+            return
+        }
+
+        logError("commandPassCode.checkResetCode for $wid: $it")
+        state.quickResponse(
+            300, "INTERNAL SERVER ERROR",
+            "Server error checking reset code"
+        )
+        return
+    }.onFalse {
+        state.quickResponse(401, "UNAUTHORIZED")
+        return
+    }
+
+    val hasher = Argon2idPassword()
+    hasher.updateHash(passHash)
+    setPassword(db, wid, hasher.hash, passAlgo, passSalt, passParams)?.let {
+        logError("commandPassCode.setPassword for $wid: $it")
+        state.quickResponse(
+            300, "INTERNAL SERVER ERROR",
+            "Server error updating password"
+        )
+        return
+    }
+
+    state.quickResponse(200, "OK")
 }
 
 // RESETPASSWORD(Workspace-ID, Reset-Code=null, Expires=null)
