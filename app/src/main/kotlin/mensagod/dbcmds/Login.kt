@@ -16,9 +16,10 @@ import mensagod.ExpiredException
  * checkPassword checks a password against the one stored in the database. It returns true if the
  * database's hash validates the password passed to the function.
  *
- * @throws ResourceNotFoundException if the workspace isn't found
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ * @exception ResourceNotFoundException if the workspace isn't found
+ * @exception NotConnectedException if not connected to the database
+ * @exception java.sql.SQLException for database problems, most likely either with your query or
+ * with the connection
  */
 fun checkPassword(db: DBConn, wid: RandomID, password: String): Result<Boolean> {
     val rs = db.query(
@@ -53,7 +54,7 @@ fun checkResetCode(db: DBConn, wid: RandomID, resetCode: String): Result<Boolean
         return ResourceNotFoundException().toFailure()
     val expires = Timestamp.fromString(rs.getString("expires"))
         ?: return DatabaseCorruptionException("Bad timestamp found in resetcodes table").toFailure()
-    if (expires.isAfter(Timestamp()))
+    if (expires.isBefore(Timestamp()))
         return ExpiredException().toFailure()
     val hasher = Argon2idPassword()
     hasher.setFromHash(rs.getString("resethash"))?.let {
@@ -65,8 +66,9 @@ fun checkResetCode(db: DBConn, wid: RandomID, resetCode: String): Result<Boolean
 /**
  * Gets the password metadata for the specified workspace or null if not found.
  *
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ * @exception NotConnectedException if not connected to the database
+ * @exception java.sql.SQLException for database problems, most likely either with your query or
+ * with the connection
  */
 fun getPasswordInfo(db: DBConn, wid: RandomID): Result<PasswordInfo?> {
     val rs = db.query("""SELECT passtype,salt,passparams FROM workspaces WHERE wid=?""", wid)
@@ -85,8 +87,9 @@ fun getPasswordInfo(db: DBConn, wid: RandomID): Result<PasswordInfo?> {
  * active at a time; subsequent calls will delete old codes. Also, the resetHash here is expected to
  * be an Argon2idPassword hash.
  *
- * @throws NotConnectedException if not connected to the database
- * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
+ * @exception NotConnectedException if not connected to the database
+ * @exception java.sql.SQLException for database problems, most likely either with your query or
+ * with the connection
  */
 fun resetPassword(db: DBConn, wid: RandomID, resetHash: String, expires: Timestamp): Throwable? {
     db.execute("DELETE FROM resetcodes WHERE wid=?", wid).onFailure { return it }
@@ -99,6 +102,10 @@ fun resetPassword(db: DBConn, wid: RandomID, resetHash: String, expires: Timesta
 /**
  * Changes the password for a workspace. Note that the hashed password is expected to be given here,
  * not the cleartext password.
+ *
+ * @exception NotConnectedException if not connected to the database
+ * @exception java.sql.SQLException for database problems, most likely either with your query or
+ * with the connection
  */
 fun setPassword(
     db: DBConn,

@@ -1,5 +1,6 @@
 package mensagod.handlers
 
+import keznacl.Argon2idPassword
 import keznacl.CryptoString
 import keznacl.EncryptionKey
 import keznacl.EncryptionPair
@@ -8,8 +9,8 @@ import libkeycard.Timestamp
 import libmensago.*
 import mensagod.*
 import mensagod.dbcmds.getSyncRecords
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
+import mensagod.dbcmds.resetPassword
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import testsupport.*
 import java.net.InetAddress
@@ -263,6 +264,115 @@ class LoginCmdTest {
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
 
             response.assertReturnCode(200)
+        }.run()
+
+    }
+
+    @Test
+    fun passcodeTest() {
+        setupTest("handlers.passCode")
+        val db = DBConn()
+        setupUser(db)
+
+        val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
+        val hasher = with(Argon2idPassword()) {
+            memory = 1024
+            threads = 1
+            iterations = 1
+            this
+        }
+        val passcode = "ignore homework every weekday"
+        hasher.updateHash(passcode)
+        resetPassword(db, userWID, hasher.hash, Timestamp().plusMinutes(10))
+            ?.let { throw it }
+
+        // Test Case #1: Auth failure
+        CommandTest(
+            "passcode.1",
+            SessionState(
+                ClientRequest(
+                    "PASSCODE", mutableMapOf(
+                        "Workspace-ID" to userWID.toString(),
+                        "Reset-Code" to "This isn't the reg code. Really.",
+                        "Password-Hash" to "This is a pretty terrible password",
+                        "Password-Algorithm" to "cleartext",
+                    )
+                ), null,
+                LoginState.NoSession
+            ), ::commandPassCode
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(401)
+        }.run()
+
+        // Test Case #2: Short reset code
+        CommandTest(
+            "passcode.2",
+            SessionState(
+                ClientRequest(
+                    "PASSCODE", mutableMapOf(
+                        "Workspace-ID" to userWID.toString(),
+                        "Reset-Code" to "foo",
+                        "Password-Hash" to "This is a pretty terrible password",
+                        "Password-Algorithm" to "cleartext",
+                    )
+                ), null,
+                LoginState.NoSession
+            ), ::commandPassCode
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(400)
+        }.run()
+
+        // Test Case #3: Success
+        var rs = db.query("SELECT password FROM workspaces WHERE wid=?", userWID).getOrThrow()
+        assert(rs.next())
+        val oldhash = rs.getString("password")
+        CommandTest(
+            "passcode.3",
+            SessionState(
+                ClientRequest(
+                    "PASSCODE", mutableMapOf(
+                        "Workspace-ID" to userWID.toString(),
+                        "Reset-Code" to passcode,
+                        "Password-Hash" to "This is a pretty terrible password",
+                        "Password-Algorithm" to "cleartext",
+                    )
+                ), null,
+                LoginState.NoSession
+            ), ::commandPassCode
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            rs = db.query("SELECT password FROM workspaces WHERE wid=?", userWID).getOrThrow()
+            assert(rs.next())
+            assertNotEquals(oldhash, rs.getString("password"))
+
+        }.run()
+
+        // Test Case #4: Expired
+        resetPassword(db, userWID, hasher.hash, Timestamp().plusMinutes(-10))
+            ?.let { throw it }
+        CommandTest(
+            "passcode.4",
+            SessionState(
+                ClientRequest(
+                    "PASSCODE", mutableMapOf(
+                        "Workspace-ID" to userWID.toString(),
+                        "Reset-Code" to passcode,
+                        "Password-Hash" to "This is a pretty terrible password",
+                        "Password-Algorithm" to "cleartext",
+                    )
+                ), null,
+                LoginState.NoSession
+            ), ::commandPassCode
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(415)
         }.run()
 
     }
