@@ -516,4 +516,9 @@ class LoginCmdTest {
             response.assertReturnCode(200)
         }.run()
     }
+
+    @Test
+    fun setPasswordTest() {
+        // TODO: Implement test for SETPASSWORD
+    }
 }

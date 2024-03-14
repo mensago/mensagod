@@ -620,9 +620,51 @@ fun commandResetPassword(state: ClientSession) {
     ).sendCatching(state.conn, "Error sending password reset code")
 }
 
-// SETPASSWORD(Workspace-ID, Reset-Code=null, Expires=null)
+// SETPASSWORD(Password-Hash, NewPassword-Hash, NewPassword-Algorithm, NewPassword-Salt="",
+//     NewPassword-Parameters="")
 fun commandSetPassword(state: ClientSession) {
-    TODO("Implement commandSetPassword($state)")
+    val schema = Schemas.setPassword
+    state.requireLogin(schema).onFalse { return }
+
+    val passHash = schema.getString("Password-Hash", state.message.data)!!
+    if (passHash.codePoints().count() !in 16..128) {
+        state.quickResponse(400, "BAD REQUEST", "Invalid password hash")
+        return
+    }
+    val newHash = schema.getString("NewPassword-Hash", state.message.data)!!
+    if (passHash.codePoints().count() !in 16..128) {
+        state.quickResponse(400, "BAD REQUEST", "Invalid new password hash")
+        return
+    }
+    val newAlgo = schema.getString("NewPassword-Algorithm", state.message.data)!!
+    val newSalt = schema.getString("NewPassword-Salt", state.message.data) ?: ""
+    val newParams = schema.getString("NewPassword-Parameters", state.message.data) ?: ""
+
+    val db = DBConn()
+    checkPassword(db, state.wid!!, passHash).getOrElse {
+        logError("commandSetPassword.checkPassword: error for ${state.wid}: $it")
+        state.quickResponse(
+            300, "INTERNAL SERVER ERROR",
+            "Server error checking password"
+        )
+        return
+    }.onFalse {
+        state.quickResponse(401, "UNAUTHORIZED")
+        return
+    }
+
+    val hasher = Argon2idPassword()
+    hasher.updateHash(newHash)
+    setPassword(db, state.wid!!, hasher.hash, newAlgo, newSalt, newParams)?.let {
+        logError("commandSetPassword.setPassword for ${state.wid}: $it")
+        state.quickResponse(
+            300, "INTERNAL SERVER ERROR",
+            "Server error updating password"
+        )
+        return
+    }
+
+    state.quickResponse(200, "OK")
 }
 
 /**

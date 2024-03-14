@@ -136,4 +136,15 @@ object Schemas {
     )
 
     val setDeviceInfo = Schema(MsgField("Device-Info", MsgFieldType.CryptoString, true))
+
+    val setPassword = Schema(
+        MsgField("Password-Hash", MsgFieldType.String, true),
+        MsgField("Password-Algorithm", MsgFieldType.String, true),
+        MsgField("NewPassword-Hash", MsgFieldType.String, true),
+        MsgField("NewPassword-Algorithm", MsgFieldType.String, true),
+
+        MsgField("NewPassword-Salt", MsgFieldType.String, false),
+        MsgField("NewPassword-Parameters", MsgFieldType.String, false),
+    )
+
 }
