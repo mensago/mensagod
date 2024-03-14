@@ -7,6 +7,7 @@ import libmensago.ResourceExistsException
 import libmensago.ResourceNotFoundException
 import mensagod.DBConn
 import mensagod.DatabaseCorruptionException
+import mensagod.ExpiredException
 
 /**
  * checkPassword checks a password against the one stored in the database. It returns true if the
@@ -42,13 +43,20 @@ fun checkPassword(db: DBConn, wid: RandomID, password: String): Result<Boolean> 
  * workspace ID
  * @return true if authentication is successful
  */
-fun checkPassCode(db: DBConn, wid: RandomID, resetCode: String): Result<Boolean> {
-    val rs = db.query("SELECT passcode,expires FROM passcodes WHERE wid=?", wid)
+fun checkResetCode(db: DBConn, wid: RandomID, resetCode: String): Result<Boolean> {
+    val rs = db.query("SELECT resethash,expires FROM resetcodes WHERE wid=?", wid)
         .getOrElse { return it.toFailure() }
     if (!rs.next())
         return ResourceNotFoundException().toFailure()
-
-    TODO("Finish implementing checkPassCode($db, $wid, $resetCode)")
+    val expires = Timestamp.fromString(rs.getString("expires"))
+        ?: return DatabaseCorruptionException("Bad timestamp found in resetcodes table").toFailure()
+    if (expires.isAfter(Timestamp()))
+        return ExpiredException().toFailure()
+    val hasher = Argon2idPassword()
+    hasher.setFromHash(rs.getString("resethash"))?.let {
+        return DatabaseCorruptionException("Bad reset hash found in resetcodes table").toFailure()
+    }
+    return hasher.verify(resetCode).toSuccess()
 }
 
 /**
@@ -166,9 +174,9 @@ fun preregWorkspace(db: DBConn, wid: RandomID, userID: UserID?, domain: Domain, 
 }
 
 fun resetPassword(db: DBConn, wid: RandomID, resetCode: String, expires: Timestamp): Throwable? {
-    db.execute("DELETE FROM passcodes WHERE wid=?", wid).onFailure { return it }
+    db.execute("DELETE FROM resetcodes WHERE wid=?", wid).onFailure { return it }
     return db.execute(
-        "INSERT INTO passcodes(wid,passcode,expires) VALUES(?,?,?)", wid, resetCode,
+        "INSERT INTO resetcodes(wid,resethash,expires) VALUES(?,?,?)", wid, resetCode,
         expires
     ).exceptionOrNull()
 }

@@ -364,7 +364,7 @@ class LoginCmdTest {
             assertEquals("paint flower dusty rhino", response.data["Reset-Code"]!!)
             assertNotNull(expires.toString(), response.data["Expires"])
 
-            val rs = db.query("SELECT COUNT(*) FROM passcodes WHERE wid=?", userWID)
+            val rs = db.query("SELECT COUNT(*) FROM resetcodes WHERE wid=?", userWID)
                 .getOrThrow()
             assert(rs.next())
             assertEquals(1, rs.getInt(1))

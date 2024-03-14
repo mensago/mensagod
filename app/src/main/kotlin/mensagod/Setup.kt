@@ -72,12 +72,6 @@ fun resetDB(config: ServerConfig): Result<Connection> {
         purpose VARCHAR(8) NOT NULL, fingerprint VARCHAR(96) NOT NULL);"""
     )
 
-    // passcodes table is used for password resets
-    stmt.addBatch(
-        """CREATE TABLE passcodes(rowid SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE,
-        passcode VARCHAR(128) NOT NULL, expires CHAR(20) NOT NULL);"""
-    )
-
     // Preregistration information. Entries are removed upon successful account registration.
     stmt.addBatch(
         """CREATE TABLE prereg(rowid SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE,
@@ -88,6 +82,12 @@ fun resetDB(config: ServerConfig): Result<Connection> {
     stmt.addBatch(
         """CREATE TABLE quotas(rowid SERIAL PRIMARY KEY, wid CHAR(36) NOT NULL,
         usage BIGINT, quota BIGINT);"""
+    )
+
+    // resetcodes table is used for password resets
+    stmt.addBatch(
+        """CREATE TABLE resetcodes(rowid SERIAL PRIMARY KEY, wid VARCHAR(36) NOT NULL UNIQUE,
+        resethash VARCHAR(128) NOT NULL, expires CHAR(20) NOT NULL);"""
     )
 
     /*
