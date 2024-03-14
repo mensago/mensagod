@@ -1,6 +1,7 @@
 package mensagod.handlers
 
 import keznacl.*
+import libkeycard.MissingFieldException
 import libkeycard.UserEntry
 import libmensago.*
 import mensagod.*
@@ -490,9 +491,36 @@ fun commandPassword(state: ClientSession) {
     )
 }
 
-// PASSCODE(SourceFile,DestDir)
+// PASSCODE(Workspace-ID, Reset-Code, Password-Hash, Password-Algorithm, Password-Salt="",
+//     Password-Parameters="")
 fun commandPassCode(state: ClientSession) {
-    TODO("Implement commandPassCode($state)")
+    val schema = Schemas.passCode
+    schema.validate(state.message.data) { name, e ->
+        val msg = if (e is MissingFieldException)
+            "Missing required field $name"
+        else
+            "Bad value for field $name"
+        QuickResponse.sendBadRequest(msg, state.conn)
+    } ?: return
+
+    // The password field must pass some basic checks for length, but because we will be hashing
+    // the thing with Argon2id, even if the client does a dumb thing and submit a cleartext
+    // password, there will be a pretty decent baseline of security in place.
+    val passHash = schema.getString("Password-Hash", state.message.data)!!
+    if (passHash.codePoints().count() !in 16..128) {
+        QuickResponse.sendBadRequest("Invalid password hash", state.conn)
+        return
+    }
+
+    val passAlgo = schema.getString("Password-Algorithm", state.message.data)!!
+
+    val resetCode = schema.getString("Reset-Code", state.message.data)!!
+    if (resetCode.codePoints().count() !in 16..128) {
+        QuickResponse.sendBadRequest("Invalid reset code", state.conn)
+        return
+    }
+
+    TODO("Finish omplementing commandPassCode($state)")
 }
 
 // RESETPASSWORD(Workspace-ID, Reset-Code=null, Expires=null)

@@ -77,6 +77,16 @@ object Schemas {
         MsgField("DestDir", MsgFieldType.Path, true)
     )
 
+    val passCode = Schema(
+        MsgField("Workspace-ID", MsgFieldType.RandomID, true),
+        MsgField("Reset-Code", MsgFieldType.String, true),
+        MsgField("Password-Hash", MsgFieldType.String, true),
+        MsgField("Password-Algorithm", MsgFieldType.String, true),
+
+        MsgField("Password-Salt", MsgFieldType.String, false),
+        MsgField("Password-Parameters", MsgFieldType.String, false),
+    )
+
     val regCode = Schema(
         // One of these is required, so a bit more validation once the schema code validates. :/
         MsgField("Workspace-ID", MsgFieldType.RandomID, false),

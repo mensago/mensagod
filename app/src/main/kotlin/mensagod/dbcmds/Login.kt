@@ -32,6 +32,26 @@ fun checkPassword(db: DBConn, wid: RandomID, password: String): Result<Boolean> 
 }
 
 /**
+ * checkPassCode checks the validity of a workspace/passcode combination.
+ *
+ * @exception ExpiredException Returned if the reset code is expired
+ * @exception NotConnectedException if not connected to the database
+ * @exception java.sql.SQLException for database problems, most likely either with your query or
+ * with the connection
+ * @exception ResourceNotFoundException Returned if there is no reset code for the specified
+ * workspace ID
+ * @return true if authentication is successful
+ */
+fun checkPassCode(db: DBConn, wid: RandomID, resetCode: String): Result<Boolean> {
+    val rs = db.query("SELECT passcode,expires FROM passcodes WHERE wid=?", wid)
+        .getOrElse { return it.toFailure() }
+    if (!rs.next())
+        return ResourceNotFoundException().toFailure()
+
+    TODO("Finish implementing checkPassCode($db, $wid, $resetCode)")
+}
+
+/**
  * checkRegCode handles authenticating a host using a userID/workspaceID and registration code
  * provided by preregWorkspace(). Based on authentication, it either returns a Pair containing the
  * workspace ID and the user ID (if it exists) or null on failure. This call is responsible for
