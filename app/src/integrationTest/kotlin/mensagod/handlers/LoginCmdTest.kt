@@ -312,8 +312,8 @@ class LoginCmdTest {
     }
 
     @Test
-    fun resetPasswordPassCodeTest() {
-        setupTest("handlers.resetPasswordPassCode")
+    fun resetPasswordTest() {
+        setupTest("handlers.resetPassword")
         val db = DBConn()
         setupUser(db)
 
@@ -337,8 +337,73 @@ class LoginCmdTest {
 
             response.assertReturnCode(200)
             assert(response.checkFields(listOf(Pair("Reset-Code", true), Pair("Expires", true))))
+            assert(response.data["Reset-Code"]?.length in 16..128)
+            assertNotNull(Timestamp.fromString(response.data["Expires"]))
         }.run()
 
-        // TODO: Implement test for resetPassword()
+        // Test Case #2: Successful password reset as admin, specify all data
+        val expires = Timestamp().plusDays(7)
+        CommandTest(
+            "resetPassword.1",
+            SessionState(
+                ClientRequest(
+                    "PASSWORD", mutableMapOf(
+                        "Workspace-ID" to userWID.toString(),
+                        "Reset-Code" to "paint flower dusty rhino",
+                        "Expires" to expires.toString(),
+                    )
+                ), adminWID,
+                LoginState.LoggedIn
+            ), ::commandResetPassword
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(200)
+            assert(response.checkFields(listOf(Pair("Reset-Code", true), Pair("Expires", true))))
+            assertEquals("paint flower dusty rhino", response.data["Reset-Code"]!!)
+            assertNotNull(expires.toString(), response.data["Expires"])
+
+            val rs = db.query("SELECT COUNT(*) FROM passcodes WHERE wid=?", userWID)
+                .getOrThrow()
+            assert(rs.next())
+            assertEquals(1, rs.getInt(1))
+        }.run()
+
+        // Test Case #3: User tries to set someone else's password
+        CommandTest(
+            "resetPassword.3",
+            SessionState(
+                ClientRequest(
+                    "PASSWORD", mutableMapOf(
+                        "Workspace-ID" to adminWID.toString(),
+                    )
+                ), userWID,
+                LoginState.LoggedIn
+            ), ::commandResetPassword
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(403)
+        }.run()
+
+        // Test Case #4: User resets their own password
+        CommandTest(
+            "resetPassword.4",
+            SessionState(
+                ClientRequest(
+                    "PASSWORD", mutableMapOf(
+                        "Workspace-ID" to adminWID.toString(),
+                    )
+                ), adminWID,
+                LoginState.LoggedIn
+            ), ::commandResetPassword
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(200)
+        }.run()
     }
 }
