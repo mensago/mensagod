@@ -519,6 +519,33 @@ class LoginCmdTest {
 
     @Test
     fun setPasswordTest() {
+        setupTest("handlers.setPassword")
+        val db = DBConn()
+        setupUser(db)
+
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+
+        // Test Case #1: Auth failure
+        CommandTest(
+            "setPassword.1",
+            SessionState(
+                ClientRequest(
+                    "SETPASSWORD", mutableMapOf(
+                        "Password-Hash" to "This is a pretty terrible password",
+                        "NewPassword-Hash" to "This is an even worse password",
+                        "NewPassword-Algorithm" to "cleartext",
+                        "NewPassword-Salt" to "somethingsalty",
+                        "NewPassword-Params" to "somePasswordParameters"
+                    )
+                ), adminWID,
+                LoginState.NoSession
+            ), ::commandSetPassword
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(401)
+        }.run()
+
         // TODO: Implement test for SETPASSWORD
     }
 }
