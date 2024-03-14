@@ -100,7 +100,8 @@ class Timestamp(i: Instant? = null) {
         /**
          * Creates an instance from a string in the format YYYY-MM-DDThh:mm:ssZ
          */
-        fun fromString(str: String): Timestamp? {
+        fun fromString(str: String?): Timestamp? {
+            if (str == null) return null
             return try {
                 Timestamp().set(Instant.parse(str))
             } catch (e: Exception) {
@@ -112,7 +113,8 @@ class Timestamp(i: Instant? = null) {
          * Creates a Timestamp object from just a date, which is stored internally as midnight on
          * that date.
          */
-        fun fromDateString(s: String): Timestamp? {
+        fun fromDateString(s: String?): Timestamp? {
+            if (s == null) return null
             val date = try {
                 LocalDate.parse(s, dateFormatter).atStartOfDay()
             } catch (e: Exception) {
