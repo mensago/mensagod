@@ -122,8 +122,8 @@ object Schemas {
 
     val resetPassword = Schema(
         MsgField("Workspace-ID", MsgFieldType.RandomID, true),
-        MsgField("Reset-Code", MsgFieldType.String, true),
-        MsgField("Expires", MsgFieldType.String, true),
+        MsgField("Reset-Code", MsgFieldType.String, false),
+        MsgField("Expires", MsgFieldType.String, false),
     )
 
     val rmDir = Schema(MsgField("Path", MsgFieldType.Path, true))

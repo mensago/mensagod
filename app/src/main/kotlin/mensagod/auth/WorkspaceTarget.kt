@@ -27,7 +27,7 @@ class WorkspaceTarget private constructor(val wid: RandomID) : AuthTarget {
 
     override fun isAuthorized(actor: AuthActor, action: AuthAction): Result<Boolean> {
         return when (action) {
-            AuthAction.Archive -> {
+            AuthAction.Archive, AuthAction.Modify -> {
                 if (actor.getType() != AuthActorType.WID) return false.toSuccess()
                 actor as WIDActor
                 (wid == actor.wid || actor.isAdmin().getOrElse { return it.toFailure() })

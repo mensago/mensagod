@@ -11,10 +11,7 @@ import mensagod.dbcmds.getSyncRecords
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
-import testsupport.ADMIN_PROFILE_DATA
-import testsupport.assertReturnCode
-import testsupport.setupKeycard
-import testsupport.setupTest
+import testsupport.*
 import java.net.InetAddress
 import java.net.Socket
 
@@ -315,7 +312,33 @@ class LoginCmdTest {
     }
 
     @Test
-    fun resetPasswordTest() {
+    fun resetPasswordPassCodeTest() {
+        setupTest("handlers.resetPasswordPassCode")
+        val db = DBConn()
+        setupUser(db)
+
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
+
+        // Test Case #1: Successful password reset as admin, no data specified
+        CommandTest(
+            "resetPassword.1",
+            SessionState(
+                ClientRequest(
+                    "PASSWORD", mutableMapOf(
+                        "Workspace-ID" to userWID.toString(),
+                    )
+                ), adminWID,
+                LoginState.LoggedIn
+            ), ::commandResetPassword
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(200)
+            assert(response.checkFields(listOf(Pair("Reset-Code", true), Pair("Expires", true))))
+        }.run()
+
         // TODO: Implement test for resetPassword()
     }
 }
