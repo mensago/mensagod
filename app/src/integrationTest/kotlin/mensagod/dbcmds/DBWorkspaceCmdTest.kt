@@ -60,6 +60,12 @@ class DBWorkspaceCmdTest {
         assert(archiveWorkspace(db, adminWID) is UnauthorizedException)
         val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
         archiveWorkspace(db, userWID)?.let { throw it }
+
+        assert(db.query("SELECT uid FROM workspaces WHERE wid=?", userWID).getOrThrow().next())
+        assert(
+            !db.query("SELECT index FROM keycards WHERE owner=?", userWID).getOrThrow()
+                .next()
+        )
     }
 
     @Test
