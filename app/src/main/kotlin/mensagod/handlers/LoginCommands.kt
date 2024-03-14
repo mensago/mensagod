@@ -567,7 +567,7 @@ fun commandResetPassword(state: ClientSession) {
     val expires = Timestamp.fromString(schema.getString("Expires", state.message.data))
         ?: Timestamp().plusMinutes(config.getInteger("security.password_reset_min")!!)
 
-    resetPassword(DBConn(), resetCode, expires)?.let {
+    resetPassword(DBConn(), targetWID, resetCode, expires)?.let {
         logError("commandResetPassword.reset exception: $it")
         state.quickResponse(
             300, "INTERNAL SERVER ERROR",

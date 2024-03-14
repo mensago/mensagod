@@ -165,6 +165,10 @@ fun preregWorkspace(db: DBConn, wid: RandomID, userID: UserID?, domain: Domain, 
     ).exceptionOrNull()
 }
 
-fun resetPassword(db: DBConn, resetCode: String, expires: Timestamp): Throwable? {
-    TODO("Implement dbcmds.resetPassword($db, $resetCode, $expires")
+fun resetPassword(db: DBConn, wid: RandomID, resetCode: String, expires: Timestamp): Throwable? {
+    db.execute("DELETE FROM passcodes WHERE wid=?", wid).onFailure { return it }
+    return db.execute(
+        "INSERT INTO passcodes(wid,passcode,expires) VALUES(?,?,?)", wid, resetCode,
+        expires
+    ).exceptionOrNull()
 }
