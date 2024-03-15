@@ -30,8 +30,16 @@ fun addFolderEntry(db: DBConn, wid: RandomID, serverPath: MServerPath, clientPat
     ).exceptionOrNull()
 }
 
-fun deleteFolderEntry(db: DBConn, wid: RandomID, serverPath: MServerPath): Throwable? {
-    TODO("Implement deleteFolderEntry($db, $wid, $serverPath)")
+/**
+ * Deletes a mapping of a server path to an encrypted client path.
+ *
+ * @exception BadValueException Returned if given a bad path
+ * @exception NotConnectedException Returned if not connected to the database
+ */
+fun removeFolderEntry(db: DBConn, wid: RandomID, serverPath: MServerPath): Throwable? {
+    return db.execute(
+        "DELETE FROM iwkspc_folders WHERE wid=? AND serverpath=?", wid, serverPath
+    ).exceptionOrNull()
 }
 
 /**

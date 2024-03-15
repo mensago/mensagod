@@ -1,18 +1,60 @@
 package mensagod.dbcmds
 
+import keznacl.CryptoString
 import libkeycard.RandomID
+import libmensago.MServerPath
 import mensagod.DBConn
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import testsupport.USER_PROFILE_DATA
-import testsupport.makeTestFile
-import testsupport.setupTest
-import testsupport.setupUser
+import testsupport.*
 import java.nio.file.Paths
 
 class DBFSCmdTest {
 
-    // TODO: need tests for mkdir and rmdir
+    @Test
+    fun addRemoveFolderEntryTest() {
+        setupTest("dbcmds.addRemoveFolderEntry")
+        val db = DBConn()
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val testPath = MServerPath("/ $adminWID d1a3b0f8-6180-4819-865e-7b687784ccf0")
+
+        // Test Case #1: Success
+        addFolderEntry(db, adminWID, testPath, CryptoString.fromString("XSALSA20:foobar")!!)
+            ?.let { throw it }
+        var rs = db.query("SELECT * from iwkspc_folders WHERE wid=?", adminWID).getOrThrow()
+        assert(rs.next())
+        assertEquals(adminWID.toString(), rs.getString("wid"))
+        assertEquals(testPath.toString(), rs.getString("serverpath"))
+        assertEquals("XSALSA20:foobar", rs.getString("clientpath"))
+
+        // Test Case #2: Overwrite entry
+        addFolderEntry(db, adminWID, testPath, CryptoString.fromString("XSALSA20:foobar2")!!)
+            ?.let { throw it }
+        rs = db.query("SELECT * from iwkspc_folders WHERE wid=?", adminWID).getOrThrow()
+        assert(rs.next())
+        assertEquals(adminWID.toString(), rs.getString("wid"))
+        assertEquals(testPath.toString(), rs.getString("serverpath"))
+        assertEquals("XSALSA20:foobar2", rs.getString("clientpath"))
+
+        rs = db.query("SELECT COUNT(*) from iwkspc_folders WHERE wid=?", adminWID).getOrThrow()
+        assert(rs.next())
+        assertEquals(1, rs.getInt(1))
+
+        // Test Case #3: Try to delete non-existent entry
+        removeFolderEntry(
+            db, RandomID.fromString("56f493d3-7d98-4d2d-b1a7-421349bb97dd")!!,
+            testPath
+        )?.let { throw it }
+        rs = db.query("SELECT COUNT(*) from iwkspc_folders WHERE wid=?", adminWID).getOrThrow()
+        assert(rs.next())
+        assertEquals(1, rs.getInt(1))
+
+        // Test Case #4: Try to delete non-existent entry
+        removeFolderEntry(db, adminWID, testPath)?.let { throw it }
+        rs = db.query("SELECT COUNT(*) from iwkspc_folders WHERE wid=?", adminWID).getOrThrow()
+        assert(rs.next())
+        assertEquals(0, rs.getInt(1))
+    }
 
     @Test
     fun getQuotaInfoTest() {
@@ -39,6 +81,11 @@ class DBFSCmdTest {
 
         resetQuotaUsage(db)?.let { throw it }
         assertEquals(2048, getQuotaInfo(db, userWID).getOrThrow().first)
+    }
+
+    @Test
+    fun mkdirRmdirTest() {
+        // TODO: Implement test for db commands rmdir and mkdir
     }
 
     @Test

@@ -310,7 +310,7 @@ fun commandRmDir(state: ClientSession) {
     }
 
     val db = DBConn()
-    deleteFolderEntry(db, state.wid!!, serverPath)?.let {
+    removeFolderEntry(db, state.wid!!, serverPath)?.let {
         logError("Failed to delete folder entry for $serverPath: $it")
         QuickResponse.sendInternalError("Error deleting folder entry", state.conn)
         return
