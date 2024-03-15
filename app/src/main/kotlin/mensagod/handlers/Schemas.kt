@@ -139,7 +139,6 @@ object Schemas {
 
     val setPassword = Schema(
         MsgField("Password-Hash", MsgFieldType.String, true),
-        MsgField("Password-Algorithm", MsgFieldType.String, true),
         MsgField("NewPassword-Hash", MsgFieldType.String, true),
         MsgField("NewPassword-Algorithm", MsgFieldType.String, true),
 

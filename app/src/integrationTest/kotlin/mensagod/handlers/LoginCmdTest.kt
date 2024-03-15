@@ -525,7 +525,7 @@ class LoginCmdTest {
 
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
-        // Test Case #1: Auth failure
+        // Test Case #1: Unauthorized
         CommandTest(
             "setPassword.1",
             SessionState(
@@ -546,6 +546,53 @@ class LoginCmdTest {
             response.assertReturnCode(401)
         }.run()
 
-        // TODO: Implement test for SETPASSWORD
+        // Test Case #2: Authentication failure
+        CommandTest(
+            "setPassword.2",
+            SessionState(
+                ClientRequest(
+                    "SETPASSWORD", mutableMapOf(
+                        "Password-Hash" to "foobar really isn't the correct password",
+                        "NewPassword-Hash" to "This is an even worse password",
+                        "NewPassword-Algorithm" to "cleartext",
+                        "NewPassword-Salt" to "somethingsalty",
+                        "NewPassword-Params" to "somePasswordParameters"
+                    )
+                ), adminWID,
+                LoginState.LoggedIn
+            ), ::commandSetPassword
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(401)
+        }.run()
+
+        // Test Case #3: Success
+        var rs = db.query("SELECT password FROM workspaces WHERE wid=?", adminWID).getOrThrow()
+        assert(rs.next())
+        val oldhash = rs.getString("password")
+        CommandTest(
+            "setPassword.3",
+            SessionState(
+                ClientRequest(
+                    "SETPASSWORD", mutableMapOf(
+                        "Password-Hash" to ADMIN_PROFILE_DATA["password"]!!,
+                        "NewPassword-Hash" to "This is an even worse password",
+                        "NewPassword-Algorithm" to "cleartext",
+                        "NewPassword-Salt" to "somethingsalty",
+                        "NewPassword-Params" to "somePasswordParameters"
+                    )
+                ), adminWID,
+                LoginState.LoggedIn
+            ), ::commandSetPassword
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+
+            rs = db.query("SELECT password FROM workspaces WHERE wid=?", adminWID).getOrThrow()
+            assert(rs.next())
+            assertNotEquals(oldhash, rs.getString("password"))
+        }.run()
     }
 }
