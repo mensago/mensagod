@@ -254,7 +254,82 @@ fun commandMove(state: ClientSession) {
 
 // RMDIR(Path, ClientPath)
 fun commandRmDir(state: ClientSession) {
-    TODO("Implement commandRmDir($state)")
+    val schema = Schemas.rmDir
+    if (!state.requireLogin(schema)) return
+
+    val serverPath = schema.getPath("Path", state.message.data)!!
+    if (serverPath.isFile() || serverPath.isRoot()) {
+        state.quickResponse(400, "BAD REQUEST", "Bad path $serverPath given")
+        return
+    }
+
+    val parent = serverPath.parent()
+    if (parent == null) {
+        logError("Failed to get parent for path $serverPath")
+        state.quickResponse(
+            300, "INTERNAL SERVER ERROR",
+            "Error getting parent for $serverPath"
+        )
+        return
+    }
+
+    val lfs = LocalFS.get()
+    val exists = lfs.entry(parent).exists().getOrElse {
+        logError("Failed to check existence of parent path $parent: $it")
+        state.quickResponse(
+            300, "INTERNAL SERVER ERROR",
+            "Error checking parent path"
+        )
+        return
+    }
+    if (!exists) {
+        state.quickResponse(404, "NOT FOUND", "Parent path not found")
+        return
+    }
+
+    val auth = DirectoryTarget.fromPath(parent)!!
+        .isAuthorized(WIDActor(state.wid!!), AuthAction.Delete)
+        .getOrElse {
+            logError("Failed to check authorization of ${state.wid} in path $parent: $it")
+            QuickResponse.sendInternalError("Error checking authorization", state.conn)
+            return
+        }
+    if (!auth) {
+        state.quickResponse(403, "FORBIDDEN")
+        return
+    }
+
+    val dirHandle = lfs.entry(serverPath)
+    dirHandle.delete()?.let {
+        logError("Failed to delete $serverPath: $it")
+        state.quickResponse(
+            300, "INTERNAL SERVER ERROR",
+            "Error deleting directory"
+        )
+        return
+    }
+
+    val db = DBConn()
+    deleteFolderEntry(db, state.wid!!, serverPath)?.let {
+        logError("Failed to delete folder entry for $serverPath: $it")
+        QuickResponse.sendInternalError("Error deleting folder entry", state.conn)
+        return
+    }
+
+    addSyncRecord(
+        db, state.wid!!, SyncRecord(
+            RandomID.generate(),
+            UpdateType.Rmdir,
+            "$serverPath",
+            Instant.now().epochSecond.toString(),
+            state.devid!!
+        )
+    )?.let {
+        logError("commandRmDir: failed to add update entry for $serverPath: $it")
+        QuickResponse.sendInternalError("Error adding update entry", state.conn)
+        return
+    }
+    state.quickResponse(200, "OK")
 }
 
 // SELECT(Path)

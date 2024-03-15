@@ -12,6 +12,8 @@ import java.nio.file.Paths
 
 class DBFSCmdTest {
 
+    // TODO: need tests for mkdir and rmdir
+
     @Test
     fun getQuotaInfoTest() {
         val setupData = setupTest("dbcmds.getQuotaInfo")

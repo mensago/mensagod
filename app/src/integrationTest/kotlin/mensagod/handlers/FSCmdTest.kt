@@ -190,6 +190,11 @@ class FSCmdTest {
     }
 
     @Test
+    fun rmdirTest() {
+        // TODO: Implement test for RMDIR
+    }
+
+    @Test
     fun uploadTest() {
         val setupData = setupTest("handlers.uploadTest")
         ServerConfig.load().getOrThrow()

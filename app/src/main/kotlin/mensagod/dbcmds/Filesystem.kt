@@ -30,6 +30,10 @@ fun addFolderEntry(db: DBConn, wid: RandomID, serverPath: MServerPath, clientPat
     ).exceptionOrNull()
 }
 
+fun deleteFolderEntry(db: DBConn, wid: RandomID, serverPath: MServerPath): Throwable? {
+    TODO("Implement deleteFolderEntry($db, $wid, $serverPath)")
+}
+
 /**
  * Returns a pair of integers representing the current disk usage and quota size.
  *
