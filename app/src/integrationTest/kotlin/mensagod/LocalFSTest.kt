@@ -20,12 +20,25 @@ class LocalFSTest {
         setupTest("fs.convertTest")
         val lfs = LocalFS.get()
 
-        val converted = Paths.get(lfs.basePath.toString(), "wsp",
-            "d8b6d06b-7728-4c43-bc08-85a0c645d260").toString()
+        val converted = Paths.get(
+            lfs.basePath.toString(), "wsp",
+            "d8b6d06b-7728-4c43-bc08-85a0c645d260"
+        ).toString()
 
-        assertEquals(converted, lfs.convertToLocal(
-            MServerPath("/ wsp d8b6d06b-7728-4c43-bc08-85a0c645d260")
-        ).toString())
+        assertEquals(
+            converted, lfs.convertToLocal(
+                MServerPath("/ wsp d8b6d06b-7728-4c43-bc08-85a0c645d260")
+            ).toString()
+        )
+    }
+
+    @Test
+    fun listTest() {
+        val setupData = setupTest("fs.list")
+        val lfs = LocalFS.get()
+
+        val topdir = Paths.get(setupData.testPath, "topdir").toString()
+
     }
 
     @Test
@@ -53,14 +66,19 @@ class LocalFSTest {
         assertThrows<FSFailureException> {
             lfs.entry(
                 MServerPath(
-                "/ wsp 6e99f804-7bb6-435a-9dce-53d9c6d33816 5769bf90-aeb2-46b1-9bc5-4809d55991df")
+                    "/ wsp 6e99f804-7bb6-435a-9dce-53d9c6d33816 5769bf90-aeb2-46b1-9bc5-4809d55991df"
+                )
             )
                 .makeDirectory()
                 ?.let { throw it }
         }
 
-        val wspdir = File(Paths.get(setupData.testPath, "topdir", "wsp",
-            "6e99f804-7bb6-435a-9dce-53d9c6d33816").toString())
+        val wspdir = File(
+            Paths.get(
+                setupData.testPath, "topdir", "wsp",
+                "6e99f804-7bb6-435a-9dce-53d9c6d33816"
+            ).toString()
+        )
         assert(!wspdir.exists())
         lfs.entry(MServerPath("/ wsp 6e99f804-7bb6-435a-9dce-53d9c6d33816"))
             .makeDirectory()
@@ -86,13 +104,16 @@ class LocalFSTest {
         val widStr = "6e99f804-7bb6-435a-9dce-53d9c6d33816"
         lfs.entry(MServerPath("/ wsp $widStr")).makeDirectory()?.let { throw it }
         val testFileName = makeTestFile(
-            Paths.get(setupData.testPath, "topdir", "wsp", widStr).toString())
+            Paths.get(setupData.testPath, "topdir", "wsp", widStr).toString()
+        )
             .first
 
         val movedEntry = lfs.entry(MServerPath("/ wsp $widStr $testFileName"))
         movedEntry.moveTo(MServerPath("/ wsp"))?.let { throw it }
-        assert(File(Paths.get(setupData.testPath, "topdir", "wsp", testFileName).toString())
-            .exists())
+        assert(
+            File(Paths.get(setupData.testPath, "topdir", "wsp", testFileName).toString())
+                .exists()
+        )
         assertEquals("/ wsp $testFileName", movedEntry.path.toString())
 
         val newFilePath = lfs.entry(MServerPath("/ wsp $testFileName"))
