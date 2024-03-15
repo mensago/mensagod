@@ -6,12 +6,10 @@ import libkeycard.RandomID
 import libmensago.ClientRequest
 import libmensago.MServerPath
 import libmensago.ServerResponse
-import mensagod.DBConn
-import mensagod.LoginState
-import mensagod.ServerConfig
-import mensagod.SessionState
+import mensagod.*
 import mensagod.dbcmds.setQuota
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 import testsupport.*
 import java.net.InetAddress
@@ -191,7 +189,85 @@ class FSCmdTest {
 
     @Test
     fun rmdirTest() {
-        // TODO: Implement test for RMDIR
+        setupTest("handlers.rmDirTest")
+        ServerConfig.load().getOrThrow()
+        val db = DBConn()
+        setupUser(db)
+
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
+
+        val lfs = LocalFS.get()
+        val adminTop = lfs.entry(MServerPath("/ wsp $adminWID"))
+        adminTop.makeDirectory()?.let { throw it }
+
+        // Test Case #1: Missing parent directory
+        CommandTest(
+            "rmdir.1",
+            SessionState(
+                ClientRequest(
+                    "RMDIR", mutableMapOf(
+                        "Path" to "/ wsp b59b015d-e432-47b0-8457-416696615157 " +
+                                "11111111-1111-1111-1111-111111111111",
+                        "ClientPath" to "XSALSA20:abcdefg"
+                    )
+                ), adminWID,
+                LoginState.LoggedIn,
+                RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+            ), ::commandRmDir
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(404)
+        }.run()
+
+        val adminEntry = lfs.entry(
+            MServerPath(
+                "/ wsp $adminWID " +
+                        "11111111-1111-1111-1111-111111111111"
+            )
+        )
+        adminEntry.makeDirectory()?.let { throw it }
+
+        // Test Case #2: Unauthorized
+        CommandTest(
+            "rmdir.2",
+            SessionState(
+                ClientRequest(
+                    "RMDIR", mutableMapOf(
+                        "Path" to "/ wsp $adminWID 11111111-1111-1111-1111-111111111111",
+                    )
+                ), userWID,
+                LoginState.LoggedIn,
+                RandomID.fromString(USER_PROFILE_DATA["devid"])!!
+            ), ::commandRmDir
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(403)
+        }.run()
+
+        // Test Case #3: Success
+        CommandTest(
+            "rmdir.3",
+            SessionState(
+                ClientRequest(
+                    "RMDIR", mutableMapOf(
+                        "Path" to "/ wsp $adminWID 11111111-1111-1111-1111-111111111111",
+                    )
+                ), adminWID,
+                LoginState.LoggedIn,
+                RandomID.fromString(USER_PROFILE_DATA["devid"])!!
+            ), ::commandRmDir
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(200)
+            assertFalse(adminEntry.exists().getOrThrow())
+        }.run()
     }
 
     @Test
