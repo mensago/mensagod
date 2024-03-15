@@ -102,6 +102,26 @@ class LocalFSHandle(mpath: MServerPath, private var file: File) {
     }
 
     /**
+     * Lists all files in the directory.
+     *
+     * @exception TypeException Returned if the entry is not a directory
+     * @throws SecurityException If a security manager exists and denies read access to the
+     * directory
+     */
+    fun list(listFiles: Boolean): Result<List<String>> {
+        runCatching { file.exists() }.getOrElse { return it.toFailure() }
+            .onFalse { return ResourceNotFoundException().toFailure() }
+        if (!file.isDirectory) return TypeException().toFailure()
+        val entries = kotlin.runCatching { file.listFiles() }.getOrElse { return it.toFailure() }
+        return if (listFiles)
+            entries.filter { it.isFile }
+                .map { it.toString() }.toSuccess()
+        else
+            entries.filter { it.isDirectory }
+                .map { it.toString() }.toSuccess()
+    }
+
+    /**
      * Creates a directory in the local filesystem within the top-level Mensago directory.
      *
      * @throws BadValueException Returned if given a bad path
