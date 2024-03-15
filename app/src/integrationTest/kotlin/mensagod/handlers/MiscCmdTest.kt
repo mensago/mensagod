@@ -7,10 +7,7 @@ import libkeycard.WAddress
 import libmensago.*
 import libmensago.resolver.KCResolver
 import mensagod.*
-import mensagod.dbcmds.SyncRecord
-import mensagod.dbcmds.UpdateType
-import mensagod.dbcmds.addSyncRecord
-import mensagod.dbcmds.getSyncRecords
+import mensagod.dbcmds.*
 import mensagod.delivery.resetDelivery
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -210,6 +207,75 @@ class MiscCmdTest {
 
     @Test
     fun setStatusTest() {
-        // TODO: Implement test for SETSTATUS
+        setupTest("handlers.setStatus")
+        val db = DBConn()
+        setupUser(db)
+
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
+
+        // Test Case #1: User tries to use the command
+        CommandTest(
+            "setStatus.1",
+            SessionState(
+                ClientRequest(
+                    "SETSTATUS", mutableMapOf(
+                        "Workspace-ID" to adminWID.toString(),
+                        "Status" to WorkspaceStatus.Suspended.toString(),
+                    )
+                ), userWID,
+                LoginState.LoggedIn
+            ), ::commandSetStatus
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(403)
+        }.run()
+
+        // Test Case #2: Admin uses an invalid status
+        CommandTest(
+            "setStatus.2",
+            SessionState(
+                ClientRequest(
+                    "SETSTATUS", mutableMapOf(
+                        "Workspace-ID" to userWID.toString(),
+                        "Status" to "confusion",
+                    )
+                ), adminWID,
+                LoginState.LoggedIn
+            ), ::commandSetStatus
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(400)
+        }.run()
+
+        // Test Case #3: Success
+        var rs = db.query("SELECT status FROM workspaces WHERE wid=?", userWID).getOrThrow()
+        assert(rs.next())
+        assertEquals(WorkspaceStatus.Active.toString(), rs.getString("status"))
+        CommandTest(
+            "setStatus.3",
+            SessionState(
+                ClientRequest(
+                    "SETSTATUS", mutableMapOf(
+                        "Workspace-ID" to userWID.toString(),
+                        "Status" to WorkspaceStatus.Disabled.toString(),
+                    )
+                ), adminWID,
+                LoginState.LoggedIn
+            ), ::commandSetStatus
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+
+            response.assertReturnCode(200)
+            rs = db.query("SELECT status FROM workspaces WHERE wid=?", userWID).getOrThrow()
+            assert(rs.next())
+            assertEquals(WorkspaceStatus.Disabled.toString(), rs.getString("status"))
+
+        }.run()
     }
 }
