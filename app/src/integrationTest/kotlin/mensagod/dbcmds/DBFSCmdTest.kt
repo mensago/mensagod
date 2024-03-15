@@ -84,11 +84,6 @@ class DBFSCmdTest {
     }
 
     @Test
-    fun mkdirRmdirTest() {
-        // TODO: Implement test for db commands rmdir and mkdir
-    }
-
-    @Test
     fun modifyQuotaUsageTest() {
         val setupData = setupTest("dbcmds.modifyQuotaUsage")
         val db = DBConn()
