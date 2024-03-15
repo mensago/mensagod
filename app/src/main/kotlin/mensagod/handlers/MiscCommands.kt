@@ -1,13 +1,14 @@
 package mensagod.handlers
 
+import keznacl.onFalse
 import libkeycard.MAddress
 import libkeycard.MissingFieldException
 import libmensago.ServerResponse
 import mensagod.*
-import mensagod.dbcmds.countSyncRecords
-import mensagod.dbcmds.getQuotaInfo
-import mensagod.dbcmds.resolveAddress
-import mensagod.dbcmds.resolveWID
+import mensagod.auth.AuthAction
+import mensagod.auth.WIDActor
+import mensagod.auth.WorkspaceTarget
+import mensagod.dbcmds.*
 import mensagod.delivery.queueMessageForDelivery
 
 // GETWID(User-ID, Domain="")
@@ -58,16 +59,8 @@ fun commandIdle(state: ClientSession) {
 
 // SEND(Message, Domain)
 fun commandSend(state: ClientSession) {
-    if (!state.requireLogin()) return
-
     val schema = Schemas.send
-    schema.validate(state.message.data) { name, e ->
-        val msg = if (e is MissingFieldException)
-            "Missing required field $name"
-        else
-            "Bad value for field $name"
-        QuickResponse.sendBadRequest(msg, state.conn)
-    } ?: return
+    if (!state.requireLogin(schema)) return
 
     val message = schema.getString("Message", state.message.data)!!
     if (message.length > 25000000) {
@@ -130,7 +123,56 @@ fun commandSendLarge(state: ClientSession) {
 
 // SETSTATUS(Workspace-ID, Status)
 fun commandSetStatus(state: ClientSession) {
-    TODO("Implement commandSetStatus($state)")
+    val schema = Schemas.setStatus
+    if (!state.requireLogin(schema)) return
+
+    val wid = schema.getRandomID("Workspace-ID", state.message.data)!!
+    val status = WorkspaceStatus.fromString(schema.getString("Status", state.message.data)!!)
+    if (status == null) {
+        state.quickResponse(
+            400,
+            "BAD REQUEST",
+            "Bad value ${state.message.data["Status"]} for status"
+        )
+        return
+    }
+
+    val workspace = WorkspaceTarget.fromWID(wid).getOrElse {
+        logError("commandSetStatus.WorkspaceTarget exception: $it")
+        state.quickResponse(300, "INTERNAL SERVER ERROR", "Error finding workspace")
+        return
+    }
+    if (workspace == null) {
+        state.quickResponse(404, "NOT FOUND")
+        return
+    }
+
+    workspace.isAuthorized(WIDActor(state.wid!!), AuthAction.Modify)
+        .getOrElse {
+            logError("commandSetStatus.checkAuth exception: $it")
+            state.quickResponse(
+                300, "INTERNAL SERVER ERROR",
+                "authorization check error"
+            )
+            return
+        }.onFalse {
+            state.quickResponse(
+                403, "FORBIDDEN",
+                "Regular users can't modify workspace status"
+            )
+            return
+        }
+
+    setWorkspaceStatus(DBConn(), wid, status)?.let {
+        logError("commandSetStatus.setWorkspaceStatus exception: $it")
+        state.quickResponse(
+            300, "INTERNAL SERVER ERROR",
+            "error setting workspace status"
+        )
+        return
+    }
+
+    state.quickResponse(200, "OK")
 }
 
 /** Command used when the client's command isn't recognized */

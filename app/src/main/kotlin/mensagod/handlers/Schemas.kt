@@ -146,4 +146,8 @@ object Schemas {
         MsgField("NewPassword-Parameters", MsgFieldType.String, false),
     )
 
+    val setStatus = Schema(
+        MsgField("Workspace-ID", MsgFieldType.RandomID, true),
+        MsgField("Status", MsgFieldType.String, true),
+    )
 }

@@ -207,4 +207,9 @@ class MiscCmdTest {
             response.assertReturnCode(414)
         }.run()
     }
+
+    @Test
+    fun setStatusTest() {
+        // TODO: Implement test for SETSTATUS
+    }
 }
