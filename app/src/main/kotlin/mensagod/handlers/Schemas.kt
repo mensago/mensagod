@@ -9,6 +9,9 @@ import libmensago.Schema
  * Mensago protocol.
  */
 object Schemas {
+
+    // ADDENTRY is too complex for regular schema usage
+
     val archive = Schema(
         MsgField("Password-Hash", MsgFieldType.String, true),
         MsgField("Workspace-ID", MsgFieldType.RandomID, false),
