@@ -71,7 +71,7 @@ fun commandDownload(state: ClientSession) {
         try {
             state.message.data["Offset"]!!.toLong()
         } catch (e: Exception) {
-            QuickResponse.sendBadRequest("Invalid value for Offset", state.conn)
+            state.quickResponse(400, "BAD REQUEST", "Invalid value for Offset")
             return
         }
     } else 0L
@@ -81,7 +81,7 @@ fun commandDownload(state: ClientSession) {
         return
     }
     if (offset < 0 || offset > fileSize) {
-        QuickResponse.sendBadRequest("Offset out of range", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Offset out of range")
         return
     }
 

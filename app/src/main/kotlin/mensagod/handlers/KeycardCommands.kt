@@ -31,7 +31,7 @@ fun commandAddEntry(state: ClientSession) {
     if (!state.requireLogin()) return
 
     if (!state.message.hasField("Base-Entry")) {
-        QuickResponse.sendBadRequest("Missing required field Base-Entry", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Missing required field Base-Entry")
         return
     }
 
@@ -39,7 +39,7 @@ fun commandAddEntry(state: ClientSession) {
     // started and the org signature and hashes have been added. If present, it constitutes an
     // out-of-order request
     if (state.message.hasField("User-Signature")) {
-        QuickResponse.sendBadRequest("Received out-of-order User-Signature", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Received out-of-order User-Signature")
         return
     }
 
@@ -82,7 +82,7 @@ fun commandAddEntry(state: ClientSession) {
     if (entry.hasField("User-ID")) {
         val outUID = UserID.fromString(entry.getFieldString("User-ID")!!.lowercase())
         if (outUID == null) {
-            QuickResponse.sendBadRequest("Bad User-ID", state.conn)
+            state.quickResponse(400, "BAD REQUEST", "Bad User-ID")
             return
         }
 
@@ -125,7 +125,7 @@ fun commandAddEntry(state: ClientSession) {
     // client is valid EXCEPT checking the expiration
     val isExpired = entry.isExpired()
     if (isExpired.isFailure) {
-        QuickResponse.sendBadRequest("Bad expiration field", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Bad expiration field")
         return
     }
     if (isExpired.getOrThrow()) {
@@ -258,11 +258,11 @@ fun commandAddEntry(state: ClientSession) {
         return
     }
     if (req.action != "ADDENTRY") {
-        QuickResponse.sendBadRequest("Session state mismatch", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Session state mismatch")
         return
     }
     req.validate(setOf("Previous-Hash", "Hash", "User-Signature"))?.let {
-        QuickResponse.sendBadRequest("Missing required field $it", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Missing required field $it")
         return
     }
 
@@ -402,13 +402,13 @@ fun commandAddEntry(state: ClientSession) {
 fun commandGetCard(state: ClientSession) {
 
     if (!state.message.hasField("Start-Index")) {
-        QuickResponse.sendBadRequest("Missing required field Start-Index", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Missing required field Start-Index")
         return
     }
     val startIndex = try {
         state.message.data["Start-Index"]!!.toUInt()
     } catch (e: Exception) {
-        QuickResponse.sendBadRequest("Bad value for field Start-Index", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Bad value for field Start-Index")
         return
     }
 
@@ -425,7 +425,7 @@ fun commandGetCard(state: ClientSession) {
             return
         }
         if (resolved == null) {
-            QuickResponse.sendBadRequest("Bad value for field Owner", state.conn)
+            state.quickResponse(400, "BAD REQUEST", "Bad value for field Owner")
             return
         }
         resolved
@@ -436,13 +436,13 @@ fun commandGetCard(state: ClientSession) {
         val end = try {
             state.message.data["End-Index"]!!.toUInt()
         } catch (e: Exception) {
-            QuickResponse.sendBadRequest("Bad value for field End-Index", state.conn)
+            state.quickResponse(400, "BAD REQUEST", "Bad value for field End-Index")
             return
         }
         if (end < startIndex) {
-            QuickResponse.sendBadRequest(
-                "Start-Index may not be less than Start-Index",
-                state.conn
+            state.quickResponse(
+                400, "BAD REQUEST",
+                "Start-Index may not be less than Start-Index"
             )
             return
         }
@@ -482,7 +482,7 @@ fun commandGetCard(state: ClientSession) {
     }
     if (req.action == "CANCEL") return
     if (req.action != "TRANSFER") {
-        QuickResponse.sendBadRequest("Session mismatch", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Session mismatch")
         return
     }
 
@@ -500,13 +500,13 @@ fun commandGetCard(state: ClientSession) {
 fun commandIsCurrent(state: ClientSession) {
 
     if (!state.message.hasField("Index")) {
-        QuickResponse.sendBadRequest("Missing required field Index", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Missing required field Index")
         return
     }
     val index = try {
         state.message.data["Index"]!!.toUInt()
     } catch (e: Exception) {
-        QuickResponse.sendBadRequest("Missing required field Index", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Missing required field Index")
         return
     }
 

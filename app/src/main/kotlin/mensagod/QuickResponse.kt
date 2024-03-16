@@ -9,18 +9,6 @@ import java.net.Socket
 object QuickResponse {
 
     /**
-     * Static method which sends a 400 BAD REQUEST message to the client. It
-     * suppresses network errors because we're already in an error state.
-     *
-     * @throws kotlinx.serialization.SerializationException encoding-specific errors
-     * @throws IllegalArgumentException if the encoded input does not comply format's specification
-     */
-    fun sendBadRequest(info: String, conn: Socket) {
-        ServerResponse(400, "BAD REQUEST", info)
-            .sendCatching(conn, "Error sending quick Bad Request")
-    }
-
-    /**
      * Static method which sends a 300 INTERNAL SERVER ERROR message to the client. It
      * suppresses network errors because we're already in an error state.
      *

@@ -68,7 +68,7 @@ class ClientSession(val conn: Socket) : SessionState() {
             CryptoString? {
         if (!message.hasField(field)) {
             return if (required) {
-                QuickResponse.sendBadRequest("Required field missing: $field", conn)
+                quickResponse(400, "BAD REQUEST", "Required field missing: $field")
                 null
             } else {
                 default
@@ -77,7 +77,7 @@ class ClientSession(val conn: Socket) : SessionState() {
 
         val cs = CryptoString.fromString(message.data[field]!!)
         if (cs == null) {
-            QuickResponse.sendBadRequest("Bad $field", conn)
+            quickResponse(400, "BAD REQUEST", "Bad $field")
             return null
         }
         return cs
@@ -91,7 +91,7 @@ class ClientSession(val conn: Socket) : SessionState() {
     fun getDomain(field: String, required: Boolean, default: Domain? = null): Domain? {
         if (!message.hasField(field)) {
             return if (required) {
-                QuickResponse.sendBadRequest("Required field missing: $field", conn)
+                quickResponse(400, "BAD REQUEST", "Required field missing: $field")
                 null
             } else {
                 default
@@ -100,7 +100,7 @@ class ClientSession(val conn: Socket) : SessionState() {
 
         val tempDom = Domain.fromString(message.data[field])
         if (tempDom == null) {
-            QuickResponse.sendBadRequest("Bad $field", conn)
+            quickResponse(400, "BAD REQUEST", "Bad $field")
             return null
         }
         return tempDom
@@ -114,7 +114,7 @@ class ClientSession(val conn: Socket) : SessionState() {
     fun getPath(field: String, required: Boolean, default: MServerPath? = null): MServerPath? {
         if (!message.hasField(field)) {
             return if (required) {
-                QuickResponse.sendBadRequest("Required field missing: $field", conn)
+                quickResponse(400, "BAD REQUEST", "Required field missing: $field")
                 null
             } else {
                 default
@@ -123,7 +123,7 @@ class ClientSession(val conn: Socket) : SessionState() {
 
         val tempPath = MServerPath.fromString(message.data[field]!!)
         if (tempPath == null) {
-            QuickResponse.sendBadRequest("Bad $field", conn)
+            quickResponse(400, "BAD REQUEST", "Bad $field")
             return null
         }
         return tempPath
@@ -137,7 +137,7 @@ class ClientSession(val conn: Socket) : SessionState() {
     fun getUserID(field: String, required: Boolean, default: UserID? = null): UserID? {
         if (!message.hasField(field)) {
             return if (required) {
-                QuickResponse.sendBadRequest("Required field missing: $field", conn)
+                quickResponse(400, "BAD REQUEST", "Required field missing: $field")
                 null
             } else {
                 default
@@ -146,7 +146,7 @@ class ClientSession(val conn: Socket) : SessionState() {
 
         val tempUID = UserID.fromString(message.data[field])
         if (tempUID == null) {
-            QuickResponse.sendBadRequest("Bad $field", conn)
+            quickResponse(400, "BAD REQUEST", "Bad $field")
             return null
         }
         return tempUID
@@ -160,7 +160,7 @@ class ClientSession(val conn: Socket) : SessionState() {
     fun getRandomID(field: String, required: Boolean, default: RandomID? = null): RandomID? {
         if (!message.hasField(field)) {
             return if (required) {
-                QuickResponse.sendBadRequest("Required field missing: $field", conn)
+                quickResponse(400, "BAD REQUEST", "Required field missing: $field")
                 null
             } else {
                 default
@@ -169,7 +169,7 @@ class ClientSession(val conn: Socket) : SessionState() {
 
         val tempWID = RandomID.fromString(message.data[field])
         if (tempWID == null) {
-            QuickResponse.sendBadRequest("Bad $field", conn)
+            quickResponse(400, "BAD REQUEST", "Bad $field")
             return null
         }
         return tempWID
@@ -252,7 +252,7 @@ class ClientSession(val conn: Socket) : SessionState() {
                     "Missing required field $name"
                 else
                     "Bad value for field $name"
-                QuickResponse.sendBadRequest(msg, conn)
+                quickResponse(400, "BAD REQUEST", msg)
             } ?: false
         }
 

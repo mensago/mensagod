@@ -26,7 +26,7 @@ fun commandGetWID(state: ClientSession) {
             "Missing required field $name"
         else
             "Bad value for field $name"
-        QuickResponse.sendBadRequest(msg, state.conn)
+        state.quickResponse(400, "BAD REQUEST", msg)
     } ?: return
 
     val uid = schema.getUserID("User-ID", state.message.data)!!

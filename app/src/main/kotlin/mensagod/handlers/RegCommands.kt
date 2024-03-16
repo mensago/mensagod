@@ -21,7 +21,7 @@ fun commandArchive(state: ClientSession) {
 
     val passHash = schema.getString("Password-Hash", state.message.data)!!
     if (passHash.codePoints().count() !in 16..128) {
-        QuickResponse.sendBadRequest("Invalid password hash", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Invalid password hash")
         return
     }
 
@@ -237,14 +237,14 @@ fun commandRegCode(state: ClientSession) {
             "Missing required field $name"
         else
             "Bad value for field $name"
-        QuickResponse.sendBadRequest(msg, state.conn)
+        state.quickResponse(400, "BAD REQUEST", msg)
     } ?: return
 
     var uid = schema.getUserID("User-ID", state.message.data)
     if (uid == null) {
         val wid = schema.getRandomID("Workspace-ID", state.message.data)
         if (wid == null) {
-            QuickResponse.sendBadRequest("Workspace-ID or User-ID required", state.conn)
+            state.quickResponse(400, "BAD REQUEST", "Workspace-ID or User-ID required")
             return
         }
         uid = UserID.fromWID(wid)
@@ -252,7 +252,7 @@ fun commandRegCode(state: ClientSession) {
 
     val regCode = schema.getString("Reg-Code", state.message.data)!!
     if (regCode.codePoints().count() !in 16..128) {
-        QuickResponse.sendBadRequest("Invalid registration code", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Invalid registration code")
         return
     }
 
@@ -261,7 +261,7 @@ fun commandRegCode(state: ClientSession) {
     // password, there will be a pretty decent baseline of security in place.
     val passHash = schema.getString("Password-Hash", state.message.data)!!
     if (passHash.codePoints().count() !in 16..128) {
-        QuickResponse.sendBadRequest("Invalid password hash", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Invalid password hash")
         return
     }
 
@@ -367,7 +367,7 @@ fun commandRegister(state: ClientSession) {
             "Missing required field $name"
         else
             "Bad value for field $name"
-        QuickResponse.sendBadRequest(msg, state.conn)
+        state.quickResponse(400, "BAD REQUEST", msg)
     } ?: return
 
     val db = DBConn()
@@ -391,7 +391,7 @@ fun commandRegister(state: ClientSession) {
     // the thing with Argon2id, even if the client does a dumb thing and submit a cleartext
     // password, there will be a pretty decent baseline of security in place.
     if (passHash.length !in 16..128) {
-        QuickResponse.sendBadRequest("Invalid password hash", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Invalid password hash")
         return
     }
 
@@ -408,7 +408,7 @@ fun commandRegister(state: ClientSession) {
     if (typeStr != null) {
         val wType = WorkspaceType.fromString(typeStr)
         if (wType == null) {
-            QuickResponse.sendBadRequest("Bad workspace type", state.conn)
+            state.quickResponse(400, "BAD REQUEST", "Bad workspace type")
             return
         }
         // FEATURE: SharedWorkspaces

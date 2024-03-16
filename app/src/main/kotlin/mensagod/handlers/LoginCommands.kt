@@ -436,11 +436,11 @@ fun commandLogout(state: ClientSession) {
 // PASSWORD(Password-Hash)
 fun commandPassword(state: ClientSession) {
     if (!state.message.hasField("Password-Hash")) {
-        QuickResponse.sendBadRequest("Missing required field Password-Hash", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Missing required field Password-Hash")
         return
     }
     if (state.loginState != LoginState.AwaitingPassword) {
-        QuickResponse.sendBadRequest("Session state mismatch", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Session state mismatch")
         return
     }
 
@@ -673,17 +673,17 @@ fun challengeDevice(state: ClientSession, devkey: CryptoString): Result<Boolean>
     if (req.action == "CANCEL") return CancelException().toFailure()
 
     if (req.action != "DEVICE") {
-        QuickResponse.sendBadRequest("Session state mismatch", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Session state mismatch")
         return false.toSuccess()
     }
 
     val missingField = req.validate(setOf("Device-ID", "Device-Key", "Response"))
     if (missingField != null) {
-        QuickResponse.sendBadRequest("Missing required field $missingField", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Missing required field $missingField")
         return false.toSuccess()
     }
     if (devkey.toString() != req.data["Device-Key"]) {
-        QuickResponse.sendBadRequest("Device key mismatch", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Device key mismatch")
         return false.toSuccess()
     }
 
