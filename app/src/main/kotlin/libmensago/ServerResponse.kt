@@ -21,7 +21,7 @@ class ServerResponse(
      * Functional method which adds the requested data to the message.
      */
     fun attach(name: String, value: Any): ServerResponse {
-        data["name"] = value.toString()
+        data[name] = value.toString()
         return this
     }
 
