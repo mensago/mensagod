@@ -23,7 +23,7 @@ class FSCmdTest {
 
     @Test
     fun downloadTest() {
-        val setupData = setupTest("handlers.downloadTest")
+        val setupData = setupTest("handlers.download")
         ServerConfig.load().getOrThrow()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
@@ -100,7 +100,7 @@ class FSCmdTest {
 
     @Test
     fun existsTest() {
-        val setupData = setupTest("handlers.existsTest")
+        val setupData = setupTest("handlers.exists")
         ServerConfig.load().getOrThrow()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
@@ -141,7 +141,7 @@ class FSCmdTest {
 
     @Test
     fun mkDirTest() {
-        setupTest("handlers.mkDirTest")
+        setupTest("handlers.mkDir")
         ServerConfig.load().getOrThrow()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
@@ -189,7 +189,7 @@ class FSCmdTest {
 
     @Test
     fun rmdirTest() {
-        setupTest("handlers.rmDirTest")
+        setupTest("handlers.rmDir")
         ServerConfig.load().getOrThrow()
         val db = DBConn()
         setupUser(db)
@@ -272,12 +272,56 @@ class FSCmdTest {
 
     @Test
     fun selectTest() {
-        // TODO: Implement test for SELECT
+        setupTest("handlers.select")
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
+
+        val adminDir = MServerPath("/ wsp $adminWID").toHandle()
+        adminDir.makeDirectory()?.let { throw it }
+        val userDir = MServerPath("/ wsp $userWID").toHandle()
+        userDir.makeDirectory()?.let { throw it }
+
+        // Test Case #1: Success
+        CommandTest(
+            "select.1",
+            SessionState(
+                ClientRequest("SELECT").attach("Path", "/ wsp $adminWID"),
+                adminWID, LoginState.LoggedIn,
+            ), ::commandSelect
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(200)
+        }.run()
+
+        // Test Case #2: Reject unauthorized access
+        CommandTest(
+            "select.2",
+            SessionState(
+                ClientRequest("SELECT").attach("Path", "/ wsp $adminWID"),
+                userWID, LoginState.LoggedIn,
+            ), ::commandSelect
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(403)
+        }.run()
+
+        // Test Case #3: Reject non-existent path
+        val noWID = RandomID.fromString("a402f0fc-156e-4c31-9a1c-06d567c3a9b7")
+        CommandTest(
+            "select.1",
+            SessionState(
+                ClientRequest("SELECT").attach("Path", "/ wsp $noWID"),
+                adminWID, LoginState.LoggedIn,
+            ), ::commandSelect
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(404)
+        }.run()
     }
 
     @Test
     fun uploadTest() {
-        val setupData = setupTest("handlers.uploadTest")
+        val setupData = setupTest("handlers.upload")
         ServerConfig.load().getOrThrow()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
@@ -359,7 +403,7 @@ class FSCmdTest {
 
     @Test
     fun uploadReplaceTest() {
-        val setupData = setupTest("handlers.uploadReplaceTest")
+        val setupData = setupTest("handlers.uploadReplace")
         ServerConfig.load().getOrThrow()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
@@ -401,7 +445,7 @@ class FSCmdTest {
 
     @Test
     fun uploadErrorsTest() {
-        val setupData = setupTest("handlers.uploadErrorsTest")
+        val setupData = setupTest("handlers.uploadErrors")
         ServerConfig.load().getOrThrow()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 

@@ -344,7 +344,7 @@ fun commandSelect(state: ClientSession) {
         400, "BAD REQUEST",
         "Path given must be a directory"
     ).run { return }
-    dir.isAuthorized(WIDActor(state.wid!!), AuthAction.Read)
+    dir.isAuthorized(WIDActor(state.wid!!), AuthAction.Access)
         .getOrElse {
             state.internalError(
                 "Failed to check authorization of ${state.wid} in path $dir: $it",
