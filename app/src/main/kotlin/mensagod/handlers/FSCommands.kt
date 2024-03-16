@@ -4,7 +4,6 @@ import keznacl.Hash
 import keznacl.UnsupportedAlgorithmException
 import keznacl.getType
 import keznacl.onFalse
-import libkeycard.MissingFieldException
 import libkeycard.RandomID
 import libmensago.ClientRequest
 import libmensago.MServerPath
@@ -41,27 +40,25 @@ fun commandDownload(state: ClientSession) {
     val handle = lfs.entry(path)
 
     // The FileTarget class verifies that the path is, indeed, pointing to a file
-    val fileTarget = FileTarget.fromPath(path)
-    if (fileTarget == null) {
-        QuickResponse.sendBadRequest("Path must be for a file", state.conn)
+    val fileTarget = FileTarget.fromPath(path) ?: run {
+        state.quickResponse(400, "BAD REQUEST", "Path must be for a file")
         return
     }
-    val isAuthorized = fileTarget.isAuthorized(WIDActor(state.wid!!), AuthAction.Read)
+    fileTarget.isAuthorized(WIDActor(state.wid!!), AuthAction.Read)
         .getOrElse {
             logError("commandDownload: Auth check error: $it")
             QuickResponse.sendInternalError("Error checking authorization", state.conn)
             return
+        }.onFalse {
+            state.quickResponse(403, "FORBIDDEN")
+            return
         }
-    if (!isAuthorized) {
-        QuickResponse.sendForbidden("", state.conn)
-        return
-    }
-    val exists = handle.exists().getOrElse {
+
+    handle.exists().getOrElse {
         logError("commandDownload: Error checking existence of $path: $it")
         QuickResponse.sendInternalError("Error checking path existence", state.conn)
         return
-    }
-    if (!exists) {
+    }.onFalse {
         ServerResponse(404, "RESOURCE NOT FOUND").sendCatching(
             state.conn,
             "Error sending 404 error to client for wid ${state.wid}"
@@ -113,22 +110,13 @@ fun commandDownload(state: ClientSession) {
 
 // EXISTS(Path)
 fun commandExists(state: ClientSession) {
-    if (!state.requireLogin()) return
-
     val schema = Schemas.exists
-    schema.validate(state.message.data) { name, e ->
-        val msg = if (e is MissingFieldException)
-            "Missing required field $name"
-        else
-            "Bad value for field $name"
-        QuickResponse.sendBadRequest(msg, state.conn)
-    } ?: return
+    if (!state.requireLogin(schema)) return
 
-    val path = schema.getPath("Path", state.message.data)!!
-    val lfs = LocalFS.get()
+    val entry = schema.getPath("Path", state.message.data)!!.toHandle()
 
-    val exists = lfs.entry(path).exists().getOrElse {
-        logError("Error checking existence of $path: $it")
+    val exists = entry.exists().getOrElse {
+        logError("Error checking existence of ${entry.path}: $it")
         QuickResponse.sendInternalError("Error checking existence of path", state.conn)
         return
     }
@@ -158,16 +146,8 @@ fun commandListDirs(state: ClientSession) {
 
 // MKDIR(Path, ClientPath)
 fun commandMkDir(state: ClientSession) {
-    if (!state.requireLogin()) return
-
     val schema = Schemas.mkDir
-    schema.validate(state.message.data) { name, e ->
-        val msg = if (e is MissingFieldException)
-            "Missing required field $name"
-        else
-            "Bad value for field $name"
-        QuickResponse.sendBadRequest(msg, state.conn)
-    } ?: return
+    if (!state.requireLogin(schema)) return
 
     val clientPath = schema.getCryptoString("ClientPath", state.message.data)!!
 
@@ -204,17 +184,16 @@ fun commandMkDir(state: ClientSession) {
         }
     }
 
-    val auth = DirectoryTarget.fromPath(parent)!!
+    DirectoryTarget.fromPath(parent)!!
         .isAuthorized(WIDActor(state.wid!!), AuthAction.Create)
         .getOrElse {
             logError("Failed to check authorization of ${state.wid} in path $parent: $it")
             QuickResponse.sendInternalError("Error checking authorization", state.conn)
             return
+        }.onFalse {
+            state.quickResponse(403, "FORBIDDEN")
+            return
         }
-    if (!auth) {
-        QuickResponse.sendForbidden("", state.conn)
-        return
-    }
 
     val dirHandle = lfs.entry(serverPath)
     dirHandle.makeDirectory()?.let {
@@ -244,8 +223,7 @@ fun commandMkDir(state: ClientSession) {
         QuickResponse.sendInternalError("Error adding update entry", state.conn)
         return
     }
-    ServerResponse(200, "OK", "")
-        .sendCatching(state.conn, "Failed to send MKDIR confirmation")
+    state.quickResponse(200, "OK")
 }
 
 // MOVE(SourceFile,DestDir)
