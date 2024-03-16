@@ -46,8 +46,10 @@ fun commandDownload(state: ClientSession) {
     }
     fileTarget.isAuthorized(WIDActor(state.wid!!), AuthAction.Read)
         .getOrElse {
-            logError("commandDownload: Auth check error: $it")
-            QuickResponse.sendInternalError("Error checking authorization", state.conn)
+            state.internalError(
+                "commandDownload: Auth check error: $it",
+                "Error checking authorization"
+            )
             return
         }.onFalse {
             state.quickResponse(403, "FORBIDDEN")
@@ -55,14 +57,13 @@ fun commandDownload(state: ClientSession) {
         }
 
     handle.exists().getOrElse {
-        logError("commandDownload: Error checking existence of $path: $it")
-        QuickResponse.sendInternalError("Error checking path existence", state.conn)
+        state.internalError(
+            "commandDownload: Error checking existence of $path: $it",
+            "Error checking path existence"
+        )
         return
     }.onFalse {
-        ServerResponse(404, "RESOURCE NOT FOUND").sendCatching(
-            state.conn,
-            "Error sending 404 error to client for wid ${state.wid}"
-        )
+        state.quickResponse(404, "RESOUCE NOT FOUND")
         return
     }
 
@@ -87,10 +88,10 @@ fun commandDownload(state: ClientSession) {
     ServerResponse(
         100, "CONTINUE", "",
         mutableMapOf("Size" to fileSize.toString())
-    ).send(state.conn)?.let {
-        logDebug("commandDownload: Error sending continue message for wid ${state.wid!!}: $it")
-        return
-    }
+    ).sendCatching(
+        state.conn,
+        "commandDownload: Error sending continue message for wid ${state.wid!!}"
+    ).onFalse { return }
 
     val req = ClientRequest.receive(state.conn.getInputStream()).getOrElse {
         logDebug("commandDownload: error receiving client continue request: $it")
@@ -99,7 +100,7 @@ fun commandDownload(state: ClientSession) {
     if (req.action == "CANCEL") return
 
     if (req.action != "DOWNLOAD" || !req.hasField("Size")) {
-        QuickResponse.sendBadRequest("Session mismatch", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Session mismatch")
         return
     }
 
@@ -115,14 +116,18 @@ fun commandExists(state: ClientSession) {
 
     val entry = schema.getPath("Path", state.message.data)!!.toHandle()
 
-    val exists = entry.exists().getOrElse {
-        logError("Error checking existence of ${entry.path}: $it")
-        QuickResponse.sendInternalError("Error checking existence of path", state.conn)
+    entry.exists().getOrElse {
+        state.internalError(
+            "Error checking existence of ${entry.path}: $it",
+            "Error checking existence of path"
+        )
+        return
+    }.onFalse {
+        state.quickResponse(404, "NOT FOUND")
         return
     }
-    val response = if (exists) ServerResponse(200, "OK", "")
-    else ServerResponse(404, "NOT FOUND", "")
-    response.sendCatching(state.conn, "Failed to send MKDIR confirmation")
+
+    state.quickResponse(200, "OK")
 }
 
 // GETQUOTAINFO(Workspace=null)
@@ -153,33 +158,34 @@ fun commandMkDir(state: ClientSession) {
 
     val serverPath = schema.getPath("Path", state.message.data)!!
     if (serverPath.isFile() || serverPath.isRoot()) {
-        QuickResponse.sendBadRequest("Bad path $serverPath given", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Bad path $serverPath given")
         return
     }
 
-    val parent = serverPath.parent()
-    if (parent == null) {
-        logError("Failed to get parent for path $serverPath")
-        QuickResponse.sendInternalError("Error getting parent for $serverPath", state.conn)
-        return
-    }
+    val parent = serverPath.parent() ?: state.internalError(
+        "Failed to get parent for path $serverPath",
+        "Error getting parent for $serverPath"
+    ).run { return }
 
     val lfs = LocalFS.get()
-    val exists = lfs.entry(parent).exists().getOrElse {
-        logError("Failed to check existence of parent path $parent: $it")
-        QuickResponse.sendInternalError("Error checking parent path", state.conn)
+    lfs.entry(parent).exists().getOrElse {
+        state.internalError(
+            "Failed to check existence of parent path $parent: $it",
+            "Error checking parent path"
+        )
         return
-    }
-    if (!exists) {
+    }.onFalse {
         if (parent.toString() == "/ wsp ${state.wid!!}") {
             val parentHandle = lfs.entry(parent)
             parentHandle.makeDirectory()?.let {
-                logError("commandMkDir: failed to create workspace dir $parent: $it")
-                QuickResponse.sendInternalError("Error creating workspace path", state.conn)
+                state.internalError(
+                    "commandMkDir: failed to create workspace dir $parent: $it",
+                    "Error creating workspace path"
+                )
                 return
             }
         } else {
-            QuickResponse.sendNotFound("Parent path not found", state.conn)
+            state.quickResponse(404, "NOT FOUND", "Parent path not found")
             return
         }
     }
@@ -187,8 +193,10 @@ fun commandMkDir(state: ClientSession) {
     DirectoryTarget.fromPath(parent)!!
         .isAuthorized(WIDActor(state.wid!!), AuthAction.Create)
         .getOrElse {
-            logError("Failed to check authorization of ${state.wid} in path $parent: $it")
-            QuickResponse.sendInternalError("Error checking authorization", state.conn)
+            state.internalError(
+                "Failed to check authorization of ${state.wid} in path $parent: $it",
+                "Error checking authorization"
+            )
             return
         }.onFalse {
             state.quickResponse(403, "FORBIDDEN")
@@ -197,16 +205,20 @@ fun commandMkDir(state: ClientSession) {
 
     val dirHandle = lfs.entry(serverPath)
     dirHandle.makeDirectory()?.let {
-        logError("Failed to create $serverPath: $it")
-        QuickResponse.sendInternalError("Error creating directory", state.conn)
+        state.internalError(
+            "Failed to create $serverPath: $it",
+            "Error creating directory"
+        )
         return
     }
 
     val db = DBConn()
     addFolderEntry(db, state.wid!!, serverPath, clientPath)?.let {
         dirHandle.delete()?.let { e -> logError("Failed to delete folder $serverPath: $e") }
-        logError("Failed to add folder entry for $serverPath: $it")
-        QuickResponse.sendInternalError("Error creating folder entry", state.conn)
+        state.internalError(
+            "Failed to add folder entry for $serverPath: $it",
+            "Error creating folder entry"
+        )
         return
     }
 
@@ -219,8 +231,10 @@ fun commandMkDir(state: ClientSession) {
             state.devid!!
         )
     )?.let {
-        logError("commandMkDir: failed to add update entry for $serverPath: $it")
-        QuickResponse.sendInternalError("Error adding update entry", state.conn)
+        state.internalError(
+            "commandMkDir: failed to add update entry for $serverPath: $it",
+            "Error adding update entry"
+        )
         return
     }
     state.quickResponse(200, "OK")
@@ -338,7 +352,7 @@ fun commandSelect(state: ClientSession) {
             )
             return
         }.onFalse {
-            QuickResponse.sendForbidden("", state.conn)
+            state.quickResponse(403, "FORBIDDEN")
             return
         }
 
@@ -363,9 +377,13 @@ fun commandUpload(state: ClientSession) {
     }
 
     // Both TempName and Offset must be present when resuming
-    val hasTempName = state.message.hasField("TempName")
-    val hasOffset = state.message.hasField("Offset")
-    if ((hasTempName && !hasOffset) || (!hasTempName && hasOffset)) {
+    var tempName = schema.getString("TempName", state.message.data)
+    if (tempName != null && !MServerPath.checkFileName(tempName)) {
+        state.quickResponse(400, "BAD REQUEST", "Invalid value for field TempName")
+        return
+    }
+    val resumeOffset = schema.getLong("Offset", state.message.data)
+    if ((tempName == null && resumeOffset != null) || (tempName != null && resumeOffset == null)) {
         state.quickResponse(
             400, "BAD REQUEST",
             "Upload resume requires both TempName and Offset fields",
@@ -408,11 +426,13 @@ fun commandUpload(state: ClientSession) {
 
     dirTarget.isAuthorized(WIDActor(state.wid!!), AuthAction.Create)
         .getOrElse {
-            logError("commandUpload: Auth check error: $it")
-            QuickResponse.sendInternalError("Error checking authorization", state.conn)
+            state.internalError(
+                "commandUpload: Auth check error: $it",
+                "Error checking authorization"
+            )
             return
         }.onFalse {
-            QuickResponse.sendForbidden("", state.conn)
+            state.quickResponse(403, "FORBIDDEN")
             return
         }
 
@@ -428,32 +448,12 @@ fun commandUpload(state: ClientSession) {
         return
     }
 
-    val resumeOffset: Long?
-    if (hasTempName) {
-        if (!MServerPath.checkFileName(state.message.data["TempName"]!!)) {
-            QuickResponse.sendBadRequest("Invalid value for field TempName", state.conn)
-            return
-        }
-
-        resumeOffset = try {
-            state.message.data["Offset"]!!.toLong()
-        } catch (e: Exception) {
-            QuickResponse.sendBadRequest("Invalid value for field Offset", state.conn)
-            return
-        }
-        if (resumeOffset!! < 1 || resumeOffset > fileSize) {
-            QuickResponse.sendBadRequest("Invalid value for field Offset", state.conn)
-            return
-        }
-    } else resumeOffset = null
-
     val config = ServerConfig.get()
     if (fileSize > config.getInteger("performance.max_file_size")!! * 0x10_000) {
-        ServerResponse(
+        state.quickResponse(
             414, "LIMIT REACHED",
             "File size greater than max allowed on server"
         )
-            .sendCatching(state.conn, "Client requested file larger than configured max")
         return
     }
 
@@ -461,31 +461,34 @@ fun commandUpload(state: ClientSession) {
 
     val db = DBConn()
     val quotaInfo = getQuotaInfo(db, state.wid!!).getOrElse {
-        logError("Error getting quota for wid ${state.wid!!}: $it")
-        QuickResponse.sendInternalError("Server error getting account quota info", state.conn)
+        state.internalError(
+            "Error getting quota for wid ${state.wid!!}: $it",
+            "Server error getting account quota info"
+        )
         return
     }
 
     if (quotaInfo.second > 0 && quotaInfo.first + fileSize > quotaInfo.second) {
-        ServerResponse(
+        state.quickResponse(
             409, "QUOTA INSUFFICIENT",
             "Your account lacks sufficient space for the file"
         )
-            .sendCatching(state.conn, "Client requested file larger than free space")
         return
     }
 
-    val tempName = if (resumeOffset != null)
-        state.message.data["TempName"]!!
-    else
-        "${Instant.now().epochSecond}.$fileSize.${UUID.randomUUID().toString().lowercase()}"
+    // This works because if resumeOffset == null, tempName must also be null at this point. We're
+    // given a temporary name by the client only when resuming. Being that we have to have a name
+    // for the temporary file, we create one here.
+    if (resumeOffset == null)
+        tempName =
+            "${Instant.now().epochSecond}.$fileSize.${UUID.randomUUID().toString().lowercase()}"
     val tempPath = MServerPath.fromString("/ tmp ${state.wid!!} $tempName")!!
 
-    ServerResponse(100, "CONTINUE", "", mutableMapOf("TempName" to tempName))
-        .send(state.conn)?.let {
-            logDebug("commandUpload: Error sending continue message for wid ${state.wid!!}: $it")
-            return
-        }
+    ServerResponse(100, "CONTINUE", "", mutableMapOf("TempName" to tempName!!))
+        .sendCatching(
+            state.conn,
+            "commandUpload: Error sending continue message for wid ${state.wid!!}"
+        ).onFalse { return }
 
     val tempHandle = lfs.entry(tempPath)
     state.readFileData(fileSize, tempHandle, resumeOffset)?.let {
@@ -541,8 +544,10 @@ fun commandUpload(state: ClientSession) {
         )
     } else {
         modifyQuotaUsage(db, state.wid!!, fileSize).getOrElse {
-            logError("commandUpload: Error adjusting quota usage: $it")
-            QuickResponse.sendInternalError("Server account quota error", state.conn)
+            state.internalError(
+                "commandUpload: Error adjusting quota usage: $it",
+                "Server account quota error"
+            )
             return
         }
 
