@@ -197,11 +197,12 @@ class ClientSession(val conn: Socket) : SessionState() {
      * @throws kotlinx.serialization.SerializationException encoding-specific errors
      * @throws IllegalArgumentException if the encoded input does not comply format's specification
      */
-    fun quickResponse(code: Int, status: String, info: String = "") {
+    fun quickResponse(code: Int, status: String, info: String = ""): ClientSession {
         ServerResponse(code, status, info).sendCatching(
             conn,
             "Error sending quick response($code, $status, $info)"
         )
+        return this
     }
 
     /**
@@ -256,6 +257,16 @@ class ClientSession(val conn: Socket) : SessionState() {
         }
 
         return true
+    }
+
+    /**
+     * Convenience command used in command handlers to reduce the amount of boilerplate code needed
+     * to handle potential internal errors.
+     */
+    fun internalError(logMsg: String, clientMsg: String): ClientSession {
+        logError(logMsg)
+        quickResponse(300, "INTERNAL SERVER ERROR", clientMsg)
+        return this
     }
 
     /**

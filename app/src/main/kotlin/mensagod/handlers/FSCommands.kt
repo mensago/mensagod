@@ -242,47 +242,41 @@ fun commandRmDir(state: ClientSession) {
         return
     }
 
-    val parent = serverPath.parent()
-    if (parent == null) {
-        logError("Failed to get parent for path $serverPath")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
-            "Error getting parent for $serverPath"
-        )
-        return
-    }
+    val parent = serverPath.parent() ?: state.internalError(
+        "Failed to get parent for path $serverPath",
+        "Error getting parent for $serverPath"
+    ).run { return }
 
     val lfs = LocalFS.get()
-    val exists = lfs.entry(parent).exists().getOrElse {
-        logError("Failed to check existence of parent path $parent: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
-            "Error checking parent path"
-        )
-        return
-    }
-    if (!exists) {
-        state.quickResponse(404, "NOT FOUND", "Parent path not found")
-        return
-    }
-
-    val auth = DirectoryTarget.fromPath(parent)!!
-        .isAuthorized(WIDActor(state.wid!!), AuthAction.Delete)
+    lfs.entry(parent).exists()
         .getOrElse {
-            logError("Failed to check authorization of ${state.wid} in path $parent: $it")
-            QuickResponse.sendInternalError("Error checking authorization", state.conn)
+            state.internalError(
+                "Failed to check existence of parent path $parent: $it",
+                "Error checking parent path"
+            )
+            return
+        }.onFalse {
+            state.quickResponse(404, "NOT FOUND", "Parent path not found")
             return
         }
-    if (!auth) {
-        state.quickResponse(403, "FORBIDDEN")
-        return
-    }
+
+    DirectoryTarget.fromPath(parent)!!
+        .isAuthorized(WIDActor(state.wid!!), AuthAction.Delete)
+        .getOrElse {
+            state.internalError(
+                "Failed to check authorization of ${state.wid} in path $parent: $it",
+                "Error checking authorization"
+            )
+            return
+        }.onFalse {
+            state.quickResponse(403, "FORBIDDEN")
+            return
+        }
 
     val dirHandle = lfs.entry(serverPath)
     dirHandle.delete()?.let {
-        logError("Failed to delete $serverPath: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "Failed to delete $serverPath: $it",
             "Error deleting directory"
         )
         return
@@ -290,9 +284,8 @@ fun commandRmDir(state: ClientSession) {
 
     val db = DBConn()
     removeFolderEntry(db, state.wid!!, serverPath)?.let {
-        logError("Failed to delete folder entry for $serverPath: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "Failed to delete folder entry for $serverPath: $it",
             "Error deleting folder entry"
         )
         return
@@ -307,9 +300,8 @@ fun commandRmDir(state: ClientSession) {
             state.devid!!
         )
     )?.let {
-        logError("commandRmDir: failed to add update entry for $serverPath: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "commandRmDir: failed to add update entry for $serverPath: $it",
             "Error adding update entry"
         )
         return
@@ -324,9 +316,8 @@ fun commandSelect(state: ClientSession) {
 
     val entry = schema.getPath("Path", state.message.data)!!.toHandle()
     entry.exists().getOrElse {
-        logError("commandSelect: error checking for directory ${entry.path}: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "commandSelect: error checking for directory ${entry.path}: $it",
             "Error checking directory existence"
         )
         return
@@ -335,17 +326,16 @@ fun commandSelect(state: ClientSession) {
         return
     }
 
-    val dir = DirectoryTarget.fromPath(entry.path) ?: run {
-        state.quickResponse(
-            400, "BAD REQUEST",
-            "Path given must be a directory"
-        )
-        return
-    }
+    val dir = DirectoryTarget.fromPath(entry.path) ?: state.quickResponse(
+        400, "BAD REQUEST",
+        "Path given must be a directory"
+    ).run { return }
     dir.isAuthorized(WIDActor(state.wid!!), AuthAction.Read)
         .getOrElse {
-            logError("Failed to check authorization of ${state.wid} in path $dir: $it")
-            QuickResponse.sendInternalError("Error checking authorization", state.conn)
+            state.internalError(
+                "Failed to check authorization of ${state.wid} in path $dir: $it",
+                "Error checking authorization"
+            )
             return
         }.onFalse {
             QuickResponse.sendForbidden("", state.conn)
@@ -376,9 +366,9 @@ fun commandUpload(state: ClientSession) {
     val hasTempName = state.message.hasField("TempName")
     val hasOffset = state.message.hasField("Offset")
     if ((hasTempName && !hasOffset) || (!hasTempName && hasOffset)) {
-        QuickResponse.sendBadRequest(
+        state.quickResponse(
+            400, "BAD REQUEST",
             "Upload resume requires both TempName and Offset fields",
-            state.conn
         )
         return
     }
@@ -386,73 +376,55 @@ fun commandUpload(state: ClientSession) {
     val lfs = LocalFS.get()
     val replacesPath = state.getPath("Replaces", false)
     if (replacesPath != null) {
-        val handle = try {
-            lfs.entry(replacesPath)
-        } catch (e: SecurityException) {
-            logError("Error opening path $replacesPath: $e")
-            QuickResponse.sendInternalError("commandUpload.1 error", state.conn)
+        val handle = runCatching { lfs.entry(replacesPath) }.getOrElse {
+            state.internalError(
+                "Error opening path $replacesPath: $it",
+                "commandUpload.1 error"
+            )
             return
         }
 
-        val exists = handle.exists().getOrElse {
-            logError("Error checking existence of $replacesPath: $it")
-            QuickResponse.sendInternalError("commandUpload.2 error", state.conn)
+        handle.exists().getOrElse {
+            state.internalError(
+                "Error checking existence of $replacesPath: $it",
+                "commandUpload.2 error"
+            )
+            return
+        }.onFalse {
+            state.quickResponse(404, "NOT FOUND", "$replacesPath doesn't exist")
             return
         }
-        if (!exists) {
-            ServerResponse(404, "NOT FOUND", "$replacesPath doesn't exist")
-                .sendCatching(state.conn, "Client requested nonexistent path $replacesPath")
-            return
-        }
-    } else if (state.message.hasField("Replaces")) {
-        QuickResponse.sendBadRequest("Invalid value for Replaces", state.conn)
-        return
     }
 
-    val fileSize = try {
-        state.message.data["Size"]!!.toLong()
-    } catch (e: Exception) {
-        QuickResponse.sendBadRequest("Invalid value for Size", state.conn)
-        return
-    }
+    val fileSize = schema.getLong("Size", state.message.data)!!
+    val uploadPath = schema.getPath("Path", state.message.data)!!
 
-    val uploadPath = state.getPath("Path", true)
-    if (uploadPath == null) {
-        QuickResponse.sendBadRequest("Invalid value for field Path", state.conn)
-        return
-    }
     // The DirectoryTarget constructor validates that the target path points to a directory
-    val dirTarget = DirectoryTarget.fromPath(uploadPath)
-    if (dirTarget == null) {
-        QuickResponse.sendBadRequest("Upload path must be a directory", state.conn)
-        return
-    }
-    val isAuthorized = dirTarget.isAuthorized(WIDActor(state.wid!!), AuthAction.Create)
+    val dirTarget = DirectoryTarget.fromPath(uploadPath) ?: state.quickResponse(
+        400,
+        "BAD REQUEST",
+        "Upload path must be a directory"
+    ).run { return }
+
+    dirTarget.isAuthorized(WIDActor(state.wid!!), AuthAction.Create)
         .getOrElse {
             logError("commandUpload: Auth check error: $it")
             QuickResponse.sendInternalError("Error checking authorization", state.conn)
             return
+        }.onFalse {
+            QuickResponse.sendForbidden("", state.conn)
+            return
         }
-    if (!isAuthorized) {
-        QuickResponse.sendForbidden("", state.conn)
-        return
-    }
 
-    val uploadPathHandle = try {
-        lfs.entry(uploadPath)
-    } catch (e: SecurityException) {
-        logError("Error opening path $uploadPath: $e")
-        QuickResponse.sendInternalError("commandUpload.3 error", state.conn)
+    val uploadPathHandle = lfs.entry(uploadPath)
+    uploadPathHandle.exists().getOrElse {
+        state.internalError(
+            "Error checking existence of $uploadPath: $it",
+            "Error checking for upload path"
+        )
         return
-    }
-    val exists = uploadPathHandle.exists().getOrElse {
-        logError("Error checking existence of $uploadPath: $it")
-        QuickResponse.sendInternalError("commandUpload.4 error", state.conn)
-        return
-    }
-    if (!exists) {
-        ServerResponse(404, "NOT FOUND", "$uploadPathHandle doesn't exist")
-            .sendCatching(state.conn, "Client requested nonexistent path $uploadPathHandle")
+    }.onFalse {
+        state.quickResponse(404, "NOT FOUND", "$uploadPathHandle doesn't exist")
         return
     }
 
