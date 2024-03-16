@@ -18,6 +18,14 @@ class ServerResponse(
 ) {
 
     /**
+     * Functional method which adds the requested data to the message.
+     */
+    fun attach(name: String, value: Any): ServerResponse {
+        data["name"] = value.toString()
+        return this
+    }
+
+    /**
      * Checks attached data for the requested fields in the pair list. The bool parameter is
      * for specifying if the field is required. Returns true if all required fields are present.
      */
