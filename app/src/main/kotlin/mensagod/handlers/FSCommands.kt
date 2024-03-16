@@ -494,21 +494,21 @@ fun commandUpload(state: ClientSession) {
         ServerResponse(
             305, "INTERRUPTED",
             "Interruption source: $it"
-        )
-            .sendCatching(state.conn, "Upload interrupted for wid ${state.wid}")
+        ).sendCatching(state.conn, "Upload interrupted for wid ${state.wid}")
         return
     }
 
     val serverHash = tempHandle.hashFile(clientHash.getType()!!).getOrElse {
         if (it is UnsupportedAlgorithmException) {
-            ServerResponse(
+            state.quickResponse(
                 309, "UNSUPPORTED ALGORITHM",
                 "Hash algorithm ${clientHash.prefix} not unsupported"
             )
-                .sendCatching(state.conn, "Client requested unsupported hash algorithm")
         } else {
-            logError("commandUpload: Error hashing file: $it")
-            QuickResponse.sendInternalError("Server error hashing file", state.conn)
+            state.internalError(
+                "commandUpload: Error hashing file: $it",
+                "Server error hashing file"
+            )
         }
         return
     }
@@ -517,16 +517,16 @@ fun commandUpload(state: ClientSession) {
         tempHandle.delete()?.let {
             logError("commandUpload: Error deleting invalid temp file: $it")
         }
-        ServerResponse(410, "HASH MISMATCH").sendCatching(
-            state.conn,
-            "Hash mismatch on uploaded file"
-        )
+        state.quickResponse(410, "HASH MISMATCH", "Hash mismatch on uploaded file")
         return
     }
 
     tempHandle.moveTo(uploadPath)?.let {
-        logError("commandUpload: Error installing temp file: $it")
-        QuickResponse.sendInternalError("Server error finishing upload", state.conn)
+        state.internalError(
+            "commandUpload: Error installing temp file: $it",
+            "Server error finishing upload"
+        )
+        return
     }
 
     val unixTime = System.currentTimeMillis() / 1000L
