@@ -332,32 +332,37 @@ fun commandDevice(state: ClientSession) {
 
 // LOGIN(Login-Type,Workspace-ID, Challenge)
 fun commandLogin(state: ClientSession) {
-
     if (state.loginState != LoginState.NoSession) {
-        QuickResponse.sendBadRequest("Session state mismatch", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Session state mismatch")
         return
     }
 
-    if (!state.message.hasField("Login-Type")) {
-        QuickResponse.sendBadRequest("Missing required field Login-Type", state.conn)
-        return
-    }
-    if (state.message.data["Login-Type"] != "PLAIN") {
-        QuickResponse.sendBadRequest("Invalid Login-Type", state.conn)
+    val schema = Schemas.login
+    schema.validate(state.message.data) { name, e ->
+        val msg = if (e is MissingFieldException)
+            "Missing required field $name"
+        else
+            "Bad value for field $name"
+        state.quickResponse(400, "BAD REQUEST", msg)
+    } ?: return
+
+    if (schema.getString("Login-Type", state.message.data) != "PLAIN") {
+        state.quickResponse(400, "BAD REQUEST", "Invalid Login-Type")
         return
     }
 
-    val wid = state.getRandomID("Workspace-ID", true) ?: return
-    val challenge = state.getCryptoString("Challenge", true) ?: return
+    val wid = state.getRandomID("Workspace-ID", true)!!
+    val challenge = state.getCryptoString("Challenge", true)!!
 
     val db = DBConn()
     val status = checkWorkspace(db, wid).getOrElse {
-        logError("commandLogin.checkWorkspace exception for ${state.wid}: $it")
-        QuickResponse.sendInternalError("Error checking workspace ID", state.conn)
+        state.internalError(
+            "commandLogin.checkWorkspace exception for ${state.wid}: $it",
+            "Error checking workspace ID"
+        )
         return
-    }
-    if (status == null) {
-        QuickResponse.sendNotFound("", state.conn)
+    } ?: run {
+        state.quickResponse(404, "NOT FOUND")
         return
     }
 
@@ -367,86 +372,82 @@ fun commandLogin(state: ClientSession) {
         }
 
         WorkspaceStatus.Archived -> {
-            QuickResponse.sendNotFound("", state.conn)
+            state.quickResponse(404, "NOT FOUND")
             return
         }
 
         WorkspaceStatus.Disabled -> {
-            ServerResponse(407, "UNAVAILABLE", "Account disabled")
-                .sendCatching(state.conn, "commandLogin.3 error")
+            state.quickResponse(407, "UNAVAILABLE", "Account disabled")
             return
         }
 
         WorkspaceStatus.Pending -> {
-            ServerResponse(
+            state.quickResponse(
                 101, "PENDING",
                 "Registration awaiting administrator approval"
             )
-                .sendCatching(state.conn, "commandLogin.4 error")
             return
         }
 
         WorkspaceStatus.Preregistered -> {
-            ServerResponse(
+            state.quickResponse(
                 416, "PROCESS INCOMPLETE",
                 "Workspace requires use of registration code"
             )
-                .sendCatching(state.conn, "commandLogin.5 error")
             return
         }
 
         WorkspaceStatus.Suspended -> {
-            ServerResponse(407, "UNAVAILABLE", "Account suspended")
-                .sendCatching(state.conn, "commandLogin.6 error")
+            state.quickResponse(407, "UNAVAILABLE", "Account suspended")
             return
         }
 
         WorkspaceStatus.Unpaid -> {
-            ServerResponse(406, "PAYMENT REQUIRED")
-                .sendCatching(state.conn, "commandLogin.7 error")
+            state.quickResponse(406, "PAYMENT REQUIRED")
             return
         }
     }
 
     // We got this far, so decrypt the challenge and send it to the client
     val orgPair = getEncryptionPair(db).getOrElse {
-        logError("commandLogin.getEncryptionPair exception: $it")
-        QuickResponse.sendInternalError(
+        state.internalError(
+            "commandLogin.getEncryptionPair exception: $it",
             "Server can't process client login challenge",
-            state.conn
         )
         return
     }
 
     val decrypted = orgPair.decrypt(challenge).getOrElse {
-        ServerResponse(306, "KEY FAILURE", "Client challenge decryption failure")
-            .sendCatching(state.conn, "commandLogin key failure message send error")
+        state.quickResponse(
+            306, "KEY FAILURE",
+            "Client challenge decryption failure"
+        )
         return
     }.decodeToString()
 
     val passInfo = getPasswordInfo(db, wid).getOrElse {
-        logError("commandLogin.getPasswordInfo exception: $it")
-        QuickResponse.sendInternalError(
+        state.internalError(
+            "commandLogin.getPasswordInfo exception: $it",
             "Server error getting password information",
-            state.conn
         )
         return
     }
     if (passInfo == null) {
-        QuickResponse.sendNotFound("Password information not found", state.conn)
+        state.quickResponse(
+            404, "RESOURCE NOT FOUND",
+            "Password information not found"
+        )
         return
     }
 
     state.wid = wid
     state.loginState = LoginState.AwaitingPassword
-    ServerResponse(
-        100, "CONTINUE", "", mutableMapOf(
-            "Response" to decrypted,
-            "Password-Algorithm" to passInfo.algorithm,
-            "Password-Salt" to passInfo.salt,
-            "Password-Parameters" to passInfo.parameters,
-        )
-    ).sendCatching(state.conn, "commandLogin success message send error")
+    ServerResponse(100, "CONTINUE")
+        .attach("Response", decrypted)
+        .attach("Password-Algorithm", passInfo.algorithm)
+        .attach("Password-Salt", passInfo.salt)
+        .attach("Password-Parameters", passInfo.parameters)
+        .sendCatching(state.conn, "commandLogin success message send error")
 }
 
 // LOGOUT()
@@ -454,10 +455,7 @@ fun commandLogout(state: ClientSession) {
     state.loginState = LoginState.NoSession
     state.wid = null
 
-    ServerResponse(200, "OK").sendCatching(
-        state.conn,
-        "commandLogout success message send error"
-    )
+    state.quickResponse(200, "OK")
 }
 
 // PASSWORD(Password-Hash)
@@ -489,10 +487,7 @@ fun commandPassword(state: ClientSession) {
     }
 
     state.loginState = LoginState.AwaitingDeviceID
-    ServerResponse(100, "CONTINUE").sendCatching(
-        state.conn,
-        "commandPassword continue message failure"
-    )
+    state.quickResponse(100, "CONTINUE")
 }
 
 // PASSCODE(Workspace-ID, Reset-Code, Password-Hash, Password-Algorithm, Password-Salt="",

@@ -67,6 +67,12 @@ object Schemas {
         MsgField("Path", MsgFieldType.Path, false)
     )
 
+    val login = Schema(
+        MsgField("Login-Type", MsgFieldType.String, true),
+        MsgField("Workspace-ID", MsgFieldType.RandomID, true),
+        MsgField("Challenge", MsgFieldType.CryptoString, true),
+    )
+
     val mkDir = Schema(
         MsgField("ClientPath", MsgFieldType.CryptoString, true),
         MsgField("Path", MsgFieldType.Path, true)

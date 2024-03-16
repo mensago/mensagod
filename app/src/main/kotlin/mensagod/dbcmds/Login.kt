@@ -71,12 +71,14 @@ fun checkResetCode(db: DBConn, wid: RandomID, resetCode: String): Result<Boolean
  * with the connection
  */
 fun getPasswordInfo(db: DBConn, wid: RandomID): Result<PasswordInfo?> {
-    val rs = db.query("""SELECT passtype,salt,passparams FROM workspaces WHERE wid=?""", wid)
-        .getOrElse { return it.toFailure() }
+    val rs = db.query(
+        """SELECT passtype,salt,passparams FROM workspaces WHERE wid=? AND wtype!='alias'""",
+        wid
+    ).getOrElse { return it.toFailure() }
     if (rs.next()) {
         val type = rs.getString("passtype")
-        val salt = rs.getString("salt")
-        val params = rs.getString("passparams")
+        val salt = rs.getString("salt") ?: ""
+        val params = rs.getString("passparams") ?: ""
         return PasswordInfo(type, salt, params).toSuccess()
     }
     return Result.success(null)
