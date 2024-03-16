@@ -20,20 +20,28 @@ class MiscCmdTest {
 
     @Test
     fun getWIDTest() {
-        val config = ServerConfig.load().getOrThrow()
-        resetDB(config).getOrThrow()
-        DBConn.initialize(config)?.let { throw it }
-        val serverData = initDB(DBConn().connect().getOrThrow().getConnection()!!)
+        setupTest("handlers.getwid")
 
-        val state = SessionState(
-            message = ClientRequest("GETWID", mutableMapOf("User-ID" to "support"))
-        )
-
-        CommandTest("getWID", state, ::commandGetWID) { port ->
+        // Test Case #1: Success
+        CommandTest(
+            "getWID", SessionState(
+                ClientRequest("GETWID").attach("User-ID", "admin")
+            ), ::commandGetWID
+        ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
-            assertEquals(200, response.code)
-            assertEquals(serverData["support_wid"]!!, response.data["Workspace-ID"])
+            response.assertReturnCode(200)
+            assertEquals(ADMIN_PROFILE_DATA["wid"], response.data["Workspace-ID"])
+        }.run()
+
+        // Test Case #1: Not found
+        CommandTest(
+            "getWID", SessionState(
+                ClientRequest("GETWID").attach("User-ID", "unknownUser")
+            ), ::commandGetWID
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(404)
         }.run()
     }
 

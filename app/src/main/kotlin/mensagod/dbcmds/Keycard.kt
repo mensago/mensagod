@@ -104,15 +104,9 @@ fun resolveAddress(db: DBConn, addr: MAddress): Result<RandomID?> {
     // If the address is a workspace address, all we have to do is confirm the workspace exists --
     // workspace IDs are unique across an organization, not just a domain.
     if (addr.userid.type == IDType.WorkspaceID) {
-        val inWorkspaces = db.exists(
-            """SELECT wtype FROM workspaces WHERE wid=?""",
-            addr.userid.value
-        ).getOrElse { return it.toFailure() }
-        val inAliases = db.exists("""SELECT wid FROM aliases WHERE wid=?""", addr.userid.value)
+        val exists = db.exists("""SELECT wtype FROM workspaces WHERE wid=?""", addr.userid)
             .getOrElse { return it.toFailure() }
-        return if (inWorkspaces || inAliases)
-            addr.userid.toWID()!!.toSuccess()
-        else Result.success(null)
+        return Result.success(if (exists) addr.userid.toWID()!! else null)
     }
 
     val rs = db.query("""SELECT wid FROM workspaces WHERE uid=?""", addr.userid.value)

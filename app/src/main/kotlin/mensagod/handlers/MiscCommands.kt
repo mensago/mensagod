@@ -36,9 +36,12 @@ fun commandGetWID(state: ClientSession) {
     val wid = resolveAddress(DBConn(), address).getOrElse {
         state.internalError("commandGetWID::resolveAddress error: $it", "")
         return
+    } ?: run {
+        state.quickResponse(404, "NOT FOUND")
+        return
     }
 
-    ServerResponse(200, "OK", "", mutableMapOf("Workspace-ID" to wid.toString()))
+    ServerResponse(200, "OK").attach("Workspace-ID", wid)
         .sendCatching(state.conn, "commandGetWID: success message failure")
 }
 

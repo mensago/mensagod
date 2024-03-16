@@ -106,6 +106,8 @@ object Schemas {
         MsgField("Password-Parameters", MsgFieldType.String, false),
     )
 
+    // PASSWORD doesn't really need one - just a password hash
+
     val regCode = Schema(
         // One of these is required, so a bit more validation once the schema code validates. :/
         MsgField("Workspace-ID", MsgFieldType.RandomID, false),
