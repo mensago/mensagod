@@ -271,6 +271,11 @@ class FSCmdTest {
     }
 
     @Test
+    fun selectTest() {
+        // TODO: Implement test for SELECT
+    }
+
+    @Test
     fun uploadTest() {
         val setupData = setupTest("handlers.uploadTest")
         ServerConfig.load().getOrThrow()

@@ -3,6 +3,7 @@ package mensagod.handlers
 import keznacl.Hash
 import keznacl.UnsupportedAlgorithmException
 import keznacl.getType
+import keznacl.onFalse
 import libkeycard.MissingFieldException
 import libkeycard.RandomID
 import libmensago.ClientRequest
@@ -312,7 +313,10 @@ fun commandRmDir(state: ClientSession) {
     val db = DBConn()
     removeFolderEntry(db, state.wid!!, serverPath)?.let {
         logError("Failed to delete folder entry for $serverPath: $it")
-        QuickResponse.sendInternalError("Error deleting folder entry", state.conn)
+        state.quickResponse(
+            300, "INTERNAL SERVER ERROR",
+            "Error deleting folder entry"
+        )
         return
     }
 
@@ -326,7 +330,10 @@ fun commandRmDir(state: ClientSession) {
         )
     )?.let {
         logError("commandRmDir: failed to add update entry for $serverPath: $it")
-        QuickResponse.sendInternalError("Error adding update entry", state.conn)
+        state.quickResponse(
+            300, "INTERNAL SERVER ERROR",
+            "Error adding update entry"
+        )
         return
     }
     state.quickResponse(200, "OK")
@@ -334,7 +341,41 @@ fun commandRmDir(state: ClientSession) {
 
 // SELECT(Path)
 fun commandSelect(state: ClientSession) {
-    TODO("Implement commandSelect($state)")
+    val schema = Schemas.select
+    if (!state.requireLogin(schema)) return
+
+    val entry = schema.getPath("Path", state.message.data)!!.toHandle()
+    entry.exists().getOrElse {
+        logError("commandSelect: error checking for directory ${entry.path}: $it")
+        state.quickResponse(
+            300, "INTERNAL SERVER ERROR",
+            "Error checking directory existence"
+        )
+        return
+    }.onFalse {
+        state.quickResponse(404, "RESOURCE NOT FOUND")
+        return
+    }
+
+    val dir = DirectoryTarget.fromPath(entry.path) ?: run {
+        state.quickResponse(
+            400, "BAD REQUEST",
+            "Path given must be a directory"
+        )
+        return
+    }
+    dir.isAuthorized(WIDActor(state.wid!!), AuthAction.Read)
+        .getOrElse {
+            logError("Failed to check authorization of ${state.wid} in path $dir: $it")
+            QuickResponse.sendInternalError("Error checking authorization", state.conn)
+            return
+        }.onFalse {
+            QuickResponse.sendForbidden("", state.conn)
+            return
+        }
+
+    state.currentPath = entry.path
+    state.quickResponse(200, "OK")
 }
 
 // SETQUOTA(Workspace)
