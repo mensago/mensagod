@@ -64,7 +64,7 @@ fun commandIdle(state: ClientSession) {
         return
     }
 
-    ServerResponse(200, "OK", "", mutableMapOf("UpdateCount" to count.toString()))
+    ServerResponse(200, "OK").attach("UpdateCount", count)
         .sendCatching(state.conn, "Error sending idle response for ${state.wid}")
 }
 
@@ -88,8 +88,7 @@ fun commandSend(state: ClientSession) {
             "Error getting sender address"
         )
         return
-    }
-    if (sender == null) {
+    } ?: run {
         state.internalError(
             "commandSend::resolveWID couldn't find wid ${state.wid}",
             "Sender address missing"
@@ -135,7 +134,7 @@ fun commandSend(state: ClientSession) {
         return
     }
     queueMessageForDelivery(sender, domain, handle.path)
-    ServerResponse(200, "OK", "")
+    ServerResponse(200, "OK")
         .sendCatching(state.conn, "Failed to send successful SEND response")
 }
 
@@ -205,10 +204,8 @@ fun commandSendLarge(state: ClientSession) {
     state.readFileData(fileSize, tempHandle, resumeOffset)?.let {
         // Transfer was interrupted. We won't delete the file--we will leave it so the client can
         // attempt to resume the upload later.
-        ServerResponse(
-            305, "INTERRUPTED",
-            "Interruption source: $it"
-        ).sendCatching(state.conn, "Send interrupted for wid ${state.wid}")
+        ServerResponse(305, "INTERRUPTED", "Interruption source: $it")
+            .sendCatching(state.conn, "Send interrupted for wid ${state.wid}")
         return
     }
 
@@ -254,21 +251,20 @@ fun commandSetStatus(state: ClientSession) {
 
     val wid = schema.getRandomID("Workspace-ID", state.message.data)!!
     val status = WorkspaceStatus.fromString(schema.getString("Status", state.message.data)!!)
-    if (status == null) {
-        state.quickResponse(
-            400,
-            "BAD REQUEST",
-            "Bad value ${state.message.data["Status"]} for status"
-        )
-        return
-    }
+        ?: run {
+            state.quickResponse(
+                400,
+                "BAD REQUEST",
+                "Bad value ${state.message.data["Status"]} for status"
+            )
+            return
+        }
 
     val workspace = WorkspaceTarget.fromWID(wid).getOrElse {
         logError("commandSetStatus.WorkspaceTarget exception: $it")
         state.quickResponse(300, "INTERNAL SERVER ERROR", "Error finding workspace")
         return
-    }
-    if (workspace == null) {
+    } ?: run {
         state.quickResponse(404, "NOT FOUND")
         return
     }
@@ -306,7 +302,5 @@ fun commandUnrecognized(state: ClientSession) {
     ServerResponse(
         400, "BAD REQUEST",
         "Unrecognized command '${state.message.action}'"
-    )
-        .sendCatching(state.conn, "commandUnrecognized message send error")
+    ).sendCatching(state.conn, "commandUnrecognized message send error")
 }
-

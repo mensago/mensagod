@@ -1,6 +1,5 @@
 package mensagod.handlers
 
-import libkeycard.MissingFieldException
 import libmensago.ServerResponse
 import mensagod.ClientSession
 import mensagod.DBConn
@@ -8,16 +7,8 @@ import mensagod.dbcmds.getSyncRecords
 
 // GETUPDATES (time)
 fun commandGetUpdates(state: ClientSession) {
-    if (!state.requireLogin()) return
-
     val schema = Schemas.getUpdates
-    schema.validate(state.message.data) { name, e ->
-        val msg = if (e is MissingFieldException)
-            "Missing required field $name"
-        else
-            "Bad value for field $name"
-        state.quickResponse(400, "BAD REQUEST", msg)
-    } ?: return
+    if (!state.requireLogin(schema)) return
 
     val time = schema.getUnixTime("Time", state.message.data)!!
 

@@ -108,6 +108,12 @@ object Schemas {
 
     // PASSWORD doesn't really need one - just a password hash
 
+    val preregister = Schema(
+        MsgField("Workspace-ID", MsgFieldType.RandomID, false),
+        MsgField("User-ID", MsgFieldType.UserID, false),
+        MsgField("Domain", MsgFieldType.Domain, false)
+    )
+
     val regCode = Schema(
         // One of these is required, so a bit more validation once the schema code validates. :/
         MsgField("Workspace-ID", MsgFieldType.RandomID, false),

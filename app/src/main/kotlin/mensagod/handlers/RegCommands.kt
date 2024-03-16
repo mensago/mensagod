@@ -26,8 +26,10 @@ fun commandArchive(state: ClientSession) {
     }
 
     checkPassword(DBConn(), state.wid!!, passHash).getOrElse {
-        logError("commandArchive: error checking password: $it")
-        state.quickResponse(300, "INTERNAL SERVER ERROR", "error checking password")
+        state.internalError(
+            "commandArchive: error checking password: $it",
+            "error checking password"
+        )
         return
     }.onFalse {
         state.quickResponse(401, "UNAUTHORIZED")
@@ -37,32 +39,27 @@ fun commandArchive(state: ClientSession) {
     val targetWID = schema.getRandomID("Workspace-ID", state.message.data)
     if (targetWID != null) {
         val target = WorkspaceTarget.fromWID((targetWID)).getOrElse {
-            logError("commandArchive: error checking workspace status: $it")
-            state.quickResponse(
-                300, "INTERNAL SERVER ERROR",
+            state.internalError(
+                "commandArchive: error checking workspace status: $it",
                 "error checking workspace status"
             )
             return
-        }
-
-        if (target == null) {
+        } ?: run {
             state.quickResponse(404, "NOT FOUND")
             return
         }
 
-        val isAuthorized = target.isAuthorized(WIDActor(state.wid!!), AuthAction.Archive)
+        target.isAuthorized(WIDActor(state.wid!!), AuthAction.Archive)
             .getOrElse {
-                logError("commandArchive.checkAuth exception: $it")
-                state.quickResponse(
-                    300, "INTERNAL SERVER ERROR",
+                state.internalError(
+                    "commandArchive.checkAuth exception: $it",
                     "authorization check error"
                 )
                 return
+            }.onFalse {
+                state.quickResponse(403, "FORBIDDEN")
+                return
             }
-        if (!isAuthorized) {
-            state.quickResponse(403, "FORBIDDEN")
-            return
-        }
     }
 
     val db = DBConn()
@@ -84,9 +81,8 @@ fun commandArchive(state: ClientSession) {
     // Admin mode
     if (targetWID != null) {
         archiveWorkspace(db, targetWID)?.let {
-            logError("commandArchive: error archiving workspace: $it")
-            state.quickResponse(
-                300, "INTERNAL SERVER ERROR",
+            state.internalError(
+                "commandArchive: error archiving workspace: $it",
                 "error archiving workspace"
             )
             return
@@ -95,9 +91,8 @@ fun commandArchive(state: ClientSession) {
     }
 
     archiveWorkspace(db, state.wid!!)?.let {
-        logError("commandArchive: error archiving workspace: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "commandArchive: error archiving workspace: $it",
             "error archiving workspace"
         )
         return
@@ -109,23 +104,27 @@ fun commandArchive(state: ClientSession) {
 // PREREG(User-ID="", Workspace-ID="",Domain="")
 fun commandPreregister(state: ClientSession) {
 
-    if (!state.requireLogin()) return
-    val isAuthorized = ServerTarget().isAuthorized(WIDActor(state.wid!!), AuthAction.Preregister)
+    val schema = Schemas.preregister
+    if (!state.requireLogin(schema)) return
+
+    ServerTarget().isAuthorized(WIDActor(state.wid!!), AuthAction.Preregister)
         .getOrElse {
             state.internalError(
                 "commandPreregister.checkAuth exception: $it",
                 "authorization check error"
             )
             return
+        }.onFalse {
+            state.quickResponse(
+                403, "FORBIDDEN",
+                "Only admins can preregister accounts"
+            )
+            return
         }
-    if (!isAuthorized) {
-        state.quickResponse(403, "FORBIDDEN", "Only admins can preregister accounts")
-        return
-    }
 
-    val uid = state.getUserID("User-ID", false)
-    val wid = state.getRandomID("Workspace-ID", false)
-    val domain = state.getDomain("Domain", false)
+    val uid = schema.getUserID("User-ID", state.message.data)
+    val wid = schema.getRandomID("Workspace-ID", state.message.data)
+    val domain = schema.getDomain("Domain", state.message.data)
 
     val db = DBConn()
     val outUID = if (uid != null) {
@@ -166,7 +165,7 @@ fun commandPreregister(state: ClientSession) {
     } else {
         var newWID: RandomID?
         do {
-            newWID = try {
+            newWID = runCatching {
                 val tempWID = RandomID.generate()
                 val status = checkWorkspace(db, tempWID).getOrElse {
                     state.internalError(
@@ -179,9 +178,9 @@ fun commandPreregister(state: ClientSession) {
                     tempWID
                 else
                     null
-            } catch (e: Exception) {
+            }.getOrElse {
                 state.internalError(
-                    "commandPreregister.checkWorkspace exception: $e",
+                    "commandPreregister.checkWorkspace exception: $it",
                     "wid lookup error"
                 )
                 return
@@ -215,6 +214,7 @@ fun commandPreregister(state: ClientSession) {
             "commandPreregister.preregWorkspace exception: $it",
             "preregistration error"
         )
+        return
     }
 
     val lfs = LocalFS.get()
@@ -227,15 +227,12 @@ fun commandPreregister(state: ClientSession) {
         return
     }
 
-    val resp = ServerResponse(
-        200, "OK", "", mutableMapOf(
-            "Workspace-ID" to outWID.toString(),
-            "Domain" to outDom.toString(),
-            "Reg-Code" to regcode,
-        )
-    )
-    if (outUID != null) resp.data["User-ID"] = outUID.toString()
-    resp.sendCatching(state.conn, "commandRegCode success message send error")
+    val resp = ServerResponse(200, "OK")
+    if (outUID != null) resp.attach("User-ID", outUID)
+    resp.attach("Workspace-ID", outWID)
+        .attach("Domain", outDom)
+        .attach("Reg-Code", regcode)
+        .sendCatching(state.conn, "commandRegCode success message send error")
 }
 
 // REGCODE(User-ID, Reg-Code, Password-Hash, Password-Algorithm, Device-ID, Device-Key,
@@ -253,20 +250,15 @@ fun commandRegCode(state: ClientSession) {
         state.quickResponse(400, "BAD REQUEST", msg)
     } ?: return
 
-    var uid = schema.getUserID("User-ID", state.message.data)
-    if (uid == null) {
-        val wid = schema.getRandomID("Workspace-ID", state.message.data)
-        if (wid == null) {
-            state.quickResponse(400, "BAD REQUEST", "Workspace-ID or User-ID required")
+    val uid = schema.getUserID("User-ID", state.message.data) ?: run {
+        val wid = schema.getRandomID("Workspace-ID", state.message.data) ?: run {
+            state.quickResponse(
+                400, "BAD REQUEST",
+                "Workspace-ID or User-ID required"
+            )
             return
         }
-        uid = UserID.fromWID(wid)
-    }
-
-    val regCode = schema.getString("Reg-Code", state.message.data)!!
-    if (regCode.codePoints().count() !in 16..128) {
-        state.quickResponse(400, "BAD REQUEST", "Invalid registration code")
-        return
+        UserID.fromWID(wid)
     }
 
     // The password field must pass some basic checks for length, but because we will be hashing
@@ -278,11 +270,17 @@ fun commandRegCode(state: ClientSession) {
         return
     }
 
+    val regCode = schema.getString("Reg-Code", state.message.data)!!
+    if (regCode.codePoints().count() !in 16..128) {
+        state.quickResponse(400, "BAD REQUEST", "Invalid registration code")
+        return
+    }
+
     val passAlgo = schema.getString("Password-Algorithm", state.message.data)!!
 
     val devid = schema.getRandomID("Device-ID", state.message.data)!!
     val devkey = schema.getCryptoString("Device-Key", state.message.data)!!
-    if (!isSupportedAsymmetric(devkey.prefix)) {
+    isSupportedAsymmetric(devkey.prefix).onFalse {
         ServerResponse(
             309, "ENCRYPTION TYPE NOT SUPPORTED",
             "Supported: " + getSupportedAsymmetricAlgorithms().joinToString(",")
@@ -305,9 +303,7 @@ fun commandRegCode(state: ClientSession) {
             "commandRegCode.1"
         )
         return
-    }
-
-    if (regInfo == null) {
+    } ?: run {
         ServerResponse(401, "UNAUTHORIZED").sendCatching(
             state.conn,
             "commandRegCode: Failed to send unauthorized message"
@@ -362,15 +358,11 @@ fun commandRegCode(state: ClientSession) {
         return
     }
 
-    ServerResponse(
-        201, "REGISTERED", "", mutableMapOf(
-            "Workspace-ID" to regInfo.first.toString(),
-            "User-ID" to uid.toString(),
-            "Domain" to domain.toString(),
-        )
-    ).send(state.conn)?.let {
-        logDebug("commandRegCode success message send error: $it")
-    }
+    ServerResponse(201, "REGISTERED")
+        .attach("Workspace-ID", regInfo.first)
+        .attach("User-ID", uid)
+        .attach("Domain", domain)
+        .sendCatching(state.conn, "commandRegCode success message send error")
 }
 
 // REGISTER(User-ID, Password-Hash, Password-Algorithm, Device-ID, Device-Key,
@@ -433,8 +425,7 @@ fun commandRegister(state: ClientSession) {
     }
 
     if (typeStr != null) {
-        val wType = WorkspaceType.fromString(typeStr)
-        if (wType == null) {
+        val wType = WorkspaceType.fromString(typeStr) ?: run {
             state.quickResponse(400, "BAD REQUEST", "Bad workspace type")
             return
         }
@@ -446,40 +437,37 @@ fun commandRegister(state: ClientSession) {
         }
     }
 
-    val widExists = checkWorkspace(db, wid).getOrElse {
+    checkWorkspace(db, wid).getOrElse {
         state.internalError(
             "commandRegister.checkWorkspace error: $it",
             "Error checking for workspace ID"
         )
         return
-    } != null
-    if (widExists) {
+    }?.let {
         state.quickResponse(408, "RESOURCE EXISTS")
         return
     }
 
-    val uidExists = resolveUserID(db, uid).getOrElse {
+    resolveUserID(db, uid).getOrElse {
         state.internalError(
             "commandRegister.resolveUserID error: $it",
             "Error checking for user ID"
         )
         return
-    } != null
-    if (uidExists) {
+    }?.let {
         state.quickResponse(408, "RESOURCE EXISTS")
         return
     }
 
     val wStatus = when (regType) {
         "network" -> {
-            val ok = checkInRegNetwork(state.conn.inetAddress).getOrElse {
+            checkInRegNetwork(state.conn.inetAddress).getOrElse {
                 state.internalError(
                     "commandRegister.checkInRegNetwork error: $it",
                     "Error validating user remote IP"
                 )
                 return
-            }
-            if (!ok) {
+            }.onFalse {
                 state.quickResponse(304, "REGISTRATION CLOSED")
                 return
             }
@@ -494,18 +482,16 @@ fun commandRegister(state: ClientSession) {
         db, wid, uid, gServerDomain, passHash, passAlgo, passSalt, passParams, wStatus,
         WorkspaceType.Individual
     )?.let {
-        logError("commandRegister.addWorkspace error: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "commandRegister.addWorkspace error: $it",
             "Error adding workspace"
         )
         return
     }
 
     addDevice(db, wid, devid, devkey.key, devInfo, DeviceStatus.Registered)?.let {
-        logError("commandRegister.addDevice error for $wid.$devid: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "commandRegister.addDevice error for $wid.$devid: $it",
             "Error adding device"
         )
         return
@@ -513,19 +499,17 @@ fun commandRegister(state: ClientSession) {
 
     val wDirHandle = LocalFS.get().entry(MServerPath("/ wsp $wid"))
     val wDirExists = wDirHandle.exists().getOrElse {
-        logError("commandRegister.exists error for $wid.$devid: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "commandRegister.exists error for $wid.$devid: $it",
             "Error checking existence of workspace directory",
         )
         return
     }
     if (!wDirExists) {
         wDirHandle.makeDirectory()?.let {
-            logError("commandRegister.makeDirectory error for $wid.$devid: $it")
-            state.quickResponse(
-                300, "INTERNAL SERVER ERROR",
-                "Error creating workspace directory",
+            state.internalError(
+                "commandRegister.makeDirectory error for $wid.$devid: $it",
+                "Error creating workspace directory"
             )
             return
         }
@@ -535,9 +519,9 @@ fun commandRegister(state: ClientSession) {
         ServerResponse(101, "PENDING")
     else
         ServerResponse(201, "REGISTERED")
-    response.data["Domain"] = gServerDomain.toString()
-    response.data["Workspace-ID"] = wid.toString()
-    response.sendCatching(state.conn, "Error sending registration confirmation msg")
+    response.attach("Domain", gServerDomain)
+        .attach("Workspace-ID", wid)
+        .sendCatching(state.conn, "Error sending registration confirmation msg")
 }
 
 private fun checkInRegNetwork(addr: InetAddress): Result<Boolean> {
@@ -549,10 +533,9 @@ private fun checkInRegNetwork(addr: InetAddress): Result<Boolean> {
         .getString("global.registration_subnet")
         ?.split(",")
         ?: return ServerException("Missing registration subnet in server config").toFailure()
-    ip4networks.forEach {
-        val cidrCheck = CIDRUtils.fromString(it)
-        if (cidrCheck != null) {
-            if (cidrCheck.isInRange(addrStr).getOrElse { e -> return e.toFailure() })
+    ip4networks.forEach { ipstr ->
+        CIDRUtils.fromString(ipstr)?.let {
+            if (it.isInRange(addrStr).getOrElse { e -> return e.toFailure() })
                 return true.toSuccess()
         }
     }
@@ -561,10 +544,9 @@ private fun checkInRegNetwork(addr: InetAddress): Result<Boolean> {
         .getString("global.registration_subnet6")
         ?.split(",")
         ?: return ServerException("Missing registration subnet in server config").toFailure()
-    ip6networks.forEach {
-        val cidrCheck = CIDRUtils.fromString(it)
-        if (cidrCheck != null) {
-            if (cidrCheck.isInRange(addrStr).getOrElse { e -> return e.toFailure() })
+    ip6networks.forEach { ipstr ->
+        CIDRUtils.fromString(ipstr)?.let {
+            if (it.isInRange(addrStr).getOrElse { e -> return e.toFailure() })
                 return true.toSuccess()
         }
     }

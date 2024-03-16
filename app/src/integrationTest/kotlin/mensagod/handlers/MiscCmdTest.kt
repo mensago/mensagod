@@ -34,7 +34,7 @@ class MiscCmdTest {
             assertEquals(ADMIN_PROFILE_DATA["wid"], response.data["Workspace-ID"])
         }.run()
 
-        // Test Case #1: Not found
+        // Test Case #2: Not found
         CommandTest(
             "getWID", SessionState(
                 ClientRequest("GETWID").attach("User-ID", "unknownUser")
@@ -54,9 +54,8 @@ class MiscCmdTest {
         // Test Case #1: No Updates Requested
         CommandTest(
             "idle.1",
-            SessionState(
-                ClientRequest("IDLE"), null, LoginState.NoSession
-            ), ::commandIdle
+            SessionState(ClientRequest("IDLE"), null, LoginState.NoSession),
+            ::commandIdle
         ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(200)
