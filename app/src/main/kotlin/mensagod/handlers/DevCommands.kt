@@ -5,7 +5,10 @@ import libkeycard.MissingFieldException
 import libmensago.ClientRequest
 import libmensago.MServerPath
 import libmensago.ServerResponse
-import mensagod.*
+import mensagod.CancelException
+import mensagod.ClientSession
+import mensagod.DBConn
+import mensagod.LocalFS
 import mensagod.dbcmds.*
 import org.apache.commons.io.FileUtils
 import java.security.SecureRandom
@@ -27,9 +30,8 @@ fun commandDevKey(state: ClientSession) {
     }
 
     val success = dualChallengeDevice(state, oldkey, newkey).getOrElse {
-        logError("commandDevice.dualChallengeDevice exception: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "commandDevice.dualChallengeDevice exception: $it",
             "Error authenticating client device for key update"
         )
         return
@@ -42,9 +44,8 @@ fun commandDevKey(state: ClientSession) {
     }
 
     updateDeviceKey(DBConn(), state.wid!!, state.devid!!, newkey)?.let {
-        logError("commandDevice.updateDeviceKey exception: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "commandDevice.updateDeviceKey exception: $it",
             "Error updating device key"
         )
         return
@@ -60,9 +61,8 @@ fun commandGetDeviceInfo(state: ClientSession) {
     val devID = state.getRandomID("Device-ID", false)
     val db = DBConn()
     val infoList = getDeviceInfo(db, state.wid!!, devID).getOrElse {
-        logError("commandGetDeviceInfo.getDeviceInfo exception for ${state.wid!!}: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "commandGetDeviceInfo.getDeviceInfo exception for ${state.wid!!}: $it",
             "Error getting device info"
         )
         return
@@ -72,11 +72,7 @@ fun commandGetDeviceInfo(state: ClientSession) {
         return
     }
     val response = if (devID != null) {
-        ServerResponse(
-            200, "OK", "", mutableMapOf(
-                "Device-Info" to infoList[0].second.toString()
-            )
-        )
+        ServerResponse(200, "OK").attach("Device-Info", infoList[0].second)
     } else {
         val data = infoList.associate { Pair(it.first.toString(), it.second.toString()) }
             .toMutableMap()
@@ -94,9 +90,8 @@ fun commandKeyPkg(state: ClientSession) {
 
     val db = DBConn()
     val devStatus = getDeviceStatus(db, state.wid!!, devID).getOrElse {
-        logError("commandKeyPkg.getDeviceState exception for ${state.wid!!}: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "commandKeyPkg.getDeviceState exception for ${state.wid!!}: $it",
             "Error getting device status"
         )
         return
@@ -133,9 +128,8 @@ fun commandKeyPkg(state: ClientSession) {
     val lfs = LocalFS.get()
     val tempHandle = lfs.makeTempFile(state.wid!!, keyInfo.value.length.toLong())
         .getOrElse {
-            logError("commandKeyPkg.makeTempFile exception for ${state.wid!!}: $it")
-            state.quickResponse(
-                300, "INTERNAL SERVER ERROR",
+            state.internalError(
+                "commandKeyPkg.makeTempFile exception for ${state.wid!!}: $it",
                 "Error creating key info file"
             )
             return
@@ -145,9 +139,8 @@ fun commandKeyPkg(state: ClientSession) {
         val ostream = tempHandle.getFile().outputStream()
         ostream.write(keyInfo.value.encodeToByteArray())
     }.getOrElse {
-        logError("commandKeyPkg.writeTempFile exception for ${state.wid!!}: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "commandKeyPkg.writeTempFile exception for ${state.wid!!}: $it",
             "Error saving key info file"
         )
         return
@@ -155,44 +148,38 @@ fun commandKeyPkg(state: ClientSession) {
 
     val keyInfoPath = MServerPath("/ keys ${state.wid!!}")
     val keyInfoHandle = lfs.entry(keyInfoPath)
-    val exists = keyInfoHandle.exists().getOrElse {
-        logError("commandKeyPkg.keyInfoDirExists exception for ${state.wid!!}: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+    keyInfoHandle.exists().getOrElse {
+        state.internalError(
+            "commandKeyPkg.keyInfoDirExists exception for ${state.wid!!}: $it",
             "Error checking for key info directory"
         )
         return
-    }
-    if (!exists) {
+    }.onFalse {
         keyInfoHandle.makeDirectory()?.let {
-            logError("commandKeyPkg.makeKeyInfoDir exception for ${state.wid!!}: $it")
-            state.quickResponse(
-                300, "INTERNAL SERVER ERROR",
+            state.internalError(
+                "commandKeyPkg.makeKeyInfoDir exception for ${state.wid!!}: $it",
                 "Error creating key info directory"
             )
             return
         }
     }
     tempHandle.moveTo(keyInfoPath)?.let {
-        logError("commandKeyPkg.installKeyInfo exception for ${state.wid!!}: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "commandKeyPkg.installKeyInfo exception for ${state.wid!!}: $it",
             "Error installing key info"
         )
         return
     }
     addKeyInfo(db, state.wid!!, devID, tempHandle.path)?.let {
-        logError("commandKeyPkg.addKeyInfo exception for ${state.wid!!}: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "commandKeyPkg.addKeyInfo exception for ${state.wid!!}: $it",
             "Error adding key info to database"
         )
         return
     }
     updateDeviceStatus(db, state.wid!!, devID, DeviceStatus.Approved)?.let {
-        logError("commandKeyPkg.updateDeviceStatus exception for ${state.wid!!}: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "commandKeyPkg.updateDeviceStatus exception for ${state.wid!!}: $it",
             "Error approving device"
         )
         return
@@ -209,9 +196,8 @@ fun commandRemoveDevice(state: ClientSession) {
 
     val db = DBConn()
     removeDevice(db, state.wid!!, devid)?.let {
-        logError("commandRemoveDevice.removeDevice exception for ${state.wid!!}: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "commandRemoveDevice.removeDevice exception for ${state.wid!!}: $it",
             "Error removing device"
         )
         return
@@ -229,9 +215,8 @@ fun commandSetDeviceInfo(state: ClientSession) {
     val devInfo = schema.getCryptoString("Device-Info", state.message.data)!!
 
     setDeviceInfo(DBConn(), state.wid!!, state.devid!!, devInfo)?.let {
-        logError("commandSetDeviceInfo.setDeviceInfo exception for ${state.wid!!}: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
+        state.internalError(
+            "commandSetDeviceInfo.setDeviceInfo exception for ${state.wid!!}: $it",
             "Error updating device info"
         )
         return
