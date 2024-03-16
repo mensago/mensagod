@@ -206,6 +206,11 @@ class MiscCmdTest {
     }
 
     @Test
+    fun sendLargeTest() {
+        // TODO: Implement test for SENDLARGE
+    }
+
+    @Test
     fun setStatusTest() {
         setupTest("handlers.setStatus")
         val db = DBConn()

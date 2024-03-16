@@ -135,6 +135,14 @@ object Schemas {
         MsgField("Domain", MsgFieldType.Domain, true),
     )
 
+    val sendLarge = Schema(
+        MsgField("Size", MsgFieldType.Integer, true),
+        MsgField("Hash", MsgFieldType.CryptoString, true),
+        MsgField("Domain", MsgFieldType.Domain, true),
+        MsgField("TempName", MsgFieldType.String, false),
+        MsgField("Offset", MsgFieldType.Integer, false),
+    )
+
     val setDeviceInfo = Schema(MsgField("Device-Info", MsgFieldType.CryptoString, true))
 
     val setPassword = Schema(

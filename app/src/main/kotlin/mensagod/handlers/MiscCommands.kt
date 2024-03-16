@@ -1,8 +1,12 @@
 package mensagod.handlers
 
+import keznacl.UnsupportedAlgorithmException
+import keznacl.getType
 import keznacl.onFalse
+import keznacl.toHash
 import libkeycard.MAddress
 import libkeycard.MissingFieldException
+import libmensago.MServerPath
 import libmensago.ServerResponse
 import mensagod.*
 import mensagod.auth.AuthAction
@@ -10,6 +14,8 @@ import mensagod.auth.WIDActor
 import mensagod.auth.WorkspaceTarget
 import mensagod.dbcmds.*
 import mensagod.delivery.queueMessageForDelivery
+import java.time.Instant
+import java.util.*
 
 // GETWID(User-ID, Domain="")
 fun commandGetWID(state: ClientSession) {
@@ -118,7 +124,110 @@ fun commandSend(state: ClientSession) {
 
 // SENDLARGE(Size, Hash, Domain, Name=null, Offset=null)
 fun commandSendLarge(state: ClientSession) {
-    TODO("Implement commandSendLarge($state)")
+    val schema = Schemas.sendLarge
+    if (!state.requireLogin(schema)) return
+
+    val domain = schema.getDomain("Domain", state.message.data)!!
+    val sender = resolveWID(DBConn(), state.wid!!).getOrElse {
+        state.internalError(
+            "Error resolving address for wid ${state.wid}",
+            "Error getting sender address for workspace id"
+        )
+        return
+    } ?: run {
+        state.internalError(
+            "Logged in wid ${state.wid} is non-resolvable",
+            "Server workspace ID state error"
+        )
+        return
+    }
+
+    val clientHash = schema.getCryptoString("Hash", state.message.data)!!.toHash() ?: run {
+        state.quickResponse(400, "BAD REQUEST", "Invalid Hash field")
+        return
+    }
+
+    // Both TempName and Offset must be present when resuming
+    var tempName = schema.getString("TempName", state.message.data)
+    if (tempName != null && !MServerPath.checkFileName(tempName)) {
+        state.quickResponse(400, "BAD REQUEST", "Invalid TempName field ")
+        return
+    }
+    val resumeOffset = schema.getLong("Offset", state.message.data)
+    if ((tempName == null && resumeOffset != null) || (tempName != null && resumeOffset == null)) {
+        state.quickResponse(
+            400, "BAD REQUEST",
+            "SendLarge resume requires both TempName and Offset fields",
+        )
+        return
+    }
+
+    val fileSize = schema.getLong("Size", state.message.data)!!
+
+    val config = ServerConfig.get()
+    if (fileSize > config.getInteger("performance.max_message_size")!! * 0x10_000) {
+        state.quickResponse(414, "LIMIT REACHED")
+        return
+    }
+
+    // This works because if resumeOffset == null, tempName must also be null at this point. We're
+    // given a temporary name by the client only when resuming. Being that we have to have a name
+    // for the temporary file, we create one here.
+    if (resumeOffset == null)
+        tempName =
+            "${Instant.now().epochSecond}.$fileSize.${UUID.randomUUID().toString().lowercase()}"
+
+    ServerResponse(100, "CONTINUE")
+        .attach("TempName", tempName!!)
+        .sendCatching(
+            state.conn,
+            "commandSendLarge: Error sending continue message for wid ${state.wid!!}"
+        ).onFalse { return }
+
+    val tempHandle = MServerPath.fromString("/ tmp ${state.wid!!} $tempName")!!.toHandle()
+    state.readFileData(fileSize, tempHandle, resumeOffset)?.let {
+        // Transfer was interrupted. We won't delete the file--we will leave it so the client can
+        // attempt to resume the upload later.
+        ServerResponse(
+            305, "INTERRUPTED",
+            "Interruption source: $it"
+        ).sendCatching(state.conn, "Send interrupted for wid ${state.wid}")
+        return
+    }
+
+    val serverHash = tempHandle.hashFile(clientHash.getType()!!).getOrElse {
+        if (it is UnsupportedAlgorithmException) {
+            state.quickResponse(
+                309, "UNSUPPORTED ALGORITHM",
+                "Hash algorithm ${clientHash.prefix} not unsupported"
+            )
+        } else {
+            state.internalError(
+                "commandSendLarge: Error hashing message file: $it",
+                "Server error hashing message file"
+            )
+        }
+        return
+    }
+
+    if (serverHash != clientHash) {
+        tempHandle.delete()?.let {
+            logError("commandSendLarge: Error deleting invalid temp file: $it")
+        }
+        state.quickResponse(410, "HASH MISMATCH", "Hash mismatch on uploaded file")
+        return
+    }
+
+    tempHandle.moveToOutbox(state.wid!!)?.let {
+        state.internalError(
+            "commandSendLarge: Error installing temp file: $it",
+            "Server error finishing message upload"
+        )
+        return
+    }
+    queueMessageForDelivery(sender, domain, tempHandle.path)
+
+    state.quickResponse(200, "OK")
 }
 
 // SETSTATUS(Workspace-ID, Status)
