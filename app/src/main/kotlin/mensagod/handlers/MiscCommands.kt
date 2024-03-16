@@ -48,7 +48,7 @@ fun commandIdle(state: ClientSession) {
     val schema = Schemas.idle
     val updateTime = schema.getUnixTime("CountUpdates", state.message.data)
     if (updateTime == null) {
-        QuickResponse.sendOK("", state.conn)
+        state.quickResponse(200, "OK")
         return
     }
 

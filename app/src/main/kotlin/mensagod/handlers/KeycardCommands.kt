@@ -455,7 +455,7 @@ fun commandGetCard(state: ClientSession) {
         return
     }
     if (entries.isEmpty()) {
-        QuickResponse.sendNotFound("", state.conn)
+        state.quickResponse(404, "NOT FOUND")
         return
     }
 
@@ -522,7 +522,7 @@ fun commandIsCurrent(state: ClientSession) {
         return
     }
     if (entries.isEmpty()) {
-        QuickResponse.sendNotFound("Workspace keycard not found", state.conn)
+        state.quickResponse(404, "NOT FOUND")
         return
     }
     val entryIndex = if (wid != null) {

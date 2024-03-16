@@ -117,7 +117,7 @@ fun commandPreregister(state: ClientSession) {
             return
         }
     if (!isAuthorized) {
-        QuickResponse.sendForbidden("Only admins can preregister accounts", state.conn)
+        state.quickResponse(403, "FORBIDDEN", "Only admins can preregister accounts")
         return
     }
 

@@ -21,18 +21,6 @@ object QuickResponse {
     }
 
     /**
-     * Static method which sends a 403 FORBIDDEN message to the client. It
-     * suppresses network errors because we're already in an error state.
-     *
-     * @throws kotlinx.serialization.SerializationException encoding-specific errors
-     * @throws IllegalArgumentException if the encoded input does not comply format's specification
-     */
-    fun sendForbidden(info: String, conn: Socket) {
-        ServerResponse(403, "FORBIDDEN", info)
-            .sendCatching(conn, "Error sending quick Forbidden")
-    }
-
-    /**
      * Static method which sends a 300 INTERNAL SERVER ERROR message to the client. It
      * suppresses network errors because we're already in an error state.
      *
@@ -42,31 +30,6 @@ object QuickResponse {
     fun sendInternalError(info: String, conn: Socket) {
         ServerResponse(300, "INTERNAL SERVER ERROR", info)
             .sendCatching(conn, "Error sending quick Internet Error")
-    }
-
-    /**
-     * Static method which sends a 200 OK message to the client. It suppresses network errors
-     * because we're already in an error state.
-     *
-     * @throws kotlinx.serialization.SerializationException encoding-specific errors
-     * @throws IllegalArgumentException if the encoded input does not comply format's specification
-     */
-    fun sendOK(info: String, conn: Socket) {
-        ServerResponse(200, "OK", info)
-            .sendCatching(conn, "Error sending quick OK")
-    }
-
-
-    /**
-     * Static method which sends a 404 NOT FOUND message to the client. It suppresses network errors
-     * because we're already in an error state.
-     *
-     * @throws kotlinx.serialization.SerializationException encoding-specific errors
-     * @throws IllegalArgumentException if the encoded input does not comply format's specification
-     */
-    fun sendNotFound(info: String, conn: Socket) {
-        ServerResponse(404, "RESOURCE NOT FOUND", info)
-            .sendCatching(conn, "Error sending quick Not Found")
     }
 }
 

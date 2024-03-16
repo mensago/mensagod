@@ -19,7 +19,10 @@ fun commandDevKey(state: ClientSession) {
     val newkey = schema.getCryptoString("New-Key", state.message.data)!!
 
     if (devid != state.devid) {
-        QuickResponse.sendForbidden("A device can update only its own key", state.conn)
+        state.quickResponse(
+            403, "FORBIDDEN",
+            "A device can update only its own key"
+        )
         return
     }
 
