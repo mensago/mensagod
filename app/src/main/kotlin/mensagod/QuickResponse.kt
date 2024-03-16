@@ -1,9 +1,6 @@
 package mensagod
 
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import libmensago.ServerResponse
-import libmensago.writeMessage
 import java.net.Socket
 
 object QuickResponse {
@@ -20,20 +17,3 @@ object QuickResponse {
             .sendCatching(conn, "Error sending quick Internet Error")
     }
 }
-
-/**
- * Works just like send(), except it is intended to be used in instances where nothing useful
- * can be done for any exceptions thrown. Instead, an error is logged for any exception
- * conditions. It returns true upon success and false upon error.
- */
-fun ServerResponse.sendCatching(conn: Socket, message: String): Boolean {
-    try {
-        val jsonStr = Json.encodeToString(this)
-        writeMessage(conn.getOutputStream(), jsonStr.encodeToByteArray())
-    } catch (e: Exception) {
-        logDebug("$message: $e")
-        return false
-    }
-    return true
-}
-

@@ -6,6 +6,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import mensagod.logDebug
 import java.io.InputStream
 import java.net.Socket
 
@@ -50,6 +51,22 @@ class ServerResponse(
         }
     }
 
+    /**
+     * Works just like send(), except it is intended to be used in instances where nothing useful
+     * can be done for any exceptions thrown. Instead, an error is logged for any exception
+     * conditions. It returns true upon success and false upon error.
+     */
+    fun sendCatching(conn: Socket, message: String): Boolean {
+        try {
+            val jsonStr = Json.encodeToString(this)
+            writeMessage(conn.getOutputStream(), jsonStr.encodeToByteArray())
+        } catch (e: Exception) {
+            logDebug("$message: $e")
+            return false
+        }
+        return true
+    }
+    
     /** Returns a CmdStatus object based on the contents of the server response */
     fun toStatus(): CmdStatus {
         return CmdStatus(code, status, info)
