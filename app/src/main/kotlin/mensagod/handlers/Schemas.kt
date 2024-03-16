@@ -40,6 +40,11 @@ object Schemas {
         MsgField("New-Response", MsgFieldType.String, true),
     )
 
+    val download = Schema(
+        MsgField("Path", MsgFieldType.Path, true),
+        MsgField("Offset", MsgFieldType.Long, false),
+    )
+
     val exists = Schema(MsgField("Path", MsgFieldType.Path, true))
 
     // GETCARD is too complicated for standard schema verification

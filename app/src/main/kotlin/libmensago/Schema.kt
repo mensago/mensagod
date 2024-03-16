@@ -15,6 +15,7 @@ enum class MsgFieldType {
     Domain,
     Hash,
     Integer,
+    Long,
     MAddress,
     Path,
     RandomID,
@@ -65,6 +66,14 @@ class Schema(vararg args: MsgField) {
                 MsgFieldType.Domain -> Domain.checkFormat(data[field.name]!!)
                 MsgFieldType.Integer -> {
                     val result = runCatching { data[field.name]!!.toInt() }
+                    if (result.isSuccess)
+                        result.getOrNull()!! >= 0
+                    else
+                        false
+                }
+
+                MsgFieldType.Long -> {
+                    val result = runCatching { data[field.name]!!.toLong() }
                     if (result.isSuccess)
                         result.getOrNull()!! >= 0
                     else
@@ -123,21 +132,6 @@ class Schema(vararg args: MsgField) {
     }
 
     /**
-     * Returns the requested field as a Long or null if (a) the field isn't in the schema or
-     * (b) the field's data is invalid or isn't present in the case of optional fields. Because the
-     * API does not deal in negative values, integers returned by this call are non-negative, but
-     * the call does not return UInt for compatibility reasons -- Int is used everywhere in the
-     * Java API. :(
-     */
-    fun getLong(field: String, data: Map<String, String>): Long? {
-        if (field !in fields.keys || field !in data.keys) return null
-        return runCatching {
-            val out = data[field]!!.toLong()
-            if (out >= 0) out else null
-        }.getOrElse { null }
-    }
-
-    /**
      * Returns the requested field as an Int or null if (a) the field isn't in the schema or
      * (b) the field's data is invalid or isn't present in the case of optional fields. Because the
      * API does not deal in negative values, integers returned by this call are non-negative, but
@@ -148,6 +142,21 @@ class Schema(vararg args: MsgField) {
         if (field !in fields.keys || field !in data.keys) return null
         return runCatching {
             val out = data[field]!!.toInt()
+            if (out >= 0) out else null
+        }.getOrElse { null }
+    }
+
+    /**
+     * Returns the requested field as a Long or null if (a) the field isn't in the schema or
+     * (b) the field's data is invalid or isn't present in the case of optional fields. Because the
+     * API does not deal in negative values, integers returned by this call are non-negative, but
+     * the call does not return UInt for compatibility reasons -- Int is used everywhere in the
+     * Java API. :(
+     */
+    fun getLong(field: String, data: Map<String, String>): Long? {
+        if (field !in fields.keys || field !in data.keys) return null
+        return runCatching {
+            val out = data[field]!!.toLong()
             if (out >= 0) out else null
         }.getOrElse { null }
     }

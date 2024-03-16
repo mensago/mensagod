@@ -33,11 +33,12 @@ fun commandDelete(state: ClientSession) {
 
 // DOWNLOAD(Path,Offset=0)
 fun commandDownload(state: ClientSession) {
-
-    if (!state.requireLogin()) return
-    val path = state.getPath("Path", true) ?: return
+    val schema = Schemas.download
+    if (!state.requireLogin(schema)) return
+    val path = schema.getPath("Path", state.message.data)!!
     val lfs = LocalFS.get()
     val handle = lfs.entry(path)
+    val offset = schema.getLong("Offset", state.message.data) ?: 0L
 
     // The FileTarget class verifies that the path is, indeed, pointing to a file
     val fileTarget = FileTarget.fromPath(path) ?: run {
@@ -67,14 +68,6 @@ fun commandDownload(state: ClientSession) {
         return
     }
 
-    val offset = if (state.message.hasField("Offset")) {
-        runCatching {
-            state.message.data["Offset"]!!.toLong()
-        }.getOrElse {
-            state.quickResponse(400, "BAD REQUEST", "Invalid value for Offset")
-            return
-        }
-    } else 0L
     val fileSize = handle.size().getOrElse {
         state.internalError(
             "commandDownload: Error getting size of $path: $it",
