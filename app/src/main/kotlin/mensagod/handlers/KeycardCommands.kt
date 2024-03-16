@@ -493,22 +493,17 @@ fun commandGetCard(state: ClientSession) {
 }
 
 fun commandIsCurrent(state: ClientSession) {
+    val schema = Schemas.isCurrent
+    schema.validate(state.message.data) { name, e ->
+        val msg = if (e is MissingFieldException)
+            "Missing required field $name"
+        else
+            "Bad value for field $name"
+        state.quickResponse(400, "BAD REQUEST", msg)
+    } ?: return
 
-    if (!state.message.hasField("Index")) {
-        state.quickResponse(400, "BAD REQUEST", "Missing required field Index")
-        return
-    }
-    val index = runCatching {
-        state.message.data["Index"]!!.toUInt()
-    }.getOrElse {
-        state.quickResponse(400, "BAD REQUEST", "Missing required field Index")
-        return
-    }
-
-    val wid = if (state.message.hasField("Workspace-ID"))
-        state.getRandomID("Workspace-ID", true) ?: return
-    else
-        null
+    val index = schema.getInteger("Index", state.message.data)!!.toUInt()
+    val wid = schema.getRandomID("Workspace-ID", state.message.data)
 
     val db = DBConn()
     val entries = getEntries(db, wid, 0U).getOrElse {

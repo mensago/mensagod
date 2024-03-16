@@ -66,6 +66,11 @@ object Schemas {
         MsgField("CountUpdates", MsgFieldType.UnixTime, false)
     )
 
+    val isCurrent = Schema(
+        MsgField("Index", MsgFieldType.Integer, true),
+        MsgField("Workspace-ID", MsgFieldType.RandomID, false),
+    )
+
     val list = Schema(
         MsgField("Time", MsgFieldType.UnixTime, false),
         MsgField("Path", MsgFieldType.Path, false)
