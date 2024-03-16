@@ -18,6 +18,14 @@ class ClientRequest(
 ) {
 
     /**
+     * Functional method which adds the requested data to the message.
+     */
+    fun attach(name: String, value: Any): ClientRequest {
+        data[name] = value.toString()
+        return this
+    }
+
+    /**
      * Convenience function which returns true if the request has the specified field.
      */
     fun hasField(fieldname: String): Boolean {
