@@ -144,17 +144,14 @@ fun getRemoteServerConfig(domain: Domain, dns: DNSHandler): Result<List<ServiceC
 
     // Having gotten this far, we have only one other option: attempt to connect to the domain on
     // port 2001.
-    val addr = try {
-        InetAddress.getByName(itDomain.toString())
-    } catch (e: Exception) {
-        return Result.failure(e)
-    }
+    val addr = runCatching { InetAddress.getByName(itDomain.toString()) }
+        .getOrElse { return it.toFailure() }
 
     val conn = ServerConnection()
     if (conn.connect(addr, 2001) == null)
         return Result.success(listOf(ServiceConfig(itDomain, 2001, 0)))
 
-    return Result.failure(ResourceNotFoundException())
+    return ResourceNotFoundException().toFailure()
 }
 
 //

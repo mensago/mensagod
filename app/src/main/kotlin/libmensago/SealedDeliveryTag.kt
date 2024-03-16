@@ -61,11 +61,9 @@ class SealedDeliveryTag(
             val data = readEnvelopeFile(file, true)
                 .getOrElse { return it.toFailure() }
 
-            val out = try {
+            val out = runCatching {
                 Json.decodeFromString<SealedDeliveryTag>(data.first)
-            } catch (e: Exception) {
-                return Result.failure(e)
-            }
+            }.getOrElse { return it.toFailure() }
 
             return out.toSuccess()
         }

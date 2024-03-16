@@ -73,11 +73,9 @@ sealed class Argon2Password : Password() {
      * @exception IllegalArgumentException Returned for Base64 decoding errors
      */
     fun setFromInfo(pwInfo: PasswordInfo): Throwable? {
-        try {
+        runCatching {
             salt = pwInfo.salt
-        } catch (e: Exception) {
-            return e
-        }
+        }.getOrElse { return it }
 
         val paramData = parseParameters(pwInfo.parameters).getOrElse { return it }
         memory = paramData.first
@@ -113,14 +111,12 @@ sealed class Argon2Password : Password() {
      */
     override fun updateHash(pw: String): Result<String> {
 
-        try {
+        runCatching {
             hash = hasher.hash(
                 iterations, memory, threads, pw.toCharArray(),
                 Charset.defaultCharset(), rawSalt
             )
-        } catch (e: Exception) {
-            return e.toFailure()
-        }
+        }.getOrElse { return it.toFailure() }
 
         return hash.toSuccess()
     }
@@ -156,22 +152,16 @@ sealed class Argon2Password : Password() {
 
         val paramParts = parseParameters(parts[2]).getOrElse { return it }
 
-        try {
+        runCatching {
             version = versionParts[1].toInt()
             memory = paramParts.first
             iterations = paramParts.second
             threads = paramParts.third
-        } catch (e: Exception) {
-            return e
-        }
+        }.getOrElse { return it }
 
         parameters = parts[2]
         salt = parts[3]
-        rawSalt = try {
-            Base64.getDecoder().decode(salt)
-        } catch (e: Exception) {
-            return e
-        }
+        rawSalt = runCatching { Base64.getDecoder().decode(salt) }.getOrElse { return it }
 
         return null
     }
@@ -210,9 +200,9 @@ sealed class Argon2Password : Password() {
             if (!listOf("ARGON2D", "ARGON2I", "ARGON2ID").contains(info.algorithm))
                 return BadValueException("${info.algorithm} not supported by Argon2Password class")
 
-            try {
+            runCatching {
                 Base64.getDecoder().decode(info.salt)
-            } catch (e: Exception) {
+            }.getOrElse {
                 return IllegalArgumentException()
             }
 
@@ -221,25 +211,25 @@ sealed class Argon2Password : Password() {
                 .associateBy({ it.split('=')[0] }, { it.split('=')[1] })
 
             if (paramParts["m"] != null) {
-                try {
+                runCatching {
                     paramParts["m"]!!.toInt()
-                } catch (e: Exception) {
+                }.getOrElse {
                     return BadValueException("bad memory value in parameters")
                 }
             } else return MissingDataException("memory value missing from parameters")
 
             if (paramParts["t"] != null) {
-                try {
+                runCatching {
                     paramParts["t"]!!.toInt()
-                } catch (e: Exception) {
+                }.getOrElse {
                     return BadValueException("bad time cost value in parameters")
                 }
             } else return MissingDataException("time cost value missing from parameters")
 
             if (paramParts["p"] != null) {
-                try {
+                runCatching {
                     paramParts["p"]!!.toInt()
-                } catch (e: Exception) {
+                }.getOrElse {
                     return BadValueException("bad thread value in parameters")
                 }
             } else return MissingDataException("thread value missing from parameters")

@@ -421,9 +421,9 @@ fun commandGetCard(state: ClientSession) {
         state.quickResponse(400, "BAD REQUEST", "Missing required field Start-Index")
         return
     }
-    val startIndex = try {
+    val startIndex = runCatching {
         state.message.data["Start-Index"]!!.toUInt()
-    } catch (e: Exception) {
+    }.getOrElse {
         state.quickResponse(400, "BAD REQUEST", "Bad value for field Start-Index")
         return
     }
@@ -449,9 +449,9 @@ fun commandGetCard(state: ClientSession) {
 
 
     val endIndex = if (state.message.hasField("End-Index")) {
-        val end = try {
+        val end = runCatching {
             state.message.data["End-Index"]!!.toUInt()
-        } catch (e: Exception) {
+        }.getOrElse {
             state.quickResponse(400, "BAD REQUEST", "Bad value for field End-Index")
             return
         }
@@ -488,10 +488,8 @@ fun commandGetCard(state: ClientSession) {
     if (!response.sendCatching(state.conn, "commandGetCard: Failed to send entry count"))
         return
 
-    val istream = try {
-        state.conn.getInputStream()
-    } catch (e: Exception) {
-        logDebug("commandGetCard: error opening input stream: $e")
+    val istream = runCatching { state.conn.getInputStream() }.getOrElse {
+        logDebug("commandGetCard: error opening input stream: $it")
         return
     }
     val req = ClientRequest.receive(istream).getOrElse {
@@ -521,9 +519,9 @@ fun commandIsCurrent(state: ClientSession) {
         state.quickResponse(400, "BAD REQUEST", "Missing required field Index")
         return
     }
-    val index = try {
+    val index = runCatching {
         state.message.data["Index"]!!.toUInt()
-    } catch (e: Exception) {
+    }.getOrElse {
         state.quickResponse(400, "BAD REQUEST", "Missing required field Index")
         return
     }
@@ -553,9 +551,9 @@ fun commandIsCurrent(state: ClientSession) {
             )
             return
         }
-        try {
+        runCatching {
             userEntry.getFieldInteger("Index")!!.toUInt()
-        } catch (e: Exception) {
+        }.getOrElse {
             state.internalError(
                 "Invalid index in commandIsCurrent",
                 "Bad data in keycard"
@@ -570,9 +568,9 @@ fun commandIsCurrent(state: ClientSession) {
             )
             return
         }
-        try {
+        runCatching {
             orgEntry.getFieldInteger("Index")!!.toUInt()
-        } catch (e: Exception) {
+        }.getOrElse {
             state.internalError(
                 "Invalid index in commandIsCurrent",
                 "Bad data in keycard"

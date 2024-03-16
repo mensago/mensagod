@@ -45,11 +45,9 @@ import java.util.*
 
 /** Returns the canonical version of the path specified. */
 fun getPathForTest(testName: String): String? {
-    return try {
+    return runCatching {
         Paths.get("build", "testfiles", testName).toAbsolutePath().toString()
-    } catch (e: Exception) {
-        null
-    }
+    }.getOrElse { null }
 }
 
 /** Creates a new test folder for file-based tests and returns the top-level path created. */

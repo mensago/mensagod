@@ -131,12 +131,10 @@ class Schema(vararg args: MsgField) {
      */
     fun getLong(field: String, data: Map<String, String>): Long? {
         if (field !in fields.keys || field !in data.keys) return null
-        return try {
+        return runCatching {
             val out = data[field]!!.toLong()
             if (out >= 0) out else null
-        } catch (e: Exception) {
-            null
-        }
+        }.getOrElse { null }
     }
 
     /**
@@ -148,12 +146,10 @@ class Schema(vararg args: MsgField) {
      */
     fun getInteger(field: String, data: Map<String, String>): Int? {
         if (field !in fields.keys || field !in data.keys) return null
-        return try {
+        return runCatching {
             val out = data[field]!!.toInt()
             if (out >= 0) out else null
-        } catch (e: Exception) {
-            null
-        }
+        }.getOrElse { null }
     }
 
     /**
@@ -198,11 +194,9 @@ class Schema(vararg args: MsgField) {
      */
     fun getUnixTime(field: String, data: Map<String, String>): Long? {
         if (field !in fields.keys || field !in data.keys) return null
-        return try {
+        return runCatching {
             data[field]!!.toLong()
-        } catch (e: Exception) {
-            null
-        }
+        }.getOrElse { null }
     }
 
     /**

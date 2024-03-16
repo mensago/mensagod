@@ -1,52 +1,43 @@
 package libmensago
 
+import keznacl.toFailure
+
 object Platform {
     val isWindows = System.getProperty("os.name").startsWith("windows", true)
 
     fun getHostname(): String {
         val envKey = if (isWindows) "COMPUTERNAME" else "HOSTNAME"
-        val env = try {
+        val env = runCatching {
             System.getenv()
-        } catch (e: Exception) {
-            null
-        }
+        }.getOrElse { null }
         if (!env?.get(envKey).isNullOrEmpty())
             return env!![envKey]!!.lowercase().trim()
 
-        val process = try {
+        val process = runCatching {
             Runtime.getRuntime().exec(arrayOf("hostname"))
-        } catch (e: Exception) {
+        }.getOrElse {
             return "Computer name missing"
         }
         return process.inputReader().readLine().lowercase().trim()
     }
 
     fun getUsername(): Result<String> {
-        val env = try {
-            System.getenv()
-        } catch (e: Exception) {
-            return Result.failure(e)
-        }
+        val env = runCatching { System.getenv() }
+            .getOrElse { return it.toFailure() }
         val usernameKey = if (isWindows) "USERNAME" else "USER"
         return Result.success(env[usernameKey]?.trim() ?: "User name missing")
     }
 
     fun getOS(): Result<String> {
         // This is a little weird because on Windows, it includes the version, as well
-        val osName = try {
-            System.getProperty("os.name")
-        } catch (e: Exception) {
-            return Result.failure(e)
-        }
+        val osName = runCatching { System.getProperty("os.name") }
+            .getOrElse { return it.toFailure() }
 
         if (isWindows)
             return Result.success(osName)
 
-        val osVersion = try {
-            System.getProperty("os.version")
-        } catch (e: Exception) {
-            return Result.failure(e)
-        }
+        val osVersion = runCatching { System.getProperty("os.version") }
+            .getOrElse { return it.toFailure() }
 
         return Result.success("$osName $osVersion")
     }

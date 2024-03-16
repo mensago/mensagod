@@ -102,11 +102,8 @@ class Timestamp(i: Instant? = null) {
          */
         fun fromString(str: String?): Timestamp? {
             if (str == null) return null
-            return try {
-                Timestamp().set(Instant.parse(str))
-            } catch (e: Exception) {
-                return null
-            }
+            return runCatching { Timestamp().set(Instant.parse(str)) }
+                .getOrElse { return null }
         }
 
         /**
@@ -115,11 +112,9 @@ class Timestamp(i: Instant? = null) {
          */
         fun fromDateString(s: String?): Timestamp? {
             if (s == null) return null
-            val date = try {
+            val date = runCatching {
                 LocalDate.parse(s, dateFormatter).atStartOfDay()
-            } catch (e: Exception) {
-                return null
-            }
+            }.getOrElse { return null }
             val instant = date.atZone(ZoneId.of("UTC")).toInstant()
             return Timestamp().set(instant)
         }

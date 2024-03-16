@@ -97,12 +97,12 @@ class DBConn {
         if (!isConnected()) return NotConnectedException().toFailure()
 
         val stmt = prepStatement(s, args).getOrElse { return it.toFailure() }
-        return try {
+        return runCatching {
             stmt.execute()
             val count = stmt.updateCount
             return Result.success(if (count < 0) null else count)
-        } catch (e: Exception) {
-            e.toFailure()
+        }.getOrElse {
+            it.toFailure()
         }
     }
 
@@ -118,13 +118,13 @@ class DBConn {
         if (s.isEmpty()) return EmptyDataException()
         if (!isConnected()) return NotConnectedException()
 
-        return try {
+        return runCatching {
             if (batch == null)
                 batch = conn!!.createStatement()
             batch!!.addBatch(s)
             null
-        } catch (e: Exception) {
-            e
+        }.getOrElse {
+            it
         }
     }
 
@@ -139,12 +139,12 @@ class DBConn {
     fun executeBatch(): Throwable? {
         if (!isConnected()) return NotConnectedException()
         if (batch == null) return EmptyDataException()
-        return try {
+        return runCatching {
             batch!!.executeBatch()
             batch = null
             null
-        } catch (e: Exception) {
-            e
+        }.getOrElse {
+            it
         }
     }
 
@@ -161,12 +161,12 @@ class DBConn {
         if (q.isEmpty()) return EmptyDataException().toFailure()
         if (!isConnected()) return NotConnectedException().toFailure()
 
-        return try {
+        return runCatching {
             val stmt = prepStatement(q, args).getOrThrow()
             val rs = stmt.executeQuery()
             rs.next().toSuccess()
-        } catch (e: Exception) {
-            e.toFailure()
+        }.getOrElse {
+            it.toFailure()
         }
     }
 

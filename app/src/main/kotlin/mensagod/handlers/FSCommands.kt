@@ -68,9 +68,9 @@ fun commandDownload(state: ClientSession) {
     }
 
     val offset = if (state.message.hasField("Offset")) {
-        try {
+        runCatching {
             state.message.data["Offset"]!!.toLong()
-        } catch (e: Exception) {
+        }.getOrElse {
             state.quickResponse(400, "BAD REQUEST", "Invalid value for Offset")
             return
         }

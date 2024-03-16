@@ -33,11 +33,8 @@ class DataFrame {
         if (size < 1) return Result.failure(BadFrameException())
         if (type != FrameType.MultipartFrameStart) return Result.failure(TypeException())
 
-        return try {
-            Result.success(payload.decodeToString().toInt())
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        return runCatching { Result.success(payload.decodeToString().toInt()) }
+            .getOrElse { it.toFailure() }
     }
 
     fun read(conn: InputStream): Throwable? {
@@ -78,14 +75,10 @@ fun writeFrame(conn: OutputStream, frameType: FrameType, payload: ByteArray): Th
     header[1] = payload.size.shr(8).and(255).toByte()
     header[2] = payload.size.and(255).toByte()
 
-    try {
+    return runCatching {
         conn.write(header)
         conn.write(payload)
-    } catch (e: Exception) {
-        return e
-    }
-
-    return null
+    }.exceptionOrNull()
 }
 
 fun readMessage(conn: InputStream): Result<ByteArray> {

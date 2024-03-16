@@ -458,17 +458,17 @@ class ServerConfig {
         // One-off string fields
 
         if (values["network.listen_ip"] != null) {
-            try {
+            runCatching {
                 InetAddress.getByName(values["network.listen_ip"]!! as String)
-            } catch (e: Exception) {
+            }.getOrElse {
                 return "Invalid address for setting network.listen_ip"
             }
         }
 
         if (values["database.host"] != null) {
-            try {
+            runCatching {
                 InetAddress.getByName(values["database.host"]!! as String)
-            } catch (e: Exception) {
+            }.getOrElse {
                 return "Invalid or unknown host for setting database.host"
             }
         }

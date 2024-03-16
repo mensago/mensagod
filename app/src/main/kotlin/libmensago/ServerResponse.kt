@@ -1,6 +1,7 @@
 package libmensago
 
 import keznacl.toFailure
+import keznacl.toSuccess
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -42,13 +43,11 @@ class ServerResponse(
      * @throws java.io.IOException if there was a network error
      */
     fun send(conn: Socket): Throwable? {
-        return try {
+        return runCatching {
             val jsonStr = Json.encodeToString(this)
             writeMessage(conn.getOutputStream(), jsonStr.encodeToByteArray())
             null
-        } catch (e: Exception) {
-            e
-        }
+        }.getOrElse { it }
     }
 
     /**
@@ -57,16 +56,16 @@ class ServerResponse(
      * conditions. It returns true upon success and false upon error.
      */
     fun sendCatching(conn: Socket, message: String): Boolean {
-        try {
+        runCatching {
             val jsonStr = Json.encodeToString(this)
             writeMessage(conn.getOutputStream(), jsonStr.encodeToByteArray())
-        } catch (e: Exception) {
-            logDebug("$message: $e")
+        }.getOrElse {
+            logDebug("$message: $it")
             return false
         }
         return true
     }
-    
+
     /** Returns a CmdStatus object based on the contents of the server response */
     fun toStatus(): CmdStatus {
         return CmdStatus(code, status, info)
@@ -82,13 +81,11 @@ class ServerResponse(
         fun receive(conn: InputStream): Result<ServerResponse> {
 
             val jsonMsg = readStringMessage(conn).getOrElse { return it.toFailure() }
-            val response = try {
+            val response = runCatching {
                 Json.decodeFromString<ServerResponse>(jsonMsg)
-            } catch (e: Exception) {
-                return Result.failure(e)
-            }
+            }.getOrElse { return it.toFailure() }
 
-            return Result.success(response)
+            return response.toSuccess()
         }
     }
 }

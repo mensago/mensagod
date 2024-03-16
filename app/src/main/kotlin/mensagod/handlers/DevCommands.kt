@@ -140,12 +140,12 @@ fun commandKeyPkg(state: ClientSession) {
             )
             return
         }
-    try {
+    runCatching {
         FileUtils.touch(tempHandle.getFile())
         val ostream = tempHandle.getFile().outputStream()
         ostream.write(keyInfo.value.encodeToByteArray())
-    } catch (e: Exception) {
-        logError("commandKeyPkg.writeTempFile exception for ${state.wid!!}: $e")
+    }.getOrElse {
+        logError("commandKeyPkg.writeTempFile exception for ${state.wid!!}: $it")
         state.quickResponse(
             300, "INTERNAL SERVER ERROR",
             "Error saving key info file"

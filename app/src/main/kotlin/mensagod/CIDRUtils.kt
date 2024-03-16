@@ -57,16 +57,10 @@ class CIDRUtils private constructor(
      * @throws UnknownHostException Returned if given a hostname or FQDN that doesn't resolve.
      */
     fun isInRange(ipAddress: String?): Result<Boolean> {
-        val address = try {
-            InetAddress.getByName(ipAddress)
-        } catch (e: Exception) {
-            return e.toFailure()
-        }
+        val address =
+            runCatching { InetAddress.getByName(ipAddress) }.getOrElse { return it.toFailure() }
 
-        val start = BigInteger(
-            1,
-            startAddress.address
-        )
+        val start = BigInteger(1, startAddress.address)
         val end = BigInteger(1, endAddress.address)
         val target = BigInteger(1, address.address)
 

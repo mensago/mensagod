@@ -154,11 +154,11 @@ fun commandPreregister(state: ClientSession) {
             )
             return
         }?.let {
-            try {
+            runCatching {
                 ServerResponse(408, "RESOURCE EXISTS", "workspace ID exists")
                     .send(state.conn)
-            } catch (e: Exception) {
-                logDebug("commandPreregister.checkWorkspace exists send error: $e")
+            }.getOrElse {
+                logDebug("commandPreregister.checkWorkspace exists send error: $it")
             }
             return
         }

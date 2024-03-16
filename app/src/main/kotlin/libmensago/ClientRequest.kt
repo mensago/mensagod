@@ -1,5 +1,6 @@
 package libmensago
 
+import keznacl.toFailure
 import keznacl.toSuccess
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -39,13 +40,11 @@ class ClientRequest(
      * @throws IllegalArgumentException if the encoded input does not comply format's specification
      */
     fun send(conn: OutputStream): Throwable? {
-        return try {
+        return runCatching {
             val jsonStr = Json.encodeToString(this)
             writeMessage(conn, jsonStr.encodeToByteArray())
             null
-        } catch (e: Exception) {
-            e
-        }
+        }.getOrElse { it }
     }
 
     /**
@@ -69,13 +68,11 @@ class ClientRequest(
          */
         fun receive(conn: InputStream): Result<ClientRequest> {
             val jsonMsg = readStringMessage(conn).getOrElse {
-                return Result.failure(java.io.IOException("SysMessage session error"))
+                return java.io.IOException("SysMessage session error").toFailure()
             }
-            val out = try {
+            val out = runCatching {
                 Json.decodeFromString<ClientRequest>(jsonMsg)
-            } catch (e: Exception) {
-                return Result.failure(e)
-            }
+            }.getOrElse { return it.toFailure() }
             return out.toSuccess()
         }
     }

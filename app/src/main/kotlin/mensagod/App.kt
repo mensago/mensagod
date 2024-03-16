@@ -201,12 +201,10 @@ fun connectionWorker(conn: Socket) {
 
 fun main() {
     val server = Server.initialize().getOrElse {
-        try {
+        runCatching {
             logError("Initialization failure: $it")
             println("Initialization failure. Please check the log for more details.")
-        } catch (e: Exception) {
-            println("Initialization failure: $it")
-        }
+        }.getOrElse { println("Initialization failure: $it") }
         return
     }
     server.run()
