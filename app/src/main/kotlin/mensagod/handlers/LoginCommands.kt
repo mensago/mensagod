@@ -18,34 +18,41 @@ import java.security.SecureRandom
 // DEVICE(Deice-ID, Device-Key, Client-Info)
 fun commandDevice(state: ClientSession) {
     if (state.loginState != LoginState.AwaitingDeviceID) {
-        QuickResponse.sendBadRequest("Session mismatch error", state.conn)
+        state.quickResponse(400, "BAD REQUEST", "Session mismatch error")
         return
     }
 
-    val devid = state.getRandomID("Device-ID", true) ?: return
-    val devkey = state.getCryptoString("Device-Key", true) ?: return
-    val devinfo = state.getCryptoString("Device-Info", false)
+    val schema = Schemas.device
+    schema.validate(state.message.data) { name, e ->
+        val msg = if (e is MissingFieldException)
+            "Missing required field $name"
+        else
+            "Bad value for field $name"
+        state.quickResponse(400, "BAD REQUEST", msg)
+    } ?: return
+
+    val devid = schema.getRandomID("Device-ID", state.message.data)!!
+    val devkey = schema.getCryptoString("Device-Key", state.message.data)!!
+    val devinfo = schema.getCryptoString("Device-Info", state.message.data)
 
     val db = DBConn()
     val devstatus = getDeviceStatus(db, state.wid!!, devid).getOrElse {
-        logError("commandDevice.getDeviceStatus exception: $it")
-        QuickResponse.sendInternalError("Server can't get device status", state.conn)
+        state.internalError(
+            "commandDevice.getDeviceStatus exception: $it",
+            "Server can't get device status"
+        )
         return
     }
 
     when (devstatus) {
         DeviceStatus.Blocked -> {
-            if (!ServerResponse(403, "FORBIDDEN")
-                    .sendCatching(state.conn, "commandDevice.1")
-            )
-                return
+            state.quickResponse(403, "FORBIDDEN")
+            return
         }
 
         DeviceStatus.Pending -> {
-            if (!ServerResponse(101, "PENDING", "Awaiting device approval")
-                    .sendCatching(state.conn, "commandDevice.2")
-            )
-                return
+            state.quickResponse(101, "PENDING", "Awaiting device approval")
+            return
         }
 
         DeviceStatus.Registered, DeviceStatus.Approved -> {
@@ -53,20 +60,18 @@ fun commandDevice(state: ClientSession) {
             // to ensure that the device really is authorized and the key wasn't stolen by an
             // impostor
             val success = challengeDevice(state, devkey).getOrElse {
-                logError("commandDevice.challengeDevice exception: $it")
-                QuickResponse.sendInternalError(
-                    "Error authenticating client device",
-                    state.conn
+                state.internalError(
+                    "commandDevice.challengeDevice exception: $it",
+                    "Error authenticating client device"
                 )
                 return
             }
 
             if (devinfo != null) {
                 updateDeviceInfo(db, state.wid!!, devid, devinfo)?.let {
-                    logError("commandDevice.challengeDevice exception: $it")
-                    QuickResponse.sendInternalError(
-                        "Error updating device info",
-                        state.conn
+                    state.internalError(
+                        "commandDevice.challengeDevice exception: $it",
+                        "Error updating device info"
                     )
                     return
                 }
@@ -77,19 +82,18 @@ fun commandDevice(state: ClientSession) {
 
         DeviceStatus.NotRegistered -> {
             if (devinfo == null) {
-                QuickResponse.sendBadRequest(
-                    "Device-Info field required for new devices",
-                    state.conn
+                state.quickResponse(
+                    400, "BAD REQUEST",
+                    "Device-Info field required for new devices"
                 )
                 return
             }
 
             // 1) Check to see if the workspace has any devices registered.
             val devCount = countDevices(db, state.wid!!).getOrElse {
-                logError("commandDevice.countDevices exception: $it")
-                QuickResponse.sendInternalError(
-                    "Error checking device count",
-                    state.conn
+                state.internalError(
+                    "commandDevice.countDevices exception: $it",
+                    "Error checking device count"
                 )
                 return
             }
@@ -101,56 +105,55 @@ fun commandDevice(state: ClientSession) {
 
                 val recipient = try {
                     val out = resolveWID(db, state.wid!!).getOrElse {
-                        logError("commandDevice.resolveWID exception: $it")
-                        QuickResponse.sendInternalError(
+                        state.internalError(
+                            "commandDevice.resolveWID exception: $it",
                             "Error resolving workspace ID",
-                            state.conn
                         )
                         return
                     }
                     if (out == null) {
-                        logError("commandDevice.resolveWID returned null for wid ${state.wid!!}")
-                        QuickResponse.sendInternalError(
+                        state.internalError(
+                            "commandDevice.resolveWID returned null for wid ${state.wid!!}",
                             "Server error: workspace missing",
-                            state.conn
                         )
                         return
                     }
                     out
                 } catch (e: Exception) {
-                    logError("commandDevice.resolveWID exception: $e")
-                    QuickResponse.sendInternalError(
+                    state.internalError(
+                        "commandDevice.resolveWID exception: $e",
                         "Error looking up workspace address",
-                        state.conn
                     )
                     return
                 }
 
                 val entryList = getEntries(db, recipient.id, 0U)
                     .getOrElse {
-                        logError("commandDevice.getEntries exception: $it")
-                        QuickResponse.sendInternalError(
+                        state.internalError(
+                            "commandDevice.getEntries exception: $it",
                             "Error looking up user keycard",
-                            state.conn
                         )
                         return
                     }
                 if (entryList.size < 1) {
-                    logError("commandDevice: no entries for wid ${state.wid}")
-                    QuickResponse.sendInternalError("User keycard doesn't exist", state.conn)
+                    state.internalError(
+                        "commandDevice: no entries for wid ${state.wid}",
+                        "User keycard doesn't exist"
+                    )
                     return
                 }
                 val userEntry = UserEntry.fromString(entryList[0]).getOrElse {
-                    logError("commandDevice: corrupted current entry for ${state.wid}")
-                    QuickResponse.sendInternalError("User keycard is corrupted", state.conn)
+                    state.internalError(
+                        "commandDevice: corrupted current entry for ${state.wid}",
+                        "User keycard is corrupted"
+                    )
                     return
                 }
                 val userKey = userEntry.getEncryptionKey("Encryption-Key")
                 if (userKey == null) {
-                    logError("commandDevice.getEncryptionKey failure")
-                    QuickResponse.sendInternalError(
+                    state.internalError(
+                        "commandDevice.getEncryptionKey failure",
                         "Bad encryption key in user keycard",
-                        state.conn
                     )
                     return
                 }
@@ -160,57 +163,51 @@ fun commandDevice(state: ClientSession) {
                     devinfo
                 )
                 val sealed = Envelope.seal(userKey, msg).getOrElse {
-                    logError("commandDevice.seal failure: $it")
-                    QuickResponse.sendInternalError(
+                    state.internalError(
+                        "commandDevice.seal failure: $it",
                         "Failure in encrypting device approval request",
-                        state.conn
                     )
                     return
                 }.toStringResult().getOrElse {
-                    logError("commandDevice.toStringResult failure: $it")
-                    QuickResponse.sendInternalError(
+                    state.internalError(
+                        "commandDevice.toStringResult failure: $it",
                         "Failure serializing encrypted message",
-                        state.conn
                     )
                     return
                 }
                 val lfs = LocalFS.get()
                 val handle = lfs.makeTempFile(gServerDevID, sealed.length.toLong()).getOrElse {
-                    logError("commandDevice.makeTempFile failure: $it")
-                    QuickResponse.sendInternalError(
+                    state.internalError(
+                        "commandDevice.makeTempFile failure: $it",
                         "Failure creating file for device request",
-                        state.conn
                     )
                     return
                 }
                 handle.getFile().runCatching { writeText(sealed) }.onFailure {
-                    logError("commandDevice.writeText failure: $it")
-                    QuickResponse.sendInternalError(
+                    state.internalError(
+                        "commandDevice.writeText failure: $it",
                         "Failure saving encrypted device request",
-                        state.conn
                     )
                     return
                 }
                 handle.moveToOutbox(gServerDevID)?.let {
-                    logError("commandDevice.moveToOutbox failure: $it")
-                    QuickResponse.sendInternalError(
+                    state.internalError(
+                        "commandDevice.moveToOutbox failure: $it",
                         "Failure moving encrypted device request",
-                        state.conn
                     )
                     return
                 }
 
                 // call queueMessageForDelivery() with delivery info
                 queueMessageForDelivery(gServerAddress, recipient.domain, handle.path)
-                ServerResponse(105, "APPROVAL REQUIRED").sendCatching(
-                    state.conn,
-                    "Failure to send approval required response for ${state.wid}"
-                )
+                state.quickResponse(105, "APPROVAL REQUIRED")
                 return
             }
             addDevice(db, state.wid!!, devid, devkey, devinfo, DeviceStatus.Registered)?.let {
-                logError("commandDevice.addDevice exception: $it")
-                QuickResponse.sendInternalError("Error adding device", state.conn)
+                state.internalError(
+                    "commandDevice.addDevice exception: $it",
+                    "Error adding device"
+                )
                 return
             }
         }
@@ -221,24 +218,22 @@ fun commandDevice(state: ClientSession) {
     val lfs = LocalFS.get()
     val widPath = MServerPath("/ wsp ${state.wid!!}")
     val widHandle = lfs.entry(widPath)
-    val exists = widHandle.exists().getOrElse {
-        logError("commandDevice.exists exception for $widPath: $it")
-        QuickResponse.sendInternalError(
+    widHandle.exists().getOrElse {
+        state.internalError(
+            "commandDevice.exists exception for $widPath: $it",
             "Error checking for workspace root directory",
-            state.conn
         )
         return
-    }
-    if (!exists) {
+    }.onFalse {
         lfs.entry(widPath).makeDirectory()?.let {
-            logError("commandDevice.makeDirectory exception for $widPath: $it")
-            QuickResponse.sendInternalError(
+            state.internalError(
+                "commandDevice.makeDirectory exception for $widPath: $it",
                 "Error creating workspace root directory",
-                state.conn
             )
             return
         }
     }
+
     state.currentPath = widPath
     state.loginState = LoginState.LoggedIn
 
@@ -250,47 +245,31 @@ fun commandDevice(state: ClientSession) {
 
     if (devstatus == DeviceStatus.Approved) {
         val infopath = getKeyInfo(db, state.wid!!, devid).getOrElse {
-            logError("commandDevice.getKeyInfo error for ${state.wid}: $it")
+            state.internalError(
+                "commandDevice.getKeyInfo error for ${state.wid}: $it",
+                "Error finding new device key information",
+            )
             state.loginState = LoginState.NoSession
             state.wid = null
-            QuickResponse.sendInternalError(
-                "Error finding new device key information",
-                state.conn
-            )
             return
-        }
-        if (infopath == null) {
-            logError("commandDevice.getKeyInfo missing for ${state.wid}")
+        } ?: run {
+            state.internalError(
+                "commandDevice.getKeyInfo missing for ${state.wid}",
+                "Error finding new device key information",
+            )
             state.loginState = LoginState.NoSession
             state.wid = null
-            QuickResponse.sendInternalError(
-                "Error finding new device key information",
-                state.conn
-            )
             return
         }
 
-        val infoHandle = try {
-            lfs.entry(infopath)
-        } catch (e: Exception) {
-            logError("commandDevice.getFile exception for ${state.wid}: $e")
-            state.loginState = LoginState.NoSession
-            state.wid = null
-            QuickResponse.sendInternalError(
-                "Error opening device key information",
-                state.conn
-            )
-            return
-        }
-
+        val infoHandle = infopath.toHandle()
         val keyInfo = infoHandle.readAll().getOrElse {
-            logError("commandDevice.readFile exception for ${state.wid}: $it")
+            state.internalError(
+                "commandDevice.readFile exception for ${state.wid}: $it",
+                "Error reading device key information"
+            )
             state.loginState = LoginState.NoSession
             state.wid = null
-            QuickResponse.sendInternalError(
-                "Error reading device key information",
-                state.conn
-            )
             return
         }.decodeToString()
         response.code = 203
@@ -299,23 +278,19 @@ fun commandDevice(state: ClientSession) {
     }
 
     val isAdmin = state.isAdmin().getOrElse {
-        logError("commandDevice.isAdmin exception for ${state.wid}: $it")
+        state.internalError(
+            "commandDevice.isAdmin exception for ${state.wid}: $it",
+            "Error checking for admin privileges"
+        )
         state.loginState = LoginState.NoSession
         state.wid = null
-        QuickResponse.sendInternalError(
-            "Error checking for admin privileges",
-            state.conn
-        )
         return
     }
     response.data["Is-Admin"] = if (isAdmin) "True" else "False"
     response.send(state.conn)?.let {
         state.loginState = LoginState.NoSession
         state.wid = null
-        QuickResponse.sendInternalError(
-            "Error sending successful login information",
-            state.conn
-        )
+        logError("Error sending successful login information")
         return
     }
 
