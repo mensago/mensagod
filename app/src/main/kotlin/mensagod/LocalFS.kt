@@ -308,3 +308,7 @@ class LocalFS private constructor(val basePath: Path) {
         }
     }
 }
+
+fun MServerPath.toHandle(): LocalFSHandle {
+    return LocalFS.get().entry(this)
+}
