@@ -150,4 +150,14 @@ object Schemas {
         MsgField("Workspace-ID", MsgFieldType.RandomID, true),
         MsgField("Status", MsgFieldType.String, true),
     )
+
+    val upload = Schema(
+        MsgField("Size", MsgFieldType.Integer, true),
+        MsgField("Hash", MsgFieldType.CryptoString, true),
+        MsgField("Path", MsgFieldType.Path, true),
+
+        MsgField("Replaces", MsgFieldType.Path, false),
+        MsgField("TempName", MsgFieldType.String, false),
+        MsgField("Offset", MsgFieldType.Integer, false),
+    )
 }

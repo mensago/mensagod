@@ -1,9 +1,9 @@
 package mensagod.handlers
 
-import keznacl.Hash
 import keznacl.UnsupportedAlgorithmException
 import keznacl.getType
 import keznacl.onFalse
+import keznacl.toHash
 import libkeycard.RandomID
 import libmensago.ClientRequest
 import libmensago.MServerPath
@@ -364,15 +364,11 @@ fun commandSetQuota(state: ClientSession) {
 // UPLOAD(Size,Hash,Path,Replaces="",Name="",Offset=0)
 fun commandUpload(state: ClientSession) {
 
-    if (!state.requireLogin()) return
-    state.message.validate(setOf("Size", "Path", "Hash"))?.let {
-        QuickResponse.sendBadRequest("Missing required field $it", state.conn)
-        return
-    }
+    val schema = Schemas.upload
+    if (!state.requireLogin(schema)) return
 
-    val clientHash = Hash.fromString(state.message.data["Hash"]!!)
-    if (clientHash == null) {
-        QuickResponse.sendBadRequest("Invalid value for Hash", state.conn)
+    val clientHash = schema.getCryptoString("Hash", state.message.data)!!.toHash() ?: run {
+        state.quickResponse(400, "BAD REQUEST", "Invalid value for Hash")
         return
     }
 
