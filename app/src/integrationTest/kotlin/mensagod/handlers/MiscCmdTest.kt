@@ -39,7 +39,7 @@ class MiscCmdTest {
 
     @Test
     fun idleTest() {
-        setupTest("handlers.idleTest")
+        setupTest("handlers.idle")
         ServerConfig.load().getOrThrow()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 

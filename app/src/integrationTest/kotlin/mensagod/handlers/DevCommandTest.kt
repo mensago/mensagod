@@ -227,7 +227,7 @@ class DevCommandTest {
 
     @Test
     fun keyPkgTest() {
-        setupTest("handlers.keyPkgTest")
+        setupTest("handlers.keyPkg")
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         val devid = RandomID.fromString("61ae62b5-28f0-4b44-9eb4-8f81b761ad18")!!
         val fakeKey = CryptoString.fromString("XSALSA20:myfakedevkeyLOL")!!

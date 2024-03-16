@@ -20,7 +20,7 @@ class LoginCmdTest {
 
     @Test
     fun deviceTest() {
-        setupTest("handlers.deviceTest")
+        setupTest("handlers.device")
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         val devID = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
         val devPair = EncryptionPair.fromStrings(
@@ -146,7 +146,7 @@ class LoginCmdTest {
 
     @Test
     fun loginTest() {
-        val setupData = setupTest("handlers.loginTest")
+        val setupData = setupTest("handlers.login")
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         val serverKey = EncryptionKey.fromString(setupData.serverSetupData["oekey"]!!).getOrThrow()
 
@@ -379,7 +379,7 @@ class LoginCmdTest {
 
     @Test
     fun passwordTest() {
-        setupTest("handlers.passwordTest")
+        setupTest("handlers.password")
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
         // Test Case #1: Successful password auth as admin

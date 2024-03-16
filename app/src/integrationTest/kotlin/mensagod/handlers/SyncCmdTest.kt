@@ -23,7 +23,7 @@ class SyncCmdTest {
 
     @Test
     fun getUpdatesTest() {
-        setupTest("handlers.getUpdatesTest")
+        setupTest("handlers.getUpdates")
         ServerConfig.load().getOrThrow()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
