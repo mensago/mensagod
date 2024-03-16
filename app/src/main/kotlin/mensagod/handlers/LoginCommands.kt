@@ -446,8 +446,10 @@ fun commandPassword(state: ClientSession) {
 
     val db = DBConn()
     val match = checkPassword(db, state.wid!!, state.message.data["Password-Hash"]!!).getOrElse {
-        logError("commandPassword.checkPassword error: $it")
-        QuickResponse.sendInternalError("Internal error checking password", state.conn)
+        state.internalError(
+            "commandPassword.checkPassword error: $it",
+            "Internal error checking password"
+        )
         return
     }
 

@@ -76,8 +76,10 @@ fun commandDownload(state: ClientSession) {
         }
     } else 0L
     val fileSize = handle.size().getOrElse {
-        logError("commandDownload: Error getting size of $path: $it")
-        QuickResponse.sendInternalError("Error getting file size", state.conn)
+        state.internalError(
+            "commandDownload: Error getting size of $path: $it",
+            "Error getting file size"
+        )
         return
     }
     if (offset < 0 || offset > fileSize) {

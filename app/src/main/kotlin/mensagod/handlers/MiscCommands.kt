@@ -34,8 +34,7 @@ fun commandGetWID(state: ClientSession) {
     val address = MAddress.fromParts(uid, domain)
 
     val wid = resolveAddress(DBConn(), address).getOrElse {
-        logError("commandGetWID::resolveAddress error: $it")
-        QuickResponse.sendInternalError("", state.conn)
+        state.internalError("commandGetWID::resolveAddress error: $it", "")
         return
     }
 
@@ -55,7 +54,10 @@ fun commandIdle(state: ClientSession) {
     if (!state.requireLogin()) return
 
     val count = countSyncRecords(DBConn(), state.wid!!, updateTime).getOrElse {
-        QuickResponse.sendInternalError("Server error counting updates", state.conn)
+        state.internalError(
+            "Error counting updates: $it",
+            "Server error counting updates"
+        )
         return
     }
 
@@ -78,19 +80,25 @@ fun commandSend(state: ClientSession) {
 
     val db = DBConn()
     val sender = resolveWID(db, state.wid!!).getOrElse {
-        logError("commandSend::resolveWID error: $it")
-        QuickResponse.sendInternalError("Error getting sender address", state.conn)
+        state.internalError(
+            "commandSend::resolveWID error: $it",
+            "Error getting sender address"
+        )
         return
     }
     if (sender == null) {
-        logError("commandSend::resolveWID couldn't find wid ${state.wid}")
-        QuickResponse.sendInternalError("Sender address missing", state.conn)
+        state.internalError(
+            "commandSend::resolveWID couldn't find wid ${state.wid}",
+            "Sender address missing"
+        )
         return
     }
 
     val quotaInfo = getQuotaInfo(db, state.wid!!).getOrElse {
-        logError("commandSend::getQuotaInfo error: $it")
-        QuickResponse.sendInternalError("Error getting quota information", state.conn)
+        state.internalError(
+            "commandSend::getQuotaInfo error: $it",
+            "Error getting quota information"
+        )
         return
     }
 
@@ -102,19 +110,25 @@ fun commandSend(state: ClientSession) {
 
     val lfs = LocalFS.get()
     val handle = lfs.makeTempFile(gServerDevID, message.length.toLong()).getOrElse {
-        logError("commandSend::makeTempFile error: $it")
-        QuickResponse.sendInternalError("Error creating file for message", state.conn)
+        state.internalError(
+            "commandSend::makeTempFile error: $it",
+            "Error creating file for message"
+        )
         return
     }
     handle.getFile()
         .runCatching { writeText(message) }.onFailure {
-            logError("commandSend::writeText error: $it")
-            QuickResponse.sendInternalError("Error saving message", state.conn)
+            state.internalError(
+                "commandSend::writeText error: $it",
+                "Error saving message"
+            )
             return
         }
     handle.moveToOutbox(state.wid!!)?.let {
-        logError("commandSend::moveToOutbox error: $it")
-        QuickResponse.sendInternalError("Error moving message to delivery outbox", state.conn)
+        state.internalError(
+            "commandSend::moveToOutbox error: $it",
+            "Error moving message to delivery outbox"
+        )
         return
     }
     queueMessageForDelivery(sender, domain, handle.path)

@@ -112,8 +112,10 @@ fun commandPreregister(state: ClientSession) {
     if (!state.requireLogin()) return
     val isAuthorized = ServerTarget().isAuthorized(WIDActor(state.wid!!), AuthAction.Preregister)
         .getOrElse {
-            logError("commandPreregister.checkAuth exception: $it")
-            QuickResponse.sendInternalError("authorization check error", state.conn)
+            state.internalError(
+                "commandPreregister.checkAuth exception: $it",
+                "authorization check error"
+            )
             return
         }
     if (!isAuthorized) {
@@ -128,8 +130,10 @@ fun commandPreregister(state: ClientSession) {
     val db = DBConn()
     val outUID = if (uid != null) {
         resolveUserID(db, uid).getOrElse {
-            logError("commandPreregister.resolveUserID exception: $it")
-            QuickResponse.sendInternalError("uid lookup error", state.conn)
+            state.internalError(
+                "commandPreregister.resolveUserID exception: $it",
+                "uid lookup error"
+            )
             return
         }?.let {
             ServerResponse(408, "RESOURCE EXISTS", "user ID exists")
@@ -144,8 +148,10 @@ fun commandPreregister(state: ClientSession) {
 
     val outWID = if (wid != null) {
         checkWorkspace(db, wid).getOrElse {
-            logError("commandPreregister.checkWorkspace exception: $it")
-            QuickResponse.sendInternalError("wid lookup error", state.conn)
+            state.internalError(
+                "commandPreregister.checkWorkspace exception: $it",
+                "wid lookup error"
+            )
             return
         }?.let {
             try {
@@ -163,8 +169,10 @@ fun commandPreregister(state: ClientSession) {
             newWID = try {
                 val tempWID = RandomID.generate()
                 val status = checkWorkspace(db, tempWID).getOrElse {
-                    logError("commandPreregister.checkWorkspace(newWID) exception: $it")
-                    QuickResponse.sendInternalError("new wid lookup error", state.conn)
+                    state.internalError(
+                        "commandPreregister.checkWorkspace(newWID) exception: $it",
+                        "new wid lookup error"
+                    )
                     return
                 }
                 if (status == null)
@@ -172,8 +180,10 @@ fun commandPreregister(state: ClientSession) {
                 else
                     null
             } catch (e: Exception) {
-                logError("commandPreregister.checkWorkspace exception: $e")
-                QuickResponse.sendInternalError("wid lookup error", state.conn)
+                state.internalError(
+                    "commandPreregister.checkWorkspace exception: $e",
+                    "wid lookup error"
+                )
                 return
             }
         } while (newWID == null)
@@ -188,8 +198,10 @@ fun commandPreregister(state: ClientSession) {
         ServerConfig.get().getInteger("security.diceware_wordcount")!!
     )
     val reghash = Argon2idPassword().updateHash(regcode).getOrElse {
-        logError("commandPreregister.hashRegCode exception: $it")
-        QuickResponse.sendInternalError("registration code hashing error", state.conn)
+        state.internalError(
+            "commandPreregister.hashRegCode exception: $it",
+            "registration code hashing error"
+        )
         return
     }
 
@@ -199,17 +211,18 @@ fun commandPreregister(state: ClientSession) {
                 .sendCatching(state.conn, "commandPreregister error sending resource exists")
             return
         }
-        logError("commandPreregister.preregWorkspace exception: $it")
-        QuickResponse.sendInternalError("preregistration error", state.conn)
+        state.internalError(
+            "commandPreregister.preregWorkspace exception: $it",
+            "preregistration error"
+        )
     }
 
     val lfs = LocalFS.get()
     val handle = lfs.entry(MServerPath("/ wsp $outWID"))
     handle.makeDirectory()?.let {
-        logError("commandPreregister.makeWorkspace exception: $it")
-        QuickResponse.sendInternalError(
-            "preregistration workspace creation failure",
-            state.conn
+        state.internalError(
+            "commandPreregister.makeWorkspace exception: $it",
+            "preregistration workspace creation failure"
         )
         return
     }
@@ -287,8 +300,10 @@ fun commandRegCode(state: ClientSession) {
 
     val db = DBConn()
     val regInfo = checkRegCode(db, MAddress.fromParts(uid, domain), regCode).getOrElse {
-        logError("Internal error commandRegCode.checkRegCode: $it")
-        QuickResponse.sendInternalError("commandRegCode.1", state.conn)
+        state.internalError(
+            "Internal error commandRegCode.checkRegCode: $it",
+            "commandRegCode.1"
+        )
         return
     }
 
@@ -304,8 +319,10 @@ fun commandRegCode(state: ClientSession) {
     // so that if the client foolishly presented us with a cleartext password, the client's
     // password isn't stored in cleartext in the database.
     val serverHash = Argon2idPassword().updateHash(passHash).getOrElse {
-        logError("Internal error commandRegCode.hashPassword: $it")
-        QuickResponse.sendInternalError("Server error hashing password", state.conn)
+        state.internalError(
+            "Internal error commandRegCode.hashPassword: $it",
+            "Server error hashing password"
+        )
         return
     }
     addWorkspace(
@@ -322,20 +339,26 @@ fun commandRegCode(state: ClientSession) {
             )
             return
         }
-        logError("Internal error commandRegCode.addWorkspace: $it")
-        QuickResponse.sendInternalError("commandRegCode.2", state.conn)
+        state.internalError(
+            "Internal error commandRegCode.addWorkspace: $it",
+            "commandRegCode.2"
+        )
         return
     }
 
     addDevice(db, regInfo.first, devid, devkey, devinfo, DeviceStatus.Registered)?.let {
-        logError("commandRegCode.addDevice: $it")
-        QuickResponse.sendInternalError("commandRegCode.3", state.conn)
+        state.internalError(
+            "commandRegCode.addDevice: $it",
+            "commandRegCode.3"
+        )
         return
     }
 
     deletePrereg(db, WAddress.fromParts(regInfo.first, domain))?.let {
-        logError("commandRegCode.deletePrereg: $it")
-        QuickResponse.sendInternalError("commandRegCode.4", state.conn)
+        state.internalError(
+            "commandRegCode.deletePrereg: $it",
+            "commandRegCode.4"
+        )
         return
     }
 
@@ -373,8 +396,10 @@ fun commandRegister(state: ClientSession) {
     val db = DBConn()
     val wid = schema.getRandomID("Workspace-ID", state.message.data)
         ?: getFreeWID(db).getOrElse {
-            logError("commandRegister.getFreeWID: $it")
-            QuickResponse.sendInternalError("Error generating workspace ID", state.conn)
+            state.internalError(
+                "commandRegister.getFreeWID: $it",
+                "Error generating workspace ID"
+            )
             return
         }
     val uid = schema.getUserID("User-ID", state.message.data)
@@ -400,8 +425,10 @@ fun commandRegister(state: ClientSession) {
             state.quickResponse(309, "ALGORITHM NOT SUPPORTED")
             return
         }
-        logError("Error creating device encryption key for registration: $it")
-        QuickResponse.sendInternalError("Error creating device encryption key", state.conn)
+        state.internalError(
+            "Error creating device encryption key for registration: $it",
+            "Error creating device encryption key"
+        )
         return
     }
 
@@ -420,8 +447,10 @@ fun commandRegister(state: ClientSession) {
     }
 
     val widExists = checkWorkspace(db, wid).getOrElse {
-        logError("commandRegister.checkWorkspace error: $it")
-        QuickResponse.sendInternalError("Error checking for workspace ID", state.conn)
+        state.internalError(
+            "commandRegister.checkWorkspace error: $it",
+            "Error checking for workspace ID"
+        )
         return
     } != null
     if (widExists) {
@@ -430,8 +459,10 @@ fun commandRegister(state: ClientSession) {
     }
 
     val uidExists = resolveUserID(db, uid).getOrElse {
-        logError("commandRegister.resolveUserID error: $it")
-        QuickResponse.sendInternalError("Error checking for user ID", state.conn)
+        state.internalError(
+            "commandRegister.resolveUserID error: $it",
+            "Error checking for user ID"
+        )
         return
     } != null
     if (uidExists) {
@@ -442,10 +473,9 @@ fun commandRegister(state: ClientSession) {
     val wStatus = when (regType) {
         "network" -> {
             val ok = checkInRegNetwork(state.conn.inetAddress).getOrElse {
-                logError("commandRegister.checkInRegNetwork error: $it")
-                QuickResponse.sendInternalError(
-                    "Error validating user remote IP",
-                    state.conn
+                state.internalError(
+                    "commandRegister.checkInRegNetwork error: $it",
+                    "Error validating user remote IP"
                 )
                 return
             }

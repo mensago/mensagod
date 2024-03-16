@@ -2,7 +2,8 @@ package mensagod.handlers
 
 import libkeycard.MissingFieldException
 import libmensago.ServerResponse
-import mensagod.*
+import mensagod.ClientSession
+import mensagod.DBConn
 import mensagod.dbcmds.getSyncRecords
 
 // GETUPDATES (time)
@@ -22,8 +23,10 @@ fun commandGetUpdates(state: ClientSession) {
 
     val db = DBConn()
     val recList = getSyncRecords(db, state.wid!!, time).getOrElse {
-        logError("commandGetUpdates.getSyncRecords exception: $it")
-        QuickResponse.sendInternalError("error getting update records", state.conn)
+        state.internalError(
+            "commandGetUpdates.getSyncRecords exception: $it",
+            "error getting update records"
+        )
         return
     }
 

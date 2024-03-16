@@ -90,18 +90,16 @@ fun commandAddEntry(state: ClientSession) {
         listOf("admin", "support", "abuse").forEach {
             val specialAddr = MAddress.fromParts(UserID.fromString(it)!!, gServerDomain)
             val specialWID = resolveAddress(db, specialAddr).getOrElse { e ->
-                logError("commandAddEntry.resolveAddress exception: $e")
-                QuickResponse.sendInternalError(
-                    "Server error resolving a special address",
-                    state.conn
+                state.internalError(
+                    "commandAddEntry.resolveAddress exception: $e",
+                    "Server error resolving a special address"
                 )
                 return
             }
             if (specialWID == null) {
-                logError("commandAddEntry: error resolving address ")
-                QuickResponse.sendInternalError(
-                    "Internal error in server error handling",
-                    state.conn
+                state.internalError(
+                    "commandAddEntry: error resolving address ",
+                    "Internal error in server error handling"
                 )
                 return
             }
@@ -145,22 +143,28 @@ fun commandAddEntry(state: ClientSession) {
     // Here we check to make sure that the entry submitted is allowed to follow the previous one.
     // This just means the new index == the old index +1 and that the chain of trust verifies
     val tempEntryList = getEntries(db, wid, 0U).getOrElse {
-        logError("commandAddEntry.getCurrentEntry exception: $it")
-        QuickResponse.sendInternalError("Server can't get current keycard entry", state.conn)
+        state.internalError(
+            "commandAddEntry.getCurrentEntry exception: $it",
+            "Server can't get current keycard entry"
+        )
         return
     }
 
     val prevEntry = if (tempEntryList.size > 0) {
         val prevUserEntry = UserEntry.fromString(tempEntryList[0]).getOrElse {
-            logError("commandAddEntry.dbCorruption: bad user entry in db, wid=$wid - $it")
-            QuickResponse.sendInternalError("Error loading previous keycard entry", state.conn)
+            state.internalError(
+                "commandAddEntry.dbCorruption: bad user entry in db, wid=$wid - $it",
+                "Error loading previous keycard entry"
+            )
             return
         }
 
         val prevIndex = prevUserEntry.getFieldInteger("Index")
         if (prevIndex == null) {
-            logError("commandAddEntry.dbCorruption: bad user entry in db, wid=$wid, bad index")
-            QuickResponse.sendInternalError("Error in previous keycard entry", state.conn)
+            state.internalError(
+                "commandAddEntry.dbCorruption: bad user entry in db, wid=$wid, bad index",
+                "Error in previous keycard entry"
+            )
             return
         }
 
@@ -194,19 +198,17 @@ fun commandAddEntry(state: ClientSession) {
         // This is the user's root entry, so the previous entry needs to be the org's current
         // keycard entry.
         val tempOrgList = getEntries(db, null, 0U).getOrElse {
-            logError("commandAddEntry.getCurrentOrgEntry exception: $it")
-            QuickResponse.sendInternalError(
-                "Server can't get current org keycard entry",
-                state.conn
+            state.internalError(
+                "commandAddEntry.getCurrentOrgEntry exception: $it",
+                "Server can't get current org keycard entry"
             )
             return
         }
 
         OrgEntry.fromString(tempOrgList[0]).getOrElse {
-            logError("commandAddEntry.dbCorruption: bad org entry in db - $it")
-            QuickResponse.sendInternalError(
-                "Error loading current org keycard entry",
-                state.conn
+            state.internalError(
+                "commandAddEntry.dbCorruption: bad org entry in db - $it",
+                "Error loading current org keycard entry"
             )
             return
         }
@@ -216,13 +218,17 @@ fun commandAddEntry(state: ClientSession) {
     // by the client. Here we sign the data with the organization's signing key and send the
     // signature back to the client
     val pskPair = getPrimarySigningPair(db).getOrElse {
-        logError("commandAddEntry.getPrimarySigningKey exception: $it")
-        QuickResponse.sendInternalError("Server can't get org signing key", state.conn)
+        state.internalError(
+            "commandAddEntry.getPrimarySigningKey exception: $it",
+            "Server can't get org signing key"
+        )
         return
     }
     entry.sign("Organization-Signature", pskPair)?.let {
-        logError("commandAddEntry.signEntry, wid=$wid - $it")
-        QuickResponse.sendInternalError("Error signing user entry", state.conn)
+        state.internalError(
+            "commandAddEntry.signEntry, wid=$wid - $it",
+            "Error signing user entry"
+        )
         return
     }
 
@@ -233,8 +239,10 @@ fun commandAddEntry(state: ClientSession) {
         )
     )
         .send(state.conn)?.let {
-            logError("commandAddEntry.sendContinue, wid=$wid - $it")
-            QuickResponse.sendInternalError("Error signing user entry", state.conn)
+            state.internalError(
+                "commandAddEntry.sendContinue, wid=$wid - $it",
+                "Error signing user entry"
+            )
             return
         }
 
@@ -308,8 +316,10 @@ fun commandAddEntry(state: ClientSession) {
         return
     }
     entry.hash(clientHash.getType()!!)?.let {
-        logError("commandAddEntry.hashEntry exception: $it")
-        QuickResponse.sendInternalError("Server error hashing entry", state.conn)
+        state.internalError(
+            "commandAddEntry.hashEntry exception: $it",
+            "Server error hashing entry"
+        )
         return
     }
     if (entry.getAuthString("Hash")!!.toString() != clientHash.toString()) {
@@ -339,38 +349,42 @@ fun commandAddEntry(state: ClientSession) {
         return
     }
     entry.addAuthString("User-Signature", userSig)?.let {
-        logError("commandAddEntry.addUserSig: error adding user signature - $it")
-        QuickResponse.sendInternalError("Error adding user sig to entry", state.conn)
+        state.internalError(
+            "commandAddEntry.addUserSig: error adding user signature - $it",
+            "Error adding user sig to entry"
+        )
         return
     }
 
     val crKeyStr = entry.getFieldString("Contact-Request-Verification-Key")
     if (crKeyStr == null) {
-        logError("commandAddEntry.dbCorruption: entry missing CRV Key in db, wid=$wid")
-        QuickResponse.sendInternalError("Error loading entry verification key", state.conn)
+        state.internalError(
+            "commandAddEntry.dbCorruption: entry missing CRV Key in db, wid=$wid",
+            "Error loading entry verification key"
+        )
         return
     }
     val crKeyCS = CryptoString.fromString(crKeyStr)
     if (crKeyCS == null) {
-        logError("commandAddEntry.dbCorruption: invalid previous CRV Key CS in db, wid=$wid")
-        QuickResponse.sendInternalError("Invalid previous entry verification key", state.conn)
+        state.internalError(
+            "commandAddEntry.dbCorruption: invalid previous CRV Key CS in db, wid=$wid",
+            "Invalid previous entry verification key"
+        )
         return
     }
     val crKey = VerificationKey.from(crKeyCS).getOrElse {
-        logError(
-            "commandAddEntry.dbCorruption: error creating previous CRV Key, " +
-                    "wid=$wid - $it"
-        )
-        QuickResponse.sendInternalError(
+        state.internalError(
+            "commandAddEntry.dbCorruption: error creating previous CRV Key, wid=$wid - $it",
             "Error creating previous entry verification key",
-            state.conn
         )
         return
     }
 
     val verified = entry.verifySignature("User-Signature", crKey).getOrElse {
-        logError("commandAddEntry.verifyError: error verifying entry, wid=$wid - $it")
-        QuickResponse.sendInternalError("Error verifying entry", state.conn)
+        state.internalError(
+            "commandAddEntry.verifyError: error verifying entry, wid=$wid - $it",
+            "Error verifying entry"
+        )
         return
     }
     if (!verified) {
@@ -386,8 +400,10 @@ fun commandAddEntry(state: ClientSession) {
     // Wow. We actually made it! YAY
 
     addEntry(db, entry)?.let {
-        logError("commandAddEntry.addEntry: error adding entry, wid=$wid - $it")
-        QuickResponse.sendInternalError("Error adding entry", state.conn)
+        state.internalError(
+            "commandAddEntry.addEntry: error adding entry, wid=$wid - $it",
+            "Error adding entry"
+        )
         return
     }
 
@@ -418,10 +434,10 @@ fun commandGetCard(state: ClientSession) {
         // resolving the owner can get... complicated. We'll go in order of ease of validation.
 
         val resolved = resolveOwner(db, state.message.data["Owner"]!!).getOrElse {
-            logError(
-                "commandGetCard: Error resolving owner ${state.message.data["Owner"]}: $it"
+            state.internalError(
+                "commandGetCard: Error resolving owner ${state.message.data["Owner"]}: $it",
+                "Error resolving owner"
             )
-            QuickResponse.sendInternalError("Error resolving owner", state.conn)
             return
         }
         if (resolved == null) {
@@ -450,8 +466,10 @@ fun commandGetCard(state: ClientSession) {
     } else null
 
     val entries = getEntries(db, owner, startIndex, endIndex).getOrElse {
-        logError("commandGetCard: Error looking up entries: $it")
-        QuickResponse.sendInternalError("Error looking up entries", state.conn)
+        state.internalError(
+            "commandGetCard: Error looking up entries: $it",
+            "Error looking up entries"
+        )
         return
     }
     if (entries.isEmpty()) {
@@ -517,8 +535,10 @@ fun commandIsCurrent(state: ClientSession) {
 
     val db = DBConn()
     val entries = getEntries(db, wid, 0U).getOrElse {
-        logError("commandIsCurrent: error getting keycard: $it")
-        QuickResponse.sendInternalError("Server error checking keycard", state.conn)
+        state.internalError(
+            "commandIsCurrent: error getting keycard: $it",
+            "Server error checking keycard"
+        )
         return
     }
     if (entries.isEmpty()) {
@@ -527,28 +547,36 @@ fun commandIsCurrent(state: ClientSession) {
     }
     val entryIndex = if (wid != null) {
         val userEntry = UserEntry.fromString(entries[0]).getOrElse {
-            logError("Bad user entry in commandIsCurrent for $wid")
-            QuickResponse.sendInternalError("Server error reading keycard", state.conn)
+            state.internalError(
+                "Bad user entry in commandIsCurrent for $wid",
+                "Server error reading keycard"
+            )
             return
         }
         try {
             userEntry.getFieldInteger("Index")!!.toUInt()
         } catch (e: Exception) {
-            logError("Invalid index in commandIsCurrent")
-            QuickResponse.sendInternalError("Bad data in keycard", state.conn)
+            state.internalError(
+                "Invalid index in commandIsCurrent",
+                "Bad data in keycard"
+            )
             return
         }
     } else {
         val orgEntry = OrgEntry.fromString(entries[0]).getOrElse {
-            logError("Bad org entry in commandIsCurrent")
-            QuickResponse.sendInternalError("Server error reading keycard", state.conn)
+            state.internalError(
+                "Bad org entry in commandIsCurrent",
+                "Server error reading keycard"
+            )
             return
         }
         try {
             orgEntry.getFieldInteger("Index")!!.toUInt()
         } catch (e: Exception) {
-            logError("Invalid index in commandIsCurrent")
-            QuickResponse.sendInternalError("Bad data in keycard", state.conn)
+            state.internalError(
+                "Invalid index in commandIsCurrent",
+                "Bad data in keycard"
+            )
             return
         }
     }
