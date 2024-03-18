@@ -140,6 +140,11 @@ class FSCmdTest {
     }
 
     @Test
+    fun listListDirsTest() {
+        // TODO: Implement test for LIST and LISTDIRS
+    }
+
+    @Test
     fun mkDirTest() {
         setupTest("handlers.mkDir")
         ServerConfig.load().getOrThrow()

@@ -132,9 +132,32 @@ fun commandGetQuotaInfo(state: ClientSession) {
 
 // LIST(Path=null)
 fun commandList(state: ClientSession) {
-    if (!state.requireLogin()) return
+    val schema = Schemas.list
+    if (!state.requireLogin(schema)) return
 
-    TODO("Implement commandList($state)")
+    val entry = schema.getPath("Path", state.message.data)!!.toHandle()
+    val unixtime = schema.getUnixTime("Time", state.message.data)
+    checkDirectoryAccess(state, entry, AuthAction.Access).onFalse { return }
+
+    val fileList = entry.getFile().listFiles()?.filter { it.isFile }?.map { it.toString() }
+    if (fileList == null) {
+        state.internalError(
+            "Null file list received for ${entry.path}",
+            "Server error: null file list received"
+        )
+    }
+    val response = ServerResponse(200, "OK")
+    if (unixtime != null) {
+        response.attach("Files", fileList!!.filter {
+            val parts = it.split(".")
+            if (parts.size != 3) return@filter false
+            val time = runCatching { parts[1].toLong() }.getOrElse { return@filter false }
+            time > unixtime
+        }.joinToString(","))
+    } else
+        response.attach("Files", fileList!!.joinToString(","))
+
+    response.sendCatching(state.conn, "Error sending LIST results")
 }
 
 // LISTDIRS(Path=null)
@@ -324,32 +347,7 @@ fun commandSelect(state: ClientSession) {
     if (!state.requireLogin(schema)) return
 
     val entry = schema.getPath("Path", state.message.data)!!.toHandle()
-    entry.exists().getOrElse {
-        state.internalError(
-            "commandSelect: error checking for directory ${entry.path}: $it",
-            "Error checking directory existence"
-        )
-        return
-    }.onFalse {
-        state.quickResponse(404, "RESOURCE NOT FOUND")
-        return
-    }
-
-    val dir = DirectoryTarget.fromPath(entry.path) ?: state.quickResponse(
-        400, "BAD REQUEST",
-        "Path given must be a directory"
-    ).run { return }
-    dir.isAuthorized(WIDActor(state.wid!!), AuthAction.Access)
-        .getOrElse {
-            state.internalError(
-                "Failed to check authorization of ${state.wid} in path $dir: $it",
-                "Error checking authorization"
-            )
-            return
-        }.onFalse {
-            state.quickResponse(403, "FORBIDDEN")
-            return
-        }
+    checkDirectoryAccess(state, entry, AuthAction.Access).onFalse { return }
 
     state.currentPath = entry.path
     state.quickResponse(200, "OK")
@@ -562,3 +560,33 @@ fun commandUpload(state: ClientSession) {
     )
 }
 
+private fun checkDirectoryAccess(state: ClientSession, entry: LocalFSHandle, access: AuthAction):
+        Boolean {
+    entry.exists().getOrElse {
+        state.internalError(
+            "commandList: error checking for directory ${entry.path}: $it",
+            "Error checking directory existence"
+        )
+        return false
+    }.onFalse {
+        state.quickResponse(404, "RESOURCE NOT FOUND")
+        return false
+    }
+
+    val dir = DirectoryTarget.fromPath(entry.path) ?: state.quickResponse(
+        400, "BAD REQUEST",
+        "Path given must be a directory"
+    ).run { return false }
+    dir.isAuthorized(WIDActor(state.wid!!), access)
+        .getOrElse {
+            state.internalError(
+                "Failed to check authorization of ${state.wid} in path $dir: $it",
+                "Error checking authorization"
+            )
+            return false
+        }.onFalse {
+            state.quickResponse(403, "FORBIDDEN")
+            return false
+        }
+    return true
+}
