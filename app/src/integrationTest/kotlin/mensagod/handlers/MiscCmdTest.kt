@@ -219,7 +219,6 @@ class MiscCmdTest {
     @Test
     fun sendLargeTest() {
         val setupData = setupTest("handlers.sendLarge")
-        ServerConfig.get().setValue("performance.max_message_size", 50)
         KCResolver.dns = FakeDNSHandler()
 
         val db = DBConn()
@@ -274,25 +273,16 @@ class MiscCmdTest {
         )
         userTempPath.toFile().mkdirs()
         val tempName =
-            "${Instant.now().epochSecond}.${sealedData.size}" +
+            "${Instant.now().epochSecond}.${sealedData.size}." +
                     UUID.randomUUID().toString().lowercase()
         val tempFile = Paths.get(userTempPath.toString(), tempName).toFile()
         tempFile.outputStream().write(sealedData, 0, 512)
-        tempFile.outputStream().flush()
-
-        println("Size of sealed data: ${sealedData.size}")
-        Paths.get(userTempPath.toString(), "fullfile.txt").toFile().outputStream()
-            .write(sealedData)
-        val partStream = Paths.get(userTempPath.toString(), "inparts.txt").toFile()
-            .outputStream()
-        partStream.write(sealedData, 0, 512)
-        partStream.write(sealedData, 512, sealedData.size - 512)
 
         CommandTest(
             "sendLarge.2",
             SessionState(
                 ClientRequest("SENDLARGE")
-                    .attach("Size", 1024)
+                    .attach("Size", sealedData.size)
                     .attach("Hash", fileHash)
                     .attach("Domain", gServerDomain)
                     .attach("TempName", tempName)
@@ -308,8 +298,10 @@ class MiscCmdTest {
             socket.getOutputStream().write(sealedData, 512, sealedData.size - 512)
             response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(200)
+
+            // The test for SEND actually tests delivery. If everything got this far, we're good
+            // to go. YAY
         }.run()
-        // TODO: Implement test for SENDLARGE
     }
 
     @Test
