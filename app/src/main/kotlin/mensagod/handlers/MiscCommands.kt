@@ -181,7 +181,8 @@ fun commandSendLarge(state: ClientSession) {
     val fileSize = schema.getLong("Size", state.message.data)!!
 
     val config = ServerConfig.get()
-    if (fileSize > config.getInteger("performance.max_message_size")!! * 0x10_000) {
+    val sizeLimit = config.getInteger("performance.max_message_size")!! * 0x100_000
+    if (fileSize > sizeLimit) {
         state.quickResponse(414, "LIMIT REACHED")
         return
     }

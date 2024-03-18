@@ -2,6 +2,7 @@ package mensagod.handlers
 
 import keznacl.CryptoString
 import keznacl.EncryptionPair
+import keznacl.hash
 import libkeycard.RandomID
 import libkeycard.WAddress
 import libmensago.*
@@ -15,6 +16,9 @@ import testsupport.*
 import java.lang.Thread.sleep
 import java.net.InetAddress
 import java.net.Socket
+import java.nio.file.Paths
+import java.time.Instant
+import java.util.*
 
 class MiscCmdTest {
 
@@ -214,6 +218,97 @@ class MiscCmdTest {
 
     @Test
     fun sendLargeTest() {
+        val setupData = setupTest("handlers.sendLarge")
+        ServerConfig.get().setValue("performance.max_message_size", 50)
+        KCResolver.dns = FakeDNSHandler()
+
+        val db = DBConn()
+        setupKeycard(db, false, ADMIN_PROFILE_DATA)
+        setupUser(db)
+        setupKeycard(db, false, USER_PROFILE_DATA)
+
+        val adminAddr = WAddress.fromString(ADMIN_PROFILE_DATA["waddress"])!!
+        val userAddr = WAddress.fromString(USER_PROFILE_DATA["waddress"])!!
+        val userPair = EncryptionPair.fromStrings(
+            USER_PROFILE_DATA["encryption.public"]!!,
+            USER_PROFILE_DATA["encryption.private"]!!
+        ).getOrThrow()
+
+        val testMsg = Message(adminAddr, userAddr, MsgFormat.Text)
+            .setSubject("Test Subject")
+            .setBody("0".repeat(0x1000))
+        val sealedData = Envelope.seal(userPair, testMsg).getOrThrow()
+            .toStringResult().getOrThrow()
+            .encodeToByteArray()
+        val fileHash = hash(sealedData).getOrThrow()
+        val devid = RandomID.fromString(USER_PROFILE_DATA["devid"])!!
+
+        // Test Case #1: Successful file upload
+        CommandTest(
+            "sendLarge.1",
+            SessionState(
+                ClientRequest("SENDLARGE")
+                    .attach("Size", sealedData.size)
+                    .attach("Hash", fileHash)
+                    .attach("Domain", gServerDomain),
+                userAddr.id, LoginState.LoggedIn, devid
+            ), ::commandSendLarge
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(100)
+            response.assertField("TempName") { MServerPath.checkFileName(it) }
+
+            val ostream = socket.getOutputStream()
+            ostream.write(sealedData)
+            response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+        }.run()
+
+        // Test Case #2: Successful resume
+
+        // Wow. Creating a temporary file which simulates interruption is a lot of work. :(
+        val userTempPath = Paths.get(
+            setupData.testPath, "topdir", "tmp",
+            userAddr.id.toString()
+        )
+        userTempPath.toFile().mkdirs()
+        val tempName =
+            "${Instant.now().epochSecond}.${sealedData.size}" +
+                    UUID.randomUUID().toString().lowercase()
+        val tempFile = Paths.get(userTempPath.toString(), tempName).toFile()
+        tempFile.outputStream().write(sealedData, 0, 512)
+        tempFile.outputStream().flush()
+
+        println("Size of sealed data: ${sealedData.size}")
+        Paths.get(userTempPath.toString(), "fullfile.txt").toFile().outputStream()
+            .write(sealedData)
+        val partStream = Paths.get(userTempPath.toString(), "inparts.txt").toFile()
+            .outputStream()
+        partStream.write(sealedData, 0, 512)
+        partStream.write(sealedData, 512, sealedData.size - 512)
+
+        CommandTest(
+            "sendLarge.2",
+            SessionState(
+                ClientRequest("SENDLARGE")
+                    .attach("Size", 1024)
+                    .attach("Hash", fileHash)
+                    .attach("Domain", gServerDomain)
+                    .attach("TempName", tempName)
+                    .attach("Offset", 512),
+                userAddr.id, LoginState.LoggedIn, devid
+            ), ::commandSendLarge
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            var response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(100)
+            response.assertField("TempName") { MServerPath.checkFileName(it) }
+
+            socket.getOutputStream().write(sealedData, 512, sealedData.size - 512)
+            response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+        }.run()
         // TODO: Implement test for SENDLARGE
     }
 
