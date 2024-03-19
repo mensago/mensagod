@@ -24,7 +24,7 @@ object Schemas {
         MsgField("DestDir", MsgFieldType.Path, true)
     )
 
-    // DELETE has a variable schema, so no entry exists here.
+    val delete = Schema(MsgField("PathCount", MsgFieldType.Integer, true))
 
     val device = Schema(
         MsgField("Device-ID", MsgFieldType.RandomID, true),

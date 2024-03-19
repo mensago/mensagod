@@ -24,11 +24,64 @@ fun commandCopy(state: ClientSession) {
     TODO("Implement commandCopy($state)")
 }
 
-// DELETE(PathCount,Path0...)
+// DELETE(FileCount,File0...)
 fun commandDelete(state: ClientSession) {
-    if (!state.requireLogin()) return
+    val schema = Schemas.delete
+    if (!state.requireLogin(schema)) return
 
-    TODO("Implement commandDelete($state)")
+    val fileCount = schema.getInteger("FileCount", state.message.data)!!
+    for (i in 0 until fileCount) {
+        if (!state.message.data.containsKey("File$i")) {
+            state.quickResponse(400, "BAD REQUEST", "File list missing index $i")
+            return
+        }
+        val rawPath = "${state.currentPath} ${state.message.data["File$i"]}"
+        val path = MServerPath.fromString(rawPath)
+            ?: run {
+                state.internalError(
+                    "Invalid path '$rawPath' in DELETE",
+                    "Invalid path error for DELETE"
+                )
+                return
+            }
+        if (path.isDir()) {
+            state.quickResponse(400, "BAD REQUEST", "$path is not a file")
+            return
+        }
+    }
+
+    val lfs = LocalFS.get()
+    checkDirectoryAccess(state, lfs.entry(state.currentPath), AuthAction.Delete).onFalse { return }
+
+    val db = DBConn()
+    for (i in 0 until fileCount) {
+        val fileHandle = MServerPath("${state.currentPath} ${state.message.data["File$i"]}")
+            .toHandle()
+        fileHandle.delete()?.let {
+            state.internalError(
+                "Failed to delete ${fileHandle.path}: $it",
+                "Error deleting file"
+            )
+            return
+        }
+
+        addSyncRecord(
+            db, state.wid!!, SyncRecord(
+                RandomID.generate(),
+                UpdateType.Delete,
+                fileHandle.path.toString(),
+                Instant.now().epochSecond.toString(),
+                state.devid!!
+            )
+        )?.let {
+            state.internalError(
+                "commandDelete: failed to add update entry for ${fileHandle.path}: $it",
+                "Error adding update entry for deleted file"
+            )
+            return
+        }
+    }
+    state.quickResponse(200, "OK")
 }
 
 // DOWNLOAD(Path,Offset=0)

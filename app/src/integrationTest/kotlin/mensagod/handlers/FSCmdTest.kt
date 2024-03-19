@@ -22,9 +22,18 @@ import kotlin.io.path.exists
 class FSCmdTest {
 
     @Test
+    fun deleteTest() {
+        val setupData = setupTest("handlers.download")
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val adminTopPath = Paths.get(setupData.testPath, "topdir", "wsp", adminWID.toString())
+        adminTopPath.toFile().mkdirs()
+
+        // TODO: Finish implementing test for DELETE
+    }
+
+    @Test
     fun downloadTest() {
         val setupData = setupTest("handlers.download")
-        ServerConfig.load().getOrThrow()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
 
         // Test Case #1: Successful file download
