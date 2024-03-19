@@ -345,9 +345,10 @@ class FSCmdTest {
 
     @Test
     fun mkDirTest() {
-        setupTest("handlers.mkDir")
-        ServerConfig.load().getOrThrow()
+        val setupData = setupTest("handlers.mkDir")
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val adminTopPath = Paths.get(setupData.testPath, "topdir", "wsp", adminWID.toString())
+        adminTopPath.toFile().mkdirs()
 
         // Test Case #1: Success
         CommandTest(

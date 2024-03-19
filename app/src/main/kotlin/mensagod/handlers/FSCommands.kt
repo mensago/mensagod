@@ -197,51 +197,17 @@ fun commandMkDir(state: ClientSession) {
     val clientPath = schema.getCryptoString("ClientPath", state.message.data)!!
 
     val serverPath = schema.getPath("Path", state.message.data)!!
-    if (serverPath.isFile() || serverPath.isRoot()) {
+    if (serverPath.isRoot() || serverPath.isFile()) {
         state.quickResponse(400, "BAD REQUEST", "Bad path $serverPath given")
         return
     }
-
     val parent = serverPath.parent() ?: state.internalError(
         "Failed to get parent for path $serverPath",
         "Error getting parent for $serverPath"
     ).run { return }
 
     val lfs = LocalFS.get()
-    lfs.entry(parent).exists().getOrElse {
-        state.internalError(
-            "Failed to check existence of parent path $parent: $it",
-            "Error checking parent path"
-        )
-        return
-    }.onFalse {
-        if (parent.toString() == "/ wsp ${state.wid!!}") {
-            val parentHandle = lfs.entry(parent)
-            parentHandle.makeDirectory()?.let {
-                state.internalError(
-                    "commandMkDir: failed to create workspace dir $parent: $it",
-                    "Error creating workspace path"
-                )
-                return
-            }
-        } else {
-            state.quickResponse(404, "NOT FOUND", "Parent path not found")
-            return
-        }
-    }
-
-    DirectoryTarget.fromPath(parent)!!
-        .isAuthorized(WIDActor(state.wid!!), AuthAction.Create)
-        .getOrElse {
-            state.internalError(
-                "Failed to check authorization of ${state.wid} in path $parent: $it",
-                "Error checking authorization"
-            )
-            return
-        }.onFalse {
-            state.quickResponse(403, "FORBIDDEN")
-            return
-        }
+    checkDirectoryAccess(state, lfs.entry(parent), AuthAction.Create).onFalse { return }
 
     val dirHandle = lfs.entry(serverPath)
     dirHandle.makeDirectory()?.let {
