@@ -266,6 +266,80 @@ class FSCmdTest {
             response.assertReturnCode(200)
             assert(response.data.containsKey("FileCount"))
             assertEquals("0", response.data["FileCount"])
+            assert(!response.data.containsKey("Files"))
+        }.run()
+    }
+
+    @Test
+    fun listDirsTest() {
+        val setupData = setupTest("handlers.listDirs")
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val adminTopPath = Paths.get(setupData.testPath, "topdir", "wsp", adminWID.toString())
+        adminTopPath.toFile().mkdirs()
+        val adminSubdirs = listOf(
+            "11111111-1111-1111-1111-111111111111",
+            "22222222-2222-2222-2222-222222222222",
+            "33333333-3333-3333-3333-333333333333"
+        )
+        adminSubdirs.forEach {
+            Paths.get(setupData.testPath, "topdir", "wsp", adminWID.toString(), it)
+                .toFile().mkdir()
+        }
+
+        // Test Case #1: Success
+        CommandTest(
+            "listDirs.1",
+            SessionState(
+                ClientRequest("LISTDIRS").attach("Path", "/ wsp $adminWID"),
+                adminWID, LoginState.LoggedIn,
+            ), ::commandListDirs
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(response.data.containsKey("DirectoryCount"))
+            assertEquals("3", response.data["DirectoryCount"])
+            assert(response.data.containsKey("Directories"))
+            val dirNames = response.data["Directories"]!!.split(",")
+            assertEquals(3, dirNames.size)
+            adminSubdirs.forEachIndexed { i, item ->
+                assertEquals(item, dirNames[i])
+            }
+        }.run()
+
+        // Test #2: Forbidden
+        val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
+        CommandTest(
+            "listDirs.2",
+            SessionState(
+                ClientRequest("LISTDIRS")
+                    .attach("Path", "/ wsp $adminWID"),
+                userWID, LoginState.LoggedIn,
+            ), ::commandListDirs
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(403)
+        }.run()
+
+        // Test Case #3: No subdirectories / no path specified
+        val emptyWID = RandomID.fromString("7d80a092-6328-4661-99a8-0b48bd98a21c")!!
+        val emptyTopPath = Paths.get(setupData.testPath, "topdir", "wsp", emptyWID.toString())
+        emptyTopPath.toFile().mkdirs()
+        CommandTest(
+            "listDirs.3",
+            SessionState(
+                ClientRequest("LISTDIRS"),
+                adminWID, LoginState.LoggedIn, null, false,
+                MServerPath("/ wsp $emptyWID")
+            ), ::commandListDirs
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(response.data.containsKey("DirectoryCount"))
+            assertEquals("0", response.data["DirectoryCount"])
+            assert(!response.data.containsKey("Directories"))
         }.run()
     }
 
