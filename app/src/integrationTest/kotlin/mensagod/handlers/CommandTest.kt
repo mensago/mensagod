@@ -47,6 +47,7 @@ class CommandTest(
             it.wid = state.wid
             it.devid = state.devid
             it.message = state.message
+            it.currentPath = state.currentPath
         }
         command(serverState)
         sleep(100)
