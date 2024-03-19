@@ -395,7 +395,6 @@ class FSCmdTest {
     @Test
     fun rmdirTest() {
         setupTest("handlers.rmDir")
-        ServerConfig.load().getOrThrow()
         val db = DBConn()
         setupUser(db)
 

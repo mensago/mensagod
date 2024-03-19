@@ -268,31 +268,8 @@ fun commandRmDir(state: ClientSession) {
     ).run { return }
 
     val lfs = LocalFS.get()
-    lfs.entry(parent).exists()
-        .getOrElse {
-            state.internalError(
-                "Failed to check existence of parent path $parent: $it",
-                "Error checking parent path"
-            )
-            return
-        }.onFalse {
-            state.quickResponse(404, "NOT FOUND", "Parent path not found")
-            return
-        }
-
-    DirectoryTarget.fromPath(parent)!!
-        .isAuthorized(WIDActor(state.wid!!), AuthAction.Delete)
-        .getOrElse {
-            state.internalError(
-                "Failed to check authorization of ${state.wid} in path $parent: $it",
-                "Error checking authorization"
-            )
-            return
-        }.onFalse {
-            state.quickResponse(403, "FORBIDDEN")
-            return
-        }
-
+    checkDirectoryAccess(state, lfs.entry(parent), AuthAction.Create).onFalse { return }
+    
     val dirHandle = lfs.entry(serverPath)
     dirHandle.delete()?.let {
         state.internalError(
