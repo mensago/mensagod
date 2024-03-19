@@ -268,8 +268,8 @@ fun commandRmDir(state: ClientSession) {
     ).run { return }
 
     val lfs = LocalFS.get()
-    checkDirectoryAccess(state, lfs.entry(parent), AuthAction.Create).onFalse { return }
-    
+    checkDirectoryAccess(state, lfs.entry(parent), AuthAction.Delete).onFalse { return }
+
     val dirHandle = lfs.entry(serverPath)
     dirHandle.delete()?.let {
         state.internalError(
