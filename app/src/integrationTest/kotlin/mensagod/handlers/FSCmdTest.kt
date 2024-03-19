@@ -140,7 +140,7 @@ class FSCmdTest {
     }
 
     @Test
-    fun listListDirsTest() {
+    fun listTest() {
         val setupData = setupTest("handlers.list")
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         val adminTopPath = Paths.get(setupData.testPath, "topdir", "wsp", adminWID.toString())
@@ -173,6 +173,8 @@ class FSCmdTest {
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(200)
+            assert(response.data.containsKey("FileCount"))
+            assertEquals("3", response.data["FileCount"])
             assert(response.data.containsKey("Files"))
             val fileNames = response.data["Files"]!!.split(",")
             assertEquals(3, fileNames.size)
@@ -194,6 +196,8 @@ class FSCmdTest {
             val socket = Socket(InetAddress.getByName("localhost"), port)
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(200)
+            assert(response.data.containsKey("FileCount"))
+            assertEquals("2", response.data["FileCount"])
             assert(response.data.containsKey("Files"))
             val fileNames = response.data["Files"]!!.split(",")
             assertEquals(2, fileNames.size)
@@ -240,8 +244,28 @@ class FSCmdTest {
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(200)
             assert(response.data.containsKey("Files"))
+            assert(response.data.containsKey("FileCount"))
             val fileNames = response.data["Files"]!!.split(",")
             assertEquals(fileCount, fileNames.size)
+        }.run()
+
+        // Test Case #5: No files / no path specified
+        val emptyWID = RandomID.fromString("7d80a092-6328-4661-99a8-0b48bd98a21c")!!
+        val emptyTopPath = Paths.get(setupData.testPath, "topdir", "wsp", emptyWID.toString())
+        emptyTopPath.toFile().mkdirs()
+        CommandTest(
+            "list.5",
+            SessionState(
+                ClientRequest("LIST"),
+                adminWID, LoginState.LoggedIn,
+                currentPath = MServerPath("/ wsp $emptyWID")
+            ), ::commandList
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(response.data.containsKey("FileCount"))
+            assertEquals("0", response.data["FileCount"])
         }.run()
     }
 

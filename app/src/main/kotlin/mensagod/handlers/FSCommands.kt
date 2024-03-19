@@ -135,7 +135,7 @@ fun commandList(state: ClientSession) {
     val schema = Schemas.list
     if (!state.requireLogin(schema)) return
 
-    val entry = schema.getPath("Path", state.message.data)!!.toHandle()
+    val entry = (schema.getPath("Path", state.message.data) ?: state.currentPath).toHandle()
     val unixtime = schema.getUnixTime("Time", state.message.data)
     checkDirectoryAccess(state, entry, AuthAction.Access).onFalse { return }
 
@@ -148,23 +148,39 @@ fun commandList(state: ClientSession) {
     }
     val response = ServerResponse(200, "OK")
     if (unixtime != null) {
-        response.attach("Files", fileList!!.filter {
+        val filteredList = fileList!!.filter {
             val parts = it.split(".")
             if (parts.size != 3) return@filter false
             val time = runCatching { parts[0].toLong() }.getOrElse { return@filter false }
             time > unixtime
-        }.joinToString(","))
+        }
+        response.attach("Files", filteredList.joinToString(","))
+            .attach("FileCount", filteredList.size)
     } else
         response.attach("Files", fileList!!.joinToString(","))
+            .attach("FileCount", fileList.size)
 
     response.sendCatching(state.conn, "Error sending LIST results")
 }
 
 // LISTDIRS(Path=null)
 fun commandListDirs(state: ClientSession) {
-    if (!state.requireLogin()) return
+    val schema = Schemas.listDirs
+    if (!state.requireLogin(schema)) return
 
-    TODO("Implement commandListDirs($state)")
+    val entry = schema.getPath("Path", state.message.data)!!.toHandle()
+    checkDirectoryAccess(state, entry, AuthAction.Access).onFalse { return }
+
+    val fileList = entry.getFile().listFiles()?.filter { it.isFile }?.map { it.name }?.sorted()
+    if (fileList == null) {
+        state.internalError(
+            "Null directory list received for ${entry.path}",
+            "Server error: null directory list received"
+        )
+    }
+    ServerResponse(200, "OK")
+        .attach("Files", fileList!!.joinToString(","))
+        .sendCatching(state.conn, "Error sending LISTDIRS results")
 }
 
 // MKDIR(Path, ClientPath)
