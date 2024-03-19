@@ -141,7 +141,108 @@ class FSCmdTest {
 
     @Test
     fun listListDirsTest() {
-        // TODO: Implement test for LIST and LISTDIRS
+        val setupData = setupTest("handlers.list")
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val adminTopPath = Paths.get(setupData.testPath, "topdir", "wsp", adminWID.toString())
+        adminTopPath.toFile().mkdirs()
+
+        val oneInfo = makeTestFile(
+            adminTopPath.toString(),
+            "1000000.1024.11111111-1111-1111-1111-111111111111",
+            1024
+        )
+        val twoInfo = makeTestFile(
+            adminTopPath.toString(),
+            "1000100.1024.22222222-2222-2222-2222-222222222222",
+            1024
+        )
+        val threeInfo = makeTestFile(
+            adminTopPath.toString(),
+            "1000200.1024.33333333-3333-3333-3333-333333333333",
+            1024
+        )
+
+        // Test Case #1: Success
+        CommandTest(
+            "list.1",
+            SessionState(
+                ClientRequest("LIST").attach("Path", "/ wsp $adminWID"),
+                adminWID, LoginState.LoggedIn,
+            ), ::commandList
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(response.data.containsKey("Files"))
+            val fileNames = response.data["Files"]!!.split(",")
+            assertEquals(3, fileNames.size)
+            assertEquals(oneInfo.first, fileNames[0])
+            assertEquals(twoInfo.first, fileNames[1])
+            assertEquals(threeInfo.first, fileNames[2])
+        }.run()
+
+        // Test Case #2: Success, time specified
+        CommandTest(
+            "list.2",
+            SessionState(
+                ClientRequest("LIST")
+                    .attach("Path", "/ wsp $adminWID")
+                    .attach("Time", "1000050"),
+                adminWID, LoginState.LoggedIn,
+            ), ::commandList
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(response.data.containsKey("Files"))
+            val fileNames = response.data["Files"]!!.split(",")
+            assertEquals(2, fileNames.size)
+            assertEquals(twoInfo.first, fileNames[0])
+            assertEquals(threeInfo.first, fileNames[1])
+        }.run()
+
+        // Test #3: Forbidden
+        val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
+        CommandTest(
+            "list.3",
+            SessionState(
+                ClientRequest("LIST")
+                    .attach("Path", "/ wsp $adminWID"),
+                userWID, LoginState.LoggedIn,
+            ), ::commandList
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(403)
+        }.run()
+
+        // Test Case #4: Lots of files
+        val userTopPath = Paths.get(setupData.testPath, "topdir", "wsp", userWID.toString())
+        userTopPath.toFile().mkdirs()
+
+        // This test has worked under Linux Mint for up to 500k files
+        val fileCount = 2000
+        repeat(fileCount) {
+            makeTestFile(
+                userTopPath.toString(),
+                "${10_000_000_000 + it}.10_000_000_000.11111111-1111-1111-1111-111111111111",
+                1024
+            )
+        }
+        CommandTest(
+            "list.4",
+            SessionState(
+                ClientRequest("LIST").attach("Path", "/ wsp $userWID"),
+                adminWID, LoginState.LoggedIn,
+            ), ::commandList
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(response.data.containsKey("Files"))
+            val fileNames = response.data["Files"]!!.split(",")
+            assertEquals(fileCount, fileNames.size)
+        }.run()
     }
 
     @Test

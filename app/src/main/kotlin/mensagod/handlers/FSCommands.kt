@@ -139,7 +139,7 @@ fun commandList(state: ClientSession) {
     val unixtime = schema.getUnixTime("Time", state.message.data)
     checkDirectoryAccess(state, entry, AuthAction.Access).onFalse { return }
 
-    val fileList = entry.getFile().listFiles()?.filter { it.isFile }?.map { it.toString() }
+    val fileList = entry.getFile().listFiles()?.filter { it.isFile }?.map { it.name }?.sorted()
     if (fileList == null) {
         state.internalError(
             "Null file list received for ${entry.path}",
@@ -151,7 +151,7 @@ fun commandList(state: ClientSession) {
         response.attach("Files", fileList!!.filter {
             val parts = it.split(".")
             if (parts.size != 3) return@filter false
-            val time = runCatching { parts[1].toLong() }.getOrElse { return@filter false }
+            val time = runCatching { parts[0].toLong() }.getOrElse { return@filter false }
             time > unixtime
         }.joinToString(","))
     } else
