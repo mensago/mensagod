@@ -48,6 +48,16 @@ fun commandDelete(state: ClientSession) {
             state.quickResponse(400, "BAD REQUEST", "$path is not a file")
             return
         }
+        path.toHandle().exists().getOrElse {
+            state.internalError(
+                "Error checking file $path existence: $it",
+                "Server error checking for file $path"
+            )
+            return
+        }.onFalse {
+            state.quickResponse(404, "RESOURCE NOT FOUND", path.toString())
+            return
+        }
     }
 
     val lfs = LocalFS.get()

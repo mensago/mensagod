@@ -28,6 +28,102 @@ class FSCmdTest {
         val adminTopPath = Paths.get(setupData.testPath, "topdir", "wsp", adminWID.toString())
         adminTopPath.toFile().mkdirs()
 
+        val oneInfo = makeTestFile(
+            adminTopPath.toString(),
+            "1000000.1024.11111111-1111-1111-1111-111111111111",
+            1024
+        )
+        val twoInfo = makeTestFile(
+            adminTopPath.toString(),
+            "1000100.1024.22222222-2222-2222-2222-222222222222",
+            1024
+        )
+        val threeInfo = makeTestFile(
+            adminTopPath.toString(),
+            "1000200.1024.33333333-3333-3333-3333-333333333333",
+            1024
+        )
+        val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+
+        // Test Case #1: Success
+        CommandTest(
+            "delete.1",
+            SessionState(
+                ClientRequest("DELETE").attach("FileCount", 2)
+                    .attach("File0", oneInfo.first)
+                    .attach("File1", twoInfo.first),
+                adminWID, LoginState.LoggedIn, devid, false, MServerPath("/ wsp $adminWID")
+            ), ::commandDelete
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(
+                !Paths.get(
+                    setupData.testPath,
+                    "topdir",
+                    "wsp",
+                    adminWID.toString(),
+                    oneInfo.first
+                ).exists()
+            )
+            assert(
+                !Paths.get(
+                    setupData.testPath,
+                    "topdir",
+                    "wsp",
+                    adminWID.toString(),
+                    twoInfo.first
+                ).exists()
+            )
+            assert(
+                Paths.get(
+                    setupData.testPath,
+                    "topdir",
+                    "wsp",
+                    adminWID.toString(),
+                    threeInfo.first
+                ).exists()
+            )
+        }.run()
+
+        // Test Case #2: Failure - try to delete a directory
+        Paths.get(
+            setupData.testPath,
+            "topdir",
+            "wsp",
+            adminWID.toString(),
+            "11111111-1111-1111-1111-111111111111"
+        ).toFile().mkdir()
+        CommandTest(
+            "delete.2",
+            SessionState(
+                ClientRequest("DELETE").attach("FileCount", 1)
+                    .attach("File0", "11111111-1111-1111-1111-111111111111"),
+                adminWID, LoginState.LoggedIn, devid, false,
+                MServerPath("/ wsp $adminWID")
+            ), ::commandDelete
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(400)
+        }.run()
+
+        // Test Case #3: Failure - file doesn't exist
+        CommandTest(
+            "delete.2",
+            SessionState(
+                ClientRequest("DELETE").attach("FileCount", 1)
+                    .attach("File0", oneInfo.first),
+                adminWID, LoginState.LoggedIn, devid, false,
+                MServerPath("/ wsp $adminWID")
+            ), ::commandDelete
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(404)
+        }.run()
+
         // TODO: Finish implementing test for DELETE
     }
 

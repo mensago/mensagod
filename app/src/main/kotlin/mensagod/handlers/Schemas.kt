@@ -24,7 +24,7 @@ object Schemas {
         MsgField("DestDir", MsgFieldType.Path, true)
     )
 
-    val delete = Schema(MsgField("PathCount", MsgFieldType.Integer, true))
+    val delete = Schema(MsgField("FileCount", MsgFieldType.Integer, true))
 
     val device = Schema(
         MsgField("Device-ID", MsgFieldType.RandomID, true),
