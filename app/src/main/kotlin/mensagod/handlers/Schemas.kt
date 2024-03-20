@@ -53,6 +53,10 @@ object Schemas {
     // GETCARD is too complicated for standard schema verification
     // GETDEVICEINFO doesn't needs a preallocated schema - 1 optional parameter
 
+    val getQuotaInfo = Schema(
+        MsgField("Workspace-ID", MsgFieldType.RandomID, false),
+    )
+
     val getWID = Schema(
         MsgField("User-ID", MsgFieldType.UserID, true),
         MsgField("Domain", MsgFieldType.Domain, false)

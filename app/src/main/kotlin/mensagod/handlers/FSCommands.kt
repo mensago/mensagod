@@ -9,10 +9,7 @@ import libmensago.ClientRequest
 import libmensago.MServerPath
 import libmensago.ServerResponse
 import mensagod.*
-import mensagod.auth.AuthAction
-import mensagod.auth.DirectoryTarget
-import mensagod.auth.FileTarget
-import mensagod.auth.WIDActor
+import mensagod.auth.*
 import mensagod.dbcmds.*
 import java.time.Instant
 import java.util.*
@@ -242,7 +239,21 @@ fun commandExists(state: ClientSession) {
 
 // GETQUOTAINFO(Workspace=null)
 fun commandGetQuotaInfo(state: ClientSession) {
-    TODO("Implement commandGetQuotaInfo($state)")
+    val schema = Schemas.getQuotaInfo
+    if (!state.requireLogin(schema)) return
+    val targetWID = schema.getRandomID("Workspace-ID", state.message.data) ?: state.wid!!
+    checkWorkspaceAccess(state, targetWID, AuthAction.GetQuota).onFalse { return }
+    val qinfo = getQuotaInfo(DBConn(), targetWID).getOrElse {
+        state.internalError(
+            "Error getting quota info for $targetWID: $it",
+            "Server error getting disk quota info"
+        )
+        return
+    }
+    ServerResponse(200, "OK")
+        .attach("DiskUsage", qinfo.first)
+        .attach("QuotaSize", qinfo.second)
+        .sendCatching(state.conn, "Error sending quota info to ${state.wid}")
 }
 
 // LIST(Path=null)
@@ -712,6 +723,33 @@ private fun checkDirectoryAccess(state: ClientSession, entry: LocalFSHandle, acc
             state.internalError(
                 "Failed to check authorization of ${state.wid} in path $dir: $it",
                 "Error checking authorization"
+            )
+            return false
+        }.onFalse {
+            state.quickResponse(403, "FORBIDDEN")
+            return false
+        }
+    return true
+}
+
+private fun checkWorkspaceAccess(state: ClientSession, targetWID: RandomID, access: AuthAction):
+        Boolean {
+    val workspace = WorkspaceTarget.fromWID(targetWID).getOrElse {
+        logError("commandResetPassword.WorkspaceTarget exception: $it")
+        state.quickResponse(300, "INTERNAL SERVER ERROR", "Error finding workspace")
+        return false
+    }
+    if (workspace == null) {
+        state.quickResponse(404, "NOT FOUND")
+        return false
+    }
+
+    workspace.isAuthorized(WIDActor(state.wid!!), access)
+        .getOrElse {
+            logError("${state.message.action}.checkAuth exception: $it")
+            state.quickResponse(
+                300, "INTERNAL SERVER ERROR",
+                "authorization check error"
             )
             return false
         }.onFalse {

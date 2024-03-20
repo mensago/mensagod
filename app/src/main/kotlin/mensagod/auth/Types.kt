@@ -61,11 +61,13 @@ enum class AuthAction {
     Read,
     Modify,
 
-    Access,         // For directory traversal and contents listing
+    Access,         // Primarily for directory traversal and contents listing
 
     Archive,        // deprovisioning account, on another's behalf or self-deprovisioning
     Register,       // account self-provisioning
     Preregister,    // provisioning an account on another's behalf
+    SetQuota,
+    GetQuota,
 }
 
 /**

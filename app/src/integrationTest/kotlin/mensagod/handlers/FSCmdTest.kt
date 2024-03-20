@@ -120,7 +120,7 @@ class FSCmdTest {
 
     @Test
     fun deleteTest() {
-        val setupData = setupTest("handlers.download")
+        val setupData = setupTest("handlers.delete")
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         val adminTopPath = Paths.get(setupData.testPath, "topdir", "wsp", adminWID.toString())
         adminTopPath.toFile().mkdirs()
@@ -337,6 +337,37 @@ class FSCmdTest {
 
             response.assertReturnCode(200)
         }.run()
+    }
+
+    @Test
+    fun getQuotaInfoTest() {
+        val setupData = setupTest("handlers.getQuotaInfo")
+        val db = DBConn()
+        setupUser(db)
+        val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
+        val userTopPath = Paths.get(setupData.testPath, "topdir", "wsp", userWID.toString())
+        userTopPath.toFile().mkdirs()
+
+        val testFileInfo = makeTestFile(userTopPath.toString(), fileSize = 2048)
+        val quotaSize = 0x100_000L
+        setQuota(db, userWID, quotaSize)?.let { throw it }
+
+        // Test Case #1: Success
+        CommandTest(
+            "getquotainfo.1",
+            SessionState(ClientRequest("GETQUOTAINFO"), userWID, LoginState.LoggedIn),
+            ::commandGetQuotaInfo
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(response.data.containsKey("DiskUsage"))
+            assert(response.data.containsKey("QuotaSize"))
+            assertEquals(testFileInfo.second, response.data["DiskUsage"]!!.toInt())
+            assertEquals(quotaSize, response.data["QuotaSize"]!!.toLong())
+        }.run()
+
+        // TODO: Finish test for GETQUOTAINFO
     }
 
     @Test

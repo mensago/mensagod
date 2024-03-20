@@ -15,23 +15,28 @@ class WorkspaceTarget private constructor(val wid: RandomID) : AuthTarget {
     override fun getActions(actor: AuthActor, action: AuthAction): Result<List<AuthAction>> {
         if (actor.getType() != AuthActorType.WID) return listOf<AuthAction>().toSuccess()
         actor as WIDActor
-
         if (actor.isAdmin().getOrElse { return it.toFailure() })
-            return listOf(AuthAction.Modify, AuthAction.Archive).toSuccess()
+            return listOf(
+                AuthAction.Modify,
+                AuthAction.Archive,
+                AuthAction.GetQuota,
+                AuthAction.SetQuota
+            ).toSuccess()
 
         if (wid == actor.wid)
-            return listOf(AuthAction.Archive).toSuccess()
+            return listOf(AuthAction.Modify, AuthAction.Archive, AuthAction.GetQuota).toSuccess()
 
         return listOf<AuthAction>().toSuccess()
     }
 
     override fun isAuthorized(actor: AuthActor, action: AuthAction): Result<Boolean> {
+        if (actor.getType() != AuthActorType.WID) return false.toSuccess()
+        actor as WIDActor
+        val isAdmin = actor.isAdmin().getOrElse { return it.toFailure() }
         return when (action) {
-            AuthAction.Archive, AuthAction.Modify -> {
-                if (actor.getType() != AuthActorType.WID) return false.toSuccess()
-                actor as WIDActor
-                (wid == actor.wid || actor.isAdmin().getOrElse { return it.toFailure() })
-                    .toSuccess()
+            AuthAction.SetQuota -> isAdmin.toSuccess()
+            AuthAction.Archive, AuthAction.Modify, AuthAction.GetQuota -> {
+                (wid == actor.wid || isAdmin).toSuccess()
             }
 
             else -> false.toSuccess()
