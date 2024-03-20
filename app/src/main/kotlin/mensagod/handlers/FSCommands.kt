@@ -363,7 +363,57 @@ fun commandMkDir(state: ClientSession) {
 
 // MOVE(SourceFile,DestDir)
 fun commandMove(state: ClientSession) {
-    TODO("Implement commandMove($state)")
+    val schema = Schemas.move
+    if (!state.requireLogin(schema)) return
+    val sourceFilePath = schema.getPath("SourceFile", state.message.data)!!
+    if (!sourceFilePath.isFile()) {
+        state.quickResponse(404, "BAD REQUEST", "SourceFile must be a file path")
+        return
+    }
+    val destPath = schema.getPath("DestDir", state.message.data)!!
+    if (!destPath.isDir()) {
+        state.quickResponse(
+            404, "BAD REQUEST",
+            "DestDir must be a directory"
+        )
+        return
+    }
+
+    val lfs = LocalFS.get()
+    checkDirectoryAccess(
+        state,
+        lfs.entry(sourceFilePath.parent()!!),
+        AuthAction.Access
+    ).onFalse { return }
+    checkDirectoryAccess(state, lfs.entry(destPath), AuthAction.Create).onFalse { return }
+
+    lfs.withLock(sourceFilePath) {
+        sourceFilePath.toHandle().moveTo(destPath)
+    }?.let {
+        state.internalError(
+            "Error copying file $sourceFilePath to $destPath: $it",
+            "Internal error copying file"
+        )
+        return
+    }
+
+    addSyncRecord(
+        DBConn(), state.wid!!, SyncRecord(
+            RandomID.generate(),
+            UpdateType.Move,
+            "$sourceFilePath:$destPath",
+            Instant.now().epochSecond.toString(),
+            state.devid!!
+        )
+    )?.let {
+        state.internalError(
+            "commandMove: failed to add update entry for $destPath: $it",
+            "Error adding update entry for created file"
+        )
+        return
+    }
+
+    state.quickResponse(200, "OK")
 }
 
 // RMDIR(Path, ClientPath)

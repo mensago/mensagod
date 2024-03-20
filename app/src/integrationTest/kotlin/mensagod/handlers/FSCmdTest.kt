@@ -593,6 +593,74 @@ class FSCmdTest {
     }
 
     @Test
+    fun moveTest() {
+        val setupData = setupTest("handlers.move")
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val adminTopPath = Paths.get(setupData.testPath, "topdir", "wsp", adminWID.toString())
+        val adminDestPath =
+            Paths.get(
+                setupData.testPath,
+                "topdir",
+                "wsp",
+                adminWID.toString(),
+                "11111111-1111-1111-1111-111111111111"
+            )
+        adminDestPath.toFile().mkdirs()
+
+        val oneInfo = makeTestFile(
+            adminTopPath.toString(),
+            "1000000.1024.11111111-1111-1111-1111-111111111111",
+            1024
+        )
+        val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+
+        // Test Case #1: Success
+        CommandTest(
+            "copy.1",
+            SessionState(
+                ClientRequest("MOVE")
+                    .attach("SourceFile", "/ wsp $adminWID ${oneInfo.first}")
+                    .attach("DestDir", "/ wsp $adminWID 11111111-1111-1111-1111-111111111111"),
+                adminWID, LoginState.LoggedIn, devid, false, MServerPath("/ wsp $adminWID")
+            ), ::commandMove
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(
+                Paths.get(
+                    setupData.testPath,
+                    "topdir",
+                    "wsp",
+                    adminWID.toString(),
+                    "11111111-1111-1111-1111-111111111111",
+                    oneInfo.first
+                ).exists()
+            )
+        }.run()
+
+        // Test Case #2: Forbidden
+        val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
+        val userTopPath = Paths.get(setupData.testPath, "topdir", "wsp", userWID.toString())
+        userTopPath.toFile().mkdirs()
+        val userFileInfo = makeTestFile(userTopPath.toString())
+
+        CommandTest(
+            "move.2",
+            SessionState(
+                ClientRequest("MOVE")
+                    .attach("SourceFile", "/ wsp $userWID ${userFileInfo.first}")
+                    .attach("DestDir", "/ wsp $adminWID 11111111-1111-1111-1111-111111111111"),
+                userWID, LoginState.LoggedIn, devid, false, MServerPath("/ wsp $userWID")
+            ), ::commandMove
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(403)
+        }.run()
+    }
+
+    @Test
     fun rmdirTest() {
         setupTest("handlers.rmDir")
         val db = DBConn()
