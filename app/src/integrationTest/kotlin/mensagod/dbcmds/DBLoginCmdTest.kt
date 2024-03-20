@@ -31,7 +31,7 @@ class DBLoginCmdTest {
     fun preregWorkspaceTest() {
         // This test also covers deletePrereg() and checkRegCode()
 
-        val setupData = setupTest("dbcmds.checkPassword")
+        setupTest("dbcmds.checkPassword")
         val db = DBConn()
 
         val testHash = ADMIN_PROFILE_DATA["reghash"]!!
@@ -39,14 +39,7 @@ class DBLoginCmdTest {
         val newWID = RandomID.fromString("94fd481f-6b1c-459b-ada7-5f32b3a1bbf3")!!
         val newWID2 = RandomID.fromString("793e9e33-5c6b-4b6a-8f56-ef64e7db2c21")!!
         val newUID = UserID.fromString("csimons")!!
-        val supportWID = RandomID.fromString(setupData.serverSetupData["support_wid"])!!
-        val supportUID = UserID.fromString("support")
         val domain = gServerDomain
-        assert(preregWorkspace(db, supportWID, null, domain, "foo")
-                is ResourceExistsException)
-
-        assert(preregWorkspace(db, supportWID, supportUID, domain, "bar")
-                is ResourceExistsException)
 
         preregWorkspace(db, newWID, newUID, domain, testHash)?.let { throw it }
         var rs = db.query("SELECT wid,uid,domain,regcode FROM prereg WHERE wid=?", newWID)

@@ -27,7 +27,8 @@ class DBWorkspaceCmdTest {
             WorkspaceType.Individual
         )?.let { throw it }
 
-        val rs = db.query("""SELECT * FROM workspaces WHERE wid=?""", adminWID).getOrThrow()
+        val rs = db.query("""SELECT * FROM workspaces WHERE wid=? AND wtype!='alias'""", adminWID)
+            .getOrThrow()
         assert(rs.next())
         assertEquals("admin", rs.getString("uid"))
         assertEquals(gServerDomain.toString(), rs.getString("domain"))
@@ -77,8 +78,8 @@ class DBWorkspaceCmdTest {
         val serverData = initDB(db.getConnection()!!)
 
         assertEquals(
-            WorkspaceStatus.Active,
-            checkWorkspace(db, RandomID.fromString(serverData["support_wid"])!!).getOrThrow()
+            WorkspaceStatus.Preregistered,
+            checkWorkspace(db, RandomID.fromString(serverData["admin_wid"])!!).getOrThrow()
         )
         assertNull(
             checkWorkspace(
@@ -87,7 +88,7 @@ class DBWorkspaceCmdTest {
             ).getOrThrow()
         )
 
-        assertNotNull(resolveUserID(db, UserID.fromString("support")!!).getOrThrow())
+        assertNotNull(resolveUserID(db, UserID.fromString("admin")!!).getOrThrow())
         val zeroUID = UserID.fromString("00000000-0000-0000-0000-000000000000")!!
         assertNull(resolveUserID(db, zeroUID).getOrThrow())
     }
