@@ -494,9 +494,23 @@ fun commandSelect(state: ClientSession) {
     state.quickResponse(200, "OK")
 }
 
-// SETQUOTA(Workspace)
+// SETQUOTA(Workspace-ID, Size)
 fun commandSetQuota(state: ClientSession) {
-    TODO("Implement commandSetQuota($state)")
+    val schema = Schemas.setQuotaInfo
+    if (!state.requireLogin(schema)) return
+
+    val wid = schema.getRandomID("Workspace-ID", state.message.data)!!
+    val size = schema.getLong("Size", state.message.data)!!
+    checkWorkspaceAccess(state, wid, AuthAction.SetQuota).onFalse { return }
+    setQuota(DBConn(), wid, size)?.let {
+        state.internalError(
+            "Error setting quota info for $wid: $it",
+            "Server error setting disk quota info"
+        )
+        return
+    }
+
+    state.quickResponse(200, "OK")
 }
 
 // UPLOAD(Size,Hash,Path,Replaces="",Name="",Offset=0)
@@ -735,7 +749,7 @@ private fun checkDirectoryAccess(state: ClientSession, entry: LocalFSHandle, acc
 private fun checkWorkspaceAccess(state: ClientSession, targetWID: RandomID, access: AuthAction):
         Boolean {
     val workspace = WorkspaceTarget.fromWID(targetWID).getOrElse {
-        logError("commandResetPassword.WorkspaceTarget exception: $it")
+        logError("${state.message.action}.WorkspaceTarget exception: $it")
         state.quickResponse(300, "INTERNAL SERVER ERROR", "Error finding workspace")
         return false
     }

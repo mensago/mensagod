@@ -7,6 +7,7 @@ import libmensago.ClientRequest
 import libmensago.MServerPath
 import libmensago.ServerResponse
 import mensagod.*
+import mensagod.dbcmds.getQuotaInfo
 import mensagod.dbcmds.setQuota
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -868,6 +869,58 @@ class FSCmdTest {
         ) { port ->
             val socket = Socket(InetAddress.getByName("localhost"), port)
             ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(404)
+        }.run()
+    }
+
+    @Test
+    fun setQuotaInfoTest() {
+        val setupData = setupTest("handlers.setQuotaInfo")
+        val db = DBConn()
+        setupUser(db)
+        val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
+        val userTopPath = Paths.get(setupData.testPath, "topdir", "wsp", userWID.toString())
+        userTopPath.toFile().mkdirs()
+
+        val testFileInfo = makeTestFile(userTopPath.toString(), fileSize = 2048)
+        val quotaSize = 0x100_000L
+        setQuota(db, userWID, quotaSize)?.let { throw it }
+
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val adminTopPath = Paths.get(setupData.testPath, "topdir", "wsp", adminWID.toString())
+        adminTopPath.toFile().mkdirs()
+
+        // Test Case #1: Success
+        CommandTest(
+            "setquotainfo.1",
+            SessionState(
+                ClientRequest("SETQUOTA")
+                    .attach("Workspace-ID", adminWID)
+                    .attach("Size", quotaSize),
+                adminWID, LoginState.LoggedIn
+            ),
+            ::commandSetQuota
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            val info = getQuotaInfo(db, userWID).getOrThrow()
+            assertEquals(testFileInfo.second.toLong(), info.first)
+            assertEquals(quotaSize, info.second)
+        }.run()
+
+        // Test Case #2: Forbidden
+        CommandTest(
+            "setquotainfo.2",
+            SessionState(
+                ClientRequest("SETQUOTA")
+                    .attach("Workspace-ID", adminWID)
+                    .attach("Size", quotaSize), userWID, LoginState.LoggedIn
+            ),
+            ::commandSetQuota
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(403)
         }.run()
     }
 

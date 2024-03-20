@@ -185,6 +185,11 @@ object Schemas {
         MsgField("NewPassword-Parameters", MsgFieldType.String, false),
     )
 
+    val setQuotaInfo = Schema(
+        MsgField("Workspace-ID", MsgFieldType.RandomID, true),
+        MsgField("Size", MsgFieldType.Long, true),
+    )
+
     val setStatus = Schema(
         MsgField("Workspace-ID", MsgFieldType.RandomID, true),
         MsgField("Status", MsgFieldType.String, true),
