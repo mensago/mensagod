@@ -85,34 +85,32 @@ fun commandAddEntry(state: ClientSession) {
                 return
             }
 
-        // Admin, support, and abuse can't change their user IDs
-        listOf("admin", "support", "abuse").forEach {
-            val specialAddr = MAddress.fromParts(UserID.fromString(it)!!, gServerDomain)
-            val specialWID = resolveAddress(db, specialAddr).getOrElse { e ->
-                state.internalError(
-                    "commandAddEntry.resolveAddress exception: $e",
-                    "Server error resolving a special address"
-                )
-                return
-            } ?: run {
-                state.internalError(
-                    "commandAddEntry: error resolving address ",
-                    "Internal error in server error handling"
-                )
-                return
-            }
+        // Admin can't change its user ID
+        val specialAddr = MAddress.fromParts(UserID.fromString("admin")!!, gServerDomain)
+        val specialWID = resolveAddress(db, specialAddr).getOrElse { e ->
+            state.internalError(
+                "commandAddEntry.resolveAddress exception: $e",
+                "Server error resolving a special address"
+            )
+            return
+        } ?: run {
+            state.internalError(
+                "commandAddEntry: error resolving address ",
+                "Internal error in server error handling"
+            )
+            return
+        }
 
-            if (state.wid == specialWID && outUID.toString() != it) {
-                ServerResponse(
-                    411, "BAD KEYCARD DATA",
-                    "Admin, Support, and Abuse can't change their user IDs"
-                ).sendCatching(
-                    state.conn,
-                    "commandAddEntry: Couldn't send response for special uid " +
-                            "change attempt, wid = ${state.wid}"
-                )
-                return
-            }
+        if (state.wid == specialWID && outUID.toString() != "admin") {
+            ServerResponse(
+                411, "BAD KEYCARD DATA",
+                "Admin, Support, and Abuse can't change their user IDs"
+            ).sendCatching(
+                state.conn,
+                "commandAddEntry: Couldn't send response for special uid " +
+                        "change attempt, wid = ${state.wid}"
+            )
+            return
         }
     }
 
