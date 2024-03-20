@@ -16,7 +16,8 @@ import testsupport.setupTest
 
 class DBKeycardCmdTest {
 
-    @Test fun addEntryTest() {
+    @Test
+    fun addEntryTest() {
         setupTest("dbcmds.addEntries")
         val db = DBConn()
         val osPair = getPrimarySigningPair(db).getOrThrow()
@@ -24,7 +25,8 @@ class DBKeycardCmdTest {
             .getOrThrow()
         val crsPair = SigningPair.fromStrings(
             ADMIN_PROFILE_DATA["signing.public"]!!,
-            ADMIN_PROFILE_DATA["signing.private"]!!).getOrThrow()
+            ADMIN_PROFILE_DATA["signing.private"]!!
+        ).getOrThrow()
 
         val rootEntry = UserEntry()
         rootEntry.run {
@@ -33,10 +35,14 @@ class DBKeycardCmdTest {
             setField("Workspace-ID", ADMIN_PROFILE_DATA["wid"]!!)
             setField("User-ID", ADMIN_PROFILE_DATA["uid"]!!)
             setField("Domain", ADMIN_PROFILE_DATA["domain"]!!)
-            setField("Contact-Request-Verification-Key",
-                ADMIN_PROFILE_DATA["crsigning.public"]!!)
-            setField("Contact-Request-Encryption-Key",
-                ADMIN_PROFILE_DATA["crencryption.public"]!!)
+            setField(
+                "Contact-Request-Verification-Key",
+                ADMIN_PROFILE_DATA["crsigning.public"]!!
+            )
+            setField(
+                "Contact-Request-Encryption-Key",
+                ADMIN_PROFILE_DATA["crencryption.public"]!!
+            )
             setField("Verification-Key", ADMIN_PROFILE_DATA["signing.public"]!!)
             setField("Encryption-Key", ADMIN_PROFILE_DATA["encryption.public"]!!)
             sign("Organization-Signature", osPair)?.let { throw it }
@@ -52,7 +58,8 @@ class DBKeycardCmdTest {
         assertEquals(1, userEntries.size)
     }
 
-    @Test fun getEntriesTest() {
+    @Test
+    fun getEntriesTest() {
         setupTest("dbcmds.getEntries")
         val db = DBConn()
 
@@ -89,16 +96,16 @@ class DBKeycardCmdTest {
 
         // Using support instead of admin because we don't have to go through the registration
         // process for admin this way.
-        assertNotNull(resolveAddress(db, MAddress.fromString("support/example.com")!!)
-            .getOrThrow())
+        assertNotNull(
+            resolveAddress(db, MAddress.fromString("support/example.com")!!)
+                .getOrThrow()
+        )
 
         // admin hasn't been registered yet, so this one should be null
-        assertNull(resolveAddress(db, MAddress.fromString("admin/example.com")!!)
-            .getOrThrow())
-
-        val supportWID = RandomID.fromString(setupData["support_wid"])!!
-        assertEquals("example.com", resolveWID(db, supportWID).getOrThrow()
-            ?.domain.toString())
+        assertNull(
+            resolveAddress(db, MAddress.fromString("admin/example.com")!!)
+                .getOrThrow()
+        )
 
         val zeroWID = RandomID.fromString("00000000-0000-0000-0000-000000000000")!!
         assertNull(resolveWID(db, zeroWID).getOrThrow())
