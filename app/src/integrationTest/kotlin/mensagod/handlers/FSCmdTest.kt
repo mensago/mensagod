@@ -26,14 +26,96 @@ class FSCmdTest {
         val setupData = setupTest("handlers.copy")
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         val adminTopPath = Paths.get(setupData.testPath, "topdir", "wsp", adminWID.toString())
-        adminTopPath.toFile().mkdirs()
+        val adminDestPath =
+            Paths.get(
+                setupData.testPath,
+                "topdir",
+                "wsp",
+                adminWID.toString(),
+                "11111111-1111-1111-1111-111111111111"
+            )
+        adminDestPath.toFile().mkdirs()
 
         val oneInfo = makeTestFile(
             adminTopPath.toString(),
             "1000000.1024.11111111-1111-1111-1111-111111111111",
             1024
         )
-        // TODO: Implement test for COPY
+        val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
+
+        // Test Case #1: Success
+        CommandTest(
+            "copy.1",
+            SessionState(
+                ClientRequest("COPY")
+                    .attach("SourceFile", "/ wsp $adminWID ${oneInfo.first}")
+                    .attach("DestDir", "/ wsp $adminWID 11111111-1111-1111-1111-111111111111"),
+                adminWID, LoginState.LoggedIn, devid, false, MServerPath("/ wsp $adminWID")
+            ), ::commandCopy
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(response.data.containsKey("NewName"))
+            assert(
+                Paths.get(
+                    setupData.testPath,
+                    "topdir",
+                    "wsp",
+                    adminWID.toString(),
+                    "11111111-1111-1111-1111-111111111111",
+                    response.data["NewName"]!!
+                ).exists()
+            )
+        }.run()
+
+        // Test Case #2: Forbidden
+        val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
+        val userTopPath = Paths.get(setupData.testPath, "topdir", "wsp", userWID.toString())
+        userTopPath.toFile().mkdirs()
+        val userFileInfo = makeTestFile(userTopPath.toString())
+
+        CommandTest(
+            "copy.2",
+            SessionState(
+                ClientRequest("COPY")
+                    .attach("SourceFile", "/ wsp $userWID ${userFileInfo.first}")
+                    .attach("DestDir", "/ wsp $adminWID 11111111-1111-1111-1111-111111111111"),
+                userWID, LoginState.LoggedIn, devid, false, MServerPath("/ wsp $userWID")
+            ), ::commandCopy
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(403)
+        }.run()
+
+        // Test Case #3: Insufficient Quota
+        val userDestPath =
+            Paths.get(
+                setupData.testPath,
+                "topdir",
+                "wsp",
+                userWID.toString(),
+                "11111111-1111-1111-1111-111111111111"
+            )
+        userDestPath.toFile().mkdirs()
+        // (1024^2 - 2048)
+        setQuota(DBConn(), userWID, 1048576)?.let { throw it }
+        val bigFileInfo = makeTestFile(userTopPath.toString(), null, 1046528)
+
+        CommandTest(
+            "copy.3",
+            SessionState(
+                ClientRequest("COPY")
+                    .attach("SourceFile", "/ wsp $userWID ${bigFileInfo.first}")
+                    .attach("DestDir", "/ wsp $userWID 11111111-1111-1111-1111-111111111111"),
+                userWID, LoginState.LoggedIn, devid, false, MServerPath("/ wsp $userWID")
+            ), ::commandCopy
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(409)
+        }.run()
     }
 
     @Test

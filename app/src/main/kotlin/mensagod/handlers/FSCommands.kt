@@ -23,16 +23,31 @@ fun commandCopy(state: ClientSession) {
     if (!state.requireLogin(schema)) return
     val sourceFilePath = schema.getPath("SourceFile", state.message.data)!!
     val destPath = schema.getPath("DestDir", state.message.data)!!
+    if (!sourceFilePath.isFile()) {
+        state.quickResponse(404, "BAD REQUEST", "SourceFile must be a path to a file")
+        return
+    }
+    if (!destPath.isDir()) {
+        state.quickResponse(
+            404, "BAD REQUEST",
+            "DestDir must be a path to a directory"
+        )
+        return
+    }
 
     val lfs = LocalFS.get()
-    checkDirectoryAccess(state, lfs.entry(sourceFilePath), AuthAction.Access).onFalse { return }
+    checkDirectoryAccess(
+        state,
+        lfs.entry(sourceFilePath.parent()!!),
+        AuthAction.Access
+    ).onFalse { return }
     checkDirectoryAccess(state, lfs.entry(destPath), AuthAction.Create).onFalse { return }
     val fileSize = sourceFilePath.size()
     checkQuota(state, fileSize).onFalse { return }
 
-    var destName = MServerPath()
+    var destFilePath = MServerPath()
     lfs.withLock(sourceFilePath) {
-        sourceFilePath.toHandle().copyTo(destPath).onSuccess { destName = it }.exceptionOrNull()
+        sourceFilePath.toHandle().copyTo(destPath).onSuccess { destFilePath = it }.exceptionOrNull()
     }?.let {
         state.internalError(
             "Error copying file $sourceFilePath to $destPath: $it",
@@ -41,24 +56,23 @@ fun commandCopy(state: ClientSession) {
         return
     }
 
-    val destFilePath = "$destPath destName"
     addSyncRecord(
         DBConn(), state.wid!!, SyncRecord(
             RandomID.generate(),
             UpdateType.Create,
-            destFilePath,
+            destFilePath.toString(),
             Instant.now().epochSecond.toString(),
             state.devid!!
         )
     )?.let {
         state.internalError(
-            "commandDelete: failed to add update entry for $destFilePath: $it",
-            "Error adding update entry for deleted file"
+            "commandCopy: failed to add update entry for $destFilePath: $it",
+            "Error adding update entry for created file"
         )
         return
     }
 
-    ServerResponse(200, "OK").attach("NewName", destName)
+    ServerResponse(200, "OK").attach("NewName", destFilePath.basename())
         .sendCatching(state.conn, "Error sending new name from COPY")
 }
 
@@ -630,7 +644,7 @@ private fun checkDirectoryAccess(state: ClientSession, entry: LocalFSHandle, acc
         Boolean {
     entry.exists().getOrElse {
         state.internalError(
-            "commandList: error checking for directory ${entry.path}: $it",
+            "${state.message.action}: error checking for directory ${entry.path}: $it",
             "Error checking directory existence"
         )
         return false
