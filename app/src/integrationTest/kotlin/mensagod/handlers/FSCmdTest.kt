@@ -123,8 +123,6 @@ class FSCmdTest {
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(404)
         }.run()
-
-        // TODO: Finish implementing test for DELETE
     }
 
     @Test
