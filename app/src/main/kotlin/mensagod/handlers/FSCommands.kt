@@ -19,9 +19,47 @@ import java.util.*
 
 // COPY(SourceFile,DestDir)
 fun commandCopy(state: ClientSession) {
-    if (!state.requireLogin()) return
+    val schema = Schemas.copy
+    if (!state.requireLogin(schema)) return
+    val sourceFilePath = schema.getPath("SourceFile", state.message.data)!!
+    val destPath = schema.getPath("DestDir", state.message.data)!!
 
-    TODO("Implement commandCopy($state)")
+    val lfs = LocalFS.get()
+    checkDirectoryAccess(state, lfs.entry(sourceFilePath), AuthAction.Access).onFalse { return }
+    checkDirectoryAccess(state, lfs.entry(destPath), AuthAction.Create).onFalse { return }
+    val fileSize = sourceFilePath.size()
+    checkQuota(state, fileSize).onFalse { return }
+
+    var destName = MServerPath()
+    lfs.withLock(sourceFilePath) {
+        sourceFilePath.toHandle().copyTo(destPath).onSuccess { destName = it }.exceptionOrNull()
+    }?.let {
+        state.internalError(
+            "Error copying file $sourceFilePath to $destPath: $it",
+            "Internal error copying file"
+        )
+        return
+    }
+
+    val destFilePath = "$destPath destName"
+    addSyncRecord(
+        DBConn(), state.wid!!, SyncRecord(
+            RandomID.generate(),
+            UpdateType.Create,
+            destFilePath,
+            Instant.now().epochSecond.toString(),
+            state.devid!!
+        )
+    )?.let {
+        state.internalError(
+            "commandDelete: failed to add update entry for $destFilePath: $it",
+            "Error adding update entry for deleted file"
+        )
+        return
+    }
+
+    ServerResponse(200, "OK").attach("NewName", destName)
+        .sendCatching(state.conn, "Error sending new name from COPY")
 }
 
 // DELETE(FileCount,File0...)
@@ -616,5 +654,29 @@ private fun checkDirectoryAccess(state: ClientSession, entry: LocalFSHandle, acc
             state.quickResponse(403, "FORBIDDEN")
             return false
         }
+    return true
+}
+
+/**
+ * Returns true if the user's quota can accommodate an increase in disk usage of the specified
+ * amount of space.
+ */
+private fun checkQuota(state: ClientSession, fileSize: Int): Boolean {
+    val db = DBConn()
+    val quotaInfo = getQuotaInfo(db, state.wid!!).getOrElse {
+        state.internalError(
+            "Error getting quota for wid ${state.wid!!}: $it",
+            "Server error getting account quota info"
+        )
+        return false
+    }
+
+    if (quotaInfo.second > 0 && quotaInfo.first + fileSize > quotaInfo.second) {
+        state.quickResponse(
+            409, "QUOTA INSUFFICIENT",
+            "Your account lacks sufficient space for the file"
+        )
+        return false
+    }
     return true
 }

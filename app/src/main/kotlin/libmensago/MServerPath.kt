@@ -9,6 +9,7 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import libkeycard.RandomID
 import java.util.regex.Pattern
 
 /**
@@ -43,6 +44,12 @@ class MServerPath(path: String? = null) {
     /** Returns the object's path */
     fun get(): String {
         return value
+    }
+
+    /** Returns a file's UUID identifier or the a directory's name */
+    fun id(): RandomID {
+        return if (isDir()) RandomID.fromString(basename())!!
+        else RandomID.fromString(basename().split(".")[3])!!
     }
 
     /** Returns true if the instance's path represents a file */
@@ -98,6 +105,16 @@ class MServerPath(path: String? = null) {
         value = s
         parts = value.split(" ").toMutableList()
         return this
+    }
+
+    /** Returns the size of the file reported in the file's name. Returns -1 for directories */
+    fun size(): Int {
+        return if (isDir()) -1 else basename().split(".")[1].toInt()
+    }
+
+    /** Returns the timestamp of the file reported in the file's name. Returns -1 for directories */
+    fun timestamp(): Int {
+        return if (isDir()) -1 else basename().split(".")[0].toInt()
     }
 
     override fun equals(other: Any?): Boolean {

@@ -22,6 +22,21 @@ import kotlin.io.path.exists
 class FSCmdTest {
 
     @Test
+    fun copyTest() {
+        val setupData = setupTest("handlers.copy")
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val adminTopPath = Paths.get(setupData.testPath, "topdir", "wsp", adminWID.toString())
+        adminTopPath.toFile().mkdirs()
+
+        val oneInfo = makeTestFile(
+            adminTopPath.toString(),
+            "1000000.1024.11111111-1111-1111-1111-111111111111",
+            1024
+        )
+        // TODO: Implement test for COPY
+    }
+
+    @Test
     fun deleteTest() {
         val setupData = setupTest("handlers.download")
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
