@@ -367,7 +367,56 @@ class FSCmdTest {
             assertEquals(quotaSize, response.data["QuotaSize"]!!.toLong())
         }.run()
 
-        // TODO: Finish test for GETQUOTAINFO
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
+        val adminTopPath = Paths.get(setupData.testPath, "topdir", "wsp", adminWID.toString())
+        adminTopPath.toFile().mkdirs()
+
+        // Test Case #2: Empty workspace
+        CommandTest(
+            "getquotainfo.2",
+            SessionState(ClientRequest("GETQUOTAINFO"), adminWID, LoginState.LoggedIn),
+            ::commandGetQuotaInfo
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(response.data.containsKey("DiskUsage"))
+            assert(response.data.containsKey("QuotaSize"))
+            assertEquals(0, response.data["DiskUsage"]!!.toInt())
+            assertEquals(0L, response.data["QuotaSize"]!!.toLong())
+        }.run()
+
+        // Test Case #3: Admin targets a different workspace
+        CommandTest(
+            "getquotainfo.3",
+            SessionState(
+                ClientRequest("GETQUOTAINFO")
+                    .attach("Workspace-ID", userWID), adminWID, LoginState.LoggedIn
+            ),
+            ::commandGetQuotaInfo
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(200)
+            assert(response.data.containsKey("DiskUsage"))
+            assert(response.data.containsKey("QuotaSize"))
+            assertEquals(testFileInfo.second, response.data["DiskUsage"]!!.toInt())
+            assertEquals(quotaSize, response.data["QuotaSize"]!!.toLong())
+        }.run()
+
+        // Test Case #4: Forbidden
+        CommandTest(
+            "getquotainfo.4",
+            SessionState(
+                ClientRequest("GETQUOTAINFO")
+                    .attach("Workspace-ID", adminWID), userWID, LoginState.LoggedIn
+            ),
+            ::commandGetQuotaInfo
+        ) { port ->
+            val socket = Socket(InetAddress.getByName("localhost"), port)
+            val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
+            response.assertReturnCode(403)
+        }.run()
     }
 
     @Test
