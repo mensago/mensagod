@@ -92,7 +92,7 @@ class DBKeycardCmdTest {
         resetDB(config).getOrThrow()
         DBConn.initialize(config)?.let { throw it }
         val db = DBConn().connect().getOrThrow()
-        val setupData = initDB(db.getConnection()!!)
+        initDB(db.getConnection()!!)
 
         // Using support instead of admin because we don't have to go through the registration
         // process for admin this way.
