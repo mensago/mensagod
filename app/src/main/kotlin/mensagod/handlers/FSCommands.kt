@@ -53,21 +53,24 @@ fun commandCopy(state: ClientSession) {
         return
     }
 
-    addSyncRecord(
-        DBConn(), state.wid!!, SyncRecord(
-            RandomID.generate(),
-            UpdateType.Create,
-            destFilePath.toString(),
-            Instant.now().epochSecond.toString(),
-            state.devid!!
-        )
-    )?.let {
-        state.internalError(
-            "commandCopy: failed to add update entry for $destFilePath: $it",
-            "Error adding update entry for created file"
-        )
-        return
-    }
+    withDB { db ->
+        addSyncRecord(
+            db, state.wid!!, SyncRecord(
+                RandomID.generate(),
+                UpdateType.Create,
+                destFilePath.toString(),
+                Instant.now().epochSecond.toString(),
+                state.devid!!
+            )
+        )?.let {
+            state.internalError(
+                "commandCopy: failed to add update entry for $destFilePath: $it",
+                "Error adding update entry for created file"
+            )
+            db.disconnect()
+            return
+        }
+    }.onFalse { return }
 
     ServerResponse(200, "OK").attach("NewName", destFilePath.basename())
         .sendCatching(state.conn, "Error sending new name from COPY")
@@ -112,7 +115,7 @@ fun commandDelete(state: ClientSession) {
     val lfs = LocalFS.get()
     checkDirectoryAccess(state, lfs.entry(state.currentPath), AuthAction.Delete).onFalse { return }
 
-    val db = DBConn()
+    val db = state.dbConnect() ?: return
     for (i in 0 until fileCount) {
         val fileHandle = MServerPath("${state.currentPath} ${state.message.data["File$i"]}")
             .toHandle()
@@ -121,6 +124,7 @@ fun commandDelete(state: ClientSession) {
                 "Failed to delete ${fileHandle.path}: $it",
                 "Error deleting file"
             )
+            db.disconnect()
             return
         }
 
@@ -137,9 +141,11 @@ fun commandDelete(state: ClientSession) {
                 "commandDelete: failed to add update entry for ${fileHandle.path}: $it",
                 "Error adding update entry for deleted file"
             )
+            db.disconnect()
             return
         }
     }
+    db.disconnect()
     state.quickResponse(200, "OK")
 }
 
@@ -243,13 +249,17 @@ fun commandGetQuotaInfo(state: ClientSession) {
     if (!state.requireLogin(schema)) return
     val targetWID = schema.getRandomID("Workspace-ID", state.message.data) ?: state.wid!!
     checkWorkspaceAccess(state, targetWID, AuthAction.GetQuota).onFalse { return }
-    val qinfo = getQuotaInfo(DBConn(), targetWID).getOrElse {
-        state.internalError(
-            "Error getting quota info for $targetWID: $it",
-            "Server error getting disk quota info"
-        )
-        return
-    }
+    val qinfo = withDBResult { db ->
+        getQuotaInfo(db, targetWID).getOrElse {
+            state.internalError(
+                "Error getting quota info for $targetWID: $it",
+                "Server error getting disk quota info"
+            )
+            db.disconnect()
+            return
+        }
+    }.getOrElse { state.unavailableError(); return }
+
     ServerResponse(200, "OK")
         .attach("DiskUsage", qinfo.first)
         .attach("QuotaSize", qinfo.second)
@@ -344,13 +354,14 @@ fun commandMkDir(state: ClientSession) {
         return
     }
 
-    val db = DBConn()
+    val db = state.dbConnect() ?: return
     addFolderEntry(db, state.wid!!, serverPath, clientPath)?.let {
         dirHandle.delete()?.let { e -> logError("Failed to delete folder $serverPath: $e") }
         state.internalError(
             "Failed to add folder entry for $serverPath: $it",
             "Error creating folder entry"
         )
+        db.disconnect()
         return
     }
 
@@ -367,8 +378,10 @@ fun commandMkDir(state: ClientSession) {
             "commandMkDir: failed to add update entry for $serverPath: $it",
             "Error adding update entry"
         )
+        db.disconnect()
         return
     }
+    db.disconnect()
     state.quickResponse(200, "OK")
 }
 
@@ -408,21 +421,24 @@ fun commandMove(state: ClientSession) {
         return
     }
 
-    addSyncRecord(
-        DBConn(), state.wid!!, SyncRecord(
-            RandomID.generate(),
-            UpdateType.Move,
-            "$sourceFilePath:$destPath",
-            Instant.now().epochSecond.toString(),
-            state.devid!!
-        )
-    )?.let {
-        state.internalError(
-            "commandMove: failed to add update entry for $destPath: $it",
-            "Error adding update entry for created file"
-        )
-        return
-    }
+    withDB { db ->
+        addSyncRecord(
+            db, state.wid!!, SyncRecord(
+                RandomID.generate(),
+                UpdateType.Move,
+                "$sourceFilePath:$destPath",
+                Instant.now().epochSecond.toString(),
+                state.devid!!
+            )
+        )?.let {
+            state.internalError(
+                "commandMove: failed to add update entry for $destPath: $it",
+                "Error adding update entry for created file"
+            )
+            db.disconnect()
+            return
+        }
+    }.onFalse { return }
 
     state.quickResponse(200, "OK")
 }
@@ -455,12 +471,13 @@ fun commandRmDir(state: ClientSession) {
         return
     }
 
-    val db = DBConn()
+    val db = state.dbConnect() ?: return
     removeFolderEntry(db, state.wid!!, serverPath)?.let {
         state.internalError(
             "Failed to delete folder entry for $serverPath: $it",
             "Error deleting folder entry"
         )
+        db.disconnect()
         return
     }
 
@@ -477,8 +494,10 @@ fun commandRmDir(state: ClientSession) {
             "commandRmDir: failed to add update entry for $serverPath: $it",
             "Error adding update entry"
         )
+        db.disconnect()
         return
     }
+    db.disconnect()
     state.quickResponse(200, "OK")
 }
 
@@ -502,13 +521,16 @@ fun commandSetQuota(state: ClientSession) {
     val wid = schema.getRandomID("Workspace-ID", state.message.data)!!
     val size = schema.getLong("Size", state.message.data)!!
     checkWorkspaceAccess(state, wid, AuthAction.SetQuota).onFalse { return }
-    setQuota(DBConn(), wid, size)?.let {
-        state.internalError(
-            "Error setting quota info for $wid: $it",
-            "Server error setting disk quota info"
-        )
-        return
-    }
+    withDB { db ->
+        setQuota(db, wid, size)?.let {
+            state.internalError(
+                "Error setting quota info for $wid: $it",
+                "Server error setting disk quota info"
+            )
+            db.disconnect()
+            return
+        }
+    }.onFalse { return }
 
     state.quickResponse(200, "OK")
 }
@@ -607,12 +629,13 @@ fun commandUpload(state: ClientSession) {
 
     // Arguments have been validated, do a quota check
 
-    val db = DBConn()
+    val db = state.dbConnect() ?: return
     val quotaInfo = getQuotaInfo(db, state.wid!!).getOrElse {
         state.internalError(
             "Error getting quota for wid ${state.wid!!}: $it",
             "Server error getting account quota info"
         )
+        db.disconnect()
         return
     }
 
@@ -621,6 +644,7 @@ fun commandUpload(state: ClientSession) {
             409, "QUOTA INSUFFICIENT",
             "Your account lacks sufficient space for the file"
         )
+        db.disconnect()
         return
     }
 
@@ -636,7 +660,10 @@ fun commandUpload(state: ClientSession) {
         .sendCatching(
             state.conn,
             "commandUpload: Error sending continue message for wid ${state.wid!!}"
-        ).onFalse { return }
+        ).onFalse {
+            db.disconnect()
+            return
+        }
 
     val tempHandle = lfs.entry(tempPath)
     state.readFileData(fileSize, tempHandle, resumeOffset)?.let {
@@ -646,6 +673,7 @@ fun commandUpload(state: ClientSession) {
             305, "INTERRUPTED",
             "Interruption source: $it"
         ).sendCatching(state.conn, "Upload interrupted for wid ${state.wid}")
+        db.disconnect()
         return
     }
 
@@ -661,6 +689,7 @@ fun commandUpload(state: ClientSession) {
                 "Server error hashing file"
             )
         }
+        db.disconnect()
         return
     }
 
@@ -669,6 +698,7 @@ fun commandUpload(state: ClientSession) {
             logError("commandUpload: Error deleting invalid temp file: $it")
         }
         state.quickResponse(410, "HASH MISMATCH", "Hash mismatch on uploaded file")
+        db.disconnect()
         return
     }
 
@@ -677,6 +707,7 @@ fun commandUpload(state: ClientSession) {
             "commandUpload: Error installing temp file: $it",
             "Server error finishing upload"
         )
+        db.disconnect()
         return
     }
 
@@ -696,6 +727,7 @@ fun commandUpload(state: ClientSession) {
                 "commandUpload: Error adjusting quota usage: $it",
                 "Server account quota error"
             )
+            db.disconnect()
             return
         }
 
@@ -706,6 +738,7 @@ fun commandUpload(state: ClientSession) {
             )
         )
     }
+    db.disconnect()
 
     val ok = ServerResponse(200, "OK")
     ok.data["FileName"] = tempHandle.path.basename()
@@ -784,6 +817,7 @@ private fun checkQuota(state: ClientSession, fileSize: Int): Boolean {
             "Error getting quota for wid ${state.wid!!}: $it",
             "Server error getting account quota info"
         )
+        db.disconnect()
         return false
     }
 
@@ -792,7 +826,9 @@ private fun checkQuota(state: ClientSession, fileSize: Int): Boolean {
             409, "QUOTA INSUFFICIENT",
             "Your account lacks sufficient space for the file"
         )
+        db.disconnect()
         return false
     }
+    db.disconnect()
     return true
 }

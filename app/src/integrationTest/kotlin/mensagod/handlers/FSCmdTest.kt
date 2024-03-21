@@ -2,6 +2,7 @@ package mensagod.handlers
 
 import keznacl.hash
 import keznacl.hashFile
+import keznacl.onFalse
 import libkeycard.RandomID
 import libmensago.ClientRequest
 import libmensago.MServerPath
@@ -101,7 +102,9 @@ class FSCmdTest {
             )
         userDestPath.toFile().mkdirs()
         // (1024^2 - 2048)
-        setQuota(DBConn(), userWID, 1048576)?.let { throw it }
+        withDB { db ->
+            setQuota(db, userWID, 1048576)?.let { throw it }
+        }.onFalse { throw DatabaseException() }
         val bigFileInfo = makeTestFile(userTopPath.toString(), null, 1046528)
 
         CommandTest(
@@ -209,7 +212,7 @@ class FSCmdTest {
 
         // Test Case #3: Failure - file doesn't exist
         CommandTest(
-            "delete.2",
+            "delete.3",
             SessionState(
                 ClientRequest("DELETE").attach("FileCount", 1)
                     .attach("File0", oneInfo.first),
@@ -418,6 +421,7 @@ class FSCmdTest {
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(403)
         }.run()
+        db.disconnect()
     }
 
     @Test
@@ -821,6 +825,7 @@ class FSCmdTest {
             response.assertReturnCode(200)
             assertFalse(adminEntry.exists().getOrThrow())
         }.run()
+        db.disconnect()
     }
 
     @Test
@@ -922,6 +927,7 @@ class FSCmdTest {
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(403)
         }.run()
+        db.disconnect()
     }
 
     @Test
@@ -1060,7 +1066,9 @@ class FSCmdTest {
         val tempPath = Paths.get(adminTopPath.toString(), "upload.txt").toString()
         val fileHash = hashFile(tempPath).getOrThrow()
         val devid = RandomID.fromString(ADMIN_PROFILE_DATA["devid"])!!
-        setQuota(DBConn(), adminWID, 8192)
+        withDB { db ->
+            setQuota(db, adminWID, 8192)
+        }.onFalse { throw DatabaseException() }
 
         // Test Case #1: Quota limit
         CommandTest(
@@ -1116,6 +1124,5 @@ class FSCmdTest {
             val socket = Socket(InetAddress.getByName("localhost"), port)
             ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(404)
         }.run()
-
     }
 }

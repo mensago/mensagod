@@ -3,10 +3,10 @@ package mensagod.auth
 import keznacl.toFailure
 import libkeycard.MAddress
 import libkeycard.RandomID
-import mensagod.DBConn
 import mensagod.dbcmds.resolveAddress
 import mensagod.gServerDomain
 import mensagod.logError
+import mensagod.withDBResult
 import java.net.InetAddress
 
 enum class AuthActorType {
@@ -35,8 +35,14 @@ open class WIDActor(val wid: RandomID) : AuthActor {
     }
 
     fun isAdmin(): Result<Boolean> {
-        val adminWID = resolveAddress(DBConn(), MAddress.fromString("admin/$gServerDomain")!!)
-            .getOrElse { return it.toFailure() }
+        val adminWID = withDBResult { db ->
+            resolveAddress(db, MAddress.fromString("admin/$gServerDomain")!!)
+                .getOrElse {
+                    db.disconnect()
+                    return it.toFailure()
+                }
+        }.getOrElse { return it.toFailure() }
+
         if (adminWID == null)
             logError("isAdmin couldn't find the admin's workspace ID")
         return Result.success(adminWID == wid)

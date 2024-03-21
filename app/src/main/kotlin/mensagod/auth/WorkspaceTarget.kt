@@ -5,6 +5,7 @@ import keznacl.toSuccess
 import libkeycard.RandomID
 import mensagod.DBConn
 import mensagod.dbcmds.checkWorkspace
+import mensagod.withDBResult
 
 /**
  * The WorkspaceTarget class is used for actions which operate on workspaces themselves, such as
@@ -46,7 +47,10 @@ class WorkspaceTarget private constructor(val wid: RandomID) : AuthTarget {
     companion object {
 
         fun fromWID(wid: RandomID): Result<WorkspaceTarget?> {
-            val exists = checkWorkspace(DBConn(), wid).getOrElse { return it.toFailure() } != null
+            val exists = withDBResult { db ->
+                checkWorkspace(DBConn(), wid)
+                    .getOrElse { db.disconnect(); return it.toFailure() } != null
+            }.getOrElse { return it.toFailure() }
             return if (exists) WorkspaceTarget(wid).toSuccess() else Result.success(null)
         }
     }
