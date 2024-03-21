@@ -43,8 +43,8 @@ fun commandDevKey(state: ClientSession) {
         return
     }
 
-    DBConn.withDB {
-        updateDeviceKey(it, state.wid!!, state.devid!!, newkey)?.let {
+    DBConn.withDB { db ->
+        updateDeviceKey(db, state.wid!!, state.devid!!, newkey)?.let {
             state.internalError(
                 "commandDevice.updateDeviceKey exception: $it",
                 "Error updating device key"
