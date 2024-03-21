@@ -2,15 +2,13 @@ package mensagod.handlers
 
 import keznacl.CryptoString
 import keznacl.EncryptionPair
+import keznacl.onFalse
 import libkeycard.RandomID
 import libmensago.ClientRequest
 import libmensago.ServerResponse
-import mensagod.DBConn
-import mensagod.LoginState
-import mensagod.SessionState
+import mensagod.*
 import mensagod.dbcmds.addDevice
 import mensagod.dbcmds.updateDeviceStatus
-import mensagod.withDB
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import testsupport.ADMIN_PROFILE_DATA
@@ -85,7 +83,7 @@ class DevCommandTest {
                 ).getOrThrow()
                 assert(rs.next())
                 assertEquals(newPair.pubKey.toString(), rs.getString("devkey"))
-            }
+            }.onFalse { throw DatabaseException() }
         }.run()
 
         // Case #2: Device ID mismatch
@@ -390,7 +388,7 @@ class DevCommandTest {
                 ).getOrThrow()
                 assert(rs.next())
                 assertEquals(fakeInfo, rs.getString("devinfo"))
-            }
+            }.onFalse { throw DatabaseException() }
         }.run()
 
         // This call only really needs 1 test because it's so simple and shouldn't fail unless

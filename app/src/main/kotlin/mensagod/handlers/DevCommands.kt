@@ -193,7 +193,7 @@ fun commandKeyPkg(state: ClientSession) {
             db.disconnect()
             return
         }
-    }
+    }.onFalse { return }
     state.quickResponse(200, "OK")
 }
 
@@ -213,7 +213,7 @@ fun commandRemoveDevice(state: ClientSession) {
             db.disconnect()
             return
         }
-    }
+    }.onFalse { return }
     state.quickResponse(200, "OK")
 
     if (devid == state.devid)
@@ -235,7 +235,7 @@ fun commandSetDeviceInfo(state: ClientSession) {
             db.disconnect()
             return
         }
-    }
+    }.onFalse { return }
     state.quickResponse(200, "OK")
 }
 

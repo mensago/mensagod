@@ -125,6 +125,7 @@ class MiscCmdTest {
             val socket = Socket(InetAddress.getByName("localhost"), port)
             ServerResponse.receive(socket.getInputStream()).getOrThrow().assertReturnCode(401)
         }.run()
+        db.disconnect()
     }
 
     @Test
@@ -214,6 +215,7 @@ class MiscCmdTest {
 
             response.assertReturnCode(414)
         }.run()
+        db.disconnect()
     }
 
     @Test
@@ -302,6 +304,7 @@ class MiscCmdTest {
             // The test for SEND actually tests delivery. If everything got this far, we're good
             // to go. YAY
         }.run()
+        db.disconnect()
     }
 
     @Test
@@ -376,5 +379,6 @@ class MiscCmdTest {
             assertEquals(WorkspaceStatus.Disabled.toString(), rs.getString("status"))
 
         }.run()
+        db.disconnect()
     }
 }

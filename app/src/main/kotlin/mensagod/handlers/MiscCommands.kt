@@ -33,13 +33,17 @@ fun commandGetWID(state: ClientSession) {
     val domain = schema.getDomain("Domain", state.message.data) ?: gServerDomain
     val address = MAddress.fromParts(uid, domain)
 
-    val wid = resolveAddress(DBConn(), address).getOrElse {
-        state.internalError("commandGetWID::resolveAddress error: $it", "")
-        return
-    } ?: run {
-        state.quickResponse(404, "NOT FOUND")
-        return
-    }
+    val wid = withDBResult { db ->
+        resolveAddress(db, address).getOrElse {
+            state.internalError("commandGetWID::resolveAddress error: $it", "")
+            db.disconnect()
+            return
+        } ?: run {
+            state.quickResponse(404, "NOT FOUND")
+            db.disconnect()
+            return
+        }
+    }.getOrElse { return }
 
     ServerResponse(200, "OK").attach("Workspace-ID", wid)
         .sendCatching(state.conn, "commandGetWID: success message failure")
@@ -56,13 +60,16 @@ fun commandIdle(state: ClientSession) {
 
     if (!state.requireLogin()) return
 
-    val count = countSyncRecords(DBConn(), state.wid!!, updateTime).getOrElse {
-        state.internalError(
-            "Error counting updates: $it",
-            "Server error counting updates"
-        )
-        return
-    }
+    val count = withDBResult { db ->
+        countSyncRecords(db, state.wid!!, updateTime).getOrElse {
+            state.internalError(
+                "Error counting updates: $it",
+                "Server error counting updates"
+            )
+            db.disconnect()
+            return
+        }
+    }.getOrElse { return }
 
     ServerResponse(200, "OK").attach("UpdateCount", count)
         .sendCatching(state.conn, "Error sending idle response for ${state.wid}")
@@ -87,12 +94,14 @@ fun commandSend(state: ClientSession) {
             "commandSend::resolveWID error: $it",
             "Error getting sender address"
         )
+        db.disconnect()
         return
     } ?: run {
         state.internalError(
             "commandSend::resolveWID couldn't find wid ${state.wid}",
             "Sender address missing"
         )
+        db.disconnect()
         return
     }
 
@@ -101,12 +110,14 @@ fun commandSend(state: ClientSession) {
             "commandSend::getQuotaInfo error: $it",
             "Error getting quota information"
         )
+        db.disconnect()
         return
     }
 
     if (quotaInfo.second != 0L && message.length + quotaInfo.first > quotaInfo.second) {
         ServerResponse(409, "QUOTA INSUFFICIENT", "")
             .sendCatching(state.conn, "Error sending quota insufficient for send(${state.wid})")
+        db.disconnect()
         return
     }
 
@@ -116,6 +127,7 @@ fun commandSend(state: ClientSession) {
             "commandSend::makeTempFile error: $it",
             "Error creating file for message"
         )
+        db.disconnect()
         return
     }
     handle.getFile()
@@ -124,6 +136,7 @@ fun commandSend(state: ClientSession) {
                 "commandSend::writeText error: $it",
                 "Error saving message"
             )
+            db.disconnect()
             return
         }
     handle.moveToOutbox(state.wid!!)?.let {
@@ -131,8 +144,10 @@ fun commandSend(state: ClientSession) {
             "commandSend::moveToOutbox error: $it",
             "Error moving message to delivery outbox"
         )
+        db.disconnect()
         return
     }
+    db.disconnect()
     queueMessageForDelivery(sender, domain, handle.path)
     ServerResponse(200, "OK")
         .sendCatching(state.conn, "Failed to send successful SEND response")
@@ -143,23 +158,27 @@ fun commandSendLarge(state: ClientSession) {
     val schema = Schemas.sendLarge
     if (!state.requireLogin(schema)) return
 
+    val db = DBConn()
     val domain = schema.getDomain("Domain", state.message.data)!!
-    val sender = resolveWID(DBConn(), state.wid!!).getOrElse {
+    val sender = resolveWID(db, state.wid!!).getOrElse {
         state.internalError(
             "Error resolving address for wid ${state.wid}",
             "Error getting sender address for workspace id"
         )
+        db.disconnect()
         return
     } ?: run {
         state.internalError(
             "Logged in wid ${state.wid} is non-resolvable",
             "Server workspace ID state error"
         )
+        db.disconnect()
         return
     }
 
     val clientHash = schema.getCryptoString("Hash", state.message.data)!!.toHash() ?: run {
         state.quickResponse(400, "BAD REQUEST", "Invalid Hash field")
+        db.disconnect()
         return
     }
 
@@ -167,6 +186,7 @@ fun commandSendLarge(state: ClientSession) {
     var tempName = schema.getString("TempName", state.message.data)
     if (tempName != null && !MServerPath.checkFileName(tempName)) {
         state.quickResponse(400, "BAD REQUEST", "Invalid TempName field ")
+        db.disconnect()
         return
     }
     val resumeOffset = schema.getLong("Offset", state.message.data)
@@ -175,6 +195,7 @@ fun commandSendLarge(state: ClientSession) {
             400, "BAD REQUEST",
             "SendLarge resume requires both TempName and Offset fields",
         )
+        db.disconnect()
         return
     }
 
@@ -184,6 +205,7 @@ fun commandSendLarge(state: ClientSession) {
     val sizeLimit = config.getInteger("performance.max_message_size")!! * 0x100_000
     if (fileSize > sizeLimit) {
         state.quickResponse(414, "LIMIT REACHED")
+        db.disconnect()
         return
     }
 
@@ -199,7 +221,10 @@ fun commandSendLarge(state: ClientSession) {
         .sendCatching(
             state.conn,
             "commandSendLarge: Error sending continue message for wid ${state.wid!!}"
-        ).onFalse { return }
+        ).onFalse {
+            db.disconnect()
+            return
+        }
 
     val tempHandle = MServerPath.fromString("/ tmp ${state.wid!!} $tempName")!!.toHandle()
     state.readFileData(fileSize, tempHandle, resumeOffset)?.let {
@@ -207,6 +232,7 @@ fun commandSendLarge(state: ClientSession) {
         // attempt to resume the upload later.
         ServerResponse(305, "INTERRUPTED", "Interruption source: $it")
             .sendCatching(state.conn, "Send interrupted for wid ${state.wid}")
+        db.disconnect()
         return
     }
 
@@ -222,6 +248,7 @@ fun commandSendLarge(state: ClientSession) {
                 "Server error hashing message file"
             )
         }
+        db.disconnect()
         return
     }
 
@@ -230,6 +257,7 @@ fun commandSendLarge(state: ClientSession) {
             logError("commandSendLarge: Error deleting invalid temp file: $it")
         }
         state.quickResponse(410, "HASH MISMATCH", "Hash mismatch on uploaded file")
+        db.disconnect()
         return
     }
 
@@ -238,10 +266,11 @@ fun commandSendLarge(state: ClientSession) {
             "commandSendLarge: Error installing temp file: $it",
             "Server error finishing message upload"
         )
+        db.disconnect()
         return
     }
+    db.disconnect()
     queueMessageForDelivery(sender, domain, tempHandle.path)
-
     state.quickResponse(200, "OK")
 }
 
@@ -286,15 +315,17 @@ fun commandSetStatus(state: ClientSession) {
             return
         }
 
-    setWorkspaceStatus(DBConn(), wid, status)?.let {
-        logError("commandSetStatus.setWorkspaceStatus exception: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
-            "error setting workspace status"
-        )
-        return
-    }
-
+    withDB { db ->
+        setWorkspaceStatus(db, wid, status)?.let {
+            logError("commandSetStatus.setWorkspaceStatus exception: $it")
+            state.quickResponse(
+                300, "INTERNAL SERVER ERROR",
+                "error setting workspace status"
+            )
+            db.disconnect()
+            return
+        }
+    }.onFalse { return }
     state.quickResponse(200, "OK")
 }
 

@@ -637,7 +637,7 @@ fun commandResetPassword(state: ClientSession) {
             db.disconnect()
             return
         }
-    }
+    }.onFalse { return }
 
     ServerResponse(
         200, "OK", "", mutableMapOf(
