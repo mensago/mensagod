@@ -141,7 +141,7 @@ class LoginCmdTest {
             assertEquals(devid2.toString(), items["Device ID"])
             assertEquals(dev2pair.pubKey.toString(), items["Device Key"])
         }.run()
-
+        db.disconnect()
     }
 
     @Test
@@ -374,7 +374,7 @@ class LoginCmdTest {
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(415)
         }.run()
-
+        db.disconnect()
     }
 
     @Test
@@ -515,6 +515,7 @@ class LoginCmdTest {
 
             response.assertReturnCode(200)
         }.run()
+        db.disconnect()
     }
 
     @Test
@@ -594,5 +595,6 @@ class LoginCmdTest {
             assert(rs.next())
             assertNotEquals(oldhash, rs.getString("password"))
         }.run()
+        db.disconnect()
     }
 }

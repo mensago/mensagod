@@ -126,10 +126,12 @@ class FakeDNSHandler : DNSHandler() {
         val pvk = rs.getString(1)
 
         rs = db.query("SELECT pubkey FROM orgkeys WHERE purpose = 'altsign';").getOrThrow()
-        return if (rs.next())
+        val out = if (rs.next())
             listOf("ek=$ek", "pvk=$pvk", "avk=${rs.getString(1)}").toSuccess()
         else
             listOf("ek=$ek", "pvk=$pvk").toSuccess()
+        db.disconnect()
+        return out
     }
 }
 

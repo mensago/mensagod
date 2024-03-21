@@ -139,6 +139,7 @@ fun deliveryWorker() {
             ?.let { logError("Couldn't delete ${msgInfo.path}: $it") }
 
     } while (!gQuitDeliveryThreads.get())
+    db.disconnect()
     gDeliveryThreads.remove(currentThread())
 }
 

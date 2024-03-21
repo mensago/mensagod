@@ -41,17 +41,20 @@ fun commandDevice(state: ClientSession) {
             "commandDevice.getDeviceStatus exception: $it",
             "Server can't get device status"
         )
+        db.disconnect()
         return
     }
 
     when (devstatus) {
         DeviceStatus.Blocked -> {
             state.quickResponse(403, "FORBIDDEN")
+            db.disconnect()
             return
         }
 
         DeviceStatus.Pending -> {
             state.quickResponse(101, "PENDING", "Awaiting device approval")
+            db.disconnect()
             return
         }
 
@@ -64,6 +67,7 @@ fun commandDevice(state: ClientSession) {
                     "commandDevice.challengeDevice exception: $it",
                     "Error authenticating client device"
                 )
+                db.disconnect()
                 return
             }
 
@@ -73,11 +77,15 @@ fun commandDevice(state: ClientSession) {
                         "commandDevice.challengeDevice exception: $it",
                         "Error updating device info"
                     )
+                    db.disconnect()
                     return
                 }
             }
 
-            if (!success) return
+            if (!success) {
+                db.disconnect()
+                return
+            }
         }
 
         DeviceStatus.NotRegistered -> {
@@ -86,6 +94,7 @@ fun commandDevice(state: ClientSession) {
                     400, "BAD REQUEST",
                     "Device-Info field required for new devices"
                 )
+                db.disconnect()
                 return
             }
 
@@ -95,6 +104,7 @@ fun commandDevice(state: ClientSession) {
                     "commandDevice.countDevices exception: $it",
                     "Error checking device count"
                 )
+                db.disconnect()
                 return
             }
 
@@ -109,6 +119,7 @@ fun commandDevice(state: ClientSession) {
                             "commandDevice.resolveWID exception: $it",
                             "Error resolving workspace ID",
                         )
+                        db.disconnect()
                         return
                     }
                     if (out == null) {
@@ -116,6 +127,7 @@ fun commandDevice(state: ClientSession) {
                             "commandDevice.resolveWID returned null for wid ${state.wid!!}",
                             "Server error: workspace missing",
                         )
+                        db.disconnect()
                         return
                     }
                     out
@@ -124,6 +136,7 @@ fun commandDevice(state: ClientSession) {
                         "commandDevice.resolveWID exception: $e",
                         "Error looking up workspace address",
                     )
+                    db.disconnect()
                     return
                 }
 
@@ -133,6 +146,7 @@ fun commandDevice(state: ClientSession) {
                             "commandDevice.getEntries exception: $it",
                             "Error looking up user keycard",
                         )
+                        db.disconnect()
                         return
                     }
                 if (entryList.size < 1) {
@@ -140,6 +154,7 @@ fun commandDevice(state: ClientSession) {
                         "commandDevice: no entries for wid ${state.wid}",
                         "User keycard doesn't exist"
                     )
+                    db.disconnect()
                     return
                 }
                 val userEntry = UserEntry.fromString(entryList[0]).getOrElse {
@@ -147,6 +162,7 @@ fun commandDevice(state: ClientSession) {
                         "commandDevice: corrupted current entry for ${state.wid}",
                         "User keycard is corrupted"
                     )
+                    db.disconnect()
                     return
                 }
                 val userKey = userEntry.getEncryptionKey("Encryption-Key")
@@ -155,6 +171,7 @@ fun commandDevice(state: ClientSession) {
                         "commandDevice.getEncryptionKey failure",
                         "Bad encryption key in user keycard",
                     )
+                    db.disconnect()
                     return
                 }
 
@@ -167,12 +184,14 @@ fun commandDevice(state: ClientSession) {
                         "commandDevice.seal failure: $it",
                         "Failure in encrypting device approval request",
                     )
+                    db.disconnect()
                     return
                 }.toStringResult().getOrElse {
                     state.internalError(
                         "commandDevice.toStringResult failure: $it",
                         "Failure serializing encrypted message",
                     )
+                    db.disconnect()
                     return
                 }
                 val lfs = LocalFS.get()
@@ -181,6 +200,7 @@ fun commandDevice(state: ClientSession) {
                         "commandDevice.makeTempFile failure: $it",
                         "Failure creating file for device request",
                     )
+                    db.disconnect()
                     return
                 }
                 handle.getFile().runCatching { writeText(sealed) }.onFailure {
@@ -188,6 +208,7 @@ fun commandDevice(state: ClientSession) {
                         "commandDevice.writeText failure: $it",
                         "Failure saving encrypted device request",
                     )
+                    db.disconnect()
                     return
                 }
                 handle.moveToOutbox(gServerDevID)?.let {
@@ -195,12 +216,14 @@ fun commandDevice(state: ClientSession) {
                         "commandDevice.moveToOutbox failure: $it",
                         "Failure moving encrypted device request",
                     )
+                    db.disconnect()
                     return
                 }
 
                 // call queueMessageForDelivery() with delivery info
                 queueMessageForDelivery(gServerAddress, recipient.domain, handle.path)
                 state.quickResponse(105, "APPROVAL REQUIRED")
+                db.disconnect()
                 return
             }
             addDevice(db, state.wid!!, devid, devkey, devinfo, DeviceStatus.Registered)?.let {
@@ -208,6 +231,7 @@ fun commandDevice(state: ClientSession) {
                     "commandDevice.addDevice exception: $it",
                     "Error adding device"
                 )
+                db.disconnect()
                 return
             }
         }
@@ -223,6 +247,7 @@ fun commandDevice(state: ClientSession) {
             "commandDevice.exists exception for $widPath: $it",
             "Error checking for workspace root directory",
         )
+        db.disconnect()
         return
     }.onFalse {
         lfs.entry(widPath).makeDirectory()?.let {
@@ -230,6 +255,7 @@ fun commandDevice(state: ClientSession) {
                 "commandDevice.makeDirectory exception for $widPath: $it",
                 "Error creating workspace root directory",
             )
+            db.disconnect()
             return
         }
     }
@@ -251,6 +277,7 @@ fun commandDevice(state: ClientSession) {
             )
             state.loginState = LoginState.NoSession
             state.wid = null
+            db.disconnect()
             return
         } ?: run {
             state.internalError(
@@ -259,6 +286,7 @@ fun commandDevice(state: ClientSession) {
             )
             state.loginState = LoginState.NoSession
             state.wid = null
+            db.disconnect()
             return
         }
 
@@ -270,6 +298,7 @@ fun commandDevice(state: ClientSession) {
             )
             state.loginState = LoginState.NoSession
             state.wid = null
+            db.disconnect()
             return
         }.decodeToString()
         response.code = 203
@@ -284,6 +313,7 @@ fun commandDevice(state: ClientSession) {
         )
         state.loginState = LoginState.NoSession
         state.wid = null
+        db.disconnect()
         return
     }
     response.data["Is-Admin"] = if (isAdmin) "True" else "False"
@@ -291,6 +321,7 @@ fun commandDevice(state: ClientSession) {
         state.loginState = LoginState.NoSession
         state.wid = null
         logError("Error sending successful login information")
+        db.disconnect()
         return
     }
 
@@ -303,6 +334,7 @@ fun commandDevice(state: ClientSession) {
             logError("commandDevice.removeKeyInfo exception for ${state.wid}: $it")
         }
     }
+    db.disconnect()
 }
 
 // LOGIN(Login-Type,Workspace-ID, Challenge)
@@ -335,9 +367,11 @@ fun commandLogin(state: ClientSession) {
             "commandLogin.checkWorkspace exception for ${state.wid}: $it",
             "Error checking workspace ID"
         )
+        db.disconnect()
         return
     } ?: run {
         state.quickResponse(404, "NOT FOUND")
+        db.disconnect()
         return
     }
 
@@ -348,11 +382,13 @@ fun commandLogin(state: ClientSession) {
 
         WorkspaceStatus.Archived -> {
             state.quickResponse(404, "NOT FOUND")
+            db.disconnect()
             return
         }
 
         WorkspaceStatus.Disabled -> {
             state.quickResponse(407, "UNAVAILABLE", "Account disabled")
+            db.disconnect()
             return
         }
 
@@ -361,6 +397,7 @@ fun commandLogin(state: ClientSession) {
                 101, "PENDING",
                 "Registration awaiting administrator approval"
             )
+            db.disconnect()
             return
         }
 
@@ -369,16 +406,19 @@ fun commandLogin(state: ClientSession) {
                 416, "PROCESS INCOMPLETE",
                 "Workspace requires use of registration code"
             )
+            db.disconnect()
             return
         }
 
         WorkspaceStatus.Suspended -> {
             state.quickResponse(407, "UNAVAILABLE", "Account suspended")
+            db.disconnect()
             return
         }
 
         WorkspaceStatus.Unpaid -> {
             state.quickResponse(406, "PAYMENT REQUIRED")
+            db.disconnect()
             return
         }
     }
@@ -389,6 +429,7 @@ fun commandLogin(state: ClientSession) {
             "commandLogin.getEncryptionPair exception: $it",
             "Server can't process client login challenge",
         )
+        db.disconnect()
         return
     }
 
@@ -397,6 +438,7 @@ fun commandLogin(state: ClientSession) {
             306, "KEY FAILURE",
             "Client challenge decryption failure"
         )
+        db.disconnect()
         return
     }.decodeToString()
 
@@ -405,6 +447,7 @@ fun commandLogin(state: ClientSession) {
             "commandLogin.getPasswordInfo exception: $it",
             "Server error getting password information",
         )
+        db.disconnect()
         return
     }
     if (passInfo == null) {
@@ -412,9 +455,11 @@ fun commandLogin(state: ClientSession) {
             404, "RESOURCE NOT FOUND",
             "Password information not found"
         )
+        db.disconnect()
         return
     }
 
+    db.disconnect()
     state.wid = wid
     state.loginState = LoginState.AwaitingPassword
     ServerResponse(100, "CONTINUE")
@@ -444,14 +489,16 @@ fun commandPassword(state: ClientSession) {
         return
     }
 
-    val db = DBConn()
-    val match = checkPassword(db, state.wid!!, state.message.data["Password-Hash"]!!).getOrElse {
-        state.internalError(
-            "commandPassword.checkPassword error: $it",
-            "Internal error checking password"
-        )
-        return
-    }
+    val match = withDBResult { db ->
+        checkPassword(db, state.wid!!, state.message.data["Password-Hash"]!!).getOrElse {
+            state.internalError(
+                "commandPassword.checkPassword error: $it",
+                "Internal error checking password"
+            )
+            db.disconnect()
+            return
+        }
+    }.getOrElse { state.unavailableError(); return }
 
     if (!match) {
         val delay = ServerConfig.get().getInteger("security.failure_delay_sec")!!
@@ -505,6 +552,7 @@ fun commandPassCode(state: ClientSession) {
     checkResetCode(db, wid, resetCode).getOrElse {
         if (it is ExpiredException) {
             state.quickResponse(415, "EXPIRED", "reset code has expired")
+            db.disconnect()
             return
         }
 
@@ -513,9 +561,11 @@ fun commandPassCode(state: ClientSession) {
             300, "INTERNAL SERVER ERROR",
             "Server error checking reset code"
         )
+        db.disconnect()
         return
     }.onFalse {
         state.quickResponse(401, "UNAUTHORIZED")
+        db.disconnect()
         return
     }
 
@@ -527,9 +577,11 @@ fun commandPassCode(state: ClientSession) {
             300, "INTERNAL SERVER ERROR",
             "Server error updating password"
         )
+        db.disconnect()
         return
     }
 
+    db.disconnect()
     state.quickResponse(200, "OK")
 }
 
@@ -575,13 +627,16 @@ fun commandResetPassword(state: ClientSession) {
 
     val hasher = Argon2idPassword()
     hasher.updateHash(resetCode)
-    resetPassword(DBConn(), targetWID, hasher.hash, expires)?.let {
-        logError("commandResetPassword.reset exception: $it")
-        state.quickResponse(
-            300, "INTERNAL SERVER ERROR",
-            "Internal error resetting password"
-        )
-        return
+    withDB { db ->
+        resetPassword(db, targetWID, hasher.hash, expires)?.let {
+            logError("commandResetPassword.reset exception: $it")
+            state.quickResponse(
+                300, "INTERNAL SERVER ERROR",
+                "Internal error resetting password"
+            )
+            db.disconnect()
+            return
+        }
     }
 
     ServerResponse(
@@ -619,9 +674,11 @@ fun commandSetPassword(state: ClientSession) {
             300, "INTERNAL SERVER ERROR",
             "Server error checking password"
         )
+        db.disconnect()
         return
     }.onFalse {
         state.quickResponse(401, "UNAUTHORIZED")
+        db.disconnect()
         return
     }
 
@@ -633,9 +690,11 @@ fun commandSetPassword(state: ClientSession) {
             300, "INTERNAL SERVER ERROR",
             "Server error updating password"
         )
+        db.disconnect()
         return
     }
 
+    db.disconnect()
     state.quickResponse(200, "OK")
 }
 
@@ -667,8 +726,7 @@ fun challengeDevice(state: ClientSession, devkey: CryptoString): Result<Boolean>
     ServerResponse(
         100, "CONTINUE", "",
         mutableMapOf("Challenge" to encrypted.toString())
-    )
-        .send(state.conn)?.let { return it.toFailure() }
+    ).send(state.conn)?.let { return it.toFailure() }
 
     val req = ClientRequest.receive(state.conn.getInputStream())
         .getOrElse { return it.toFailure() }

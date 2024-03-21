@@ -54,7 +54,7 @@ class DeviceApprovalMsg(from: WAddress, to: WAddress, addr: InetAddress, devInfo
             val items = msg.body.trim().split("\r\n")
                 .plus(infoStr.trim().split("\r\n"))
             return items.associate { line ->
-                line.trim().split("=").let { Pair(it[0], it[1]) }
+                line.trim().split("=", limit = 2).let { Pair(it[0], it[1]) }
             }.toSuccess()
         }
     }
