@@ -2,7 +2,6 @@ package mensagod.handlers
 
 import keznacl.*
 import libkeycard.MissingFieldException
-import libkeycard.RandomID
 import libmensago.ClientRequest
 import libmensago.MServerPath
 import libmensago.ServerResponse
@@ -47,6 +46,7 @@ fun commandDevKey(state: ClientSession) {
                 "commandDevice.updateDeviceKey exception: $it",
                 "Error updating device key"
             )
+            db.disconnect()
             return
         }
     }.onFalse { state.unavailableError(); return }
@@ -59,7 +59,7 @@ fun commandGetDeviceInfo(state: ClientSession) {
 
     if (!state.requireLogin()) return
     val devID = state.getRandomID("Device-ID", false)
-    val infoList = withDBResult<List<Pair<RandomID, CryptoString>>> { db ->
+    val infoList = withDBResult { db ->
         getDeviceInfo(db, state.wid!!, devID)
             .getOrElse {
                 state.internalError(
@@ -92,16 +92,16 @@ fun commandKeyPkg(state: ClientSession) {
     val devID = state.getRandomID("Device-ID", true) ?: return
     val keyInfo = state.getCryptoString("Key-Info", true) ?: return
 
-    val db = DBConn()
-    val devStatus = getDeviceStatus(db, state.wid!!, devID).getOrElse {
-        state.internalError(
-            "commandKeyPkg.getDeviceState exception for ${state.wid!!}: $it",
-            "Error getting device status"
-        )
-        return
-    }
-
-    runCatching { }
+    val devStatus = withDBResult { db ->
+        getDeviceStatus(db, state.wid!!, devID).getOrElse {
+            state.internalError(
+                "commandKeyPkg.getDeviceState exception for ${state.wid!!}: $it",
+                "Error getting device status"
+            )
+            db.disconnect()
+            return
+        }
+    }.getOrElse { state.unavailableError(); return }
 
     when (devStatus) {
         DeviceStatus.Blocked -> {
@@ -176,19 +176,23 @@ fun commandKeyPkg(state: ClientSession) {
         )
         return
     }
-    addKeyInfo(db, state.wid!!, devID, tempHandle.path)?.let {
-        state.internalError(
-            "commandKeyPkg.addKeyInfo exception for ${state.wid!!}: $it",
-            "Error adding key info to database"
-        )
-        return
-    }
-    updateDeviceStatus(db, state.wid!!, devID, DeviceStatus.Approved)?.let {
-        state.internalError(
-            "commandKeyPkg.updateDeviceStatus exception for ${state.wid!!}: $it",
-            "Error approving device"
-        )
-        return
+    withDB { db ->
+        addKeyInfo(db, state.wid!!, devID, tempHandle.path)?.let {
+            state.internalError(
+                "commandKeyPkg.addKeyInfo exception for ${state.wid!!}: $it",
+                "Error adding key info to database"
+            )
+            db.disconnect()
+            return
+        }
+        updateDeviceStatus(db, state.wid!!, devID, DeviceStatus.Approved)?.let {
+            state.internalError(
+                "commandKeyPkg.updateDeviceStatus exception for ${state.wid!!}: $it",
+                "Error approving device"
+            )
+            db.disconnect()
+            return
+        }
     }
     state.quickResponse(200, "OK")
 }
@@ -200,13 +204,15 @@ fun commandRemoveDevice(state: ClientSession) {
     if (!state.requireLogin(schema)) return
     val devid = schema.getRandomID("Device-ID", state.message.data)!!
 
-    val db = DBConn()
-    removeDevice(db, state.wid!!, devid)?.let {
-        state.internalError(
-            "commandRemoveDevice.removeDevice exception for ${state.wid!!}: $it",
-            "Error removing device"
-        )
-        return
+    withDB { db ->
+        removeDevice(db, state.wid!!, devid)?.let {
+            state.internalError(
+                "commandRemoveDevice.removeDevice exception for ${state.wid!!}: $it",
+                "Error removing device"
+            )
+            db.disconnect()
+            return
+        }
     }
     state.quickResponse(200, "OK")
 
@@ -220,12 +226,15 @@ fun commandSetDeviceInfo(state: ClientSession) {
     if (!state.requireLogin(schema)) return
     val devInfo = schema.getCryptoString("Device-Info", state.message.data)!!
 
-    setDeviceInfo(DBConn(), state.wid!!, state.devid!!, devInfo)?.let {
-        state.internalError(
-            "commandSetDeviceInfo.setDeviceInfo exception for ${state.wid!!}: $it",
-            "Error updating device info"
-        )
-        return
+    withDB { db ->
+        setDeviceInfo(db, state.wid!!, state.devid!!, devInfo)?.let {
+            state.internalError(
+                "commandSetDeviceInfo.setDeviceInfo exception for ${state.wid!!}: $it",
+                "Error updating device info"
+            )
+            db.disconnect()
+            return
+        }
     }
     state.quickResponse(200, "OK")
 }
