@@ -54,7 +54,7 @@ fun resetDelivery() {
 fun deliveryWorker() {
 
     val lfs = LocalFS.get()
-    val db = DBConn()
+    val db = runCatching { DBConn() }.getOrElse { return }
     gDeliveryThreads.add(currentThread())
     do {
         val msgInfo = gMessageQueue.poll() ?: break

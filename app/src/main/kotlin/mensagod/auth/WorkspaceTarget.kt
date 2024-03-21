@@ -3,7 +3,6 @@ package mensagod.auth
 import keznacl.toFailure
 import keznacl.toSuccess
 import libkeycard.RandomID
-import mensagod.DBConn
 import mensagod.dbcmds.checkWorkspace
 import mensagod.withDBResult
 
@@ -48,7 +47,7 @@ class WorkspaceTarget private constructor(val wid: RandomID) : AuthTarget {
 
         fun fromWID(wid: RandomID): Result<WorkspaceTarget?> {
             val exists = withDBResult { db ->
-                checkWorkspace(DBConn(), wid)
+                checkWorkspace(db, wid)
                     .getOrElse { db.disconnect(); return it.toFailure() } != null
             }.getOrElse { return it.toFailure() }
             return if (exists) WorkspaceTarget(wid).toSuccess() else Result.success(null)

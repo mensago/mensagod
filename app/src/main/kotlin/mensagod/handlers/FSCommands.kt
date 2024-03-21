@@ -40,7 +40,7 @@ fun commandCopy(state: ClientSession) {
     ).onFalse { return }
     checkDirectoryAccess(state, lfs.entry(destPath), AuthAction.Create).onFalse { return }
     val fileSize = sourceFilePath.size()
-    checkQuota(state, fileSize).onFalse { return }
+    checkQuota(state, fileSize)?.onFalse { return } ?: return
 
     var destFilePath = MServerPath()
     lfs.withLock(sourceFilePath) {
@@ -810,15 +810,18 @@ private fun checkWorkspaceAccess(state: ClientSession, targetWID: RandomID, acce
  * Returns true if the user's quota can accommodate an increase in disk usage of the specified
  * amount of space.
  */
-private fun checkQuota(state: ClientSession, fileSize: Int): Boolean {
-    val db = DBConn()
+private fun checkQuota(state: ClientSession, fileSize: Int): Boolean? {
+    val db = state.dbConnect() ?: run {
+        state.unavailableError()
+        return null
+    }
     val quotaInfo = getQuotaInfo(db, state.wid!!).getOrElse {
         state.internalError(
             "Error getting quota for wid ${state.wid!!}: $it",
             "Server error getting account quota info"
         )
         db.disconnect()
-        return false
+        return null
     }
 
     if (quotaInfo.second > 0 && quotaInfo.first + fileSize > quotaInfo.second) {

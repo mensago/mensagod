@@ -54,7 +54,12 @@ class ClientSession(val conn: Socket) : SessionState() {
         if (wid == null || loginState != LoginState.NoSession)
             return false
 
-        val result = checkWorkspace(DBConn(), wid!!).getOrNull() ?: return false
+        val result = withDBResult { db ->
+            checkWorkspace(db, wid!!).getOrNull() ?: run {
+                db.disconnect()
+                return false
+            }
+        }.getOrElse { return false }
         return result == WorkspaceStatus.Archived
     }
 
@@ -66,7 +71,9 @@ class ClientSession(val conn: Socket) : SessionState() {
         if (now - lastUpdateCheck < 3) return
         if (wid == null) return
 
-        updateCount = countSyncRecords(DBConn(), wid!!, now).getOrElse { return }
+        updateCount = withDBResult { db ->
+            countSyncRecords(db, wid!!, now).getOrElse { db.disconnect(); return }
+        }.getOrElse { return }
         lastUpdateCheck = now
     }
 
@@ -193,11 +200,16 @@ class ClientSession(val conn: Socket) : SessionState() {
      * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
      */
     fun isAdmin(): Result<Boolean> {
-        val adminWID = resolveAddress(DBConn(), MAddress.fromString("admin/$gServerDomain")!!)
-            .getOrElse { return it.toFailure() }
-            ?: return DatabaseCorruptionException(
-                "isAdmin couldn't find the admin's workspace ID"
-            ).toFailure()
+        val adminWID = withDBResult { db ->
+            resolveAddress(db, MAddress.fromString("admin/$gServerDomain")!!)
+                .getOrElse { db.disconnect(); return it.toFailure() }
+                ?: run {
+                    db.disconnect()
+                    return DatabaseCorruptionException(
+                        "isAdmin couldn't find the admin's workspace ID"
+                    ).toFailure()
+                }
+        }.getOrElse { return it.toFailure() }
         return Result.success(adminWID == wid)
     }
 
