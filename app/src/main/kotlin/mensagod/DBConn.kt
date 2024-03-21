@@ -40,6 +40,7 @@ class DBConn {
 
         conn = if (dbArgs.isNotEmpty()) DriverManager.getConnection(dbURL, dbArgs)
         else DriverManager.getConnection(dbURL)
+        println("DB connected")
         return this.toSuccess()
     }
 
@@ -51,6 +52,7 @@ class DBConn {
     fun disconnect(): Throwable? {
         return try {
             if (conn != null) {
+                println("DB disconnected")
                 conn!!.close()
             }
             conn = null
@@ -205,6 +207,33 @@ class DBConn {
     }
 
     companion object {
+
+        /**
+         * Block function to run short sections requiring a database connection that also return
+         * a value.
+         *
+         * @exception DatabaseException Returned if there is a problem connecting to the database
+         */
+        inline fun <V> withDBValue(block: (db: DBConn) -> V): Result<V> {
+            val db =
+                runCatching { DBConn() }.getOrElse { return Result.failure(DatabaseException()) }
+            val out = block(db)
+            db.disconnect()
+            return Result.success(out)
+        }
+
+        /**
+         * Block function to run short sections requiring a database connection.
+         *
+         * @return Indicates success connecting to the database. False indicates a problem.
+         * @exception DatabaseException Returned if there is a problem connecting to the database
+         */
+        inline fun withDB(block: (db: DBConn) -> Unit): Boolean {
+            val db = runCatching { DBConn() }.getOrElse { return false }
+            block(db)
+            db.disconnect()
+            return true
+        }
 
         /**
          * This sets up easy access to the database server so that other parts of the server can

@@ -39,6 +39,17 @@ class ClientSession(val conn: Socket) : SessionState() {
     private var lastUpdateCheck = Instant.now().epochSecond
     private var updateCount = 0
 
+    /**
+     * Handles setting up database connections for command handlers. Returns null if there was a
+     * problem acquiring a connection to the database and has notified the client accordingly.
+     */
+    fun dbConnect(): DBConn? {
+        return runCatching { DBConn() }.getOrElse {
+            quickResponse(303, "SERVER UNAVAILABLE")
+            null
+        }
+    }
+
     fun checkIfArchived(): Boolean {
         if (wid == null || loginState != LoginState.NoSession)
             return false
@@ -301,4 +312,14 @@ class ClientSession(val conn: Socket) : SessionState() {
         }
         return null
     }
+
+    /**
+     * Convenience command used in command handlers to reduce the amount of boilerplate code needed
+     * to handle potential internal errors.
+     */
+    fun unavailableError(): ClientSession {
+        quickResponse(303, "SERVER UNAVAILABLE")
+        return this
+    }
+
 }

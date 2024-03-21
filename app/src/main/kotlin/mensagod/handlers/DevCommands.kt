@@ -43,13 +43,15 @@ fun commandDevKey(state: ClientSession) {
         return
     }
 
-    updateDeviceKey(DBConn(), state.wid!!, state.devid!!, newkey)?.let {
-        state.internalError(
-            "commandDevice.updateDeviceKey exception: $it",
-            "Error updating device key"
-        )
-        return
-    }
+    DBConn.withDB {
+        updateDeviceKey(it, state.wid!!, state.devid!!, newkey)?.let {
+            state.internalError(
+                "commandDevice.updateDeviceKey exception: $it",
+                "Error updating device key"
+            )
+            return
+        }
+    }.onFalse { state.unavailableError(); return }
 
     state.quickResponse(200, "OK")
 }
@@ -59,14 +61,18 @@ fun commandGetDeviceInfo(state: ClientSession) {
 
     if (!state.requireLogin()) return
     val devID = state.getRandomID("Device-ID", false)
-    val db = DBConn()
-    val infoList = getDeviceInfo(db, state.wid!!, devID).getOrElse {
-        state.internalError(
-            "commandGetDeviceInfo.getDeviceInfo exception for ${state.wid!!}: $it",
-            "Error getting device info"
-        )
-        return
-    }
+    val infoList = DBConn.withDBValue { db ->
+        getDeviceInfo(db, state.wid!!, devID)
+            .getOrElse {
+                state.internalError(
+                    "commandGetDeviceInfo.getDeviceInfo exception for ${state.wid!!}: $it",
+                    "Error getting device info"
+                )
+                db.disconnect()
+                return
+            }
+    }.getOrElse { state.unavailableError(); return }
+
     if (infoList.isEmpty()) {
         state.quickResponse(404, "NOT FOUND")
         return
@@ -96,6 +102,8 @@ fun commandKeyPkg(state: ClientSession) {
         )
         return
     }
+
+    runCatching { }
 
     when (devStatus) {
         DeviceStatus.Blocked -> {

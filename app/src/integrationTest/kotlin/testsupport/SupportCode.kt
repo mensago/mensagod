@@ -357,10 +357,10 @@ fun setupTest(name: String): SetupData {
     gServerAddress = WAddress.fromParts(gServerDevID, gServerDomain)
     resetDB(config).getOrThrow()
     DBConn.initialize(config)?.let { throw it }
-    val db = DBConn().connect().getOrThrow()
+    val db = DBConn()
     val serverData = initDB(db.getConnection()!!)
     setupAdmin(db)
-
+    db.disconnect()
 
     return SetupData(config, serverData, testpath)
 }

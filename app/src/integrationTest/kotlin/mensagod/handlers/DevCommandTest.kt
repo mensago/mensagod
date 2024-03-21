@@ -77,13 +77,14 @@ class DevCommandTest {
             response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(200)
 
-            val db = DBConn()
-            val rs = db.query(
-                """SELECT devkey FROM iwkspc_devices WHERE wid=? AND devid=?""",
-                adminWID, devid
-            ).getOrThrow()
-            assert(rs.next())
-            assertEquals(newPair.pubKey.toString(), rs.getString("devkey"))
+            DBConn.withDB { db ->
+                val rs = db.query(
+                    """SELECT devkey FROM iwkspc_devices WHERE wid=? AND devid=?""",
+                    adminWID, devid
+                ).getOrThrow()
+                assert(rs.next())
+                assertEquals(newPair.pubKey.toString(), rs.getString("devkey"))
+            }
         }.run()
 
         // Case #2: Device ID mismatch
@@ -223,6 +224,8 @@ class DevCommandTest {
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(404)
         }.run()
+
+        db.disconnect()
     }
 
     @Test
