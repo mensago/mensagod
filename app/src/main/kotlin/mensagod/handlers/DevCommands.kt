@@ -5,10 +5,7 @@ import libkeycard.MissingFieldException
 import libmensago.ClientRequest
 import libmensago.MServerPath
 import libmensago.ServerResponse
-import mensagod.CancelException
-import mensagod.ClientSession
-import mensagod.DBConn
-import mensagod.LocalFS
+import mensagod.*
 import mensagod.dbcmds.*
 import org.apache.commons.io.FileUtils
 import java.security.SecureRandom
@@ -43,7 +40,7 @@ fun commandDevKey(state: ClientSession) {
         return
     }
 
-    DBConn.withDB { db ->
+    withDB { db ->
         updateDeviceKey(db, state.wid!!, state.devid!!, newkey)?.let {
             state.internalError(
                 "commandDevice.updateDeviceKey exception: $it",
@@ -61,7 +58,7 @@ fun commandGetDeviceInfo(state: ClientSession) {
 
     if (!state.requireLogin()) return
     val devID = state.getRandomID("Device-ID", false)
-    val infoList = DBConn.withDBValue { db ->
+    val infoList = withDBResult { db ->
         getDeviceInfo(db, state.wid!!, devID)
             .getOrElse {
                 state.internalError(

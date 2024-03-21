@@ -10,6 +10,7 @@ import mensagod.LoginState
 import mensagod.SessionState
 import mensagod.dbcmds.addDevice
 import mensagod.dbcmds.updateDeviceStatus
+import mensagod.withDB
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import testsupport.ADMIN_PROFILE_DATA
@@ -77,7 +78,7 @@ class DevCommandTest {
             response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(200)
 
-            DBConn.withDB { db ->
+            withDB { db ->
                 val rs = db.query(
                     """SELECT devkey FROM iwkspc_devices WHERE wid=? AND devid=?""",
                     adminWID, devid
@@ -308,6 +309,7 @@ class DevCommandTest {
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(403)
         }.run()
+        db.disconnect()
     }
 
     @Test
@@ -356,6 +358,7 @@ class DevCommandTest {
             ).getOrThrow()
             assert(!rs.next())
         }.run()
+        db.disconnect()
 
         // Because of how the test itself is set up, we can't test connection termination if the
         // current device is removed. That will have to be tested via a client integration test
@@ -380,12 +383,14 @@ class DevCommandTest {
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(200)
 
-            val rs = DBConn().query(
-                """SELECT devinfo FROM iwkspc_devices WHERE wid=? AND devid=?""",
-                adminWID, devid
-            ).getOrThrow()
-            assert(rs.next())
-            assertEquals(fakeInfo, rs.getString("devinfo"))
+            withDB { db ->
+                val rs = db.query(
+                    """SELECT devinfo FROM iwkspc_devices WHERE wid=? AND devid=?""",
+                    adminWID, devid
+                ).getOrThrow()
+                assert(rs.next())
+                assertEquals(fakeInfo, rs.getString("devinfo"))
+            }
         }.run()
 
         // This call only really needs 1 test because it's so simple and shouldn't fail unless
