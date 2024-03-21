@@ -148,6 +148,7 @@ class KeycardCmdTest {
             response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(200)
         }.run()
+        db.disconnect()
     }
 
     @Test
@@ -180,6 +181,7 @@ class KeycardCmdTest {
             response.assertReturnCode(200)
             assert(response.data.containsKey("Card-Data"))
             assertEquals(expectedSize, response.data["Card-Data"]!!.length)
+            db.disconnect()
         }.run()
 
         // Test Case #2: Get organization's current entry only
@@ -213,6 +215,7 @@ class KeycardCmdTest {
             assertEquals(1, card.entries.size)
             assertEquals("Organization", card.entryType)
             assertEquals(2, card.current!!.getFieldInteger("Index"))
+            db.disconnect()
         }.run()
 
         // Test Case #3: Get organization's first entry only
@@ -250,6 +253,7 @@ class KeycardCmdTest {
             assertEquals(1, card.entries.size)
             assertEquals("Organization", card.entryType)
             assertEquals(1, card.current!!.getFieldInteger("Index"))
+            db.disconnect()
         }.run()
     }
 
@@ -372,5 +376,6 @@ class KeycardCmdTest {
             assert(response.data.containsKey("Card-Data"))
             assertEquals(expectedSize, response.data["Card-Data"]!!.length)
         }.run()
+        db.disconnect()
     }
 }

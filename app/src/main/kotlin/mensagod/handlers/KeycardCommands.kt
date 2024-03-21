@@ -82,6 +82,7 @@ fun commandAddEntry(state: ClientSession) {
         val outUID = UserID.fromString(entry.getFieldString("User-ID")!!.lowercase())
             ?: run {
                 state.quickResponse(400, "BAD REQUEST", "Bad User-ID")
+                db.disconnect()
                 return
             }
 
@@ -92,12 +93,14 @@ fun commandAddEntry(state: ClientSession) {
                 "commandAddEntry.resolveAddress exception: $e",
                 "Server error resolving a special address"
             )
+            db.disconnect()
             return
         } ?: run {
             state.internalError(
                 "commandAddEntry: error resolving address ",
                 "Internal error in server error handling"
             )
+            db.disconnect()
             return
         }
 
@@ -110,6 +113,7 @@ fun commandAddEntry(state: ClientSession) {
                 "commandAddEntry: Couldn't send response for special uid " +
                         "change attempt, wid = ${state.wid}"
             )
+            db.disconnect()
             return
         }
     }
@@ -118,6 +122,7 @@ fun commandAddEntry(state: ClientSession) {
     // client is valid EXCEPT checking the expiration
     entry.isExpired().getOrElse {
         state.quickResponse(400, "BAD REQUEST", "Bad expiration field")
+        db.disconnect()
         return
     }.onTrue {
         ServerResponse(412, "NONCOMPLIANT KEYCARD DATA", "Entry is expired")
@@ -126,6 +131,7 @@ fun commandAddEntry(state: ClientSession) {
                 "commandAddEntry: Couldn't send response for expired data, " +
                         "wid = ${state.wid}"
             )
+        db.disconnect()
         return
     }
 
@@ -140,6 +146,7 @@ fun commandAddEntry(state: ClientSession) {
             "commandAddEntry.getCurrentEntry exception: $it",
             "Server can't get current keycard entry"
         )
+        db.disconnect()
         return
     }
 
@@ -149,6 +156,7 @@ fun commandAddEntry(state: ClientSession) {
                 "commandAddEntry.dbCorruption: bad user entry in db, wid=$wid - $it",
                 "Error loading previous keycard entry"
             )
+            db.disconnect()
             return
         }
 
@@ -157,6 +165,7 @@ fun commandAddEntry(state: ClientSession) {
                 "commandAddEntry.dbCorruption: bad user entry in db, wid=$wid, bad index",
                 "Error in previous keycard entry"
             )
+            db.disconnect()
             return
         }
 
@@ -167,6 +176,7 @@ fun commandAddEntry(state: ClientSession) {
                     "commandAddEntry: Couldn't send response for nonsequential keycard index, " +
                             "wid = ${state.wid}"
                 )
+            db.disconnect()
             return
         }
         prevUserEntry
@@ -183,6 +193,7 @@ fun commandAddEntry(state: ClientSession) {
                 "commandAddEntry: Couldn't send response for root entry index != 1, " +
                         "wid = ${state.wid}"
             )
+            db.disconnect()
             return
         }
 
@@ -193,6 +204,7 @@ fun commandAddEntry(state: ClientSession) {
                 "commandAddEntry.getCurrentOrgEntry exception: $it",
                 "Server can't get current org keycard entry"
             )
+            db.disconnect()
             return
         }
 
@@ -201,6 +213,7 @@ fun commandAddEntry(state: ClientSession) {
                 "commandAddEntry.dbCorruption: bad org entry in db - $it",
                 "Error loading current org keycard entry"
             )
+            db.disconnect()
             return
         }
     }
@@ -213,6 +226,7 @@ fun commandAddEntry(state: ClientSession) {
             "commandAddEntry.getPrimarySigningKey exception: $it",
             "Server can't get org signing key"
         )
+        db.disconnect()
         return
     }
     entry.sign("Organization-Signature", pskPair)?.let {
@@ -220,6 +234,7 @@ fun commandAddEntry(state: ClientSession) {
             "commandAddEntry.signEntry, wid=$wid - $it",
             "Error signing user entry"
         )
+        db.disconnect()
         return
     }
 
@@ -232,6 +247,7 @@ fun commandAddEntry(state: ClientSession) {
                 "commandAddEntry.sendContinue, wid=$wid - $it",
                 "Error signing user entry"
             )
+            db.disconnect()
             return
         }
 
@@ -244,6 +260,7 @@ fun commandAddEntry(state: ClientSession) {
 
     val req = ClientRequest.receive(state.conn.getInputStream()).getOrElse {
         logError("commandAddEntry.receive2ndStage, wid=$wid - $it")
+        db.disconnect()
         return
     }
 
@@ -252,14 +269,17 @@ fun commandAddEntry(state: ClientSession) {
             state.conn,
             "commandAddEntry: Error sending Cancel acknowledgement, wid = ${state.wid}"
         )
+        db.disconnect()
         return
     }
     if (req.action != "ADDENTRY") {
         state.quickResponse(400, "BAD REQUEST", "Session state mismatch")
+        db.disconnect()
         return
     }
     req.validate(setOf("Previous-Hash", "Hash", "User-Signature"))?.let {
         state.quickResponse(400, "BAD REQUEST", "Missing required field $it")
+        db.disconnect()
         return
     }
 
@@ -272,6 +292,7 @@ fun commandAddEntry(state: ClientSession) {
             "commandAddEntry: Couldn't send response for hash verify failure, " +
                     "wid = ${state.wid}"
         )
+        db.disconnect()
         return
     }
     entry.addAuthString("Previous-Hash", prevEntry.getAuthString("Hash")!!)
@@ -287,6 +308,7 @@ fun commandAddEntry(state: ClientSession) {
             "commandAddEntry: Couldn't send response for invalid hash field, " +
                     "wid = ${state.wid}"
         )
+        db.disconnect()
         return
     }
     if (!isSupportedHash(clientHash.prefix)) {
@@ -298,6 +320,7 @@ fun commandAddEntry(state: ClientSession) {
             "commandAddEntry: Couldn't send response for unsupported hash algorithm, " +
                     "wid = ${state.wid}"
         )
+        db.disconnect()
         return
     }
     entry.hash(clientHash.getType()!!)?.let {
@@ -305,6 +328,7 @@ fun commandAddEntry(state: ClientSession) {
             "commandAddEntry.hashEntry exception: $it",
             "Server error hashing entry"
         )
+        db.disconnect()
         return
     }
     if (entry.getAuthString("Hash")!!.toString() != clientHash.toString()) {
@@ -316,6 +340,7 @@ fun commandAddEntry(state: ClientSession) {
             "commandAddEntry: Couldn't send response for hash field mismatch, " +
                     "wid = ${state.wid}"
         )
+        db.disconnect()
         return
     }
 
@@ -328,6 +353,7 @@ fun commandAddEntry(state: ClientSession) {
             "commandAddEntry: Couldn't send response for invalid user signature, " +
                     "wid = ${state.wid}"
         )
+        db.disconnect()
         return
     }
     entry.addAuthString("User-Signature", userSig)?.let {
@@ -335,6 +361,7 @@ fun commandAddEntry(state: ClientSession) {
             "commandAddEntry.addUserSig: error adding user signature - $it",
             "Error adding user sig to entry"
         )
+        db.disconnect()
         return
     }
 
@@ -344,6 +371,7 @@ fun commandAddEntry(state: ClientSession) {
                 "commandAddEntry.dbCorruption: entry missing CRV Key in db, wid=$wid",
                 "Error loading entry verification key"
             )
+            db.disconnect()
             return
         }
     val crKeyCS = CryptoString.fromString(crKeyStr)
@@ -352,6 +380,7 @@ fun commandAddEntry(state: ClientSession) {
                 "commandAddEntry.dbCorruption: invalid previous CRV Key CS in db, wid=$wid",
                 "Invalid previous entry verification key"
             )
+            db.disconnect()
             return
         }
     val crKey = VerificationKey.from(crKeyCS).getOrElse {
@@ -359,6 +388,7 @@ fun commandAddEntry(state: ClientSession) {
             "commandAddEntry.dbCorruption: error creating previous CRV Key, wid=$wid - $it",
             "Error creating previous entry verification key",
         )
+        db.disconnect()
         return
     }
 
@@ -367,6 +397,7 @@ fun commandAddEntry(state: ClientSession) {
             "commandAddEntry.verifyError: error verifying entry, wid=$wid - $it",
             "Error verifying entry"
         )
+        db.disconnect()
         return
     }.onFalse {
         ServerResponse(
@@ -377,6 +408,7 @@ fun commandAddEntry(state: ClientSession) {
             "commandAddEntry: Couldn't send response for verify failure, " +
                     "wid = ${state.wid}"
         )
+        db.disconnect()
         return
     }
 
@@ -387,9 +419,11 @@ fun commandAddEntry(state: ClientSession) {
             "commandAddEntry.addEntry: error adding entry, wid=$wid - $it",
             "Error adding entry"
         )
+        db.disconnect()
         return
     }
 
+    db.disconnect()
     ServerResponse(200, "OK").sendCatching(
         state.conn,
         "commandAddEntry: Couldn't send confirmation response for " +
@@ -421,9 +455,11 @@ fun commandGetCard(state: ClientSession) {
                 "commandGetCard: Error resolving owner ${state.message.data["Owner"]}: $it",
                 "Error resolving owner"
             )
+            db.disconnect()
             return
         } ?: run {
             state.quickResponse(400, "BAD REQUEST", "Bad value for field Owner")
+            db.disconnect()
             return
         }
         resolved
@@ -435,6 +471,7 @@ fun commandGetCard(state: ClientSession) {
             state.message.data["End-Index"]!!.toUInt()
         }.getOrElse {
             state.quickResponse(400, "BAD REQUEST", "Bad value for field End-Index")
+            db.disconnect()
             return
         }
         if (end < startIndex) {
@@ -442,6 +479,7 @@ fun commandGetCard(state: ClientSession) {
                 400, "BAD REQUEST",
                 "Start-Index may not be less than Start-Index"
             )
+            db.disconnect()
             return
         }
         end
@@ -452,10 +490,12 @@ fun commandGetCard(state: ClientSession) {
             "commandGetCard: Error looking up entries: $it",
             "Error looking up entries"
         )
+        db.disconnect()
         return
     }
     if (entries.isEmpty()) {
         state.quickResponse(404, "NOT FOUND")
+        db.disconnect()
         return
     }
 
@@ -469,18 +509,22 @@ fun commandGetCard(state: ClientSession) {
 
     val istream = runCatching { state.conn.getInputStream() }.getOrElse {
         logDebug("commandGetCard: error opening input stream: $it")
+        db.disconnect()
         return
     }
     val req = ClientRequest.receive(istream).getOrElse {
         logDebug("commandGetCard: error receiving client confirmation: $it")
+        db.disconnect()
         return
     }
     if (req.action == "CANCEL") return
     if (req.action != "TRANSFER") {
         state.quickResponse(400, "BAD REQUEST", "Session mismatch")
+        db.disconnect()
         return
     }
 
+    db.disconnect()
     ServerResponse(200, "OK")
         .attach("Card-Data", entries.joinToString("") {
             "----- BEGIN ENTRY -----\r\n$it----- END ENTRY -----\r\n"
@@ -503,14 +547,17 @@ fun commandIsCurrent(state: ClientSession) {
     val index = schema.getInteger("Index", state.message.data)!!.toUInt()
     val wid = schema.getRandomID("Workspace-ID", state.message.data)
 
-    val db = DBConn()
-    val entries = getEntries(db, wid, 0U).getOrElse {
-        state.internalError(
-            "commandIsCurrent: error getting keycard: $it",
-            "Server error checking keycard"
-        )
-        return
-    }
+    val entries = withDBResult { db ->
+        getEntries(db, wid, 0U).getOrElse {
+            state.internalError(
+                "commandIsCurrent: error getting keycard: $it",
+                "Server error checking keycard"
+            )
+            db.disconnect()
+            return
+        }
+    }.getOrElse { state.unavailableError(); return }
+
     if (entries.isEmpty()) {
         state.quickResponse(404, "NOT FOUND")
         return
