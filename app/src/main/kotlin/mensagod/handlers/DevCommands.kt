@@ -2,6 +2,7 @@ package mensagod.handlers
 
 import keznacl.*
 import libkeycard.MissingFieldException
+import libkeycard.RandomID
 import libmensago.ClientRequest
 import libmensago.MServerPath
 import libmensago.ServerResponse
@@ -58,7 +59,7 @@ fun commandGetDeviceInfo(state: ClientSession) {
 
     if (!state.requireLogin()) return
     val devID = state.getRandomID("Device-ID", false)
-    val infoList = withDBResult { db ->
+    val infoList = withDBResult<List<Pair<RandomID, CryptoString>>> { db ->
         getDeviceInfo(db, state.wid!!, devID)
             .getOrElse {
                 state.internalError(
