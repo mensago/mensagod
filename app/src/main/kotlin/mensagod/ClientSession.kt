@@ -252,6 +252,7 @@ class ClientSession(val conn: Socket) : SessionState() {
                 remaining -= bytesRead
                 rfile.write(buffer)
             }
+            rfile.close()
         } catch (e: Exception) {
             return e
         }

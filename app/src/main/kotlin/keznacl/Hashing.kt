@@ -75,6 +75,7 @@ fun hashFile(path: String, algorithm: CryptoType = getPreferredHashAlgorithm()):
         blake2b.update(buffer.sliceArray(0 until bytesRead))
         bytesRead = istream.read(buffer)
     }
+    istream.close()
 
     return Hash.fromBytes(algorithm, blake2b.digest())!!.toSuccess()
 }
