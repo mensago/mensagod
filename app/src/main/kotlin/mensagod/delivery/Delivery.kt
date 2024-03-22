@@ -146,6 +146,9 @@ fun deliveryWorker() {
 private fun sendBounce(errorCode: Int, info: MessageInfo, extraData: Map<String, String>):
         Throwable? {
 
+    // TODO: Update sendBounce to account for local recipients
+    // This call causes crashes in integration tests the keycard resolver tries to contact the local
+    // server over the network
     val userEntry =
         KCResolver.getCurrentEntry(info.receiver.toEntrySubject()).getOrElse { return it }
     val domStr = userEntry.getFieldString("Domain")
