@@ -106,5 +106,6 @@ class SyncCmdTest {
 
             response.assertReturnCode(400)
         }.run()
+        db.disconnect()
     }
 }

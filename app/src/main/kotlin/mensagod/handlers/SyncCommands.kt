@@ -2,8 +2,8 @@ package mensagod.handlers
 
 import libmensago.ServerResponse
 import mensagod.ClientSession
-import mensagod.DBConn
 import mensagod.dbcmds.getSyncRecords
+import mensagod.withDBResult
 
 // GETUPDATES (time)
 fun commandGetUpdates(state: ClientSession) {
@@ -12,14 +12,16 @@ fun commandGetUpdates(state: ClientSession) {
 
     val time = schema.getUnixTime("Time", state.message.data)!!
 
-    val db = DBConn()
-    val recList = getSyncRecords(db, state.wid!!, time).getOrElse {
-        state.internalError(
-            "commandGetUpdates.getSyncRecords exception: $it",
-            "error getting update records"
-        )
-        return
-    }
+    val recList = withDBResult { db ->
+        getSyncRecords(db, state.wid!!, time).getOrElse {
+            state.internalError(
+                "commandGetUpdates.getSyncRecords exception: $it",
+                "error getting update records"
+            )
+            db.disconnect()
+            return
+        }
+    }.getOrElse { return }
 
     val data = mutableMapOf<String, String>()
     data["UpdateCount"] = recList.size.toString()
