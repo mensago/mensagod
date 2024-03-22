@@ -110,6 +110,7 @@ class RegCmdTest {
             val response = ServerResponse.receive(socket.getInputStream()).getOrThrow()
             response.assertReturnCode(401)
         }.run()
+        db.disconnect()
     }
 
     @Test
@@ -237,6 +238,7 @@ class RegCmdTest {
             assertEquals("somekindofsalt", rs.getString("salt"))
             assert(rs.getString("passparams").isNullOrEmpty())
         }.run()
+        db.disconnect()
     }
 
     @Test
@@ -323,6 +325,7 @@ class RegCmdTest {
                 .getOrThrow()
             assert(rs.next())
             assertEquals("csimons", rs.getString("uid"))
+            db.disconnect()
         }.run()
 
         // Test Case #4: Try to register with missing required information

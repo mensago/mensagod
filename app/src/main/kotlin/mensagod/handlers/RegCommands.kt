@@ -25,14 +25,17 @@ fun commandArchive(state: ClientSession) {
         return
     }
 
-    checkPassword(DBConn(), state.wid!!, passHash).getOrElse {
+    val db = state.dbConnect() ?: return
+    checkPassword(db, state.wid!!, passHash).getOrElse {
         state.internalError(
             "commandArchive: error checking password: $it",
             "error checking password"
         )
+        db.disconnect()
         return
     }.onFalse {
         state.quickResponse(401, "UNAUTHORIZED")
+        db.disconnect()
         return
     }
 
@@ -43,9 +46,11 @@ fun commandArchive(state: ClientSession) {
                 "commandArchive: error checking workspace status: $it",
                 "error checking workspace status"
             )
+            db.disconnect()
             return
         } ?: run {
             state.quickResponse(404, "NOT FOUND")
+            db.disconnect()
             return
         }
 
@@ -55,18 +60,20 @@ fun commandArchive(state: ClientSession) {
                     "commandArchive.checkAuth exception: $it",
                     "authorization check error"
                 )
+                db.disconnect()
                 return
             }.onFalse {
                 state.quickResponse(403, "FORBIDDEN")
+                db.disconnect()
                 return
             }
     }
 
-    val db = DBConn()
     // The support and abuse built-in accounts can't be deleted
     listOf("support", "abuse").forEach {
         val builtinWID = resolveUserID(db, UserID.fromString(it)!!).getOrElse {
             state.quickResponse(300, "INTERNAL SERVER ERROR", "user ID lookup error")
+            db.disconnect()
             return
         }
         if (state.wid!! == builtinWID) {
@@ -74,6 +81,7 @@ fun commandArchive(state: ClientSession) {
                 403, "FORBIDDEN",
                 "Can't archive the built-in $it account"
             )
+            db.disconnect()
             return
         }
     }
@@ -85,9 +93,12 @@ fun commandArchive(state: ClientSession) {
                 "commandArchive: error archiving workspace: $it",
                 "error archiving workspace"
             )
+            db.disconnect()
             return
         }
         state.quickResponse(200, "OK")
+        db.disconnect()
+        return
     }
 
     archiveWorkspace(db, state.wid!!)?.let {
@@ -95,8 +106,10 @@ fun commandArchive(state: ClientSession) {
             "commandArchive: error archiving workspace: $it",
             "error archiving workspace"
         )
+        db.disconnect()
         return
     }
+    db.disconnect()
     state.loginState = LoginState.NoSession
     state.quickResponse(202, "ARCHIVED")
 }
@@ -126,13 +139,14 @@ fun commandPreregister(state: ClientSession) {
     val wid = schema.getRandomID("Workspace-ID", state.message.data)
     val domain = schema.getDomain("Domain", state.message.data)
 
-    val db = DBConn()
+    val db = state.dbConnect() ?: return
     val outUID = if (uid != null) {
         resolveUserID(db, uid).getOrElse {
             state.internalError(
                 "commandPreregister.resolveUserID exception: $it",
                 "uid lookup error"
             )
+            db.disconnect()
             return
         }?.let {
             ServerResponse(408, "RESOURCE EXISTS", "user ID exists")
@@ -140,6 +154,7 @@ fun commandPreregister(state: ClientSession) {
                     state.conn,
                     "commandPreregister.resolveUserID exists send error"
                 )
+            db.disconnect()
             return
         }
         uid
@@ -151,6 +166,7 @@ fun commandPreregister(state: ClientSession) {
                 "commandPreregister.checkWorkspace exception: $it",
                 "wid lookup error"
             )
+            db.disconnect()
             return
         }?.let {
             runCatching {
@@ -159,6 +175,7 @@ fun commandPreregister(state: ClientSession) {
             }.getOrElse {
                 logDebug("commandPreregister.checkWorkspace exists send error: $it")
             }
+            db.disconnect()
             return
         }
         wid
@@ -172,6 +189,7 @@ fun commandPreregister(state: ClientSession) {
                         "commandPreregister.checkWorkspace(newWID) exception: $it",
                         "new wid lookup error"
                     )
+                    db.disconnect()
                     return
                 }
                 if (status == null)
@@ -183,6 +201,7 @@ fun commandPreregister(state: ClientSession) {
                     "commandPreregister.checkWorkspace exception: $it",
                     "wid lookup error"
                 )
+                db.disconnect()
                 return
             }
         } while (newWID == null)
@@ -201,6 +220,7 @@ fun commandPreregister(state: ClientSession) {
             "commandPreregister.hashRegCode exception: $it",
             "registration code hashing error"
         )
+        db.disconnect()
         return
     }
 
@@ -214,6 +234,7 @@ fun commandPreregister(state: ClientSession) {
             "commandPreregister.preregWorkspace exception: $it",
             "preregistration error"
         )
+        db.disconnect()
         return
     }
 
@@ -224,9 +245,11 @@ fun commandPreregister(state: ClientSession) {
             "commandPreregister.makeWorkspace exception: $it",
             "preregistration workspace creation failure"
         )
+        db.disconnect()
         return
     }
 
+    db.disconnect()
     val resp = ServerResponse(200, "OK")
     if (outUID != null) resp.attach("User-ID", outUID)
     resp.attach("Workspace-ID", outWID)
@@ -296,18 +319,20 @@ fun commandRegCode(state: ClientSession) {
     val passSalt = schema.getString("Password-Salt", state.message.data)
     val passParams = schema.getString("Password-Parameters", state.message.data)
 
-    val db = DBConn()
+    val db = state.dbConnect() ?: return
     val regInfo = checkRegCode(db, MAddress.fromParts(uid, domain), regCode).getOrElse {
         state.internalError(
             "Internal error commandRegCode.checkRegCode: $it",
             "commandRegCode.1"
         )
+        db.disconnect()
         return
     } ?: run {
         ServerResponse(401, "UNAUTHORIZED").sendCatching(
             state.conn,
             "commandRegCode: Failed to send unauthorized message"
         )
+        db.disconnect()
         return
     }
 
@@ -319,6 +344,7 @@ fun commandRegCode(state: ClientSession) {
             "Internal error commandRegCode.hashPassword: $it",
             "Server error hashing password"
         )
+        db.disconnect()
         return
     }
     addWorkspace(
@@ -333,12 +359,14 @@ fun commandRegCode(state: ClientSession) {
                 state.conn,
                 "Failed to send workspace-exists message"
             )
+            db.disconnect()
             return
         }
         state.internalError(
             "Internal error commandRegCode.addWorkspace: $it",
             "commandRegCode.2"
         )
+        db.disconnect()
         return
     }
 
@@ -347,6 +375,7 @@ fun commandRegCode(state: ClientSession) {
             "commandRegCode.addDevice: $it",
             "commandRegCode.3"
         )
+        db.disconnect()
         return
     }
 
@@ -355,9 +384,11 @@ fun commandRegCode(state: ClientSession) {
             "commandRegCode.deletePrereg: $it",
             "commandRegCode.4"
         )
+        db.disconnect()
         return
     }
 
+    db.disconnect()
     ServerResponse(201, "REGISTERED")
         .attach("Workspace-ID", regInfo.first)
         .attach("User-ID", uid)
@@ -392,6 +423,7 @@ fun commandRegister(state: ClientSession) {
                 "commandRegister.getFreeWID: $it",
                 "Error generating workspace ID"
             )
+            db.disconnect()
             return
         }
     val uid = schema.getUserID("User-ID", state.message.data)
@@ -409,30 +441,35 @@ fun commandRegister(state: ClientSession) {
     // password, there will be a pretty decent baseline of security in place.
     if (passHash.length !in 16..128) {
         state.quickResponse(400, "BAD REQUEST", "Invalid password hash")
+        db.disconnect()
         return
     }
 
     val devkey = devkeyCS.toEncryptionKey().getOrElse {
         if (it is UnsupportedAlgorithmException) {
             state.quickResponse(309, "ALGORITHM NOT SUPPORTED")
+            db.disconnect()
             return
         }
         state.internalError(
             "Error creating device encryption key for registration: $it",
             "Error creating device encryption key"
         )
+        db.disconnect()
         return
     }
 
     if (typeStr != null) {
         val wType = WorkspaceType.fromString(typeStr) ?: run {
             state.quickResponse(400, "BAD REQUEST", "Bad workspace type")
+            db.disconnect()
             return
         }
         // FEATURE: SharedWorkspaces
         // FEATURETODO: Eliminate this Not Implemented response when shared workspaces are implemented
         if (wType == WorkspaceType.Shared) {
             state.quickResponse(301, "NOT IMPLEMENTED")
+            db.disconnect()
             return
         }
     }
@@ -442,9 +479,11 @@ fun commandRegister(state: ClientSession) {
             "commandRegister.checkWorkspace error: $it",
             "Error checking for workspace ID"
         )
+        db.disconnect()
         return
     }?.let {
         state.quickResponse(408, "RESOURCE EXISTS")
+        db.disconnect()
         return
     }
 
@@ -453,9 +492,11 @@ fun commandRegister(state: ClientSession) {
             "commandRegister.resolveUserID error: $it",
             "Error checking for user ID"
         )
+        db.disconnect()
         return
     }?.let {
         state.quickResponse(408, "RESOURCE EXISTS")
+        db.disconnect()
         return
     }
 
@@ -466,9 +507,11 @@ fun commandRegister(state: ClientSession) {
                     "commandRegister.checkInRegNetwork error: $it",
                     "Error validating user remote IP"
                 )
+                db.disconnect()
                 return
             }.onFalse {
                 state.quickResponse(304, "REGISTRATION CLOSED")
+                db.disconnect()
                 return
             }
             WorkspaceStatus.Active
@@ -486,6 +529,7 @@ fun commandRegister(state: ClientSession) {
             "commandRegister.addWorkspace error: $it",
             "Error adding workspace"
         )
+        db.disconnect()
         return
     }
 
@@ -494,6 +538,7 @@ fun commandRegister(state: ClientSession) {
             "commandRegister.addDevice error for $wid.$devid: $it",
             "Error adding device"
         )
+        db.disconnect()
         return
     }
 
@@ -503,6 +548,7 @@ fun commandRegister(state: ClientSession) {
             "commandRegister.exists error for $wid.$devid: $it",
             "Error checking existence of workspace directory",
         )
+        db.disconnect()
         return
     }
     if (!wDirExists) {
@@ -511,10 +557,12 @@ fun commandRegister(state: ClientSession) {
                 "commandRegister.makeDirectory error for $wid.$devid: $it",
                 "Error creating workspace directory"
             )
+            db.disconnect()
             return
         }
     }
 
+    db.disconnect()
     val response = if (regType == "moderated")
         ServerResponse(101, "PENDING")
     else
