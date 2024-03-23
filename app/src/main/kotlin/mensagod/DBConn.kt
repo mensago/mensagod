@@ -10,9 +10,6 @@ import java.sql.*
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 
-private var dbURL = ""
-private var dbArgs = Properties()
-
 private val dbCount = AtomicInteger(0)
 
 /**
@@ -21,7 +18,7 @@ private val dbCount = AtomicInteger(0)
  * details needed to connect to it. It also makes interaction with the Java database API a little
  * easier.
  */
-class DBConn {
+class DBConn(val connConfig: PGConfig? = null) {
     private var conn: Connection? = null
     private var batch: Statement? = null
 
@@ -36,13 +33,21 @@ class DBConn {
      * @throws java.sql.SQLException if there are problems connecting to the database
      */
     fun connect(): Result<DBConn> {
-        if (dbURL.isEmpty()) return EmptyDataException().toFailure()
-
         // No sense in creating a new connection if we're already connected
         if (conn != null) return this.toSuccess()
 
-        conn = if (dbArgs.isNotEmpty()) DriverManager.getConnection(dbURL, dbArgs)
-        else DriverManager.getConnection(dbURL)
+        if (connConfig != null) {
+            conn = connConfig.connect().getOrElse { return it.toFailure() }
+            return this.toSuccess()
+        }
+
+        if (dbURL.isEmpty()) return EmptyDataException().toFailure()
+
+        conn = kotlin.runCatching {
+            if (dbArgs.isNotEmpty()) DriverManager.getConnection(dbURL, dbArgs)
+            else DriverManager.getConnection(dbURL)
+        }.getOrElse { return it.toFailure() }
+        
         println("DB connected: ${dbCount.addAndGet(1)}")
         return this.toSuccess()
     }
@@ -210,6 +215,8 @@ class DBConn {
     }
 
     companion object {
+        private var dbURL = ""
+        private var dbArgs = Properties()
 
         /**
          * This sets up easy access to the database server so that other parts of the server can
