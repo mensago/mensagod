@@ -48,11 +48,15 @@ fun logDebug(msg: String) {
 /** Log function which runs regardless of application log level. */
 fun log(msg: String) {
     if (msg.endsWith(lineSep)) {
-        logHandle!!.appendText("${Timestamp()}: $msg")
-        if (alsoStdout) print(msg)
+        with("${Timestamp()}: $msg") {
+            logHandle!!.appendText(this)
+            if (alsoStdout) print(this)
+        }
     } else {
-        logHandle!!.appendText("${Timestamp()}: $msg$lineSep")
-        if (alsoStdout) println(msg)
+        with("${Timestamp()}: $msg$lineSep") {
+            logHandle!!.appendText(this)
+            if (alsoStdout) println(this)
+        }
     }
 }
 
