@@ -15,7 +15,7 @@ inline fun <reified T> Throwable.toFailure(): Result<T> {
 }
 
 /**
- * Executes the code block if the the Boolean value is true
+ * Executes the code block if the Boolean value is true
  */
 inline fun Boolean.onTrue(block: () -> Unit) {
     if (this)
@@ -23,9 +23,17 @@ inline fun Boolean.onTrue(block: () -> Unit) {
 }
 
 /**
- * Executes the code block if the the Boolean value is true
+ * Executes the code block if the Boolean value is true
  */
 inline fun Boolean.onFalse(block: () -> Unit) {
     if (!this)
+        block()
+}
+
+/**
+ * Executes the code block if the string is empty or null
+ */
+inline fun CharSequence?.onNullOrEmpty(block: () -> Unit) {
+    if (this.isNullOrEmpty())
         block()
 }
