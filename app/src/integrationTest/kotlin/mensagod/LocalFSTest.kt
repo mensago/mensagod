@@ -35,10 +35,41 @@ class LocalFSTest {
     @Test
     fun listTest() {
         val setupData = setupTest("fs.list")
-        val lfs = LocalFS.get()
+        val one = "11111111-1111-1111-1111-111111111111"
+        val two = "22222222-2222-2222-2222-222222222222"
+        val three = "33333333-3333-3333-3333-333333333333"
 
-        val topdir = Paths.get(setupData.testPath, "topdir").toString()
-        // TODO: finish test for LocalFS::list()
+        val rootdir = Paths.get(setupData.testPath, "topdir")
+        val oneInfo = makeTestFile(
+            rootdir.toString(),
+            "1000000.1024.$one",
+            1024
+        )
+        val twoInfo = makeTestFile(
+            rootdir.toString(),
+            "1000100.1024.$two",
+            1024
+        )
+        val threeInfo = makeTestFile(
+            rootdir.toString(),
+            "1000200.1024.$three",
+            1024
+        )
+
+        val rootHandle = MServerPath().toHandle()
+
+        val files = rootHandle.list(true).getOrThrow()
+        assertEquals(3, files.size)
+        assertEquals(oneInfo.first, files[0])
+        assertEquals(twoInfo.first, files[1])
+        assertEquals(threeInfo.first, files[2])
+
+        val dirs = rootHandle.list(false).getOrThrow()
+        assertEquals(4, dirs.size)
+        assertEquals("keys", dirs[0])
+        assertEquals("out", dirs[1])
+        assertEquals("tmp", dirs[2])
+        assertEquals("wsp", dirs[3])
     }
 
     @Test

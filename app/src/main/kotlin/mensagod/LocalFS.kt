@@ -115,10 +115,10 @@ class LocalFSHandle(mpath: MServerPath, private var file: File) {
         val entries = kotlin.runCatching { file.listFiles() }.getOrElse { return it.toFailure() }
         return if (listFiles)
             entries.filter { it.isFile }
-                .map { it.toString() }.toSuccess()
+                .map { it.name }.toSuccess()
         else
             entries.filter { it.isDirectory }
-                .map { it.toString() }.toSuccess()
+                .map { it.name }.toSuccess()
     }
 
     /**
