@@ -1,9 +1,6 @@
 package mensagod
 
-import keznacl.BadValueException
-import keznacl.EmptyDataException
-import keznacl.toFailure
-import keznacl.toSuccess
+import keznacl.*
 import libkeycard.MissingDataException
 import libmensago.NotConnectedException
 import java.sql.*
@@ -47,7 +44,7 @@ class DBConn(val connConfig: PGConfig? = null) {
             if (dbArgs.isNotEmpty()) DriverManager.getConnection(dbURL, dbArgs)
             else DriverManager.getConnection(dbURL)
         }.getOrElse { return it.toFailure() }
-        
+
         println("DB connected: ${dbCount.addAndGet(1)}")
         return this.toSuccess()
     }
@@ -227,25 +224,22 @@ class DBConn(val connConfig: PGConfig? = null) {
          * @throws java.sql.SQLException if there are problems connecting to the database
          */
         fun initialize(config: ServerConfig): Throwable? {
-            val sb = StringBuilder("jdbc:postgresql://")
-            sb.append(
-                config.getString("database.host") + ":" +
-                        config.getInteger("database.port").toString()
-            )
-            sb.append("/" + config.getString("database.name"))
-
-            val args = Properties()
-            args["user"] = config.getString("database.user")
-
-            if (config.getString("database.password")?.isEmpty() == true)
+            config.getString("database.password").onNullOrEmpty {
                 return MissingDataException("Database password must not be empty")
-            args["password"] = config.getString("database.password")
+            }
 
-            val url = sb.toString()
-            DriverManager.getConnection(url, args)
+            val pgc = PGConfig(
+                config.getString("database.user")!!,
+                config.getString("database.password")!!,
+                config.getString("database.host")!!,
+                config.getInteger("database.port")!!,
+                config.getString("database.name")!!
+            )
 
-            dbURL = url
-            dbArgs = args
+            pgc.connect().getOrElse { return it }.close()
+
+            dbURL = pgc.getURL()
+            dbArgs = pgc.getArgs()
             return null
         }
     }

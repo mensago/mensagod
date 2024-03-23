@@ -16,12 +16,17 @@ data class PGConfig(
     var dbname: String = "mensago"
 ) {
     fun connect(): Result<Connection> {
-        val url = "jdbc:postgresql://$host:$port/$dbname"
-        val args = Properties()
-        with(args) {
+        return kotlin.runCatching { DriverManager.getConnection(getURL(), getArgs()) }
+    }
+
+    fun getURL(): String {
+        return "jdbc:postgresql://$host:$port/$dbname"
+    }
+
+    fun getArgs(): Properties {
+        return Properties().apply {
             this["user"] = user
             this["password"] = password
         }
-        return kotlin.runCatching { DriverManager.getConnection(url, args) }
     }
 }
