@@ -1,7 +1,8 @@
 package testsupport
 
-import libkeycard.Domain
-import libkeycard.WAddress
+import keznacl.EncryptionPair
+import keznacl.SigningPair
+import libkeycard.*
 import libmensago.MServerPath
 import libmensago.resolver.KCResolver
 import mensagod.*
@@ -19,13 +20,18 @@ import java.nio.file.Paths
  */
 
 const val SETUP_TEST_FILESYSTEM: Int = 1
+const val SETUP_TEST_DATABASE: Int = 2
 
 /**
  * This support class is responsible for setting up the server side of anenvironment for integration
  * tests.
  */
 class ServerTestEnvironment(val testName: String) {
-    private val dbconfig: PGConfig = PGConfig()
+    private val dbconfig: PGConfig = PGConfig(dbname = "mensagotest")
+    private var db: PGConn? = null
+    private var serverPrimary: SigningPair? = null
+    private var serverEncryption: EncryptionPair? = null
+
     val serverconfig: ServerConfig = ServerConfig.load().getOrThrow()
     val testPath: String = Paths.get("build", "testfiles", testName).toAbsolutePath()
         .toString()
@@ -35,8 +41,34 @@ class ServerTestEnvironment(val testName: String) {
      */
     fun provision(provisionLevel: Int): ServerTestEnvironment {
         setupTestBase()
+        if (provisionLevel >= SETUP_TEST_DATABASE)
+            initDatabase()
 
         return this
+    }
+
+    /**
+     * Returns a connection to the database. This will throw an exception if the database connection
+     * has not been initialized.
+     */
+    fun getDB(): PGConn {
+        return db ?: throw TestFailureException("Database not initialized")
+    }
+
+    /**
+     * Returns the server's current primary signing keypair or throws an exception. This call
+     * requires database initialization.
+     */
+    fun serverPrimaryPair(): SigningPair {
+        return serverPrimary ?: throw TestFailureException("Database not initialized")
+    }
+
+    /**
+     * Returns the server's current encryption keypair or throws an exception. This call requires
+     * database initialization.
+     */
+    fun serverEncryptionPair(): EncryptionPair {
+        return serverEncryption ?: throw TestFailureException("Database not initialized")
     }
 
     /**
@@ -63,13 +95,113 @@ class ServerTestEnvironment(val testName: String) {
         gServerDomain = Domain.fromString(serverconfig.getString("global.domain"))!!
         gServerAddress = WAddress.fromParts(gServerDevID, gServerDomain)
     }
+
+    /**
+     * Provisions a database for the integration test. The database is populated with all tables
+     * needed and adds basic data to the database as if setup had been run. It also rotates the org
+     * keycard so that there are two entries.
+     */
+    private fun initDatabase() {
+        resetDB(serverconfig).getOrThrow().close()
+        db = PGConn(dbconfig)
+
+        val initialOSPair = SigningPair.fromStrings(
+            "ED25519:r#r*RiXIN-0n)BzP3bv`LA&t4LFEQNF0Q@\$N~RF*",
+            "ED25519:{UNQmjYhz<(-ikOBYoEQpXPt<irxUF*nq25PoW=_"
+        ).getOrThrow()
+        val initialOEPair = EncryptionPair.fromStrings(
+            "CURVE25519:SNhj2K`hgBd8>G>lW\$!pXiM7S-B!Fbd9jT2&{{Az",
+            "CURVE25519:WSHgOhi+bg=<bO^4UoJGF-z9`+TBN{ds?7RZ;w3o"
+        ).getOrThrow()
+
+        val rootEntry = OrgEntry().run {
+            setFieldInteger("Index", 1)
+            setField("Name", "Example, Inc.")
+            setField(
+                "Contact-Admin",
+                "ae406c5e-2673-4d3e-af20-91325d9623ca/example.com"
+            )
+            setField("Language", "en")
+            setField("Domain", "example.com")
+            setField("Primary-Verification-Key", initialOSPair.pubKey.toString())
+            setField("Encryption-Key", initialOEPair.pubKey.toString())
+
+            isDataCompliant()?.let { throw it }
+            hash()?.let { throw it }
+            sign("Organization-Signature", initialOSPair)?.let { throw it }
+            verifySignature("Organization-Signature", initialOSPair).getOrThrow()
+            isCompliant()?.let { throw it }
+            this
+        }
+
+        val orgCard = Keycard.new("Organization")!!
+        orgCard.entries.add(rootEntry)
+
+        db!!.execute(
+            "INSERT INTO keycards(owner,creationtime,index,entry,fingerprint) " +
+                    "VALUES('organization',?,?,?,?);",
+            rootEntry.getFieldString("Timestamp")!!,
+            rootEntry.getFieldInteger("Index")!!,
+            rootEntry.getFullText(null).getOrThrow(),
+            rootEntry.getAuthString("Hash")!!
+        )
+
+        val keys = orgCard.chain(initialOSPair, 365).getOrThrow()
+        val newEntry = orgCard.entries[1]
+
+        db!!.execute(
+            "INSERT INTO keycards(owner,creationtime,index,entry,fingerprint) " +
+                    "VALUES('organization',?,?,?,?);",
+            newEntry.getFieldString("Timestamp")!!,
+            newEntry.getFieldInteger("Index")!!,
+            newEntry.getFullText(null).getOrThrow(),
+            newEntry.getAuthString("Hash")!!
+        )
+
+        db!!.execute(
+            "INSERT INTO orgkeys(creationtime,pubkey,privkey,purpose,fingerprint) " +
+                    "VALUES(?,?,?,'encrypt',?);",
+            newEntry.getFieldString("Timestamp")!!,
+            keys["encryption.public"]!!,
+            keys["encryption.private"]!!,
+            keys["encryption.public"]!!.hash().getOrThrow()
+        )
+
+        db!!.execute(
+            "INSERT INTO orgkeys(creationtime,pubkey,privkey,purpose,fingerprint) " +
+                    "VALUES(?,?,?,'sign',?);",
+            newEntry.getFieldString("Timestamp")!!,
+            keys["primary.public"]!!,
+            keys["primary.private"]!!,
+            keys["primary.public"]!!.hash().getOrThrow()
+        )
+
+        // Preregister the admin account
+        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"]!!)!!
+        db!!.execute(
+            "INSERT INTO prereg(wid,uid,domain,regcode) VALUES(?,?,?,?)",
+            adminWID, "admin", "example.com", ADMIN_PROFILE_DATA["reghash"]!!
+        )
+
+        // Forward abuse and support to admin
+        db!!.execute(
+            "INSERT INTO workspaces(wid,uid,domain,password,passtype,status,wtype) " +
+                    "VALUES(?,'abuse','example.com','-','','active','alias')",
+            adminWID
+        )
+        db!!.execute(
+            "INSERT INTO workspaces(wid,uid,domain,password,passtype,status,wtype) " +
+                    "VALUES(?,'support','example.com','-','','active','alias')",
+            adminWID
+        )
+    }
 }
 
 
 class ServerEnvironmentTest {
     @Test
     fun testBaseSetup() {
-        val env = ServerTestEnvironment("servertestenv").provision(SETUP_TEST_FILESYSTEM)
+        val env = ServerTestEnvironment("servertestenv.fs").provision(SETUP_TEST_FILESYSTEM)
 
         val lfs = LocalFS.get()
         val rootPath = MServerPath()
@@ -94,5 +226,13 @@ class ServerEnvironmentTest {
         setLogLevel(LOG_INFO)
         logInfo("${env.testName} log test entry")
         setLogLevel(oldLevel)
+    }
+
+    @Test
+    fun testBaseDBSetup() {
+        ServerTestEnvironment("servertestenv.basedb")
+            .provision(SETUP_TEST_DATABASE)
+
+        // TODO: verify database setup
     }
 }
