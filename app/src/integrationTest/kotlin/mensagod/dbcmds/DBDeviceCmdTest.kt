@@ -62,6 +62,7 @@ class DBDeviceCmdTest {
 
         removeDevice(db, adminWID, devid2)?.let { throw it }
         assertEquals(1, countDevices(db, adminWID).getOrThrow())
+        db.disconnect()
     }
 
     @Test
@@ -116,6 +117,7 @@ class DBDeviceCmdTest {
         updateDeviceStatus(db, adminWID, devid, DeviceStatus.Registered)?.let { throw it }
         assertEquals(DeviceStatus.Registered, getDeviceStatus(db, adminWID, devid).getOrThrow())
         assertEquals(DeviceStatus.NotRegistered, getDeviceStatus(db, adminWID, badID).getOrThrow())
+        db.disconnect()
     }
 
     @Test
@@ -147,5 +149,6 @@ class DBDeviceCmdTest {
 
         removeKeyInfo(db, adminWID, devid)
         assertNull(getKeyInfo(db, adminWID, devid).getOrThrow())
+        db.disconnect()
     }
 }

@@ -96,6 +96,7 @@ class DBSyncCmdTest {
                 )
             ) is EntryTypeException
         )
+        db.disconnect()
     }
 
     @Test
@@ -165,5 +166,6 @@ class DBSyncCmdTest {
         assertEquals(4, countSyncRecords(db, adminWID, 0).getOrThrow())
         cullOldSyncRecords(db, unixtime - 375_000_000)
         assertEquals(3, countSyncRecords(db, adminWID, 0).getOrThrow())
+        db.disconnect()
     }
 }

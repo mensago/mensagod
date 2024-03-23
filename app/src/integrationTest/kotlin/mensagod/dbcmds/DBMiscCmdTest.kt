@@ -20,5 +20,6 @@ class DBMiscCmdTest {
         // test them except call them. :)
         getEncryptionPair(db).getOrThrow()
         getPrimarySigningPair(db).getOrThrow()
+        db.disconnect()
     }
 }

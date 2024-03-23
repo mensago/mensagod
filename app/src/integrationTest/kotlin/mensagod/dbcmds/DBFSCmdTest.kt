@@ -54,6 +54,7 @@ class DBFSCmdTest {
         rs = db.query("SELECT COUNT(*) from iwkspc_folders WHERE wid=?", adminWID).getOrThrow()
         assert(rs.next())
         assertEquals(0, rs.getInt(1))
+        db.disconnect()
     }
 
     @Test
@@ -81,6 +82,7 @@ class DBFSCmdTest {
 
         resetQuotaUsage(db)?.let { throw it }
         assertEquals(2048, getQuotaInfo(db, userWID).getOrThrow().first)
+        db.disconnect()
     }
 
     @Test
@@ -100,6 +102,7 @@ class DBFSCmdTest {
         assertEquals(4000, modifyQuotaUsage(db, userWID, 1000).getOrThrow())
 
         assertEquals(4000, getQuotaInfo(db, userWID).getOrThrow().first)
+        db.disconnect()
     }
 
     @Test
@@ -120,6 +123,7 @@ class DBFSCmdTest {
         assert(rs.next())
         assertEquals(0x100_000, rs.getLong("usage"))
         assertEquals(0x200_000, rs.getLong("quota"))
+        db.disconnect()
     }
 
     @Test
@@ -141,5 +145,6 @@ class DBFSCmdTest {
         setQuotaUsage(db, userWID, 2000L)?.let { throw it }
         info = getQuotaInfo(db, userWID).getOrThrow()
         assertEquals(2000, info.first)
+        db.disconnect()
     }
 }

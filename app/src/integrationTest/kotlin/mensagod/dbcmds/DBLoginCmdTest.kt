@@ -18,13 +18,15 @@ class DBLoginCmdTest {
     @Test
     fun checkPasswordTest() {
         setupTest("dbcmds.checkPassword")
+        val db = DBConn()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
-        assert(checkPassword(DBConn(), adminWID, ADMIN_PROFILE_DATA["password"]!!).getOrThrow())
-        assertFalse(checkPassword(DBConn(), adminWID, "foobar").getOrThrow())
+        assert(checkPassword(db, adminWID, ADMIN_PROFILE_DATA["password"]!!).getOrThrow())
+        assertFalse(checkPassword(db, adminWID, "foobar").getOrThrow())
         val badWID = RandomID.fromString("be8e1ae7-1915-4d82-bb21-fa5565788cef")!!
-        val error = checkPassword(DBConn(), badWID, "foobar")
+        val error = checkPassword(db, badWID, "foobar")
         assert(error.isFailure)
         assert(error.exceptionOrNull() is ResourceNotFoundException)
+        db.disconnect()
     }
 
     @Test
@@ -73,5 +75,6 @@ class DBLoginCmdTest {
         assertEquals(newUID, regInfo.second)
 
         assertNull(checkRegCode(db, MAddress.fromParts(newUID, domain), "baz").getOrThrow())
+        db.disconnect()
     }
 }

@@ -56,6 +56,7 @@ class DBKeycardCmdTest {
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         val userEntries = getEntries(db, adminWID).getOrThrow()
         assertEquals(1, userEntries.size)
+        db.disconnect()
     }
 
     @Test
@@ -84,6 +85,7 @@ class DBKeycardCmdTest {
         assertEquals(1, secondEntryList.size)
         val secondOnly = OrgEntry.fromString(secondEntryList[0]).getOrThrow()
         assertEquals(2, secondOnly.getFieldInteger("Index")!!)
+        db.disconnect()
     }
 
     @Test
@@ -109,5 +111,6 @@ class DBKeycardCmdTest {
 
         val zeroWID = RandomID.fromString("00000000-0000-0000-0000-000000000000")!!
         assertNull(resolveWID(db, zeroWID).getOrThrow())
+        db.disconnect()
     }
 }

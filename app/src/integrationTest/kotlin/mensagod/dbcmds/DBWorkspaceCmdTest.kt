@@ -48,6 +48,7 @@ class DBWorkspaceCmdTest {
                 WorkspaceType.Individual
             )?.let { throw it }
         }
+        db.disconnect()
     }
 
     @Test
@@ -67,6 +68,7 @@ class DBWorkspaceCmdTest {
             !db.query("SELECT index FROM keycards WHERE owner=?", userWID).getOrThrow()
                 .next()
         )
+        db.disconnect()
     }
 
     @Test
@@ -91,6 +93,7 @@ class DBWorkspaceCmdTest {
         assertNotNull(resolveUserID(db, UserID.fromString("admin")!!).getOrThrow())
         val zeroUID = UserID.fromString("00000000-0000-0000-0000-000000000000")!!
         assertNull(resolveUserID(db, zeroUID).getOrThrow())
+        db.disconnect()
     }
 
     @Test
@@ -110,6 +113,7 @@ class DBWorkspaceCmdTest {
             adminWID,
             resolveAlias(db, UserID.fromString("abuse")!!, gServerDomain).getOrThrow()
         )
+        db.disconnect()
     }
 
     @Test
@@ -132,5 +136,6 @@ class DBWorkspaceCmdTest {
         makeAlias(db, adminWID, UserID.fromString("admin3")!!, gServerDomain)?.let { throw it }
         val aliases = getAliases(db, adminWID).getOrThrow()
         assertEquals(4, aliases.size)
+        db.disconnect()
     }
 }
