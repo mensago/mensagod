@@ -254,7 +254,7 @@ fun getEntryForTarget(db: DBConn, subject: DeliveryTarget): Result<Entry?> {
         return KCResolver.getCurrentEntry(subject.toEntrySubject())
     }
 
-    val rawEntries = getEntries(db, RandomID.fromString(subject.toString()), 0U)
+    val rawEntries = getRawEntries(db, RandomID.fromString(subject.toString()), 0U)
         .getOrElse { return it.toFailure() }
     if (rawEntries.isEmpty()) return ResourceNotFoundException().toFailure()
     val result = if (subject.isUser()) UserEntry.fromString(rawEntries[0])

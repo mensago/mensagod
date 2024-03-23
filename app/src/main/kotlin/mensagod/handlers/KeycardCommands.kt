@@ -141,7 +141,7 @@ fun commandAddEntry(state: ClientSession) {
 
     // Here we check to make sure that the entry submitted is allowed to follow the previous one.
     // This just means the new index == the old index +1 and that the chain of trust verifies
-    val tempEntryList = getEntries(db, wid, 0U).getOrElse {
+    val tempEntryList = getRawEntries(db, wid, 0U).getOrElse {
         state.internalError(
             "commandAddEntry.getCurrentEntry exception: $it",
             "Server can't get current keycard entry"
@@ -199,7 +199,7 @@ fun commandAddEntry(state: ClientSession) {
 
         // This is the user's root entry, so the previous entry needs to be the org's current
         // keycard entry.
-        val tempOrgList = getEntries(db, null, 0U).getOrElse {
+        val tempOrgList = getRawEntries(db, null, 0U).getOrElse {
             state.internalError(
                 "commandAddEntry.getCurrentOrgEntry exception: $it",
                 "Server can't get current org keycard entry"
@@ -485,7 +485,7 @@ fun commandGetCard(state: ClientSession) {
         end
     } else null
 
-    val entries = getEntries(db, owner, startIndex, endIndex).getOrElse {
+    val entries = getRawEntries(db, owner, startIndex, endIndex).getOrElse {
         state.internalError(
             "commandGetCard: Error looking up entries: $it",
             "Error looking up entries"
@@ -548,7 +548,7 @@ fun commandIsCurrent(state: ClientSession) {
     val wid = schema.getRandomID("Workspace-ID", state.message.data)
 
     val entries = withDBResult { db ->
-        getEntries(db, wid, 0U).getOrElse {
+        getRawEntries(db, wid, 0U).getOrElse {
             state.internalError(
                 "commandIsCurrent: error getting keycard: $it",
                 "Server error checking keycard"

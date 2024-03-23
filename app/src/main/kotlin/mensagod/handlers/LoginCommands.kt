@@ -140,7 +140,7 @@ fun commandDevice(state: ClientSession) {
                     return
                 }
 
-                val entryList = getEntries(db, recipient.id, 0U)
+                val entryList = getRawEntries(db, recipient.id, 0U)
                     .getOrElse {
                         state.internalError(
                             "commandDevice.getEntries exception: $it",

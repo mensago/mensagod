@@ -45,7 +45,7 @@ fun addEntry(db: DBConn, entry: Entry): Throwable? {
  * @throws NotConnectedException if not connected to the database
  * @throws java.sql.SQLException for database problems, most likely either with your query or with the connection
  */
-fun getEntries(db: DBConn, wid: RandomID?, startIndex: UInt = 1U, endIndex: UInt? = null):
+fun getRawEntries(db: DBConn, wid: RandomID?, startIndex: UInt = 1U, endIndex: UInt? = null):
         Result<MutableList<String>> {
     val owner = wid?.toString() ?: "organization"
 

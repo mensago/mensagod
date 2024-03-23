@@ -271,7 +271,7 @@ fun setupKeycard(db: DBConn, chain: Boolean, profileData: MutableMap<String, Str
     val serverPair = getPrimarySigningPair(db).getOrThrow()
     card.current!!.sign("Organization-Signature", serverPair)?.let { throw it }
 
-    val orgEntry = OrgEntry.fromString(getEntries(db, null, 0U).getOrThrow()[0])
+    val orgEntry = OrgEntry.fromString(getRawEntries(db, null, 0U).getOrThrow()[0])
         .getOrThrow()
     val prevHash = orgEntry.getAuthString("Previous-Hash")!!
     card.current!!.addAuthString("Previous-Hash", prevHash)

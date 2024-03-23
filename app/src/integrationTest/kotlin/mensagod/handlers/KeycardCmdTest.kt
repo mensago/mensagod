@@ -11,7 +11,7 @@ import libmensago.ServerResponse
 import mensagod.DBConn
 import mensagod.LoginState
 import mensagod.SessionState
-import mensagod.dbcmds.getEntries
+import mensagod.dbcmds.getRawEntries
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import testsupport.*
@@ -28,7 +28,7 @@ class KeycardCmdTest {
         setupTest("handlers.addEntry")
 
         val db = DBConn()
-        val orgEntry = OrgEntry.fromString(getEntries(db, null, 0U).getOrThrow()[0])
+        val orgEntry = OrgEntry.fromString(getRawEntries(db, null, 0U).getOrThrow()[0])
             .getOrThrow()
         val crsPair = SigningPair.fromStrings(
             ADMIN_PROFILE_DATA["crsigning.public"]!!,
@@ -171,7 +171,7 @@ class KeycardCmdTest {
             assertEquals("2", response.data["Item-Count"])
 
             val db = DBConn()
-            val entries = getEntries(db, null, 1U).getOrThrow()
+            val entries = getRawEntries(db, null, 1U).getOrThrow()
             assertEquals(2, entries.size)
             val expectedSize = entries[0].length + entries[1].length + 96
             assertEquals(expectedSize, response.data["Total-Size"]!!.toInt())
@@ -200,7 +200,7 @@ class KeycardCmdTest {
             assertEquals("1", response.data["Item-Count"])
 
             val db = DBConn()
-            val entries = getEntries(db, null, 0U).getOrThrow()
+            val entries = getRawEntries(db, null, 0U).getOrThrow()
             assertEquals(1, entries.size)
             val expectedSize = entries[0].length + 48
             assertEquals(expectedSize, response.data["Total-Size"]!!.toInt())
@@ -238,7 +238,7 @@ class KeycardCmdTest {
             assertEquals("1", response.data["Item-Count"])
 
             val db = DBConn()
-            val entries = getEntries(db, null, 1U, 1U).getOrThrow()
+            val entries = getRawEntries(db, null, 1U, 1U).getOrThrow()
             assertEquals(1, entries.size)
             val expectedSize = entries[0].length + 48
             assertEquals(expectedSize, response.data["Total-Size"]!!.toInt())
@@ -365,7 +365,7 @@ class KeycardCmdTest {
             assert(response.checkFields(listOf(Pair("Item-Count", true), Pair("Total-Size", true))))
             assertEquals("2", response.data["Item-Count"])
 
-            val entries = getEntries(db, adminWID, 1U).getOrThrow()
+            val entries = getRawEntries(db, adminWID, 1U).getOrThrow()
             assertEquals(2, entries.size)
             val expectedSize = entries[0].length + 48 + entries[1].length + 48
             assertEquals(expectedSize, response.data["Total-Size"]!!.toInt())
