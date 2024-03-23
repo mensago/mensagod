@@ -1,5 +1,8 @@
 package mensagod.delivery
 
+import keznacl.onFalse
+import keznacl.toFailure
+import keznacl.toSuccess
 import libkeycard.*
 import libmensago.*
 import libmensago.resolver.KCResolver
@@ -59,8 +62,13 @@ fun deliveryWorker() {
     do {
         val msgInfo = gMessageQueue.poll() ?: break
 
+        val isRecipientLocal = isDomainLocal(db, msgInfo.receiver.domain).getOrElse {
+            logError("Error determining domain ${msgInfo.receiver.domain} is local: $it")
+            return
+        }
+
         val handle = lfs.entry(msgInfo.path)
-        var exists = handle.exists().getOrElse {
+        val exists = handle.exists().getOrElse {
             logError("Invalid msgInfo path ${msgInfo.path}")
             return
         }
@@ -70,60 +78,8 @@ fun deliveryWorker() {
             continue
         }
 
-        val isLocal = isDomainLocal(db, msgInfo.receiver.domain).getOrElse {
-            logError("Error determining domain ${msgInfo.receiver.domain} is local: $it")
-            return
-        }
-
-        if (isLocal) {
-            val sealedEnv = SealedDeliveryTag.readFromFile(handle.getFile()).getOrElse {
-                sendBounce(
-                    300, msgInfo,
-                    mapOf("InternalCode" to "delivery.deliveryWorker.2")
-                )
-                    ?.let { logError("Error sending deliveryWorker bounce #2: $it") }
-                return
-            }
-
-            val orgKeyPair = getEncryptionPair(db).getOrElse {
-                logError("deliveryWorker: Unable to get the org encryption pair: $it")
-                return
-            }
-            val recipientInfo = sealedEnv.decryptReceiver(orgKeyPair).getOrElse {
-                sendBounce(504, msgInfo, mapOf())
-                    ?.let { logError("Error sending deliveryWorker bounce #3: $it") }
-                return
-            }
-
-            val destHandle = lfs.entry(MServerPath("/ wsp ${recipientInfo.to.id} new"))
-            exists = destHandle.exists().getOrElse {
-                logError("Unable to check for path ${destHandle.path}")
-                return
-            }
-            if (!exists) {
-                runCatching { destHandle.getFile().mkdirs() }
-                    .onFailure {
-                        logError("Unable to create path ${destHandle.path}: $it")
-                        return
-                    }
-            }
-
-            handle.moveTo(destHandle.path)?.let {
-                logError("Unable to move ${handle.path} to ${destHandle.path}: $it")
-                return
-            }
-
-            val finalPath = destHandle.path.clone()
-            finalPath.push(handle.path.basename()).getOrElse {
-                logError("Error creating final path for ${handle.path}: $it")
-                return
-            }
-            addSyncRecord(
-                db, recipientInfo.to.id, SyncRecord(
-                    RandomID.generate(), UpdateType.Create, finalPath.toString(),
-                    Instant.now().epochSecond.toString(), gServerDevID
-                )
-            )
+        if (isRecipientLocal) {
+            deliverToMailbox(db, handle, msgInfo)
             continue
         }
 
@@ -143,14 +99,84 @@ fun deliveryWorker() {
     gDeliveryThreads.remove(currentThread())
 }
 
+/**
+ * Handles final-mile processing of a message for delivery to a local mailbox
+ */
+fun deliverToMailbox(db: DBConn, handle: LocalFSHandle, msgInfo: MessageInfo) {
+    val sealedEnv = SealedDeliveryTag.readFromFile(handle.getFile()).getOrElse {
+        sendBounce(
+            300, msgInfo,
+            mapOf("InternalCode" to "delivery.deliveryWorker.2")
+        )?.let { logError("Error sending deliveryWorker bounce #2: $it") }
+        return
+    }
+
+    val orgKeyPair = getEncryptionPair(db).getOrElse {
+        logError("deliveryWorker: Unable to get the org encryption pair: $it")
+        return
+    }
+    val recipientInfo = sealedEnv.decryptReceiver(orgKeyPair).getOrElse {
+        sendBounce(504, msgInfo, mapOf())
+            ?.let { logError("Error sending deliveryWorker bounce #3: $it") }
+        return
+    }
+
+    val lfs = LocalFS.get()
+    val destHandle = lfs.entry(MServerPath("/ wsp ${recipientInfo.to.id} new"))
+    destHandle.exists().getOrElse {
+        logError("Unable to check for path ${destHandle.path}")
+        return
+    }.onFalse {
+        runCatching { destHandle.getFile().mkdirs() }
+            .onFailure {
+                logError("Unable to create path ${destHandle.path}: $it")
+                return
+            }
+    }
+
+    handle.moveTo(destHandle.path)?.let {
+        logError("Unable to move ${handle.path} to ${destHandle.path}: $it")
+        return
+    }
+
+    val finalPath = destHandle.path.clone()
+    finalPath.push(handle.path.basename()).getOrElse {
+        logError("Error creating final path for ${handle.path}: $it")
+        return
+    }
+    addSyncRecord(
+        db, recipientInfo.to.id, SyncRecord(
+            RandomID.generate(), UpdateType.Create, finalPath.toString(),
+            Instant.now().epochSecond.toString(), gServerDevID
+        )
+    )
+}
+
+/**
+ * sendBounce is used to construct delivery failure report (bounce) messages based on the failure
+ * code.
+ *
+ * @param errorCode The Mensago error code
+ * @param info The delivery information
+ * @param extraData A map for passing extra message-related data to the call; it is needed for
+ * certain error codes
+ */
 private fun sendBounce(errorCode: Int, info: MessageInfo, extraData: Map<String, String>):
         Throwable? {
 
-    // TODO: Update sendBounce to account for local recipients
-    // This call causes crashes in integration tests the keycard resolver tries to contact the local
-    // server over the network
-    val userEntry =
-        KCResolver.getCurrentEntry(info.receiver.toEntrySubject()).getOrElse { return it }
+    // Determine whether the sender of the original message is local to this server.
+    val userEntry = withDBResult { db ->
+        getEntryForTarget(db, info.sender).getOrElse {
+            logError("Error getting entry for target: $it")
+            return it
+        }
+    }.getOrElse {
+        logError("Error connecting to database for entry retrieval: $it")
+        return it
+    } ?: run {
+        return ResourceNotFoundException()
+    }
+
     val domStr = userEntry.getFieldString("Domain")
         ?: return BadFieldValueException("Entry for user missing Domain field")
     val userWidStr = userEntry.getFieldString("Workspace-ID")
@@ -213,3 +239,30 @@ private fun sendBounce(errorCode: Int, info: MessageInfo, extraData: Map<String,
 
     return null
 }
+
+/**
+ * Slightly higher-level database call which retrieves a list of Entry instances for a given
+ * EntrySubject. This call performs no domain resolution, so if the subject is not local to the
+ * server, it will return ResourceNotFound()
+ */
+fun getEntryForTarget(db: DBConn, subject: DeliveryTarget): Result<Entry?> {
+
+    isDomainLocal(db, subject.domain).getOrElse {
+        logError("Error determining domain ${subject.domain} is local: $it")
+        return it.toFailure()
+    }.onFalse {
+        return KCResolver.getCurrentEntry(subject.toEntrySubject())
+    }
+
+    val rawEntries = getEntries(db, RandomID.fromString(subject.toString()), 0U)
+        .getOrElse { return it.toFailure() }
+    if (rawEntries.isEmpty()) return ResourceNotFoundException().toFailure()
+    val result = if (subject.isUser()) UserEntry.fromString(rawEntries[0])
+    else OrgEntry.fromString(rawEntries[0])
+    val entry = result.getOrElse {
+        return DatabaseCorruptionException("Bad entry received for $subject").toFailure()
+    }
+
+    return entry.toSuccess()
+}
+

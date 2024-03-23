@@ -12,6 +12,11 @@ import libmensago.EntrySubject
  */
 class DeliveryTarget(var domain: Domain, var id: RandomID? = null) {
 
+    /** Returns true if the subject represented is a user */
+    fun isUser(): Boolean {
+        return (id != null)
+    }
+
     /** Converts the DeliveryTarget into an EntrySubject. */
     fun toEntrySubject(): EntrySubject {
         return if (id != null) EntrySubject(domain, UserID.fromWID(id!!))
