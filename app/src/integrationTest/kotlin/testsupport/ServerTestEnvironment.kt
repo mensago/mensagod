@@ -3,7 +3,10 @@ package testsupport
 import keznacl.CryptoString
 import keznacl.EncryptionPair
 import keznacl.SigningPair
-import libkeycard.*
+import libkeycard.Domain
+import libkeycard.Keycard
+import libkeycard.OrgEntry
+import libkeycard.WAddress
 import libmensago.MServerPath
 import libmensago.resolver.KCResolver
 import mensagod.*
@@ -138,9 +141,11 @@ class ServerTestEnvironment(val testName: String) {
         // Swallow the exception if we fail to create the database. It simplifies the logic a lot
         // as Postgres doesn't have a CREATE IF NOT EXISTS syntax for database creation. If we fail
         // to create the database for other reasons, the test will fail later on.
+        val pgConn = PGConn(dbsetupcfg)
         kotlin.runCatching {
-            PGConn(dbsetupcfg).execute("CREATE DATABASE $testName OWNER ${dbsetupcfg.user}")
+            pgConn.execute("DROP DATABASE $testName")
         }
+        pgConn.execute("CREATE DATABASE $testName OWNER ${dbsetupcfg.user}")
     }
 
     /**
@@ -226,22 +231,21 @@ class ServerTestEnvironment(val testName: String) {
         )
 
         // Preregister the admin account
-        val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"]!!)!!
         db!!.execute(
             "INSERT INTO prereg(wid,uid,domain,regcode) VALUES(?,?,?,?)",
-            adminWID, "admin", "example.com", ADMIN_PROFILE_DATA["reghash"]!!
+            gAdminProfileData.wid, "admin", "example.com", ADMIN_PROFILE_DATA["reghash"]!!
         )
 
         // Forward abuse and support to admin
         db!!.execute(
             "INSERT INTO workspaces(wid,uid,domain,password,passtype,status,wtype) " +
                     "VALUES(?,'abuse','example.com','-','','active','alias')",
-            adminWID
+            gAdminProfileData.wid
         )
         db!!.execute(
             "INSERT INTO workspaces(wid,uid,domain,password,passtype,status,wtype) " +
                     "VALUES(?,'support','example.com','-','','active','alias')",
-            adminWID
+            gAdminProfileData.wid
         )
     }
 

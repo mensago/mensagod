@@ -225,13 +225,13 @@ val gUserProfileData = TestProfileData(
             "CURVE25519:j(IBzX*F%OZF;g77O8jrVjM1a`Y<6-ehe{S;{gph",
             "CURVE25519:55t6A0y%S?{7c47p(R@C*X#at9Y`q5(Rc#YBS;r}"
         ).getOrThrow(),
-        "encryption" to EncryptionPair.fromStrings(
-            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
-            "CURVE25519:4A!nTPZSVD#tm78d=-?1OIQ43{ipSpE;@il{lYkg"
-        ).getOrThrow(),
         "signing" to SigningPair.fromStrings(
             "ED25519:k^GNIJbl3p@N=j8diO-wkNLuLcNF6#JF=@|a}wFE",
             "ED25519:;NEoR>t9n3v%RbLJC#*%n4g%oxqzs)&~k+fH4uqi"
+        ).getOrThrow(),
+        "encryption" to EncryptionPair.fromStrings(
+            "CURVE25519:nSRso=K(WF{P+4x5S*5?Da-rseY-^>S8VN#v+)IN",
+            "CURVE25519:4A!nTPZSVD#tm78d=-?1OIQ43{ipSpE;@il{lYkg"
         ).getOrThrow(),
 
         "devid" to RandomID.fromString("fd21b07b-6112-4a89-b998-a1c55755d9d7")!!,
