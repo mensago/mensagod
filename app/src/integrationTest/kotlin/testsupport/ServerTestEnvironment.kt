@@ -25,6 +25,9 @@ import java.nio.file.Paths
 const val SETUP_TEST_FILESYSTEM: Int = 1
 const val SETUP_TEST_DATABASE: Int = 2
 const val SETUP_TEST_ADMIN: Int = 3
+const val SETUP_TEST_USER: Int = 4
+const val SETUP_TEST_ADMIN_KEYCARD: Int = 6
+const val SETUP_TEST_BOTH_KEYCARDS: Int = 7
 
 /**
  * This support class is responsible for setting up the server side of anenvironment for integration
@@ -39,6 +42,7 @@ class ServerTestEnvironment(val testName: String) {
     private var db: PGConn? = null
     private var serverPrimary: SigningPair? = null
     private var serverEncryption: EncryptionPair? = null
+    private var serverCard: Keycard? = null
 
     val serverconfig: ServerConfig = ServerConfig.load().getOrThrow()
     val testPath: String = Paths.get("build", "testfiles", testName).toAbsolutePath()
@@ -53,6 +57,12 @@ class ServerTestEnvironment(val testName: String) {
             initDatabase()
         if (provisionLevel >= SETUP_TEST_ADMIN)
             regAdmin()
+        if (provisionLevel >= SETUP_TEST_USER)
+            regUser()
+        if (provisionLevel >= SETUP_TEST_ADMIN_KEYCARD)
+            setupKeycard(gAdminProfileData)
+        if (provisionLevel >= SETUP_TEST_BOTH_KEYCARDS)
+            setupKeycard(gUserProfileData)
 
         return this
     }
@@ -173,8 +183,8 @@ class ServerTestEnvironment(val testName: String) {
             this
         }
 
-        val orgCard = Keycard.new("Organization")!!
-        orgCard.entries.add(rootEntry)
+        serverCard = Keycard.new("Organization")!!
+        serverCard!!.entries.add(rootEntry)
 
         db!!.execute(
             "INSERT INTO keycards(owner,creationtime,index,entry,fingerprint) " +
@@ -185,8 +195,8 @@ class ServerTestEnvironment(val testName: String) {
             rootEntry.getAuthString("Hash")!!
         )
 
-        val keys = orgCard.chain(initialOSPair, 365).getOrThrow()
-        val newEntry = orgCard.entries[1]
+        val keys = serverCard!!.chain(initialOSPair, 365).getOrThrow()
+        val newEntry = serverCard!!.entries[1]
 
         db!!.execute(
             "INSERT INTO keycards(owner,creationtime,index,entry,fingerprint) " +
@@ -256,6 +266,79 @@ class ServerTestEnvironment(val testName: String) {
             DeviceStatus.Registered
         )?.let { throw it }
         deletePrereg(db, WAddress.fromParts(gAdminProfileData.wid, gServerDomain))?.let { throw it }
+        db.disconnect()
+    }
+
+    /**
+     * Registers a user and their first device
+     */
+    private fun regUser() {
+        val db = DBConn()
+        preregWorkspace(
+            db, gUserProfileData.wid, gUserProfileData.uid, gServerDomain,
+            gUserProfileData.passhash
+        )?.let { throw it }
+        LocalFS.get().entry(MServerPath("/ wsp ${gUserProfileData.wid}")).makeDirectory()
+
+        val fakeInfo = CryptoString.fromString("XSALSA20:ABCDEFG1234567890")!!
+        addWorkspace(
+            db, gUserProfileData.wid, gUserProfileData.uid, gServerDomain,
+            gUserProfileData.passhash,
+            "argon2id", "anXvadxtNJAYa2cUQFqKSQ", "m=65536,t=2,p=1",
+            WorkspaceStatus.Active, WorkspaceType.Individual
+        )?.let { throw it }
+        addDevice(
+            db,
+            gUserProfileData.wid,
+            gUserProfileData.devid,
+            gUserProfileData.devpair.pubKey,
+            fakeInfo,
+            DeviceStatus.Registered
+        )?.let { throw it }
+        deletePrereg(db, WAddress.fromParts(gUserProfileData.wid, gServerDomain))?.let { throw it }
+        db.disconnect()
+    }
+
+    /**
+     * Sets up keycards for both the admin and the test user
+     */
+    private fun setupKeycard(profile: TestProfileData) {
+        val db = DBConn()
+
+        val card = profile.keycard
+        with(card.current!!) {
+            isDataCompliant()?.let { throw it }
+            sign("Organization-Signature", serverPrimary!!)?.let { throw it }
+            addAuthString(
+                "Previous-Hash",
+                serverCard!!.current!!.getAuthString("Hash")!!
+            )?.let { throw it }
+            hash()?.let { throw it }
+            sign("User-Signature", profile.crsigning)?.let { throw it }
+            isCompliant()?.let { throw it }
+            addEntry(db, this)?.let { throw it }
+        }
+
+        val newKeys = card.chain(profile.crsigning).getOrThrow()
+        with(card.current!!) {
+            sign("Organization-Signature", serverPrimary!!)?.let { throw it }
+            hash()?.let { throw it }
+            sign("User-Signature", profile.crsigning)?.let { throw it }
+            isCompliant()?.let { throw it }
+            addEntry(db, this)?.let { throw it }
+        }
+        assert(card.verify().getOrThrow())
+
+
+        profile.data["crsigning"] =
+            SigningPair.from(newKeys["crsigning.public"]!!, newKeys["crsigning.private"]!!)
+        profile.data["crencryption"] =
+            EncryptionPair.from(newKeys["crencryption.public"]!!, newKeys["crencryption.private"]!!)
+        profile.data["signing"] =
+            SigningPair.from(newKeys["signing.public"]!!, newKeys["signing.private"]!!)
+        profile.data["encryption"] =
+            EncryptionPair.from(newKeys["encryption.public"]!!, newKeys["encryption.private"]!!)
+
         db.disconnect()
     }
 }
