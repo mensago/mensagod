@@ -41,13 +41,19 @@ const val SETUP_TEST_BOTH_KEYCARDS: Int = 7
  * parallelization and prevent test from stepping on one another's toes.
  */
 class ServerTestEnvironment(val testName: String) {
-    private val dbconfig: PGConfig = PGConfig(dbname = testName)
+    val serverconfig: ServerConfig = ServerConfig.load().getOrThrow()
+    private val dbconfig: PGConfig = PGConfig(
+        serverconfig.getString("database.user")!!,
+        serverconfig.getString("database.password")!!,
+        serverconfig.getString("database.host")!!,
+        serverconfig.getInteger("database.port")!!,
+        testName
+    )
     private var db: PGConn? = null
     private var serverPrimary: SigningPair? = null
     private var serverEncryption: EncryptionPair? = null
     private var serverCard: Keycard? = null
 
-    val serverconfig: ServerConfig = ServerConfig.load().getOrThrow()
     val testPath: String = Paths.get("build", "testfiles", testName).toAbsolutePath()
         .toString()
 
@@ -351,7 +357,7 @@ class ServerTestEnvironment(val testName: String) {
 class ServerEnvironmentTest {
     @Test
     fun testBaseSetup() {
-        val env = ServerTestEnvironment("servertestenv.fs").provision(SETUP_TEST_FILESYSTEM)
+        val env = ServerTestEnvironment("servertestenv_fs").provision(SETUP_TEST_FILESYSTEM)
 
         val lfs = LocalFS.get()
         val rootPath = MServerPath()
@@ -380,7 +386,7 @@ class ServerEnvironmentTest {
 
     @Test
     fun testBaseDBSetup() {
-        ServerTestEnvironment("servertestenv.basedb")
+        ServerTestEnvironment("servertestenv_basedb")
             .provision(SETUP_TEST_DATABASE)
 
         // TODO: verify database setup

@@ -201,7 +201,11 @@ val gAdminProfileData = TestProfileData(
             "CURVE25519:mO?WWA-k2B2O|Z%fA`~s3^\$iiN{5R->#jxO@cy6{",
             "CURVE25519:2bLf2vMA?GA2?L~tv<PA9XOw6e}V~ObNi7C&qek>",
         ),
-        "keycard" to Keycard.fromString(adminKeycard).getOrThrow(),
+        "keycard" to run {
+            val card = Keycard.new("User")!!
+            card.entries.add(UserEntry.fromString(adminKeycard).getOrThrow())
+            card
+        },
     )
 )
 
@@ -239,6 +243,10 @@ val gUserProfileData = TestProfileData(
             "CURVE25519:94|@e{Kpsu_Qe{L@_U;QnOHz!eJ5zz?V@>+K)6F}",
             "CURVE25519:!x2~_pSSCx1M\$n7{QBQ5e*%~ytBzKL_C(bCviqYh"
         ).getOrThrow(),
-        "keycard" to Keycard.fromString(userKeycard).getOrThrow(),
+        "keycard" to run {
+            val card = Keycard.new("User")!!
+            card.entries.add(UserEntry.fromString(userKeycard).getOrThrow())
+            card
+        },
     )
 )
