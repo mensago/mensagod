@@ -48,6 +48,13 @@ class ServerTestEnvironment(val testName: String) {
     }
 
     /**
+     * Shuts down the test environment. This is primarily to close any database connections.
+     */
+    fun done() {
+        db?.disconnect()
+    }
+
+    /**
      * Returns a connection to the database. This will throw an exception if the database connection
      * has not been initialized.
      */

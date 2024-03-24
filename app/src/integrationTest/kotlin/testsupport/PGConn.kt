@@ -21,6 +21,13 @@ class PGConn(connConfig: PGConfig) {
     private var conn: Connection = connConfig.connect().getOrThrow()
     private var batch: Statement? = null
 
+    /**
+     * Disconnects from the database. This is an irreversible action for the object.
+     */
+    fun disconnect() {
+        conn.close()
+    }
+
     fun query(q: String, vararg args: Any): ResultSet {
         if (q.isEmpty()) throw EmptyDataException()
         val stmt = prepStatement(q, args)
