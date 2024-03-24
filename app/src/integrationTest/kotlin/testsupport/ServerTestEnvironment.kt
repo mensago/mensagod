@@ -1,11 +1,14 @@
 package testsupport
 
+import keznacl.CryptoString
 import keznacl.EncryptionPair
 import keznacl.SigningPair
 import libkeycard.*
 import libmensago.MServerPath
 import libmensago.resolver.KCResolver
 import mensagod.*
+import mensagod.dbcmds.*
+import mensagod.handlers.DeviceStatus
 import org.apache.commons.io.FileUtils
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -21,6 +24,7 @@ import java.nio.file.Paths
 
 const val SETUP_TEST_FILESYSTEM: Int = 1
 const val SETUP_TEST_DATABASE: Int = 2
+const val SETUP_TEST_ADMIN: Int = 3
 
 /**
  * This support class is responsible for setting up the server side of anenvironment for integration
@@ -43,6 +47,8 @@ class ServerTestEnvironment(val testName: String) {
         setupTestBase()
         if (provisionLevel >= SETUP_TEST_DATABASE)
             initDatabase()
+        if (provisionLevel >= SETUP_TEST_ADMIN)
+            regAdmin()
 
         return this
     }
@@ -111,6 +117,7 @@ class ServerTestEnvironment(val testName: String) {
     private fun initDatabase() {
         resetDB(serverconfig).getOrThrow().close()
         db = PGConn(dbconfig)
+        DBConn.initialize(serverconfig)?.let { throw it }
 
         val initialOSPair = SigningPair.fromStrings(
             "ED25519:r#r*RiXIN-0n)BzP3bv`LA&t4LFEQNF0Q@\$N~RF*",
@@ -201,6 +208,30 @@ class ServerTestEnvironment(val testName: String) {
                     "VALUES(?,'support','example.com','-','','active','alias')",
             adminWID
         )
+    }
+
+    /**
+     * Registers the admin user and the admin's first device
+     */
+    private fun regAdmin() {
+        val fakeInfo = CryptoString.fromString("XSALSA20:ABCDEFG1234567890")!!
+        val db = DBConn()
+        addWorkspace(
+            db, gAdminProfileData.wid, gAdminProfileData.uid, gServerDomain,
+            gAdminProfileData.passhash,
+            "argon2id", "anXvadxtNJAYa2cUQFqKSQ", "m=65536,t=2,p=1",
+            WorkspaceStatus.Active, WorkspaceType.Individual
+        )?.let { throw it }
+        addDevice(
+            db,
+            gAdminProfileData.wid,
+            gAdminProfileData.devid,
+            gAdminProfileData.devpair.pubKey,
+            fakeInfo,
+            DeviceStatus.Registered
+        )?.let { throw it }
+        deletePrereg(db, WAddress.fromParts(gAdminProfileData.wid, gServerDomain))?.let { throw it }
+        db.disconnect()
     }
 }
 

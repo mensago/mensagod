@@ -1,5 +1,8 @@
 package testsupport
 
+import keznacl.EncryptionPair
+import libkeycard.*
+
 // Test profile data for the administrator account used in integration tests
 private const val adminKeycard = "Type:User\r\n" +
         "Index:1\r\n" +
@@ -97,4 +100,67 @@ val USER_PROFILE_DATA = mutableMapOf(
     "anniversary" to "0714",
     "mastodon" to "@corbinsimons@example.com",
     "email.personal" to "corbin.simons@example.com",
+)
+
+
+class TestProfileData(val data: MutableMap<String, Any>) {
+    val name: String
+        get() {
+            return data["name"]!! as String
+        }
+    val uid: UserID
+        get() {
+            return data["uid"]!! as UserID
+        }
+    val wid: RandomID
+        get() {
+            return data["wid"]!! as RandomID
+        }
+    val domain: Domain
+        get() {
+            return data["domain"]!! as Domain
+        }
+    val address: MAddress
+        get() {
+            return data["address"]!! as MAddress
+        }
+    val waddress: WAddress
+        get() {
+            return data["waddress"]!! as WAddress
+        }
+    val password: String
+        get() {
+            return data["password"]!! as String
+        }
+    val passhash: String
+        get() {
+            return data["passhash"]!! as String
+        }
+    val devid: RandomID
+        get() {
+            return data["devid"]!! as RandomID
+        }
+    val devpair: EncryptionPair
+        get() {
+            return data["devpair"]!! as EncryptionPair
+        }
+}
+
+val gAdminProfileData = TestProfileData(
+    mutableMapOf(
+        "name" to "Administrator",
+        "uid" to UserID.fromString("admin")!!,
+        "wid" to RandomID.fromString("ae406c5e-2673-4d3e-af20-91325d9623ca")!!,
+        "domain" to Domain.fromString("example.com")!!,
+        "address" to MAddress.fromString("admin/example.com")!!,
+        "waddress" to WAddress.fromString("ae406c5e-2673-4d3e-af20-91325d9623ca/example.com")!!,
+        "password" to "Linguini2Pegboard*Album",
+        "passhash" to "\$argon2id\$v=19\$m=65536,t=2,p=1\$anXvadxtNJAYa2cUQFqKSQ" +
+                "\$zLbLnmbtluKQIOKHk0Hb7+kQZHmZG4Uxf3DI7soKiYE",
+        "devid" to RandomID.fromString("3abaa743-40d9-4897-ac77-6a7783083f30")!!,
+        "devpair" to EncryptionPair.fromStrings(
+            "CURVE25519:mO?WWA-k2B2O|Z%fA`~s3^\$iiN{5R->#jxO@cy6{",
+            "CURVE25519:2bLf2vMA?GA2?L~tv<PA9XOw6e}V~ObNi7C&qek>"
+        ).getOrThrow(),
+    )
 )
