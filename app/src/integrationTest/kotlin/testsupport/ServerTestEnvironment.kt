@@ -29,9 +29,13 @@ const val SETUP_TEST_ADMIN: Int = 3
 /**
  * This support class is responsible for setting up the server side of anenvironment for integration
  * tests.
+ *
+ * NOTE: If a test requires database setup, the user account utilized to connect to the database
+ * must have CREATEDB privileges to create a database for each test. This is to permit
+ * parallelization and prevent test from stepping on one another's toes.
  */
 class ServerTestEnvironment(val testName: String) {
-    private val dbconfig: PGConfig = PGConfig(dbname = "mensagotest")
+    private val dbconfig: PGConfig = PGConfig(dbname = testName)
     private var db: PGConn? = null
     private var serverPrimary: SigningPair? = null
     private var serverEncryption: EncryptionPair? = null
@@ -110,11 +114,32 @@ class ServerTestEnvironment(val testName: String) {
     }
 
     /**
+     * Ensures that the database to be used by the test exists
+     */
+    private fun ensureDB() {
+        serverconfig.setValue("database.name", testName)
+        val dbsetupcfg = PGConfig(
+            serverconfig.getString("database.user")!!,
+            serverconfig.getString("database.password")!!,
+            serverconfig.getString("database.host")!!,
+            serverconfig.getInteger("database.port")!!,
+            "postgres"
+        )
+        // Swallow the exception if we fail to create the database. It simplifies the logic a lot
+        // as Postgres doesn't have a CREATE IF NOT EXISTS syntax for database creation. If we fail
+        // to create the database for other reasons, the test will fail later on.
+        kotlin.runCatching {
+            PGConn(dbsetupcfg).execute("CREATE DATABASE $testName OWNER ${dbsetupcfg.user}")
+        }
+    }
+
+    /**
      * Provisions a database for the integration test. The database is populated with all tables
      * needed and adds basic data to the database as if setup had been run. It also rotates the org
      * keycard so that there are two entries.
      */
     private fun initDatabase() {
+        ensureDB()
         resetDB(serverconfig).getOrThrow().close()
         db = PGConn(dbconfig)
         DBConn.initialize(serverconfig)?.let { throw it }
