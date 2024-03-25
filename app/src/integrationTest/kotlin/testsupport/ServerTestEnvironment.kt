@@ -209,6 +209,13 @@ class ServerTestEnvironment(val testName: String) {
         val keys = serverCard!!.chain(initialOSPair, 365).getOrThrow()
         val newEntry = serverCard!!.entries[1]
 
+        serverPrimary = SigningPair.from(keys["primary.public"]!!, keys["primary.private"]!!)
+            .getOrThrow()
+        serverEncryption = EncryptionPair.from(
+            keys["encryption.public"]!!,
+            keys["encryption.private"]!!
+        ).getOrThrow()
+
         db!!.execute(
             "INSERT INTO keycards(owner,creationtime,index,entry,fingerprint) " +
                     "VALUES('organization',?,?,?,?);",
