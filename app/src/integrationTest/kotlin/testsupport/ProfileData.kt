@@ -200,7 +200,7 @@ val gAdminProfileData = TestProfileData(
         "devpair" to EncryptionPair.fromStrings(
             "CURVE25519:mO?WWA-k2B2O|Z%fA`~s3^\$iiN{5R->#jxO@cy6{",
             "CURVE25519:2bLf2vMA?GA2?L~tv<PA9XOw6e}V~ObNi7C&qek>",
-        ),
+        ).getOrThrow(),
         "keycard" to run {
             val card = Keycard.new("User")!!
             card.entries.add(UserEntry.fromString(adminKeycard).getOrThrow())
