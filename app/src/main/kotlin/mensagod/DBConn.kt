@@ -5,9 +5,8 @@ import libkeycard.MissingDataException
 import libmensago.NotConnectedException
 import java.sql.*
 import java.util.*
-import java.util.concurrent.atomic.AtomicInteger
 
-private val dbCount = AtomicInteger(0)
+//private val dbCount = AtomicInteger(0)
 
 /**
  * The DBConn class is a frontend to the storage database for the application. It provides an
@@ -45,7 +44,7 @@ class DBConn(val connConfig: PGConfig? = null) {
             else DriverManager.getConnection(dbURL)
         }.getOrElse { return it.toFailure() }
 
-        println("DB connected: ${dbCount.addAndGet(1)}")
+//        println("DB connected: ${dbCount.addAndGet(1)}")
         return this.toSuccess()
     }
 
@@ -57,7 +56,7 @@ class DBConn(val connConfig: PGConfig? = null) {
     fun disconnect(): Throwable? {
         return try {
             if (conn != null) {
-                println("DB disconnected: ${dbCount.addAndGet(-1)}")
+//                println("DB disconnected: ${dbCount.addAndGet(-1)}")
                 conn!!.close()
             }
             conn = null
