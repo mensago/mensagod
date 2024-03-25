@@ -144,6 +144,7 @@ fun commandKeyPkg(state: ClientSession) {
         FileUtils.touch(tempHandle.getFile())
         val ostream = tempHandle.getFile().outputStream()
         ostream.write(keyInfo.value.encodeToByteArray())
+        ostream.close()
     }.getOrElse {
         state.internalError(
             "commandKeyPkg.writeTempFile exception for ${state.wid!!}: $it",
