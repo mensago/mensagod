@@ -105,7 +105,7 @@ class FSCmdTest {
         withDB { db ->
             setQuota(db, userWID, 1048576)?.let { throw it }
         }.onFalse { throw DatabaseException() }
-        val bigFileInfo = makeTestFile(userTopPath.toString(), null, 1046528)
+        val bigFileInfo = makeTestFile(userTopPath.toString(), null, 1048528)
 
         CommandTest(
             "copy.3",
