@@ -243,6 +243,14 @@ class ServerTestEnvironment(val testName: String) {
             keys["primary.public"]!!.hash().getOrThrow()
         )
 
+        db!!.execute(
+            "INSERT INTO orgkeys(creationtime,pubkey,privkey,purpose,fingerprint) " +
+                    "VALUES(?,?,?,'altsign',?);",
+            newEntry.getFieldString("Timestamp")!!,
+            initialOSPair.pubKey,
+            initialOSPair.privKey,
+            initialOSPair.pubKey.hash().getOrThrow()
+        )
         // Preregister the admin account
         db!!.execute(
             "INSERT INTO prereg(wid,uid,domain,regcode) VALUES(?,?,?,?)",

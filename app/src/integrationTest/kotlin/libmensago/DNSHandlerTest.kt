@@ -1,10 +1,11 @@
 package libmensago
 
 import mensagod.DBConn
-import mensagod.ServerConfig
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import testsupport.FakeDNSHandler
+import testsupport.SETUP_TEST_DATABASE
+import testsupport.ServerTestEnvironment
 
 class DNSHandlerTest {
 
@@ -31,7 +32,9 @@ class DNSHandlerTest {
 
     @Test
     fun fakeLookupTests() {
-        DBConn.initialize(ServerConfig.load().getOrThrow())
+        val env = ServerTestEnvironment("dns_fakelookup").provision(SETUP_TEST_DATABASE)
+        DBConn.initialize(env.serverconfig)
+
         val dns = FakeDNSHandler()
         var results = dns.lookupA("example.com").getOrThrow()
         assertEquals(1, results.size)
