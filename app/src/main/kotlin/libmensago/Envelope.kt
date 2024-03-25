@@ -141,9 +141,14 @@ fun readEnvelopeFile(file: File, headerOnly: Boolean): Result<Pair<String, Crypt
     val reader = file.bufferedReader()
     do {
         val line = runCatching {
-            reader.readLine()
-                ?: return BadValueException("File missing start of header").toFailure()
-        }.getOrElse { return it.toFailure() }.trim()
+            reader.readLine() ?: run {
+                reader.close()
+                return BadValueException("File missing start of header").toFailure()
+            }
+        }.getOrElse {
+            reader.close()
+            return it.toFailure()
+        }.trim()
 
         if (line.trim() == "MENSAGO") {
             break
@@ -153,24 +158,45 @@ fun readEnvelopeFile(file: File, headerOnly: Boolean): Result<Pair<String, Crypt
     val headerLines = mutableListOf<String>()
     do {
         val line = runCatching {
-            reader.readLine() ?: return MissingDataException("Premature end of header").toFailure()
-        }.getOrElse { return it.toFailure() }.trim()
+            reader.readLine() ?: run {
+                reader.close()
+                return MissingDataException("Premature end of header").toFailure()
+            }
+        }.getOrElse {
+            reader.close()
+            return it.toFailure()
+        }.trim()
 
         if (line == "----------")
             break
         headerLines.add(line)
     } while (true)
 
-    if (headerOnly) return Pair(headerLines.joinToString(), null).toSuccess()
+    if (headerOnly) {
+        reader.close()
+        return Pair(headerLines.joinToString(), null).toSuccess()
+    }
     val prefix = runCatching {
-        reader.readLine() ?: return BadValueException("File missing payload prefix").toFailure()
-    }.getOrElse { return it.toFailure() }.trim()
+        reader.readLine() ?: run {
+            reader.close()
+            return BadValueException("File missing payload prefix").toFailure()
+        }
+    }.getOrElse {
+        reader.close()
+        return it.toFailure()
+    }.trim()
 
     val payload = runCatching {
-        reader.readLine() ?: return BadValueException("File missing payload").toFailure()
-    }.getOrElse { return it.toFailure() }.trim()
+        reader.readLine() ?: run {
+            reader.close()
+            return BadValueException("File missing payload").toFailure()
+        }
+    }.getOrElse {
+        reader.close()
+        return it.toFailure()
+    }.trim()
 
-
+    reader.close()
     return Pair(
         headerLines.joinToString(),
         CryptoString.fromString("$prefix:$payload")
