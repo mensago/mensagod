@@ -509,8 +509,8 @@ class FSCmdTest {
         val userTopPath = Paths.get(setupData.testPath, "topdir", "wsp", userWID.toString())
         userTopPath.toFile().mkdirs()
 
-        // This test has worked under Linux Mint for up to 500k files
-        val fileCount = 2000
+        // In order to stay under Java's 65k string limit, stay under 1000 entries returned by LIST.
+        val fileCount = 1000
         repeat(fileCount) {
             makeTestFile(
                 userTopPath.toString(),
