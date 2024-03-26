@@ -179,6 +179,7 @@ fun commandDevice(state: ClientSession) {
                     gServerAddress, recipient, state.conn.inetAddress,
                     devinfo
                 )
+                println("Envelope sealing key: $userKey")
                 val sealed = Envelope.seal(userKey, msg).getOrElse {
                     state.internalError(
                         "commandDevice.seal failure: $it",

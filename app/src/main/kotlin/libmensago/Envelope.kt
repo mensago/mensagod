@@ -28,6 +28,9 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
 
         val pubHash = hash(keyPair.pubKey.toByteArray(), tag.keyHash.getType()!!)
             .getOrElse { return it.toFailure() }
+        println("Envelope.open::User key: ${keyPair.pubKey}")
+        println("Envelope.open::User key hash: $pubHash")
+        println("Envelope.open::Tag key hash: ${tag.keyHash}")
         if (pubHash != tag.keyHash) return HashMismatchException().toFailure()
 
         val payloadKeyStr = keyPair.decrypt(tag.payloadKey)
