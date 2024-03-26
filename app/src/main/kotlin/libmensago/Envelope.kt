@@ -100,9 +100,6 @@ class Envelope(var tag: SealedDeliveryTag, var message: CryptoString) {
             val receiverKey = receiverRec.ek.toEncryptionKey()
                 .getOrElse { return it.toFailure() }
 
-            println("sender key: $senderKey")
-            println("receiver key: $receiverKey")
-
             val tag = DeliveryTag.fromMessage(message).getOrElse { return it.toFailure() }
             val sealedTag = tag.seal(recipientKey, senderKey, receiverKey)
                 .getOrElse { return it.toFailure() }
