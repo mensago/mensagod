@@ -17,6 +17,7 @@ import java.io.IOException
  */
 object KCResolver {
     var dns: DNSHandler = DNSHandler()
+    var useCache = false
     var entryCacheCapacity = 100
     var keycardCacheCapacity = 100
     var widCacheCapacity = 500
@@ -56,8 +57,10 @@ object KCResolver {
      * @see EntrySubject
      */
     fun getKeycard(subject: EntrySubject): Result<Keycard> {
-        val cached = keycardCache().get(subject)
-        if (cached != null) return cached.toSuccess()
+        if (useCache) {
+            val cached = keycardCache().get(subject)
+            if (cached != null) return cached.toSuccess()
+        }
         val keycard = getKeycard(subject, dns).getOrElse { return it.toFailure() }
         keycardCache().put(keycard)
         return keycard.toSuccess()
@@ -73,8 +76,10 @@ object KCResolver {
         if (addr.userid.type == IDType.WorkspaceID)
             return addr.userid.toWID()!!.toSuccess()
 
-        val cached = widCache().get(addr)
-        if (cached != null) return cached.toSuccess()
+        if (useCache) {
+            val cached = widCache().get(addr)
+            if (cached != null) return cached.toSuccess()
+        }
         val wid = resolveMenagoAddress(addr, dns).getOrElse { return it.toFailure() }
         widCache().put(addr, wid)
         return wid.toSuccess()
@@ -95,8 +100,10 @@ object KCResolver {
      * @exception IOException Returned if there was a DNS lookup error
      */
     fun getMgmtRecord(d: Domain): Result<DNSMgmtRecord> {
-        val cached = mgmtCache().get(d)
-        if (cached != null) return cached.toSuccess()
+        if (useCache) {
+            val cached = mgmtCache().get(d)
+            if (cached != null) return cached.toSuccess()
+        }
         val rec = getMgmtRecord(d, dns).getOrElse { return it.toFailure() }
         mgmtCache().put(d, rec)
         return rec.toSuccess()
@@ -121,8 +128,10 @@ object KCResolver {
      * a ResourceNotFoundException will be returned.
      */
     fun getRemoteServerConfig(domain: Domain): Result<List<ServiceConfig>> {
-        val cached = serviceCache().get(domain)
-        if (cached != null) return cached.toSuccess()
+        if (useCache) {
+            val cached = serviceCache().get(domain)
+            if (cached != null) return cached.toSuccess()
+        }
         val rec = getRemoteServerConfig(domain, dns).getOrElse { return it.toFailure() }
         serviceCache().put(domain, rec)
         return rec.toSuccess()
