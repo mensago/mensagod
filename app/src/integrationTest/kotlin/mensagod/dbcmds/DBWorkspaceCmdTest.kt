@@ -53,11 +53,10 @@ class DBWorkspaceCmdTest {
 
     @Test
     fun archiveWorkspaceTest() {
-        setupTest("dbcmds.archiveWorkspace")
-        val db = DBConn()
-        setupUser(db)
-        setupKeycard(db, true, USER_PROFILE_DATA)
+        val env = ServerTestEnvironment("dbcmds_archiveworkspace")
+            .provision(SETUP_TEST_BOTH_KEYCARDS)
 
+        val db = DBConn()
         val adminWID = RandomID.fromString(ADMIN_PROFILE_DATA["wid"])!!
         assert(archiveWorkspace(db, adminWID) is UnauthorizedException)
         val userWID = RandomID.fromString(USER_PROFILE_DATA["wid"])!!
@@ -69,6 +68,7 @@ class DBWorkspaceCmdTest {
                 .next()
         )
         db.disconnect()
+        env.done()
     }
 
     @Test
