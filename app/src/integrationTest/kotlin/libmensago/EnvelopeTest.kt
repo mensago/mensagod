@@ -47,6 +47,7 @@ class EnvelopeTest {
 
         val loaded = Envelope.loadFile(File(filePath)).getOrThrow()
         val epair = getEncryptionPair(DBConn()).getOrThrow()
+        println("Decrypting encryption pair: $epair")
 
         loaded.tag.decryptSender(epair).getOrThrow()
         loaded.tag.decryptReceiver(epair).getOrThrow()
